@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SIMPEL SPJ</title>
+<style>
+:root{--primary:#1f4f82;--primary2:#2e74b5;--bg:#f4f7fb;--text:#1f2937;--muted:#6b7280;--line:#dbe3ec;--danger:#b42318;--ok:#087443}
+*{box-sizing:border-box}body{margin:0;font-family:Inter,Arial,sans-serif;background:var(--bg);color:var(--text)}
+button,input,select{font:inherit}button{cursor:pointer;border:0;border-radius:9px;padding:10px 14px;background:var(--primary);color:#fff;font-weight:600}button.secondary{background:#e8eef6;color:var(--primary)}button.danger{background:#b42318}button:disabled{opacity:.55;cursor:not-allowed}
+.hidden{display:none!important}.app{min-height:100vh}.login-wrap{min-height:100vh;display:grid;place-items:center;padding:20px}.login-card{width:min(430px,100%);background:#fff;border:1px solid var(--line);border-radius:18px;padding:30px;box-shadow:0 12px 40px #16324d12}.brand{font-size:25px;font-weight:800;color:var(--primary);margin-bottom:6px}.sub{color:var(--muted);font-size:14px;margin-bottom:24px}
+.field{display:grid;gap:6px;margin:14px 0}.field label{font-size:13px;font-weight:700}.field input,.field select{width:100%;padding:11px;border:1px solid #cbd5e1;border-radius:9px;background:#fff}.error{color:var(--danger);font-size:13px;margin:10px 0}.notice{padding:12px;border-radius:9px;background:#edf5ff;color:#234b76;font-size:13px}
+.layout{display:grid;grid-template-columns:245px 1fr;min-height:100vh}.sidebar{background:#173b62;color:#fff;padding:20px;position:sticky;top:0;height:100vh}.sidebar .brand{color:#fff}.nav{display:grid;gap:7px;margin-top:28px}.nav button{background:transparent;text-align:left;color:#dbeafe}.nav button.active,.nav button:hover{background:#2c5f91;color:#fff}.main{min-width:0}.topbar{display:flex;justify-content:space-between;align-items:center;gap:15px;padding:18px 24px;background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}.userbox{font-size:13px;color:var(--muted);text-align:right}.content{padding:24px;max-width:1500px;margin:auto}.page-title{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:18px}.page-title h1{font-size:24px;margin:0}.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}.card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px;box-shadow:0 3px 12px #173b6208}.stat-label{font-size:12px;color:var(--muted)}.stat-value{font-size:25px;font-weight:800;margin-top:8px}.panel{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px;margin-top:18px}.toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}.toolbar input,.toolbar select{padding:10px;border:1px solid #cbd5e1;border-radius:9px;min-width:180px}.table-wrap{overflow:auto;border:1px solid var(--line);border-radius:10px}table{width:100%;border-collapse:collapse;min-width:700px}th,td{padding:10px 12px;border-bottom:1px solid var(--line);text-align:left;font-size:13px;white-space:nowrap}th{background:#f3f6fa;font-size:12px}tr:last-child td{border-bottom:0}.badge{display:inline-block;padding:4px 8px;border-radius:999px;background:#e8eef6;color:#315778;font-size:11px;font-weight:700}.badge.ok{background:#e5f6ed;color:var(--ok)}.badge.bad{background:#ffebe9;color:var(--danger)}.empty{padding:30px;text-align:center;color:var(--muted)}.loading{padding:18px;text-align:center;color:var(--muted)}.toast{position:fixed;right:20px;bottom:20px;max-width:360px;background:#172b40;color:#fff;padding:13px 16px;border-radius:10px;box-shadow:0 10px 30px #0002;z-index:50}.modal-backdrop{position:fixed;inset:0;background:#0b1f3388;display:grid;place-items:center;padding:18px;z-index:30}.modal{background:#fff;width:min(650px,100%);max-height:90vh;overflow:auto;border-radius:16px;padding:22px}.modal-head{display:flex;justify-content:space-between;align-items:center}.modal-head h2{margin:0;font-size:19px}.modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:20px}
+@media(max-width:900px){.layout{grid-template-columns:1fr}.sidebar{height:auto;position:relative;padding:14px}.nav{display:flex;flex-wrap:wrap;margin-top:14px}.nav button{padding:8px 10px}.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.content{padding:15px}.topbar{padding:14px}}
+@media(max-width:520px){.grid{grid-template-columns:1fr}.topbar{align-items:flex-start;flex-direction:column}.userbox{text-align:left}}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="toast" class="toast hidden"></div>
+<div id="modalRoot"></div>
+<script>
+'use strict';
+const CONFIG={API_URL:'https://script.google.com/macros/s/AKfycbyWvJXKr1QZ1zwbeJDoULTUihycj1771SsDlGFy8jnuF4i3DsEbHXlcJU48VDAg17fqDA/exec'};
+const state={token:null,user:null,page:'dashboard',cache:{},loading:false};
+const $=s=>document.querySelector(s);
+const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const money=v=>Number(v||0).toLocaleString('id-ID',{style:'currency',currency:'IDR',maximumFractionDigits:0});
+function toast(msg){const el=$('#toast');el.textContent=msg;el.classList.remove('hidden');clearTimeout(toast.t);toast.t=setTimeout(()=>el.classList.add('hidden'),3500)}
+function showModal(title,body,actions=''){ $('#modalRoot').innerHTML=`<div class="modal-backdrop" data-close><div class="modal" role="dialog" aria-modal="true"><div class="modal-head"><h2>${esc(title)}</h2><button class="secondary" data-modal-close>×</button></div>${body}<div class="modal-actions">${actions}</div></div></div>`; }
+function closeModal(){$('#modalRoot').innerHTML=''}
+$('#modalRoot').addEventListener('click',e=>{if(e.target.matches('[data-close],[data-modal-close]'))closeModal()});
+async function api(action,data={},retry=true){
+ if(CONFIG.API_URL.startsWith('GANTI_'))throw Error('API_URL belum diisi pada index.html.');
+ const payload={action,data:{...data}};
+ if(state.token)payload.data.token=state.token;
+ const res=await fetch(CONFIG.API_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(payload)});
+ const json=await res.json();
+ if(json&&json.success===false)throw Error(json.message||'Permintaan gagal.');
+ return json;
+}
+function normalizeRows(result){if(Array.isArray(result))return result;if(Array.isArray(result?.data))return result.data;if(Array.isArray(result?.records))return result.records;if(Array.isArray(result?.rows))return result.rows;return []}
+function saveSession(result){const d=result?.data||result;state.token=d?.token||result?.token;state.user=d?.user||result?.user||d?.pengguna||null;if(!state.token)throw Error('Token sesi tidak diterima backend.');sessionStorage.setItem('simpel_spj_session',JSON.stringify({token:state.token,user:state.user}));}
+function restoreSession(){try{const s=JSON.parse(sessionStorage.getItem('simpel_spj_session')||'null');if(s?.token){state.token=s.token;state.user=s.user;return true}}catch(e){}return false}
+async function logout(){try{if(state.token)await api('logout',{});}catch(e){}state.token=null;state.user=null;sessionStorage.removeItem('simpel_spj_session');renderLogin()}
+function role(){return String(state.user?.role||'').toUpperCase()}
+function allowed(p){if(p==='dashboard')return true;if(p==='rkas')return ['SEKOLAH','DINAS'].includes(role());if(p==='review')return role()==='DINAS';if(p==='master')return ['DINAS','PENGAWAS'].includes(role());return true}
+function renderLogin(){
+ $('#app').innerHTML=`<div class="login-wrap"><form id="loginForm" class="login-card"><div class="brand">SIMPEL SPJ</div><div class="sub">Sistem Penilaian SPJ BOS SD</div><div class="field"><label>Username</label><input id="username" autocomplete="username" required></div><div class="field"><label>Password</label><input id="password" type="password" autocomplete="current-password" required></div><div id="loginError" class="error"></div><button id="loginBtn" style="width:100%">Masuk</button><p class="sub" style="margin:16px 0 0">Pastikan URL Web App Apps Script sudah diatur pada CONFIG.API_URL.</p></form></div>`;
+ $('#loginForm').addEventListener('submit',async e=>{e.preventDefault();const b=$('#loginBtn');b.disabled=true;b.textContent='Memproses...';$('#loginError').textContent='';try{const r=await api('login',{username:$('#username').value.trim(),password:$('#password').value});saveSession(r);await renderApp()}catch(err){$('#loginError').textContent=err.message}finally{b.disabled=false;b.textContent='Masuk'}});
+}
+function shell(){
+ const items=[['dashboard','Dashboard'],['rkas','RKAS'],['master','Master SPJ'],['review','Pengajuan RKAS']];
+ $('#app').innerHTML=`<div class="layout"><aside class="sidebar"><div class="brand">SIMPEL SPJ</div><div style="font-size:12px;color:#cbd5e1">Sistem Penilaian SPJ BOS SD</div><nav class="nav">${items.filter(x=>allowed(x[0])).map(x=>`<button data-page="${x[0]}">${x[1]}</button>`).join('')}<button id="logoutBtn" class="danger" style="margin-top:18px">Keluar</button></nav></aside><section class="main"><header class="topbar"><strong id="headerTitle">Dashboard</strong><div class="userbox"><b>${esc(state.user?.nama_pengguna||state.user?.username||'Pengguna')}</b><br>${esc(role())}</div></header><main id="content" class="content"></main></section></div>`;
+ $('#logoutBtn').addEventListener('click',logout);
+ document.querySelectorAll('[data-page]').forEach(b=>b.addEventListener('click',()=>navigate(b.dataset.page)));
+}
+function navigate(page){if(!allowed(page))return toast('Anda tidak memiliki akses ke menu ini.');state.page=page;document.querySelectorAll('[data-page]').forEach(b=>b.classList.toggle('active',b.dataset.page===page));$('#headerTitle').textContent={dashboard:'Dashboard',rkas:'RKAS',master:'Master SPJ',review:'Pengajuan RKAS'}[page]||page;loadPage()}
+async function loadPage(){const c=$('#content');c.innerHTML='<div class="loading">Memuat data...</div>';try{if(state.page==='dashboard')return dashboard(c);if(state.page==='rkas')return rkas(c);if(state.page==='master')return master(c);if(state.page==='review')return review(c)}catch(e){c.innerHTML=`<div class="panel error">${esc(e.message)}</div>`}}
+async function dashboard(c){let info={};try{info=await api('systemInfo',{})}catch(e){}c.innerHTML=`<div class="page-title"><h1>Dashboard</h1><span class="badge">${esc(role())}</span></div><div class="grid"><div class="card"><div class="stat-label">Pengguna</div><div class="stat-value">${esc(state.user?.nama_pengguna||state.user?.username||'-')}</div></div><div class="card"><div class="stat-label">Peran</div><div class="stat-value">${esc(role()||'-')}</div></div><div class="card"><div class="stat-label">Versi aplikasi</div><div class="stat-value">${esc(info?.version||info?.data?.version||'1.0.0')}</div></div><div class="card"><div class="stat-label">Status sesi</div><div class="stat-value">Aktif</div></div></div><div class="panel"><h3>Informasi</h3><p>Gunakan menu di samping untuk mengakses data sesuai kewenangan akun. Semua permintaan data dikirim melalui endpoint backend Apps Script.</p></div>`}
+async function master(c){const [spj,period,schools]=await Promise.all([api('masterSPJ'),api('periodeSPJ'),api('sekolah')]);const rows=normalizeRows(spj);c.innerHTML=`<div class="page-title"><h1>Master SPJ</h1></div><div class="panel"><h3>Komponen SPJ</h3>${table(rows,['id_spj','kode_spj','nama_spj','urutan','status_aktif','keterangan'])}</div><div class="panel"><h3>Periode SPJ</h3>${table(normalizeRows(period),['id_periode','tahun','bulan','nama_periode','tanggal_mulai','tanggal_selesai','status'])}</div><div class="panel"><h3>Sekolah</h3>${table(normalizeRows(schools),['npsn','nama_sekolah','kecamatan','alamat_lengkap'])}</div>`}
+function table(rows,cols){if(!rows.length)return '<div class="empty">Tidak ada data.</div>';return `<div class="table-wrap"><table><thead><tr>${cols.map(c=>`<th>${esc(c)}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>`<tr>${cols.map(c=>`<td>${esc(r[c])}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`}
+async function rkas(c){const schools=normalizeRows(await api('sekolah'));const npsn=state.user?.npsn||state.user?.NPSN||schools[0]?.npsn||'';const [active,hist]=await Promise.all([api('rkasAktif',{npsn}),api('rkasHistory',{npsn})]);c.innerHTML=`<div class="page-title"><h1>RKAS</h1><button id="newRkas">Buat versi RKAS</button></div><div class="panel"><h3>RKAS Aktif</h3>${table(normalizeRows(active),['id_rkas','npsn','versi_rkas','kode_rekening','uraian','pagu','status_rkas','tanggal_pengesahan'])}</div><div class="panel"><h3>Riwayat RKAS</h3>${table(normalizeRows(hist),['id_rkas','npsn','versi_rkas','status_rkas','updated_at'])}</div>`;
+ $('#newRkas').addEventListener('click',async()=>{try{const r=await api('createRKASVersion');toast(r.message||'Versi RKAS dibuat.');loadPage()}catch(e){toast(e.message)}});
+}
+async function review(c){const r=await api('rkasPengajuan');const rows=normalizeRows(r);c.innerHTML=`<div class="page-title"><h1>Pengajuan RKAS</h1></div><div class="panel">${table(rows,['npsn','versi_rkas','status_rkas','updated_at'])}</div>`}
+async function renderApp(){shell();navigate('dashboard')}
+(async()=>{if(restoreSession()){try{await renderApp()}catch(e){logout()}}else renderLogin()})();
+</script>
+</body>
+</html>
