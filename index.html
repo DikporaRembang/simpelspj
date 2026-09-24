@@ -746,24 +746,96 @@ async function loadDinasMasterData() {
 }
 
 // 4. SEKOLAH: RKAS Aktif
-async function loadRKASData() {
+async function loadRKAS() {
+  document.getElementById('moduleContent').innerHTML = '<p class="subtitle">Memuat data RKAS Approved...</p>';
+  
   try {
-    const res = await fetch(SCRIPT_URL, {
-      method: 'POST',
-      body: JSON.stringify({ action: 'rkasAktif', data: { token: currentUser.token, npsn: currentUser.npsn } })
+    const res = await fetch(SCRIPT_URL, { 
+      method: 'POST', 
+      body: JSON.stringify({ action: 'rkasAktif', data: { token: currentUser.token } }) 
     });
-    const result = await res.json();
-    if (result.success && result.data.length > 0) {
-      let rows = result.data.map(item => `
-        <tr><td>${item.kode_rekening}</td><td>${item.uraian}</td><td>Rp ${Number(item.pagu).toLocaleString('id-ID')}</td><td><span style="color:var(--success);font-weight:bold">${item.status_rkas}</span></td></tr>
-      `).join('');
-      document.getElementById('moduleContent').innerHTML = `<div class="table-responsive"><table><thead><tr><th>Kode Rekening</th><th>Uraian</th><th>Pagu</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table></div>`;
-    } else {
-      document.getElementById('moduleContent').innerHTML = '<p class="subtitle">Belum ada data RKAS aktif.</p>';
-    }
-  } catch(err) {
-    document.getElementById('moduleContent').innerHTML = '<p class="subtitle" style="color:var(--danger)">Gagal memuat RKAS.</p>';
+    const json = await res.json();
+    
+    let rows = json.success && json.data.length ? json.data.map(r => `
+      <tr>
+        <td>${r.kode_rekening}</td>
+        <td>${r.uraian}</td>
+        <td>Rp ${Number(r.pagu).toLocaleString('id-ID')}</td>
+      </tr>`).join('') : '<tr><td colspan="3" style="text-align:center;color:#64748b">Tidak ada data RKAS aktif/disetujui.</td></tr>';
+    
+    // Menambahkan Tombol Aksi Cetak & Unduh di Bagian Atas Tabel
+    document.getElementById('moduleContent').innerHTML = `
+      <div style="display:flex;gap:10px;margin-bottom:15px;flex-wrap:wrap;">
+        <button class="btn btn-primary" style="width:auto;" onclick="cetakRKASApproved()">🖨️ Cetak / Print Laporan</button>
+        <button class="btn btn-success" style="width:auto;" onclick="unduhRKASCSV()">📥 Unduh ke Excel (CSV)</button>
+      </div>
+      <div id="rkasTableContainer" class="table-responsive">
+        <table>
+          <thead>
+            <tr>
+              <th>Kode Rekening</th>
+              <th>Uraian Kegiatan</th>
+              <th>Pagu Anggaran</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    `;
+  } catch (err) {
+    document.getElementById('moduleContent').innerHTML = '<p class="subtitle" style="color:var(--danger)">Gagal memuat data dari server.</p>';
   }
+}
+
+// Fungsi Cetak Laporan RKAS (Print View)
+function cetakRKASApproved() {
+  const content = document.getElementById('rkasTableContainer').innerHTML;
+  const printWindow = window.open('', '', 'height=600,width=800');
+  
+  printWindow.document.write('<html><head><title>Cetak RKAS Approved - SIMPEL SPJ</title>');
+  printWindow.document.write('<style>body{font-family:Arial,sans-serif;padding:20px;} table{width:100%;border-collapse:collapse;margin-top:20px;} th,td{border:1px solid #cbd5e1;padding:8px 12px;text-align:left;font-size:12px;} th{background:#f8fafc;}</style>');
+  printWindow.document.write('</head><body>');
+  printWindow.document.write('<h2>Laporan RKAS Approved (Disetujui)</h2>');
+  printWindow.document.write('<p>Kabupaten Rembang - SIMPEL SPJ</p>');
+  printWindow.document.write(content);
+  printWindow.document.write('</body></html>');
+  
+  printWindow.document.close();
+  printWindow.document.onload = function() {
+    printWindow.print();
+  };
+}
+
+// Fungsi Unduh/Ekspor RKAS ke Format CSV (Bisa dibuka di Excel)
+function unduhRKASCSV() {
+  const table = document.querySelector('#rkasTableContainer table');
+  if (!table) {
+    alert('Tidak ada data RKAS untuk diunduh.');
+    return;
+  }
+
+  let csv = [];
+  let rows = table.querySelectorAll('tr');
+  
+  for (let i = 0; i < rows.length; i++) {
+    let row = [], cols = rows[i].querySelectorAll('td, th');
+    for (let j = 0; j < cols.length; j++) {
+      // Membersihkan teks dari simbol mata uang atau format khusus jika perlu
+      let data = cols[j].innerText.replace(/(\r\n|\n|\r)/gm, '').replace(/;/g, ',');
+      row.push('"' + data + '"');
+    }
+    csv.push(row.join(';'));
+  }
+
+  // Unduh file CSV
+  let csvFile = new Blob([csv.join('\n')], { type: 'text/csv;charset=utf-8;' });
+  let downloadLink = document.createElement('a');
+  downloadLink.download = 'RKAS_Approved_SIMPEL_SPJ.csv';
+  downloadLink.href = window.URL.createObjectURL(csvFile);
+  downloadLink.style.display = 'none';
+  document.body.appendChild(downloadLink);
+  downloadLink.click();
+  document.body.removeChild(downloadLink);
 }
 
 // 5. SEKOLAH: Riwayat & Buat Revisi RKAS
