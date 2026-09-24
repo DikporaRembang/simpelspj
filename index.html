@@ -23,7 +23,7 @@ button{cursor:pointer}
 .brand-mark{width:48px;height:48px;border-radius:15px;background:linear-gradient(145deg,var(--primary-3),var(--primary));color:#fff;display:grid;place-items:center;font-weight:900;letter-spacing:.5px;box-shadow:0 8px 20px rgba(15,81,50,.22)}
 .brand h2{font-size:1.08rem;margin:0}
 .brand small{color:var(--muted)}
-.btn{border:0;border-radius:13px;padding:12px 18px;font-weight:700;transition:.18s;min-height:46px;display:inline-flex;align-items:center;justify-content:center;gap:8px;font-size:.95ln}
+.btn{border:0;border-radius:13px;padding:12px 18px;font-weight:700;transition:.18s;min-height:46px;display:inline-flex;align-items:center;justify-content:center;gap:8px;font-size:.95rem}
 .btn:active{transform:translateY(1px)}
 .btn:disabled{opacity:.5;cursor:not-allowed}
 .btn-primary{background:var(--primary);color:#fff}.btn-primary:hover{background:var(--primary-2)}
@@ -161,7 +161,7 @@ button{cursor:pointer}
     </div></section>
     <section class="auth-panel"><div class="auth-card">
       <div class="brand"><div class="brand-mark">SPJ</div><div><h2>SIMPEL SPJ</h2><small>Masuk ke sistem</small></div></div>
-      <div class="message ok">Memuat halaman masuk...</div>
+      <div id="authBody"></div>
     </div></section>
   </main>
 </div>
@@ -177,8 +177,11 @@ const ROLE_RULES={
 
 const state={token:sessionStorage.getItem('simpel_token')||'',user:null,view:'home',cache:{},captcha:false};
 const $=s=>document.querySelector(s),$$=s=>Array.from(document.querySelectorAll(s));
-const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-fmt(v){if(!isNaN(v)&&typeof v==='number')return new Intl.NumberFormat('id-ID',{style:'currency',currency:'IDR',maximumFractionDigits:0}).format(v);return esc(v);}
+const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;}'}[c]||c));
+const fmt = v => {
+  if(!isNaN(v)&&typeof v==='number') return new Intl.NumberFormat('id-ID',{style:'currency',currency:'IDR',maximumFractionDigits:0}).format(v);
+  return esc(v);
+};
 function msg(text,type='error'){return `<div class="message ${type}">${esc(text)}</div>`}
 
 async function api(action,payload={}){
@@ -253,7 +256,6 @@ function loadView(view){
 
 function head(title,desc=''){return `<div class="page-head"><div><h1>${title}</h1><div class="muted">${desc}</div></div></div>`}
 
-/* Render Data Menjadi Tabel Visual Indah & Ramah Awam (Bukan Kotak JSON Mentah) */
 function friendlyTableAction(title,action,desc,fields=[]){
   $('#mainContent').innerHTML=head(title,desc)+
   `<div class="panel">
@@ -276,7 +278,6 @@ function friendlyTableAction(title,action,desc,fields=[]){
       if (Array.isArray(res.data)) list = res.data;
       else if (Array.isArray(res)) list = res;
       else if (res && typeof res === 'object') {
-        // Cek jika ada properti array di dalam objek
         const foundKey = Object.keys(res).find(k => Array.isArray(res[k]));
         if (foundKey) list = res[foundKey];
         else list = [res];
@@ -287,7 +288,6 @@ function friendlyTableAction(title,action,desc,fields=[]){
         return;
       }
 
-      // Buat Tabel HTML Otomatis yang Bersih & Rapi
       const keys = Object.keys(list[0]);
       let html = `<div class="table-wrap"><table class="friendly-table"><thead><tr>`;
       keys.forEach(k => { html += `<th>${esc(k.replaceAll('_',' ').toUpperCase())}</th>`; });
@@ -298,7 +298,6 @@ function friendlyTableAction(title,action,desc,fields=[]){
         keys.forEach(k => {
           let val = row[k];
           if (val === null || val === undefined) val = '-';
-          // Format status badge jika kolom status
           if (k.includes('status') || k.includes('keputusan')) {
             const upVal = String(val).toUpperCase();
             let badgeClass = 'badge-info';
@@ -640,11 +639,11 @@ function asesmenInteractiveView(){
   bindPanel(panels[4],'finalisasiAsesmen',[{id:'idAsesmen'}]);
 
   $('#saveDetailAsesmenBtn').onclick=async()=>{
-    const payload={id_asesmen:$('#d_asm_id').value,id_indikator:$('#d_asm_ind').value,status_berlaku:$('#d_asm_status').value,skor:$('#d_asm_skor'].value,catatan_pengawas:$('#d_asm_catatan').value};
+    const payload={id_asesmen:$('#d_asm_id').value,id_indikator:$('#d_asm_ind').value,status_berlaku:$('#d_asm_status').value,skor:$('#d_asm_skor').value,catatan_pengawas:$('#d_asm_catatan').value};
     $('#d_asm_res').textContent='Menyimpan nilai...';
     try{const r=await api('simpanDetailAsesmen',{data:payload});$('#d_asm_res').textContent=JSON.stringify(r,null,2)}catch(e){$('#d_asm_res').textContent=e.message}
   };
-  $('#clearAsmRes').onclick=()=>$('#d_asm_res'].textContent='Belum ada data skor.';
+  $('#clearAsmRes').onclick=()=>$('#d_asm_res').textContent='Belum ada data skor.';
 }
 
 document.addEventListener('submit',e=>{if(e.target.id==='loginForm')doLogin(e)});
