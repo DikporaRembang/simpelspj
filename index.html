@@ -387,7 +387,7 @@ async function submitChangePassword(e) {
   let confirmPassword = $('confirmPass').value;
 
   if (newPassword !== confirmPassword) {
-    alert('Konfirmasi password baru tidak sesuai.');
+    alert('Konfirmasi password baru tidak cocok.');
     return;
   }
 
@@ -396,10 +396,21 @@ async function submitChangePassword(e) {
   btn.textContent = 'Menyimpan...';
 
   try {
-    let res = await api('ubahPassword', { token: token(), password_lama: oldPassword, password_baru: newPassword, password_konfirmasi: confirmPassword });
+    // Ambil username / npsn user yang sedang aktif
+    let identifier = state.user.username || state.user.npsn;
+
+    let res = await api('ubahPassword', { 
+      token: token(), 
+      username: identifier,
+      password_lama: oldPassword, 
+      password_baru: newPassword, 
+      password_konfirmasi: confirmPassword 
+    });
+    
     alert(res.message || 'Password berhasil diperbarui.');
     $('oldPass').value = '';
-    $('newPass').value = '';$('confirmPass').value = '';
+    $('newPass').value = '';
+    $('confirmPass').value = '';
   } catch (err) {
     alert(err.message || 'Gagal mengubah password.');
   } finally {
@@ -407,7 +418,6 @@ async function submitChangePassword(e) {
     btn.textContent = 'Simpan Password Baru';
   }
 }
-
 async function rkasPage(c) { let x = await api('rkasAktif', { token: token(), npsn: state.user.npsn }); renderGeneric(c, 'RKAS Aktif', x.data || [], ['npsn', 'versi_rkas', 'kode_rekening', 'uraian', 'pagu', 'status_rkas']); }
 async function historyPage(c) {
   let x = await api('rkasHistory', { token: token(), npsn: state.user.npsn });
