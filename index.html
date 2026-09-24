@@ -352,30 +352,30 @@ function changePasswordPage(c) {
     <div class="card" style="max-width:500px;">
       <h3>Ubah Password Akun</h3>
       <p style="font-size:12px;color:var(--muted);margin-bottom:16px;">Pastikan menggunakan password yang aman dan mudah diingat.</p>
-      <form onsubmit="submitChangePassword(event)">
-        <div class="field">
-          <label>Password Lama</label>
-          <div class="field-pass">
-            <input id="oldPass" type="password" required>
-            <button type="button" class="toggle-pass" onclick="togglePassword('oldPass', this)">👁</button>
+        <form onsubmit="submitChangePassword(event)">
+          <div class="field">
+            <label>Password Lama</label>
+            <div class="field-pass">
+              <input id="oldPass" type="password" required>
+              <button type="button" class="toggle-pass" onclick="togglePassword('oldPass', this)">👁</button>
+            </div>
           </div>
-        </div>
-        <div class="field">
-          <label>Password Baru</label>
-          <div class="field-pass">
-            <input id="newPass" type="password" minlength="6" required>
-            <button type="button" class="toggle-pass" onclick="togglePassword('newPass', this)">👁</button>
+          <div class="field">
+            <label>Password Baru</label>
+            <div class="field-pass">
+              <input id="newPass" type="password" minlength="6" required>
+              <button type="button" class="toggle-pass" onclick="togglePassword('newPass', this)">👁</button>
+            </div>
           </div>
-        </div>
-        <div class="field">
-          <label>Konfirmasi Password Baru</label>
-          <div class="field-pass">
-            <input id="confirmPass" type="password" minlength="6" required>
-            <button type="button" class="toggle-pass" onclick="togglePassword('confirmPass', this)">👁</button>
+          <div class="field">
+            <label>Konfirmasi Password Baru</label>
+            <div class="field-pass">
+              <input id="confirmPass" type="password" minlength="6" required>
+              <button type="button" class="toggle-pass" onclick="togglePassword('confirmPass', this)">👁</button>
+            </div>
           </div>
-        </div>
-        <button type="submit" class="btn primary block" id="savePassBtn">Simpan Password Baru</button>
-      </form>
+            <button type="submit" class="btn primary block" id="savePassBtn">Simpan Password Baru</button>
+        </form>
     </div>
   `;
 }
