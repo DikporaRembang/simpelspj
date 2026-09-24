@@ -6,31 +6,326 @@
 <title>SIMPEL SPJ - Dashboard</title>
 <style>
 :root{--navy:#102a43;--blue:#2563eb;--cyan:#06b6d4;--gold:#f59e0b;--bg:#f4f7fb;--text:#1e293b;--muted:#64748b;--white:#fff;--danger:#dc2626;--success:#059669}
-*{box-sizing:border-box}body{margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;background:linear-gradient(135deg,#eaf3ff,#f8fafc);color:var(--text);min-height:100vh}button,input{font:inherit}.hidden{display:none!important}.app{min-height:100vh}.auth-wrap{min-height:100vh;display:grid;grid-template-columns:1.05fr .95fr;padding:24px;gap:24px}.brand-panel{border-radius:28px;padding:clamp(28px,5vw,72px);color:white;background:linear-gradient(145deg,#102a43,#1d4ed8 65%,#0891b2);position:relative;overflow:hidden;display:flex;flex-direction:column;justify-content:center}.brand-panel:after{content:"";position:absolute;width:340px;height:340px;border:70px solid rgba(255,255,255,.08);border-radius:50%;right:-150px;bottom:-130px}.brand-panel h1{font-size:clamp(34px,5vw,68px);margin:0 0 14px;line-height:1.03}.brand-panel p{max-width:540px;color:#dbeafe;font-size:clamp(15px,1.6vw,19px);line-height:1.7}.feature-list{display:grid;gap:12px;margin-top:28px}.feature{display:flex;gap:12px;align-items:center}.feature span{display:grid;place-items:center;width:34px;height:34px;border-radius:12px;background:rgba(255,255,255,.16)}.auth-card{align-self:center;background:rgba(255,255,255,.94);border:1px solid #e2e8f0;border-radius:28px;padding:clamp(22px,4vw,46px);box-shadow:0 24px 80px rgba(15,23,42,.12)}.logo{font-weight:900;color:var(--navy);font-size:25px}.subtitle{color:var(--muted);line-height:1.6}.tabs{display:grid;grid-template-columns:1fr 1fr;gap:8px;background:#eef2f7;border-radius:14px;padding:5px;margin:24px 0}.tabs button{border:0;background:transparent;padding:12px;border-radius:10px;cursor:pointer;color:var(--muted);font-weight:700}.tabs button.active{background:white;color:var(--blue);box-shadow:0 4px 14px #0f172a12}.field{margin:15px 0}.field label{display:block;font-size:13px;font-weight:800;margin-bottom:7px}.field input{width:100%;padding:13px 14px;border:1px solid #dbe3ee;border-radius:12px;outline:none;background:#fbfdff}.field input:focus{border-color:var(--blue);box-shadow:0 0 0 4px #2563eb15}.captcha-row{display:flex;gap:10px;align-items:center}.captcha-code{flex:1;text-align:center;letter-spacing:5px;font-weight:900;font-size:20px;background:#e0f2fe;border:1px dashed #0284c7;border-radius:12px;padding:12px;color:#075985}.btn{width:100%;border:0;border-radius:13px;padding:14px 16px;font-weight:800;cursor:pointer;transition:.2s}.btn-primary{background:linear-gradient(135deg,var(--blue),#0891b2);color:white}.btn-secondary{background:#e2e8f0;color:var(--navy)}.btn:hover{transform:translateY(-1px);filter:brightness(1.03)}.message{font-size:13px;margin-top:12px;color:var(--danger);min-height:18px}.shell{display:flex;min-height:100vh}.sidebar{width:260px;background:var(--navy);color:white;padding:24px 16px}.sidebar h2{margin:0 10px 26px;font-size:22px}.nav-btn{width:100%;text-align:left;background:transparent;border:0;color:#dbeafe;padding:13px 14px;border-radius:12px;cursor:pointer;margin:4px 0;font-weight:700}.nav-btn.active,.nav-btn:hover{background:#ffffff18;color:white}.main{flex:1;padding:clamp(18px,3vw,38px);min-width:0}.topbar{display:flex;justify-content:space-between;gap:16px;align-items:center;flex-wrap:wrap}.topbar h1{margin:0;color:var(--navy)}.user-pill{background:white;border:1px solid #e2e8f0;border-radius:999px;padding:10px 14px;font-weight:700}.cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;margin:26px 0}.stat{background:white;border:1px solid #e2e8f0;border-radius:20px;padding:22px;box-shadow:0 10px 30px #0f172a08}.stat small{color:var(--muted)}.stat strong{display:block;font-size:30px;color:var(--navy);margin-top:8px}.panel{background:white;border:1px solid #e2e8f0;border-radius:20px;padding:24px}.panel h2{margin-top:0;color:var(--navy)}.logout{margin-top:28px;background:#ef44441c;color:#fecaca}.mobile-menu{display:none}
+*{box-sizing:border-box}body{margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;background:linear-gradient(135deg,#eaf3ff,#f8fafc);color:var(--text);min-height:100vh}button,input{font:inherit}.hidden{display:none!important}.app{min-height:100vh}.auth-wrap{min-height:100vh;display:grid;grid-template-columns:1.05fr .95fr;padding:24px;gap:24px}.brand-panel{border-radius:28px;padding:clamp(28px,5vw,72px);color:white;background:linear-gradient(145deg,#102a43,#1d4ed8 65%,#0891b2);position:relative;overflow:hidden;display:flex;flex-direction:column;justify-content:center}.brand-panel:after{content:"";position:absolute;width:340px;height:340px;border:70px solid rgba(255,255,255,.08);border-radius:50%;right:-150px;bottom:-130px}.brand-panel h1{font-size:clamp(34px,5vw,68px);margin:0 0 14px;line-height:1.03}.brand-panel p{max-width:540px;color:#dbeafe;font-size:clamp(15px,1.6vw,19px);line-height:1.7}.feature-list{display:grid;gap:12px;margin-top:28px}.feature{display:flex;gap:12px;align-items:center}.feature span{display:grid;place-items:center;width:34px;height:34px;border-radius:12px;background:rgba(255,255,255,.16)}.auth-card{align-self:center;background:rgba(255,255,255,.94);border:1px solid #e2e8f0;border-radius:28px;padding:clamp(22px,4vw,46px);box-shadow:0 24px 80px rgba(15,23,42,.12)}.logo{font-weight:900;color:var(--navy);font-size:25px}.subtitle{color:var(--muted);line-height:1.6}.tabs{display:grid;grid-template-columns:1fr 1fr;gap:8px;background:#eef2f7;border-radius:14px;padding:5px;margin:24px 0}.tabs button{border:0;background:transparent;padding:12px;border-radius:10px;cursor:pointer;color:var(--muted);font-weight:700}.tabs button.active{background:white;color:var(--blue);box-shadow:0 4px 14px #0f172a12}.field{margin:15px 0}.field label{display:block;font-size:13px;font-weight:800;margin-bottom:7px}.field input,.field select{width:100%;padding:13px 14px;border:1px solid #dbe3ee;border-radius:12px;outline:none;background:#fbfdff}.field input:focus,.field select:focus{border-color:var(--blue);box-shadow:0 0 0 4px #2563eb15}
+
+/* Slider Captcha Style */
+.slider-captcha{position:relative;background:#eef2f7;border:1px solid #dbe3ee;border-radius:12px;height:48px;display:flex;align-items:center;overflow:hidden;user-select:none}.slider-track{position:absolute;left:0;top:0;height:100%;background:#bae6fd;width:0;transition:width 0.1s}.slider-text{position:relative;width:100%;text-align:center;font-size:13px;font-weight:700;color:var(--muted);z-index:2}.slider-thumb{position:absolute;left:0;top:0;width:48px;height:48px;background:var(--blue);color:white;display:grid;place-items:center;border-radius:12px;cursor:pointer;z-index:3;font-weight:bold;box-shadow:0 2px 6px rgba(0,0,0,0.15)}.slider-captcha.success .slider-thumb{background:var(--success);left:calc(100% - 48px)!important}.slider-captcha.success .slider-text{color:var(--success)}.slider-captcha.success .slider-track{background:#a7f3d0}
+
+.btn{width:100%;border:0;border-radius:13px;padding:14px 16px;font-weight:800;cursor:pointer;transition:.2s}.btn-primary{background:linear-gradient(135deg,var(--blue),#0891b2);color:white}.btn-secondary{background:#e2e8f0;color:var(--navy)}.btn:hover{transform:translateY(-1px);filter:brightness(1.03)}.message{font-size:13px;margin-top:12px;color:var(--danger);min-height:18px}.shell{display:flex;min-height:100vh}.sidebar{width:260px;background:var(--navy);color:white;padding:24px 16px}.sidebar h2{margin:0 10px 26px;font-size:22px}.nav-btn{width:100%;text-align:left;background:transparent;border:0;color:#dbeafe;padding:13px 14px;border-radius:12px;cursor:pointer;margin:4px 0;font-weight:700}.nav-btn.active,.nav-btn:hover{background:#ffffff18;color:white}.main{flex:1;padding:clamp(18px,3vw,38px);min-width:0}.topbar{display:flex;justify-content:space-between;gap:16px;align-items:center;flex-wrap:wrap}.topbar h1{margin:0;color:var(--navy)}.user-pill{background:white;border:1px solid #e2e8f0;border-radius:999px;padding:10px 14px;font-weight:700}.cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;margin:26px 0}.stat{background:white;border:1px solid #e2e8f0;border-radius:20px;padding:22px;box-shadow:0 10px 30px #0f172a08}.stat small{color:var(--muted)}.stat strong{display:block;font-size:30px;color:var(--navy);margin-top:8px}.panel{background:white;border:1px solid #e2e8f0;border-radius:20px;padding:24px}.panel h2{margin-top:0;color:var(--navy)}.logout{margin-top:28px;background:#ef44441c;color:#fecaca}
 @media(max-width:900px){.auth-wrap{grid-template-columns:1fr;padding:14px}.brand-panel{display:none}.auth-card{max-width:560px;width:100%;margin:auto}.sidebar{width:220px}.cards{grid-template-columns:1fr 1fr}}
 @media(max-width:620px){.shell{display:block}.sidebar{width:100%;padding:14px;display:flex;align-items:center;gap:8px;overflow-x:auto}.sidebar h2{margin:0 14px 0 0;white-space:nowrap}.nav-btn{width:auto;white-space:nowrap;margin:0}.logout{margin-top:0}.main{padding:16px}.cards{grid-template-columns:1fr}.topbar h1{font-size:24px}.auth-card{border-radius:20px}}
 </style>
 </head>
 <body>
 <div id="auth" class="auth-wrap">
-<section class="brand-panel"><div class="logo" style="color:#fff">SIMPEL SPJ</div><h1>Kelola SPJ lebih rapi dan modern.</h1><p>Platform pengelolaan administrasi dan pertanggungjawaban yang dirancang agar mudah digunakan melalui komputer, tablet, maupun telepon seluler.</p><div class="feature-list"><div class="feature"><span>✓</span>Dashboard informatif</div><div class="feature"><span>✓</span>Tampilan responsif</div><div class="feature"><span>✓</span>Akses berbasis akun</div></div></section>
-<section class="auth-card"><div class="logo">SIMPEL SPJ</div><p class="subtitle">Masuk atau buat akun untuk melanjutkan.</p><div class="tabs"><button id="loginTab" class="active" onclick="switchAuth('login')">Masuk</button><button id="registerTab" onclick="switchAuth('register')">Daftar</button></div>
-<form id="loginForm"><div class="field"><label>Username</label><input id="loginUser" required autocomplete="username"></div><div class="field"><label>Password</label><input id="loginPass" type="password" required autocomplete="current-password"></div><div class="field"><label>Verifikasi CAPTCHA</label><div class="captcha-row"><div id="loginCaptchaCode" class="captcha-code"></div><button type="button" class="btn btn-secondary" style="width:auto" onclick="refreshCaptcha('login')">↻</button></div><input id="loginCaptcha" placeholder="Masukkan kode CAPTCHA" required></div><button class="btn btn-primary">Masuk ke Dashboard</button></form>
-<form id="registerForm" class="hidden"><div class="field"><label>Role Pendaftar</label><select id="regRole" required onchange="updateRegistrationIdentity()" style="width:100%;padding:13px 14px;border:1px solid #dbe3ee;border-radius:12px;background:#fbfdff"><option value="">Pilih role</option><option value="SEKOLAH">SEKOLAH</option><option value="PENGAWAS">PENGAWAS</option></select></div><div class="field"><label>Nama lengkap</label><input id="regName" required></div><div class="field"><label>Username</label><input id="regUser" required></div><div class="field"><label>Password</label><input id="regPass" type="password" required minlength="8"></div><div class="field"><label id="regIdentityLabel">NPSN / ID Pengawas</label><input id="regIdentity" required placeholder="Pilih role terlebih dahulu" disabled></div><div class="field"><label>Verifikasi CAPTCHA</label><div class="captcha-row"><div id="registerCaptchaCode" class="captcha-code"></div><button type="button" class="btn btn-secondary" style="width:auto" onclick="refreshCaptcha('register')">↻</button></div><input id="registerCaptcha" placeholder="Masukkan kode CAPTCHA" required></div><button class="btn btn-primary">Kirim Pendaftaran</button></form><div id="authMessage" class="message"></div><p class="subtitle" style="font-size:12px;margin-bottom:0">Catatan: CAPTCHA sisi frontend perlu divalidasi kembali di backend untuk keamanan produksi.</p></section>
+<section class="brand-panel">
+  <div class="logo" style="color:#fff">SIMPEL SPJ</div>
+  <h1>Kelola SPJ lebih rapi dan modern.</h1>
+  <p>Platform pengelolaan administrasi dan pertanggungjawaban dana BOS SD Kabupaten Rembang.</p>
+  <div class="feature-list">
+    <div class="feature"><span>✓</span>Dashboard informatif</div>
+    <div class="feature"><span>✓</span>Validasi database terpusat</div>
+    <div class="feature"><span>✓</span>Akses berbasis akun aman</div>
+  </div>
+</section>
+
+<section class="auth-card">
+  <div class="logo">SIMPEL SPJ</div>
+  <p class="subtitle">Masuk atau buat akun untuk melanjutkan.</p>
+  <div class="tabs">
+    <button id="loginTab" class="active" onclick="switchAuth('login')">Masuk</button>
+    <button id="registerTab" onclick="switchAuth('register')">Daftar</button>
+  </div>
+
+  <!-- Form Login -->
+  <form id="loginForm" onsubmit="handleLogin(event)">
+    <div class="field"><label>Username / NPSN</label><input id="loginUser" required autocomplete="username"></div>
+    <div class="field"><label>Password</label><input id="loginPass" type="password" required autocomplete="current-password"></div>
+    <div class="field">
+      <label>Verifikasi Geser</label>
+      <div id="loginSlider" class="slider-captcha">
+        <div class="slider-track" id="loginTrack"></div>
+        <div class="slider-text" id="loginText">Geser ke kanan untuk verifikasi</div>
+        <div class="slider-thumb" id="loginThumb">&rarr;</div>
+      </div>
+    </div>
+    <button class="btn btn-primary" type="submit">Masuk ke Dashboard</button>
+  </form>
+
+  <!-- Form Register -->
+  <form id="registerForm" class="hidden" onsubmit="handleRegister(event)">
+    <div class="field">
+      <label>Role Pendaftar</label>
+      <select id="regRole" required onchange="updateRegistrationIdentity()">
+        <option value="">Pilih role</option>
+        <option value="SEKOLAH">SEKOLAH</option>
+        <option value="PENGAWAS">PENGAWAS</option>
+      </select>
+    </div>
+    
+    <div class="field">
+      <label id="regIdentityLabel">NPSN Sekolah / ID Pengawas</label>
+      <input id="regIdentity" required placeholder="Pilih role terlebih dahulu" disabled oninput="checkIdentityAutoFill()">
+    </div>
+
+    <div class="field"><label>Nama Lengkap / Nama Sekolah</label><input id="regName" required placeholder="Terisi otomatis atau manual"></div>
+    <div class="field"><label>Password (Min. 6 Karakter)</label><input id="regPass" type="password" required minlength="6"></div>
+    <div class="field"><label>Konfirmasi Password</label><input id="regPassConfirm" type="password" required minlength="6"></div>
+    
+    <div class="field">
+      <label>Verifikasi Geser</label>
+      <div id="registerSlider" class="slider-captcha">
+        <div class="slider-track" id="registerTrack"></div>
+        <div class="slider-text" id="registerText">Geser ke kanan untuk verifikasi</div>
+        <div class="slider-thumb" id="registerThumb">&rarr;</div>
+      </div>
+    </div>
+
+    <button class="btn btn-primary" type="submit">Kirim Pendaftaran</button>
+  </form>
+
+  <div id="authMessage" class="message"></div>
+</section>
 </div>
-<div id="dashboard" class="shell hidden"><aside class="sidebar"><h2>SIMPEL SPJ</h2><button class="nav-btn active">▦ Dashboard</button><button class="nav-btn" onclick="showModule('RKAS')">▤ RKAS</button><button class="nav-btn" onclick="showModule('SPJ')">▣ SPJ</button><button class="nav-btn" onclick="showModule('Review')">✓ Review</button><button class="nav-btn logout" onclick="logout()">Keluar</button></aside><main class="main"><div class="topbar"><h1 id="pageTitle">Dashboard</h1><div class="user-pill" id="userPill">Pengguna</div></div><div class="cards"><div class="stat"><small>Total Dokumen</small><strong>0</strong></div><div class="stat"><small>Menunggu Review</small><strong>0</strong></div><div class="stat"><small>Status Akun</small><strong style="font-size:22px">Aktif</strong></div></div><section class="panel"><h2 id="moduleTitle">Selamat datang</h2><p id="moduleText" class="subtitle">Pilih menu di samping untuk mulai mengelola data SIMPEL SPJ.</p></section></main></div>
+
+<!-- Dashboard Shell -->
+<div id="dashboard" class="shell hidden">
+  <aside class="sidebar">
+    <h2>SIMPEL SPJ</h2>
+    <button class="nav-btn active">▦ Dashboard</button>
+    <button class="nav-btn" onclick="showModule('RKAS')">▤ RKAS</button>
+    <button class="nav-btn" onclick="showModule('SPJ')">▣ SPJ</button>
+    <button class="nav-btn" onclick="showModule('Review')">✓ Review</button>
+    <button class="nav-btn logout" onclick="logout()">Keluar</button>
+  </aside>
+  <main class="main">
+    <div class="topbar">
+      <h1 id="pageTitle">Dashboard</h1>
+      <div class="user-pill" id="userPill">Pengguna</div>
+    </div>
+    <div class="cards">
+      <div class="stat"><small>Total Dokumen</small><strong>0</strong></div>
+      <div class="stat"><small>Menunggu Review</small><strong>0</strong></div>
+      <div class="stat"><small>Status Akun</small><strong style="font-size:22px">Aktif</strong></div>
+    </div>
+    <section class="panel">
+      <h2 id="moduleTitle">Selamat datang</h2>
+      <p id="moduleText" class="subtitle">Pilih menu di samping untuk mulai mengelola data SIMPEL SPJ.</p>
+    </section>
+  </main>
+</div>
+
 <script>
-const captchaStore={login:'',register:''};let activeAuth='login';
-function makeCaptcha(){return Math.random().toString(36).slice(2,8).toUpperCase()}
-function refreshCaptcha(type){captchaStore[type]=makeCaptcha();document.getElementById(type+'CaptchaCode').textContent=captchaStore[type];document.getElementById(type+'Captcha').value=''}
-function switchAuth(type){activeAuth=type;document.getElementById('loginForm').classList.toggle('hidden',type!=='login');document.getElementById('registerForm').classList.toggle('hidden',type!=='register');document.getElementById('loginTab').classList.toggle('active',type==='login');document.getElementById('registerTab').classList.toggle('active',type==='register');document.getElementById('authMessage').textContent='';refreshCaptcha(type)}
-function validCaptcha(type){return document.getElementById(type+'Captcha').value.trim().toUpperCase()===captchaStore[type]}
-document.getElementById('loginForm').addEventListener('submit',e=>{e.preventDefault();if(!validCaptcha('login')){document.getElementById('authMessage').textContent='CAPTCHA tidak sesuai.';refreshCaptcha('login');return}const user=document.getElementById('loginUser').value.trim();document.getElementById('auth').classList.add('hidden');document.getElementById('dashboard').classList.remove('hidden');document.getElementById('userPill').textContent=user||'Pengguna';document.getElementById('authMessage').textContent=''})
-function updateRegistrationIdentity(){const role=document.getElementById('regRole').value;const label=document.getElementById('regIdentityLabel');const input=document.getElementById('regIdentity');if(role==='SEKOLAH'){label.textContent='NPSN Sekolah';input.placeholder='Masukkan NPSN sekolah';input.inputMode='numeric';input.maxLength=8;input.disabled=false}else if(role==='PENGAWAS'){label.textContent='ID Pengawas';input.placeholder='Masukkan ID Pengawas';input.inputMode='text';input.removeAttribute('maxlength');input.disabled=false}else{label.textContent='NPSN / ID Pengawas';input.placeholder='Pilih role terlebih dahulu';input.disabled=true}input.value=''}
-document.getElementById('registerForm').addEventListener('submit',e=>{e.preventDefault();if(!validCaptcha('register')){document.getElementById('authMessage').textContent='CAPTCHA tidak sesuai.';refreshCaptcha('register');return}const role=document.getElementById('regRole').value;const identity=document.getElementById('regIdentity').value.trim();if(!role||!identity){document.getElementById('authMessage').textContent='Role dan identitas wajib diisi.';return}if(role==='SEKOLAH'&&!/^\d{8}$/.test(identity)){document.getElementById('authMessage').textContent='NPSN harus terdiri dari 8 digit angka.';return}document.getElementById('authMessage').textContent='Data pendaftaran siap dikirim ke backend: role='+role+', '+(role==='SEKOLAH'?'npsn':'id_pengawas')+'='+identity+'. Backend tetap wajib mencocokkan identitas tersebut.';refreshCaptcha('register')})
-function showModule(name){document.getElementById('pageTitle').textContent=name;document.getElementById('moduleTitle').textContent=name;document.getElementById('moduleText').textContent='Modul '+name+' siap dikembangkan dan dihubungkan ke backend Apps Script.'}
-function logout(){document.getElementById('dashboard').classList.add('hidden');document.getElementById('auth').classList.remove('hidden');document.getElementById('loginForm').reset();switchAuth('login')}
-refreshCaptcha('login');refreshCaptcha('register');
+// URL Web App Google Apps Script Anda (Ganti dengan URL deployment yang aktif)
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz.../exec'; 
+
+const captchaStates = { login: false, register: false };
+
+// Inisialisasi Slider Captcha Interaktif
+function initSlider(type) {
+  const slider = document.getElementById(type + 'Slider');
+  const thumb = document.getElementById(type + 'Thumb');
+  const track = document.getElementById(type + 'Track');
+  const text = document.getElementById(type + 'Text');
+
+  let isDragging = false;
+  let startX = 0;
+
+  thumb.onmousedown = (e) => { isDragging = true; startX = e.clientX; };
+  window.onmouseup = () => {
+    if (!isDragging) return;
+    isDragging = false;
+    if (!captchaStates[type]) {
+      thumb.style.left = '0px';
+      track.style.width = '0px';
+    }
+  };
+
+  window.onmousemove = (e) => {
+    if (!isDragging) return;
+    let diff = e.clientX - startX;
+    let maxDist = slider.clientWidth - thumb.clientWidth;
+    if (diff < 0) diff = 0;
+    if (diff > maxDist) diff = maxDist;
+
+    thumb.style.left = diff + 'px';
+    track.style.width = (diff + thumb.clientWidth) + 'px';
+
+    if (diff >= maxDist - 5) {
+      isDragging = false;
+      captchaStates[type] = true;
+      slider.classList.add('success');
+      text.textContent = 'Verifikasi Berhasil!';
+      thumb.onmousedown = null;
+    }
+  };
+}
+
+initSlider('login');
+initSlider('register');
+
+function switchAuth(type) {
+  document.getElementById('loginForm').classList.toggle('hidden', type !== 'login');
+  document.getElementById('registerForm').classList.toggle('hidden', type !== 'register');
+  document.getElementById('loginTab').classList.toggle('active', type === 'login');
+  document.getElementById('registerTab').classList.toggle('active', type === 'register');
+  document.getElementById('authMessage').textContent = '';
+}
+
+function updateRegistrationIdentity() {
+  const role = document.getElementById('regRole').value;
+  const label = document.getElementById('regIdentityLabel');
+  const input = document.getElementById('regIdentity');
+  const nameInput = document.getElementById('regName');
+
+  input.value = '';
+  nameInput.value = '';
+
+  if (role === 'SEKOLAH') {
+    label.textContent = 'NPSN Sekolah (8 Digit)';
+    input.placeholder = 'Masukkan 8 digit NPSN';
+    input.maxLength = 8;
+    input.disabled = false;
+    nameInput.readOnly = true; // Auto-fill dari database sekolah
+    nameInput.placeholder = 'Nama sekolah akan terisi otomatis...';
+  } else if (role === 'PENGAWAS') {
+    label.textContent = 'ID Pengawas / NIP';
+    input.placeholder = 'Masukkan ID Pengawas';
+    input.removeAttribute('maxlength');
+    input.disabled = false;
+    nameInput.readOnly = false; // Input manual untuk pengawas
+    nameInput.placeholder = 'Masukkan nama lengkap pengawas';
+  } else {
+    label.textContent = 'NPSN / ID Pengawas';
+    input.placeholder = 'Pilih role terlebih dahulu';
+    input.disabled = true;
+  }
+}
+
+// Logika Auto-Fill Nama Sekolah berdasarkan NPSN
+async function checkIdentityAutoFill() {
+  const role = document.getElementById('regRole').value;
+  const identity = document.getElementById('regIdentity').value.trim();
+  const nameInput = document.getElementById('regName');
+
+  if (role === 'SEKOLAH' && identity.length === 8) {
+    nameInput.value = 'Memeriksa database...';
+    try {
+      const response = await fetch(SCRIPT_URL, {
+        method: 'POST',
+        body: JSON.stringify({ action: 'lookupSekolahByNpsn', data: { npsn: identity } })
+      });
+      const result = await response.json();
+      if (result.success && result.found) {
+        nameInput.value = result.data.nama_sekolah;
+        document.getElementById('authMessage').textContent = '';
+      } else {
+        nameInput.value = '';
+        document.getElementById('authMessage').textContent = result.message || 'NPSN tidak ditemukan di database DINAS.';
+      }
+    } catch (err) {
+      nameInput.value = '';
+      document.getElementById('authMessage').textContent = 'Gagal terhubung ke server database.';
+    }
+  } else if (role === 'SEKOLAH') {
+    nameInput.value = '';
+  }
+}
+
+// Handler Login ke Backend Apps Script
+async function handleLogin(e) {
+  e.preventDefault();
+  if (!captchaStates.login) {
+    document.getElementById('authMessage').textContent = 'Geser CAPTCHA terlebih dahulu.';
+    return;
+  }
+
+  const username = document.getElementById('loginUser').value.trim();
+  const password = document.getElementById('loginPass').value;
+  const msg = document.getElementById('authMessage');
+
+  msg.textContent = 'Sedang masuk...';
+
+  try {
+    const res = await fetch(SCRIPT_URL, {
+      method: 'POST',
+      body: JSON.stringify({
+        action: 'login',
+        data: { username, password, captcha_id: 'SLIDER_OK', captcha_answer: 'SUCCESS' }
+      })
+    });
+    const result = await res.json();
+
+    if (result.success) {
+      document.getElementById('auth').classList.add('hidden');
+      document.getElementById('dashboard').classList.remove('hidden');
+      document.getElementById('userPill').textContent = result.user.nama_pengguna || username;
+      msg.textContent = '';
+    } else {
+      msg.textContent = result.message;
+    }
+  } catch (err) {
+    msg.textContent = 'Terjadi kesalahan koneksi ke server.';
+  }
+}
+
+// Handler Registrasi (Sekolah / Pengawas) ke Backend
+async function handleRegister(e) {
+  e.preventDefault();
+  if (!captchaStates.register) {
+    document.getElementById('authMessage').textContent = 'Geser CAPTCHA terlebih dahulu.';
+    return;
+  }
+
+  const role = document.getElementById('regRole').value;
+  const identity = document.getElementById('regIdentity').value.trim();
+  const name = document.getElementById('regName').value.trim();
+  const password = document.getElementById('regPass').value;
+  const passwordConfirm = document.getElementById('regPassConfirm').value;
+  const msg = document.getElementById('authMessage');
+
+  if (password !== passwordConfirm) {
+    msg.textContent = 'Konfirmasi password tidak sesuai.';
+    return;
+  }
+
+  msg.textContent = 'Mengirim pendaftaran...';
+
+  const actionName = role === 'SEKOLAH' ? 'register' : 'registerPengawas';
+  const payloadData = role === 'SEKOLAH' 
+    ? { npsn: identity, password, password_confirm: passwordConfirm, captcha_id: 'SLIDER_OK', captcha_answer: 'SUCCESS' }
+    : { id_pengawas: identity, nama_pengguna: name, password, password_confirm: passwordConfirm, captcha_id: 'SLIDER_OK', captcha_answer: 'SUCCESS' };
+
+  try {
+    const res = await fetch(SCRIPT_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action: actionName, data: payloadData })
+    });
+    const result = await res.json();
+
+    if (result.success) {
+      alert(result.message);
+      location.reload();
+    } else {
+      msg.textContent = result.message;
+    }
+  } catch (err) {
+    msg.textContent = 'Gagal mengirim pendaftaran ke server.';
+  }
+}
+
+function showModule(name) {
+  document.getElementById('pageTitle').textContent = name;
+  document.getElementById('moduleTitle').textContent = name;
+  document.getElementById('moduleText').textContent = 'Modul ' + name + ' aktif dan terhubung ke backend.';
+}
+
+function logout() {
+  document.getElementById('dashboard').classList.add('hidden');
+  document.getElementById('auth').classList.remove('hidden');
+  document.getElementById('loginForm').reset();
+  switchAuth('login');
+}
 </script>
 </body>
 </html>
