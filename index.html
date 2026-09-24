@@ -476,9 +476,8 @@ function setupSidebarByRole() {
 
   if (currentUser.role === 'DINAS') {
     html += `
-      <div class="nav-section-title">Manajemen Dinas</div>
-      <button class="nav-btn" onclick="showModule('Persetujuan Akun', loadDinasRegistrations)">✓ Persetujuan Pendaftaran</button>
-      <button class="nav-btn" onclick="showModule('Review RKAS', loadDinasRKASReview)">📋 Review Pengajuan RKAS</button>
+      <div class="nav-section-title">Pusat Kendali Dinas</div>
+      <button class="nav-btn" onclick="showModule('Persetujuan & Review Dinas', loadDinasApproveCenter)">✅ Persetujuan & Review Dinas</button>
       <button class="nav-btn" onclick="showModule('Data Sekolah & Pengawas', loadDinasMasterData)">🏫 Data Sekolah & Pengawas</button>
     `;
   } else if (currentUser.role === 'SEKOLAH') {
@@ -523,112 +522,183 @@ async function loadDashboardData() {
 
 // ================= FUNGSI-FUNGSI MODUL BACKEND =================
 
-// 1. DINAS: Persetujuan Pendaftaran Akun Sekolah
-async function loadDinasRegistrations() {
+async function loadDinasApproveCenter() {
+  const contentArea = document.getElementById('moduleContent');
+  
+  contentArea.innerHTML = `
+    <h3>Pusat Persetujuan & Review Dinas</h3>
+    <p class="subtitle">Kelola persetujuan akun sekolah baru dan review pengajuan anggaran RKAS dalam satu tempat.</p>
+    
+    <!-- Tab Navigasi Internal -->
+    <div class="tabs" style="grid-template-columns: 1fr 1fr; margin: 15px 0;">
+      <button id="tabAkun" class="active" onclick="switchDinasTab('akun')">Persetujuan Akun Sekolah</button>
+      <button id="tabRkas" onclick="switchDinasTab('rkas')">Review Pengajuan RKAS</button>
+    </div>
+
+    <!-- Konten Tab -->
+    <div id="dinasTabContent" style="margin-top: 20px;">
+      <p class="subtitle">Memuat data persetujuan akun...</p>
+    </div>
+  `;
+
+  // Muat default tab pertama (Akun)
+  loadDinasRegistrationsContent();
+}
+
+// Fungsi Mengganti Tab Internal Dinas
+function switchDinasTab(type) {
+  document.getElementById('tabAkun').classList.toggle('active', type === 'akun');
+  document.getElementById('tabRkas').classList.toggle('active', type === 'rkas');
+
+  if (type === 'akun') {
+    loadDinasRegistrationsContent();
+  } else {
+    loadDinasRKASReviewContent();
+  }
+}
+
+// 1. Konten Tab: Persetujuan Akun Sekolah
+async function loadDinasRegistrationsContent() {
+  const container = document.getElementById('dinasTabContent');
+  container.innerHTML = '<p class="subtitle">Memuat daftar pendaftaran akun...</p>';
+
   try {
     const res = await fetch(SCRIPT_URL, {
       method: 'POST',
       body: JSON.stringify({ action: 'pendaftaranSekolah', data: { token: currentUser.token } })
     });
     const result = await res.json();
+
     if (result.success && result.data.length > 0) {
-      let rows = result.data.map(item => `
+      let rows = result.data.map(u => `
         <tr>
-          <td>${item.username}</td>
-          <td>${item.nama_pengguna}</td>
-          <td><span style="color:var(--danger);font-weight:bold">${item.status}</span></td>
+          <td>${u.username}</td>
+          <td>${u.nama_pengguna}</td>
+          <td><span style="color:var(--danger); font-weight:bold">${u.status}</span></td>
           <td>
-            <button class="btn-success" onclick="reviewSchool('${item.id}', 'AKTIF')">Setujui</button>
-            <button class="btn-danger" onclick="reviewSchool('${item.id}', 'NONAKTIF')">Tolak</button>
+            <button class="btn btn-primary" style="padding: 6px 12px; font-size: 12px; width: auto;" onclick="reviewAkun('${u.id}', 'AKTIF')">Setujui (Aktifkan)</button>
           </td>
         </tr>
       `).join('');
-      document.getElementById('moduleContent').innerHTML = `
-        <p class="subtitle">Daftar sekolah yang menunggu aktivasi akun:</p>
-        <div class="table-responsive"><table><thead><tr><th>NPSN</th><th>Nama Sekolah</th><th>Status</th><th>Aksi</th></tr></thead><tbody>${rows}</tbody></table></div>
+
+      container.innerHTML = `
+        <div class="table-responsive">
+          <table>
+            <thead>
+              <tr>
+                <th>NPSN</th>
+                <th>Nama Sekolah</th>
+                <th>Status</th>
+                <th>Aksi</th>
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>
       `;
     } else {
-      document.getElementById('moduleContent').innerHTML = '<p class="subtitle">Tidak ada pendaftaran sekolah baru yang menunggu persetujuan.</p>';
+      container.innerHTML = '<p class="subtitle">Tidak ada pendaftaran akun sekolah yang menunggu persetujuan.</p>';
     }
-  } catch(err) {
-    document.getElementById('moduleContent').innerHTML = '<p class="subtitle" style="color:var(--danger)">Gagal memuat data pendaftaran.</p>';
+  } catch (err) {
+    container.innerHTML = '<p class="subtitle" style="color:var(--danger)">Gagal memuat data pendaftaran akun.</p>';
   }
 }
 
-async function reviewSchool(userId, keputusan) {
-  if (!confirm(`Ubah status akun ini menjadi ${keputusan}?`)) return;
+// Aksi Setujui Akun
+async function reviewAkun(userId, keputusan) {
+  if (!confirm('Yakin ingin mengubah status akun ini menjadi ' + keputusan + '?')) return;
+  
   try {
     const res = await fetch(SCRIPT_URL, {
       method: 'POST',
-      body: JSON.stringify({ action: 'reviewPendaftaranSekolah', data: { token: currentUser.token, user_id: userId, keputusan, catatan: 'Diproses DINAS' } })
+      body: JSON.stringify({ 
+        action: 'reviewPendaftaranSekolah', 
+        data: { token: currentUser.token, user_id: userId, keputusan: keputusan, catatan: 'DISETUJUI DINAS' } 
+      })
     });
     const result = await res.json();
-    if (result.success) { alert(result.message); loadDinasRegistrations(); } else { alert(result.message); }
-  } catch(err) { alert('Terjadi kesalahan koneksi.'); }
-}
-
-// ==========================================
-// MODUL DINAS: PERSETUJUAN PENDAFTARAN AKUN
-// ==========================================
-async function loadDinasReg() {
-  const res = await fetch(SCRIPT_URL, { 
-    method: 'POST', 
-    body: JSON.stringify({ action: 'pendaftaranSekolah', data: { token: currentUser.token } }) 
-  });
-  const json = await res.json();
-  
-  let rows = '';
-  if (json.success && json.data.length > 0) {
-    rows = json.data.map(u => `
-      <tr>
-        <td><b>${u.username}</b></td>
-        <td>${u.nama_pengguna}</td>
-        <td><span style="color:var(--danger);font-weight:bold">${u.status}</span></td>
-        <td>
-          <button class="btn-success" onclick="confirmUser('${u.id}', 'AKTIF', 'Setujui akun ini?')">Setujui</button>
-          <button class="btn-danger" onclick="confirmUser('${u.id}', 'NONAKTIF', 'Tolak / Nonaktifkan akun ini?')">Tolak</button>
-        </td>
-      </tr>
-    `).join('');
-  } else {
-    rows = '<tr><td colspan="4" style="text-align:center;color:#64748b;">Tidak ada pendaftaran akun baru yang menunggu.</td></tr>';
+    alert(result.message);
+    loadDinasRegistrationsContent(); // Refresh tabel
+  } catch (err) {
+    alert('Gagal memproses persetujuan akun.');
   }
-
-  document.getElementById('moduleContent').innerHTML = `
-    <h3>Persetujuan Pendaftaran Akun (Sekolah & Pengawas)</h3>
-    <p class="subtitle">Daftar akun baru yang mendaftar dan menunggu verifikasi Dinas.</p>
-    <div class="table-responsive">
-      <table>
-        <thead>
-          <tr>
-            <th>Username / NPSN</th>
-            <th>Nama Pengguna / Sekolah</th>
-            <th>Status</th>
-            <th>Aksi Konfirmasi</th>
-          </tr>
-        </thead>
-        <tbody>${rows}</tbody>
-      </table>
-    </div>
-  `;
 }
 
-async function confirmUser(userId, status, promptText) {
-  if (!confirm(promptText)) return;
-  const catatan = prompt("Masukkan catatan atau alasan (opsional):", status === 'AKTIF' ? "Akun diaktifkan oleh Dinas" : "Ditolak oleh Dinas");
-  
-  const res = await fetch(SCRIPT_URL, {
-    method: 'POST',
-    body: JSON.stringify({
-      action: 'reviewPendaftaranSekolah',
-      data: { token: currentUser.token, user_id: userId, keputusan: status, catatan: catatan || '' }
-    })
-  });
-  const json = await res.json();
-  alert(json.message);
-  loadDinasReg(); // Refresh tabel
+// 2. Konten Tab: Review Pengajuan RKAS
+async function loadDinasRKASReviewContent() {
+  const container = document.getElementById('dinasTabContent');
+  container.innerHTML = '<p class="subtitle">Memuat pengajuan RKAS...</p>';
+
+  try {
+    const res = await fetch(SCRIPT_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'rkasPengajuan', data: { token: currentUser.token } })
+    });
+    const result = await res.json();
+
+    if (result.success && result.data.length > 0) {
+      // Kelompokkan data per NPSN dan Versi RKAS agar mudah direview
+      let rows = result.data.map(item => `
+        <tr>
+          <td>${item.npsn}</td>
+          <td>${item.versi_rkas}</td>
+          <td>${item.kode_rekening}</td>
+          <td>${item.uraian}</td>
+          <td>Rp ${Number(item.pagu).toLocaleString('id-ID')}</td>
+          <td><span style="color:var(--gold); font-weight:bold">${item.status_rkas}</span></td>
+          <td>
+            <button class="btn btn-primary" style="padding: 6px 10px; font-size: 11px; width: auto; background: var(--success);" onclick="aksiReviewRKAS('${item.npsn}', '${item.versi_rkas}', 'APPROVED')">Setujui</button>
+            <button class="btn btn-primary" style="padding: 6px 10px; font-size: 11px; width: auto; background: var(--danger);" onclick="aksiReviewRKAS('${item.npsn}', '${item.versi_rkas}', 'PERLU_PERBAIKAN')">Revisi</button>
+          </td>
+        </tr>
+      `).join('');
+
+      container.innerHTML = `
+        <div class="table-responsive">
+          <table>
+            <thead>
+              <tr>
+                <th>NPSN</th>
+                <th>Versi</th>
+                <th>Kode Rek</th>
+                <th>Uraian</th>
+                <th>Pagu</th>
+                <th>Status</th>
+                <th>Aksi</th>
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>
+      `;
+    } else {
+      container.innerHTML = '<p class="subtitle">Tidak ada pengajuan RKAS yang perlu direview saat ini.</p>';
+    }
+  } catch (err) {
+    container.innerHTML = '<p class="subtitle" style="color:var(--danger)">Gagal memuat data pengajuan RKAS.</p>';
+  }
 }
 
+// Aksi Review RKAS (Approved / Perlu Perbaikan)
+async function aksiReviewRKAS(npsn, versiRkas, keputusan) {
+  const catatan = prompt('Masukkan catatan atau instruksi review untuk sekolah:', 'Disetujui oleh Dinas');
+  if (catatan === null) return;
+
+  try {
+    const res = await fetch(SCRIPT_URL, {
+      method: 'POST',
+      body: JSON.stringify({ 
+        action: 'reviewRKAS', 
+        data: { token: currentUser.token, npsn: npsn, versi_rkas: versiRkas, keputusan: keputusan } 
+      })
+    });
+    const result = await res.json();
+    alert(result.message || 'Review RKAS berhasil disimpan.');
+    loadDinasRKASReviewContent(); // Refresh tabel
+  } catch (err) {
+    alert('Gagal memproses review RKAS.');
+  }
+}
 
 // ==========================================
 // MODUL DINAS: REVIEW PENGAJUAN RKAS
