@@ -40,9 +40,10 @@
 .btn:hover{transform:translateY(-1px);filter:brightness(1.03)}.message{font-size:13px;margin-top:12px;color:var(--danger);min-height:18px}
 
 .shell{display:flex;min-height:100vh}
-.sidebar{width:260px;background:var(--navy);color:white;padding:24px 16px;display:flex;flex-direction:column;flex-shrink:0}
-.sidebar h2{margin:0 10px 26px;font-size:22px}
-.nav-btn{width:100%;text-align:left;background:transparent;border:0;color:#dbeafe;padding:13px 14px;border-radius:12px;cursor:pointer;margin:4px 0;font-weight:700}
+.sidebar{width:270px;background:var(--navy);color:white;padding:24px 16px;display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto}
+.sidebar h2{margin:0 10px 20px;font-size:22px}
+.nav-section-title{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#93c5fd;margin:16px 10px 8px;font-weight:800}
+.nav-btn{width:100%;text-align:left;background:transparent;border:0;color:#dbeafe;padding:11px 14px;border-radius:10px;cursor:pointer;margin:3px 0;font-weight:700;font-size:13px}
 .nav-btn.active,.nav-btn:hover{background:#ffffff18;color:white}
 .main{flex:1;padding:clamp(18px,3vw,38px);min-width:0;overflow-y:auto}
 .topbar{display:flex;justify-content:space-between;gap:16px;align-items:center;flex-wrap:wrap}
@@ -53,14 +54,14 @@
 .stat small{color:var(--muted)}.stat strong{display:block;font-size:28px;color:var(--navy);margin-top:8px}
 .panel{background:white;border:1px solid #e2e8f0;border-radius:20px;padding:24px;box-shadow:0 10px 30px #0f172a04}
 .panel h2{margin-top:0;color:var(--navy)}
-.logout{margin-top:auto;background:#ef44441c;color:#fecaca}
+.logout{margin-top:20px;background:#ef44441c;color:#fecaca}
 .table-responsive{width:100%;overflow-x:auto;margin-top:15px}
 table{width:100%;border-collapse:collapse;text-align:left;font-size:14px}
 th,td{padding:12px 14px;border-bottom:1px solid #e2e8f0}
 th{background:#f8fafc;color:var(--navy);font-weight:800}
 
 @media(max-width:900px){.auth-wrap{grid-template-columns:1fr;padding:14px}.brand-panel{display:none}.auth-card{max-width:560px;width:100%}}
-@media(max-width:768px){.shell{flex-direction:column;min-height:100vh}.sidebar{width:100%;padding:14px;flex-direction:row;align-items:center;overflow-x:auto;gap:8px;position:sticky;top:0;z-index:100;box-shadow:0 4px 12px rgba(0,0,0,0.1)}.sidebar h2{display:none}.nav-btn{width:auto;white-space:nowrap;padding:10px 14px;font-size:13px;margin:0}.logout{margin-top:0;background:#dc2626;color:white}.main{padding:16px}.cards{grid-template-columns:1fr}.topbar{flex-direction:column;align-items:flex-start}}
+@media(max-width:768px){.shell{flex-direction:column;min-height:100vh}.sidebar{width:100%;padding:14px;flex-direction:row;align-items:center;overflow-x:auto;gap:8px;position:sticky;top:0;z-index:100;box-shadow:0 4px 12px rgba(0,0,0,0.1)}.sidebar h2{display:none}.nav-section-title{display:none}.nav-btn{width:auto;white-space:nowrap;padding:10px 14px;font-size:13px;margin:0}.logout{margin-top:0;background:#dc2626;color:white}.main{padding:16px}.cards{grid-template-columns:1fr}.topbar{flex-direction:column;align-items:flex-start}}
 </style>
 </head>
 <body>
@@ -72,8 +73,8 @@ th{background:#f8fafc;color:var(--navy);font-weight:800}
     <p>Sistem Penilaian SPJ BOS SD Kabupaten Rembang yang dirancang kompatibel untuk komputer, tablet, dan HP.</p>
     <div class="feature-list">
       <div class="feature"><span>✓</span>Dashboard Informatif</div>
-      <div class="feature"><span>✓</span>Persetujuan Akun Pendaftaran (DINAS)</div>
-      <div class="feature"><span>✓</span>Manajemen RKAS & Indikator Lengkap</div>
+      <div class="feature"><span>✓</span>Persetujuan Pendaftaran & Review RKAS</div>
+      <div class="feature"><span>✓</span>Manajemen Indikator & Penugasan Pengawas</div>
     </div>
   </section>
 
@@ -160,11 +161,7 @@ th{background:#f8fafc;color:var(--navy);font-weight:800}
 <div id="dashboard" class="shell hidden">
   <aside class="sidebar" id="sidebarMenu">
     <h2>SIMPEL SPJ</h2>
-    <button class="nav-btn active" onclick="showModule('Dashboard', loadDashboardData)">▦ Dashboard</button>
-    <button class="nav-btn" onclick="showModule('RKAS', loadRKASData)">▤ RKAS</button>
-    <button class="nav-btn" onclick="showModule('SPJ', loadSPJData)">▣ Master SPJ & Indikator</button>
-    <!-- Menu Tambahan untuk DINAS -->
-    <div id="dinasMenuContainer"></div>
+    <div id="dynamicSidebarContent"></div>
     <button class="nav-btn logout" onclick="logout()">Keluar</button>
   </aside>
   
@@ -384,7 +381,6 @@ async function handleLogin(e) {
       document.getElementById('userPill').textContent = currentUser.nama_pengguna || username;
       document.getElementById('statRole').textContent = currentUser.role;
       
-      // Sesuaikan menu sidebar berdasarkan Role
       setupSidebarByRole();
       loadDashboardData();
     } else {
@@ -467,16 +463,37 @@ function resetSliderUI(type) {
   }
 }
 
-// Konfigurasi Menu Sidebar Dinamis Berdasarkan Role
+// SETUP SIDEBAR BERDASARKAN ROLE (DINAS, SEKOLAH, PENGAWAS)
 function setupSidebarByRole() {
-  const dinasContainer = document.getElementById('dinasMenuContainer');
-  dinasContainer.innerHTML = '';
+  const container = document.getElementById('dynamicSidebarContent');
+  let html = `
+    <button class="nav-btn active" onclick="showModule('Dashboard', loadDashboardData)">▦ Beranda Dashboard</button>
+  `;
 
   if (currentUser.role === 'DINAS') {
-    dinasContainer.innerHTML = `
-      <button class="nav-btn" onclick="showModule('Persetujuan Akun', loadDinasRegistrations)">✓ Persetujuan Akun</button>
+    html += `
+      <div class="nav-section-title">Manajemen Dinas</div>
+      <button class="nav-btn" onclick="showModule('Persetujuan Akun', loadDinasRegistrations)">✓ Persetujuan Pendaftaran</button>
+      <button class="nav-btn" onclick="showModule('Review RKAS', loadDinasRKASReview)">📋 Review Pengajuan RKAS</button>
+      <button class="nav-btn" onclick="showModule('Data Sekolah & Pengawas', loadDinasMasterData)">🏫 Data Sekolah & Pengawas</button>
+    `;
+  } else if (currentUser.role === 'SEKOLAH') {
+    html += `
+      <div class="nav-section-title">Pengelolaan RKAS</div>
+      <button class="nav-btn" onclick="showModule('RKAS Aktif', loadRKASData)">▤ RKAS Approved / Aktif</button>
+      <button class="nav-btn" onclick="showModule('Riwayat RKAS', loadRKASHistorik)">📜 Riwayat & Buat Revisi RKAS</button>
+      <div class="nav-section-title">Administrasi SPJ</div>
+      <button class="nav-btn" onclick="showModule('Master SPJ', loadSPJData)">▣ Master 10 Komponen SPJ</button>
+    `;
+  } else if (currentUser.role === 'PENGAWAS') {
+    html += `
+      <div class="nav-section-title">Tugas Pengawasan</div>
+      <button class="nav-btn" onclick="showModule('Penugasan Wilayah', loadPenugasanPengawas)">📍 Sekolah Binaan / Penugasan</button>
+      <button class="nav-btn" onclick="showModule('Master SPJ', loadSPJData)">▣ Master Komponen SPJ</button>
     `;
   }
+
+  container.innerHTML = html;
 }
 
 function showModule(name, loadCallback) {
@@ -496,10 +513,110 @@ async function loadDashboardData() {
   document.getElementById('moduleContent').innerHTML = `
     <h3>Selamat Datang, ${currentUser.nama_pengguna}</h3>
     <p class="subtitle">Anda masuk sebagai <strong>${currentUser.role}</strong> di lingkungan Dinas Pendidikan dan Kebudayaan Kabupaten Rembang.</p>
+    <p class="subtitle" style="margin-top:15px">Gunakan menu di sebelah kiri (atau atas pada perangkat seluler) untuk mengakses seluruh fungsi pengelolaan dan verifikasi SPJ BOS SD.</p>
   `;
 }
 
-// Modul RKAS
+// ================= FUNGSI-FUNGSI MODUL BACKEND =================
+
+// 1. DINAS: Persetujuan Pendaftaran Akun Sekolah
+async function loadDinasRegistrations() {
+  try {
+    const res = await fetch(SCRIPT_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'pendaftaranSekolah', data: { token: currentUser.token } })
+    });
+    const result = await res.json();
+    if (result.success && result.data.length > 0) {
+      let rows = result.data.map(item => `
+        <tr>
+          <td>${item.username}</td>
+          <td>${item.nama_pengguna}</td>
+          <td><span style="color:var(--danger);font-weight:bold">${item.status}</span></td>
+          <td>
+            <button class="btn-success" onclick="reviewSchool('${item.id}', 'AKTIF')">Setujui</button>
+            <button class="btn-danger" onclick="reviewSchool('${item.id}', 'NONAKTIF')">Tolak</button>
+          </td>
+        </tr>
+      `).join('');
+      document.getElementById('moduleContent').innerHTML = `
+        <p class="subtitle">Daftar sekolah yang menunggu aktivasi akun:</p>
+        <div class="table-responsive"><table><thead><tr><th>NPSN</th><th>Nama Sekolah</th><th>Status</th><th>Aksi</th></tr></thead><tbody>${rows}</tbody></table></div>
+      `;
+    } else {
+      document.getElementById('moduleContent').innerHTML = '<p class="subtitle">Tidak ada pendaftaran sekolah baru yang menunggu persetujuan.</p>';
+    }
+  } catch(err) {
+    document.getElementById('moduleContent').innerHTML = '<p class="subtitle" style="color:var(--danger)">Gagal memuat data pendaftaran.</p>';
+  }
+}
+
+async function reviewSchool(userId, keputusan) {
+  if (!confirm(`Ubah status akun ini menjadi ${keputusan}?`)) return;
+  try {
+    const res = await fetch(SCRIPT_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'reviewPendaftaranSekolah', data: { token: currentUser.token, user_id: userId, keputusan, catatan: 'Diproses DINAS' } })
+    });
+    const result = await res.json();
+    if (result.success) { alert(result.message); loadDinasRegistrations(); } else { alert(result.message); }
+  } catch(err) { alert('Terjadi kesalahan koneksi.'); }
+}
+
+// 2. DINAS: Review Pengajuan RKAS
+async function loadDinasRKASReview() {
+  try {
+    const res = await fetch(SCRIPT_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'rkasPengajuan', data: { token: currentUser.token } })
+    });
+    const result = await res.json();
+    if (result.success && result.data.length > 0) {
+      let rows = result.data.map(item => `
+        <tr><td>${item.npsn}</td><td>${item.versi_rkas}</td><td>${item.kode_rekening}</td><td>Rp ${Number(item.pagu).toLocaleString('id-ID')}</td><td><b>${item.status_rkas}</b></td>
+        <td><button class="btn-success" onclick="reviewRKASAction('${item.npsn}', '${item.versi_rkas}', 'APPROVED')">Setujui</button></td></tr>
+      `).join('');
+      document.getElementById('moduleContent').innerHTML = `<div class="table-responsive"><table><thead><tr><th>NPSN</th><th>Versi</th><th>Rekening</th><th>Pagu</th><th>Status</th><th>Aksi</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+    } else {
+      document.getElementById('moduleContent').innerHTML = '<p class="subtitle">Tidak ada pengajuan RKAS yang perlu direview.</p>';
+    }
+  } catch(err) {
+    document.getElementById('moduleContent').innerHTML = '<p class="subtitle" style="color:var(--danger)">Gagal memuat pengajuan RKAS.</p>';
+  }
+}
+
+async function reviewRKASAction(npsn, versiRkas, keputusan) {
+  if (!confirm(`Setujui RKAS versi ${versiRkas} untuk NPSN ${npsn}?`)) return;
+  try {
+    const res = await fetch(SCRIPT_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'reviewRKAS', data: { token: currentUser.token, npsn, versi_rkas: versiRkas, keputusan } })
+    });
+    const result = await res.json();
+    if (result.success) { alert('RKAS berhasil disetujui (Approved).'); loadDinasRKASReview(); } else { alert(result.message); }
+  } catch(err) { alert('Kesalahan koneksi server.'); }
+}
+
+// 3. DINAS: Data Sekolah & Penugasan Pengawas
+async function loadDinasMasterData() {
+  try {
+    const [resSekolah, resPenugasan] = await Promise.all([
+      fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify({ action: 'sekolah', data: { token: currentUser.token } }) }).then(r => r.json()),
+      fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify({ action: 'penugasanPengawas', data: { token: currentUser.token } }) }).then(r => r.json())
+    ]);
+
+    let sekolahRows = resSekolah.success ? resSekolah.data.map(s => `<tr><td>${s.npsn}</td><td>${s.nama_sekolah}</td><td>${s.kecamatan}</td></tr>`).join('') : '';
+    
+    document.getElementById('moduleContent').innerHTML = `
+      <h3>Data Master Sekolah Kabupaten Rembang</h3>
+      <div class="table-responsive"><table><thead><tr><th>NPSN</th><th>Nama Sekolah</th><th>Kecamatan</th></tr></thead><tbody>${sekolahRows}</tbody></table></div>
+    `;
+  } catch(err) {
+    document.getElementById('moduleContent').innerHTML = '<p class="subtitle" style="color:var(--danger)">Gagal memuat data sekolah.</p>';
+  }
+}
+
+// 4. SEKOLAH: RKAS Aktif
 async function loadRKASData() {
   try {
     const res = await fetch(SCRIPT_URL, {
@@ -520,7 +637,54 @@ async function loadRKASData() {
   }
 }
 
-// Modul Master SPJ
+// 5. SEKOLAH: Riwayat & Buat Revisi RKAS
+async function loadRKASHistorik() {
+  try {
+    const res = await fetch(SCRIPT_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'rkasHistory', data: { token: currentUser.token, npsn: currentUser.npsn } })
+    });
+    const result = await res.json();
+    let actionBtn = `<button class="btn btn-primary" style="margin-bottom:15px;width:auto" onclick="createRKASRev()">+ Buat Revisi / Versi Baru RKAS</button>`;
+    
+    if (result.success && result.data.length > 0) {
+      let rows = result.data.map(item => `
+        <tr><td>${item.versi_rkas}</td><td>${item.kode_rekening}</td><td>Rp ${Number(item.pagu).toLocaleString('id-ID')}</td><td><b>${item.status_rkas}</b></td>
+        <td>${item.status_rkas === 'DRAFT' ? `<button class="btn-success" onclick="ajukanRKASVersi('${item.versi_rkas}')">Ajukan</button>` : '-'}</td></tr>
+      `).join('');
+      document.getElementById('moduleContent').innerHTML = `${actionBtn}<div class="table-responsive"><table><thead><tr><th>Versi</th><th>Rekening</th><th>Pagu</th><th>Status</th><th>Aksi</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+    } else {
+      document.getElementById('moduleContent').innerHTML = `${actionBtn}<p class="subtitle">Belum ada riwayat RKAS.</p>`;
+    }
+  } catch(err) {
+    document.getElementById('moduleContent').innerHTML = '<p class="subtitle" style="color:var(--danger)">Gagal memuat riwayat RKAS.</p>';
+  }
+}
+
+async function createRKASRev() {
+  try {
+    const res = await fetch(SCRIPT_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'createRKASVersion', data: { token: currentUser.token } })
+    });
+    const result = await res.json();
+    if (result.success) { alert('Berhasil membuat versi RKAS baru: ' + result.versi_rkas); loadRKASHistorik(); } else { alert(result.message); }
+  } catch(err) { alert('Gagal membuat revisi.'); }
+}
+
+async function ajukanRKASVersi(versi) {
+  if (!confirm(`Ajukan RKAS versi ${versi} ke Dinas?`)) return;
+  try {
+    const res = await fetch(SCRIPT_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'ajukanRKAS', data: { token: currentUser.token, versi_rkas: versi } })
+    });
+    const result = await res.json();
+    if (result.success) { alert('RKAS berhasil diajukan.'); loadRKASHistorik(); } else { alert(result.message); }
+  } catch(err) { alert('Gagal mengajukan RKAS.'); }
+}
+
+// 6. Master SPJ & Indikator (Akses Bersama Sekolah & Pengawas)
 async function loadSPJData() {
   try {
     const res = await fetch(SCRIPT_URL, {
@@ -539,66 +703,24 @@ async function loadSPJData() {
   }
 }
 
-// Modul Persetujuan Akun Pendaftaran Sekolah (Khusus DINAS)
-async function loadDinasRegistrations() {
+// 7. PENGAWAS: Penugasan Wilayah Binaan
+async function loadPenugasanPengawas() {
   try {
     const res = await fetch(SCRIPT_URL, {
       method: 'POST',
-      body: JSON.stringify({ action: 'pendaftaranSekolah', data: { token: currentUser.token } })
+      body: JSON.stringify({ action: 'penugasanPengawas', data: { token: currentUser.token } })
     });
     const result = await res.json();
-    
     if (result.success && result.data.length > 0) {
       let rows = result.data.map(item => `
-        <tr>
-          <td>${item.username}</td>
-          <td>${item.nama_pengguna}</td>
-          <td><span style="color:var(--danger);font-weight:bold">${item.status}</span></td>
-          <td>
-            <button class="btn-success" onclick="reviewSchool('${item.id}', 'AKTIF')">Setujui</button>
-            <button class="btn-danger" onclick="reviewSchool('${item.id}', 'NONAKTIF')">Tolak</button>
-          </td>
-        </tr>
+        <tr><td>${item.id_penugasan}</td><td>${item.npsn}</td><td>${item.status}</td><td>${item.catatan || '-'}</td></tr>
       `).join('');
-      
-      document.getElementById('moduleContent').innerHTML = `
-        <p class="subtitle">Daftar sekolah yang menunggu aktivasi akun:</p>
-        <div class="table-responsive">
-          <table>
-            <thead><tr><th>NPSN</th><th>Nama Sekolah</th><th>Status</th><th>Aksi</th></tr></thead>
-            <tbody>${rows}</tbody>
-          </table>
-        </div>
-      `;
+      document.getElementById('moduleContent').innerHTML = `<div class="table-responsive"><table><thead><tr><th>ID Penugasan</th><th>NPSN Sekolah Binaan</th><th>Status</th><th>Catatan</th></tr></thead><tbody>${rows}</tbody></table></div>`;
     } else {
-      document.getElementById('moduleContent').innerHTML = '<p class="subtitle">Tidak ada pendaftaran sekolah baru yang menunggu persetujuan.</p>';
+      document.getElementById('moduleContent').innerHTML = '<p class="subtitle">Tidak ada data penugasan pengawas.</p>';
     }
   } catch(err) {
-    document.getElementById('moduleContent').innerHTML = '<p class="subtitle" style="color:var(--danger)">Gagal memuat data pendaftaran.</p>';
-  }
-}
-
-// Fungsi Review / Persetujuan Dinas
-async function reviewSchool(userId, keputusan) {
-  if (!confirm(`Apakah Anda yakin ingin mengubah status akun ini menjadi ${keputusan}?`)) return;
-
-  try {
-    const res = await fetch(SCRIPT_URL, {
-      method: 'POST',
-      body: JSON.stringify({
-        action: 'reviewPendaftaranSekolah',
-        data: { token: currentUser.token, user_id: userId, keputusan: keputusan, catatan: 'Diproses oleh DINAS' }
-      })
-    });
-    const result = await res.json();
-    if (result.success) {
-      alert(result.message);
-      loadDinasRegistrations(); // Refresh tabel
-    } else {
-      alert('Gagal: ' + result.message);
-    }
-  } catch(err) {
-    alert('Terjadi kesalahan koneksi ke server.');
+    document.getElementById('moduleContent').innerHTML = '<p class="subtitle" style="color:var(--danger)">Gagal memuat penugasan.</p>';
   }
 }
 
