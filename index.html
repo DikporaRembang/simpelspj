@@ -9,7 +9,7 @@
   --primary:#0f5132;--primary-2:#146c43;--primary-3:#198754;
   --accent:#f0a500;--bg:#f5f8f6;--surface:#fff;--surface-2:#edf5ef;
   --text:#18231d;--muted:#66736b;--border:#dbe6de;--danger:#b42318;--success:#198754;
-  --shadow:0 14px 40px rgba(20,50,34,.12);--radius:20px;
+  --shadow:0 14px 40px rgba(20,50,34,.10);--radius:20px;
 }
 *{box-sizing:border-box}
 html{scroll-behavior:smooth}
@@ -26,7 +26,7 @@ button{cursor:pointer}
 .brand h2{font-size:1.08rem;margin:0}
 .brand small{color:var(--muted)}
 
-.btn{border:0;border-radius:13px;padding:10px 16px;font-weight:700;transition:.18s;min-height:42px;display:inline-flex;align-items:center;justify-content:center;gap:6px;font-size:.9rem}
+.btn{border:0;border-radius:13px;padding:11px 16px;font-weight:750;transition:.18s;min-height:44px;display:inline-flex;align-items:center;justify-content:center;gap:6px;font-size:.9rem}
 .btn:active{transform:translateY(1px)}
 .btn:disabled{opacity:.5;cursor:not-allowed}
 .btn-primary{background:var(--primary);color:#fff}.btn-primary:hover{background:var(--primary-2)}
@@ -36,132 +36,114 @@ button{cursor:pointer}
 .btn-sm{padding:6px 10px;min-height:32px;font-size:.8rem;border-radius:8px}
 .full{width:100%}
 
-/* Landing / login dengan Background Gambar Kantor Dindikpora */
+/* Landing / login dengan Background Kantor Dindikpora */
 .auth{
-  min-height:100vh;display:grid;grid-template-columns:minmax(0,1.1fr) minmax(380px,.9fr);
+  min-height:100vh;display:grid;grid-template-columns:minmax(0,1.08fr) minmax(380px,.92fr);
   background: 
-    linear-gradient(rgba(11, 61, 39, 0.88), rgba(18, 100, 61, 0.82)),
-    url('kantordindikpora.jpeg') center/cover no-repeat;
-  position:relative;
+    radial-gradient(circle at 15% 15%,rgba(255,255,255,.16),transparent 30%),
+    linear-gradient(135deg,#0b3d27,#12643d 58%,#198754);
 }
 .auth-side{color:#fff;padding:clamp(28px,6vw,84px);display:flex;flex-direction:column;justify-content:space-between}
 .auth-side-inner{max-width:700px;margin:auto 0}
-.auth-side h1{font-size:clamp(2rem,4.5vw,4.2rem);line-height:1.05;margin:24px 0 16px;letter-spacing:-1.2px}
+.auth-side h1{font-size:clamp(2rem,4.5vw,4.4rem);line-height:1.02;margin:26px 0 18px;letter-spacing:-1.5px}
 .auth-side p{max-width:620px;line-height:1.75;color:#e9f6ed;font-size:1.02rem}
-.feature{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:28px}
-.feature span{display:flex;gap:10px;align-items:center;padding:13px 15px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.1);backdrop-filter:blur(6px);border-radius:15px;font-size:.92rem}
+.feature{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:30px}
+.feature span{display:flex;gap:10px;align-items:center;padding:13px 15px;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.08);border-radius:15px;font-size:.9rem}
 
-/* Footer Logos di halaman Login */
-.auth-footer-logos{display:flex;align-items:center;gap:16px;margin-top:30px;padding-top:20px;border-top:1px solid rgba(255,255,255,.2);flex-wrap:wrap}
+/* Footer Logos */
+.auth-footer-logos{display:flex;align-items:center;gap:16px;margin-top:24px;padding-top:18px;border-top:1px solid rgba(255,255,255,.2);flex-wrap:wrap}
 .footer-logo-item{display:flex;align-items:center;gap:10px}
-.footer-logo-item img{width:38px;height:38px;object-fit:contain;background:#fff;border-radius:8px;padding:3px}
-.footer-logo-item div span{display:block;font-size:.78rem;font-weight:700;color:#fff;line-height:1.2}
-.footer-logo-item div small{font-size:.68rem;color:#d4edda}
+.footer-logo-item img{width:36px;height:36px;object-fit:contain;background:#fff;border-radius:8px;padding:3px}
+.footer-logo-item div span{display:block;font-size:.76rem;font-weight:700;color:#fff;line-height:1.2}
+.footer-logo-item div small{font-size:.66rem;color:#d4edda}
 
-.auth-panel{display:flex;align-items:center;justify-content:center;padding:clamp(16px,4vw,40px);background:rgba(248,251,249,.96);backdrop-filter:blur(8px)}
-.auth-card{width:min(100%,480px);background:#fff;border:1px solid rgba(255,255,255,.9);border-radius:26px;padding:clamp(22px,4vw,38px);box-shadow:var(--shadow)}
-.auth-card .brand{margin-bottom:18px}
+.auth-panel{display:flex;align-items:center;justify-content:center;padding:clamp(16px,4vw,40px);background:rgba(248,251,249,.96)}
+.auth-card{width:min(100%,480px);background:#fff;border:1px solid rgba(255,255,255,.8);border-radius:26px;padding:clamp(22px,4vw,38px);box-shadow:var(--shadow)}
 
-.field{margin:15px 0}
-.field label{display:block;font-size:.9rem;font-weight:700;margin-bottom:7px;color:#2c3e35}
-.field input,.field select,.field textarea{width:100%;border:1px solid var(--border);border-radius:14px;padding:13px 15px;outline:0;background:#fff;min-height:48px;font-size:.95rem}
-.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--primary-3);box-shadow:0 0 0 4px rgba(25,135,84,.12)}
+.tabs{display:grid;grid-template-columns:1fr 1fr;background:#edf3ee;padding:4px;border-radius:14px;margin:18px 0}
+.tabs button{border:0;background:transparent;padding:11px;border-radius:10px;color:var(--muted);font-weight:700}
+.tabs button.active{background:#fff;color:var(--primary);box-shadow:0 2px 9px rgba(0,0,0,.07)}
+
+.field{margin:13px 0}
+.field label{display:block;font-size:.86rem;font-weight:750;margin-bottom:7px}
+.field input,.field select,.field textarea{width:100%;border:1px solid var(--border);border-radius:13px;padding:12px 13px;outline:0;background:#fff;min-height:44px}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--primary-3);box-shadow:0 0 0 3px rgba(25,135,84,.12)}
 .password-wrap{position:relative}.password-wrap input{padding-right:50px}
-.toggle-pass{position:absolute;right:6px;top:4px;border:0;background:transparent;padding:9px;color:var(--muted);font-size:1.1rem}
-.message{padding:13px 15px;border-radius:14px;margin:14px 0;font-size:.92rem}
+.toggle-pass{position:absolute;right:6px;top:4px;border:0;background:transparent;padding:9px;color:var(--muted)}
+.message{padding:11px 13px;border-radius:13px;margin:12px 0;font-size:.9rem}
 .message.error{background:#fff0ef;color:var(--danger)}.message.ok{background:#e9f8ef;color:#146c43}
 
 /* Application shell */
 .dashboard{min-height:100vh}
 .topbar{
-  position:sticky;top:0;z-index:50;background:rgba(255,255,255,.95);backdrop-filter:blur(12px);
+  position:sticky;top:0;z-index:50;background:rgba(255,255,255,.94);backdrop-filter:blur(12px);
   border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;
-  gap:12px;padding:12px clamp(16px,3vw,34px)
+  gap:12px;padding:11px clamp(14px,3vw,34px)
 }
-.topbar .brand{margin:0}.top-actions{display:flex;align-items:center;gap:10px}
-.layout{display:grid;grid-template-columns:270px minmax(0,1fr);min-height:calc(100vh - 74px)}
-.sidebar{background:linear-gradient(180deg,#0c4229,#0a3522);color:#dff3e5;padding:20px 14px;display:flex;flex-direction:column;justify-content:space-between}
+.layout{display:grid;grid-template-columns:260px minmax(0,1fr);min-height:calc(100vh - 72px)}
+.sidebar{background:linear-gradient(180deg,#0c4229,#0a3522);color:#dff3e5;padding:18px 12px;display:flex;flex-direction:column;justify-content:space-between}
 .nav-group{display:flex;flex-direction:column}
-.nav-section-title{font-size:.75rem;text-transform:uppercase;letter-spacing:1px;color:#8ab59b;margin:16px 0 8px 12px;font-weight:800}
+.nav-section-title{font-size:.75rem;text-transform:uppercase;letter-spacing:1px;color:#8ab59b;margin:14px 0 6px 10px;font-weight:800}
 .nav-btn{
-  width:100%;text-align:left;border:0;background:transparent;color:#dceee2;padding:13px 14px;
-  border-radius:14px;margin:4px 0;font-weight:650;display:flex;align-items:center;gap:11px;font-size:.95rem;transition:.15s
+  width:100%;text-align:left;border:0;background:transparent;color:#dceee2;padding:12px 13px;
+  border-radius:12px;margin:3px 0;font-weight:650;display:flex;align-items:center;gap:9px
 }
-.nav-btn.active,.nav-btn:hover{background:rgba(255,255,255,.14);color:#fff}
+.nav-btn.active,.nav-btn:hover{background:rgba(255,255,255,.12);color:#fff}
 
-/* Sidebar Footer Logos */
-.sidebar-footer{padding-top:16px;border-top:1px solid rgba(255,255,255,.15);display:flex;flex-direction:column;gap:10px}
-.sidebar-logo-row{display:flex;align-items:center;gap:9px}
-.sidebar-logo-row img{width:30px;height:30px;object-fit:contain;background:#fff;border-radius:6px;padding:2px}
-.sidebar-logo-row div span{display:block;font-size:.72rem;color:#fff;line-height:1.2;font-weight:700}
+.sidebar-footer{padding-top:14px;border-top:1px solid rgba(255,255,255,.15);display:flex;flex-direction:column;gap:8px}
+.sidebar-logo-row{display:flex;align-items:center;gap:8px}
+.sidebar-logo-row img{width:28px;height:28px;object-fit:contain;background:#fff;border-radius:6px;padding:2px}
+.sidebar-logo-row div span{display:block;font-size:.7rem;color:#fff;line-height:1.2;font-weight:700}
 
-.content{padding:clamp(20px,3vw,38px);min-width:0;max-width:1500px;width:100%;margin:0 auto}
-.page-head{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:22px}
-.page-head h1{margin:0;font-size:clamp(1.5rem,3vw,2.2rem);letter-spacing:-.5px;color:#11291b}
-.cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}
+.content{padding:clamp(16px,3vw,34px);min-width:0;max-width:1500px;width:100%;margin:0 auto}
+.page-head{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:20px}
+.page-head h1{margin:0;font-size:clamp(1.45rem,3vw,2.15rem);letter-spacing:-.5px}
+.cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
 .stat,.panel{
   background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
   box-shadow:var(--shadow)
 }
-.stat{padding:20px}.stat small{color:var(--muted);font-weight:600}.stat strong{display:block;font-size:1.75rem;margin-top:8px;color:#0f5132}
-.panel{padding:22px;margin-top:20px}
-.toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.stat{padding:18px}.stat small{color:var(--muted)}.stat strong{display:block;font-size:1.65rem;margin-top:7px}
+.panel{padding:18px;margin-top:18px}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
 
-.table-wrap{width:100%;overflow-x:auto;margin-top:14px;border:1px solid var(--border);border-radius:14px;background:#fff}
-.friendly-table{width:100%;border-collapse:collapse;font-size:.9rem}
-.friendly-table th{background:#f0f6f2;color:#183824;padding:12px 14px;text-align:left;font-weight:750;border-bottom:2px solid var(--border);white-space:nowrap}
-.friendly-table td{padding:12px 14px;border-bottom:1px solid var(--border);color:#2b3a32;vertical-align:middle}
-.friendly-table tr:hover{background:#f8fcf9}
+.table-wrap{overflow:auto;border:1px solid var(--border);border-radius:14px}
+table{border-collapse:collapse;width:100%;min-width:650px;font-size:.88rem}
+th,td{padding:11px 12px;border-bottom:1px solid var(--border);text-align:left;vertical-align:top}
+th{background:#f0f6f2;color:#31523d;white-space:nowrap}
+pre{white-space:pre-wrap;word-break:break-word;background:#102018;color:#d7f5df;border-radius:13px;padding:14px;max-height:430px;overflow:auto}
 
-.subtotal-row{background:#e8f4ec!important;font-weight:800;color:#0f5132}
-.subtotal-row td{border-top:2px solid var(--primary-3);border-bottom:2px solid var(--primary-3)}
-.grandtotal-row{background:#d4edda!important;font-weight:900;color:#0b3d27;font-size:1rem}
-.grandtotal-row td{border-top:3px solid var(--primary);border-bottom:3px solid var(--primary)}
-
-.badge{display:inline-block;padding:5px 12px;border-radius:20px;font-size:.78rem;font-weight:750;text-transform:uppercase}
-.badge-success{background:#e9f8ef;color:#146c43}
-.badge-warning{background:#fef3c7;color:#b45309}
-.badge-danger{background:#fee4e2;color:#b42318}
-.badge-info{background:#e0f2fe;color:#0369a1}
-
-.form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 16px}
+.form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 14px}
 .form-grid .full-col{grid-column:1/-1}
-.section-title{font-weight:800;margin:22px 0 12px;color:var(--primary);font-size:1.1rem}
+.section-title{font-weight:800;margin:20px 0 10px;color:var(--primary)}
 .mobile-menu{display:none}
-
-.wizard-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-bottom:22px}
-.wizard-card{background:linear-gradient(145deg,#fff,#f4f9f5);border:1px solid var(--border);border-radius:18px;padding:20px;cursor:pointer;transition:.2s;box-shadow:0 4px 15px rgba(0,0,0,.03)}
-.wizard-card:hover{border-color:var(--primary-3);transform:translateY(-2px);box-shadow:0 8px 25px rgba(15,81,50,.08)}
-.wizard-card h4{margin:0 0 6px;color:var(--primary);font-size:1.05rem}
-.wizard-card p{margin:0;color:var(--muted);font-size:.88rem;line-height:1.5}
 
 @media (max-width:1050px){
   .auth{grid-template-columns:1fr}
   .auth-side{display:none}
   .layout{grid-template-columns:1fr}
   .sidebar{
-    position:fixed;left:0;top:74px;bottom:0;width:min(84vw,310px);z-index:45;
-    transform:translateX(-105%);transition:transform .22s;box-shadow:20px 0 40px rgba(0,0,0,.15)
+    position:fixed;left:0;top:72px;bottom:0;width:min(84vw,310px);z-index:45;
+    transform:translateX(-105%);transition:transform .22s;box-shadow:20px 0 40px rgba(0,0,0,.12)
   }
   .sidebar.open{transform:translateX(0)}
   .mobile-menu{display:inline-flex;align-items:center;justify-content:center}
   .cards{grid-template-columns:repeat(2,minmax(0,1fr))}
-  .wizard-cards{grid-template-columns:1fr}
   .content{padding:22px}
 }
 @media (max-width:640px){
-  .topbar{padding:10px 14px}.topbar .app-logo{width:38px;height:38px}
-  .topbar .brand h2{font-size:.98rem}.top-actions .user-name{display:none}
-  .layout{min-height:calc(100vh - 64px)}
-  .sidebar{top:64px}
-  .content{padding:14px}
-  .cards{grid-template-columns:1fr 1fr;gap:12px}
-  .stat{padding:15px;border-radius:16px}.stat strong{font-size:1.3rem}
-  .panel{padding:16px;border-radius:16px;margin-top:14px}
+  .topbar{padding:10px 12px}.topbar .app-logo{width:36px;height:36px}
+  .topbar .brand h2{font-size:.96rem}.top-actions .user-name{display:none}
+  .layout{min-height:calc(100vh - 62px)}
+  .sidebar{top:62px}
+  .content{padding:13px}
+  .cards{grid-template-columns:1fr 1fr;gap:10px}
+  .stat{padding:14px;border-radius:16px}.stat strong{font-size:1.2rem}
+  .panel{padding:14px;border-radius:16px;margin-top:13px}
   .form-grid{grid-template-columns:1fr}.form-grid .full-col{grid-column:auto}
-  .page-head{margin-bottom:16px}.page-head h1{font-size:1.4rem}
-  .btn{padding:11px 14px;min-height:44px;font-size:.9rem}
-  .auth-panel{padding:12px}.auth-card{padding:22px;border-radius:20px}
+  .page-head{margin-bottom:14px}.page-head h1{font-size:1.35rem}
+  .btn{padding:10px 13px;min-height:42px}
+  .auth-panel{padding:10px}.auth-card{padding:20px;border-radius:20px}
   .feature{grid-template-columns:1fr}
   .auth-side{display:flex;padding:24px}
 }
@@ -173,48 +155,16 @@ button{cursor:pointer}
 'use strict';
 const API_URL='https://script.google.com/macros/s/AKfycbyWvJXKr1QZ1zwbeJDoULTUihycj1771SsDlGFy8jnuF4i3DsEbHXlcJU48VDAg17fqDA/exec';
 
+/* Role-Based Guidance: Panduan Berbasis Peran (Zero Friction) */
 const ROLE_RULES={
-  SEKOLAH:['home','rkasReview','dokumen','transaksi','crosscheck','temuan','asesmen','master'],
-  DINAS:['home','verifikasiDinas','sekolah','penugasan','dbcheck','rkas','dokumen','transaksi','crosscheck','temuan','master'],
-  PENGAWAS:['home','sekolah','penugasan','dokumen','transaksi','crosscheck','temuan','asesmen','master']
+  SEKOLAH:['home','rkas','dokumen','transaksi','crosscheck','temuan'],
+  DINAS:['home','verifikasiDinas','sekolah','penugasan','dbcheck','master','rkas','dokumen','transaksi','crosscheck'],
+  PENGAWAS:['home','sekolah','penugasan','crosscheck','temuan','asesmen','master']
 };
 
-const state={
-  token:sessionStorage.getItem('simpel_token')||'',
-  user:null,
-  view:'home',
-  captchaAns:0
-};
-
+const state={token:sessionStorage.getItem('simpel_token')||'',user:null,view:'home',captchaAns:0};
 const $=s=>document.querySelector(s),$$=s=>Array.from(document.querySelectorAll(s));
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]||c));
-
-const fmtRupiah = v => {
-  const n = Number(v);
-  if(isNaN(n)) return esc(v);
-  return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n);
-};
-
-const REFERENSI_BARANG_MAP = {
-  "5.2.04.04.02.0002": "Belanja Modal Jaringan Distribusi",
-  "5.2.02.08.01.0048": "Belanja Modal Alat Laboratorium Biologi",
-  "5.2.02.01.03.0003": "Belanja Modal Compressor",
-  "5.2.02.01.03.0004": "Belanja Modal Electric Generating Set",
-  "5.2.02.01.03.0005": "Belanja Modal Pompa",
-  "5.2.02.03.03.0010": "Belanja Modal Alat Timbangan/Biara",
-  "5.2.02.05.01.0001": "Belanja Modal Mesin Ketik",
-  "5.2.02.05.01.0002": "Belanja Modal Mesin Hitung/Mesin Jumlah",
-  "5.2.02.05.01.0003": "Belanja Modal Alat Reproduksi (Penggandaan)",
-  "5.2.02.05.01.0004": "Belanja Modal Alat Penyimpan Perlengkapan Kantor",
-  "5.1.02.01.01.0001": "Belanja Bahan - Bahan Habis Pakai / Material",
-  "5.1.02.02.01.0013": "Belanja Honorarium Narasumber / Pembahas",
-  "5.1.02.04.01.0001": "Belanja Perjalanan Dinas Dalam Negeri"
-};
-
-function getReferensiLabel(code){
-  return REFERENSI_BARANG_MAP[code] || "Rincian Objek Belanja Kegiatan";
-}
-
 function msg(text,type='error'){return `<div class="message ${type}">${esc(text)}</div>`}
 
 async function api(action,payload={}){
@@ -224,65 +174,45 @@ async function api(action,payload={}){
   const data=await r.json(); if(!data.success)throw new Error(data.message||'Permintaan gagal'); return data;
 }
 
-function passwordToggle(id){
-  const el=document.getElementById(id);
-  if(el) el.type=el.type==='password'?'text':'password';
-}
+function passwordToggle(id){const el=document.getElementById(id);if(el)el.type=el.type==='password'?'text':'password'}
 
-/* Captcha Matematika Baru */
 function generateMathCaptcha(){
   const n1 = Math.floor(Math.random() * 8) + 2;
   const n2 = Math.floor(Math.random() * 8) + 2;
-  const ops = ['+', '-', '*'];
+  const ops = ['+', '-'];
   const op = ops[Math.floor(Math.random() * ops.length)];
-  let ans = 0;
-  if(op === '+') ans = n1 + n2;
-  else if(op === '-') ans = n1 - n2;
-  else if(op === '*') ans = n1 * n2;
-  state.captchaAns = ans;
+  state.captchaAns = op === '+' ? n1 + n2 : n1 - n2;
   return `Berapakah hasil dari ${n1} ${op} ${n2} ?`;
 }
 
-function captchaHTML(){
-  const qText = generateMathCaptcha();
-  return `<div class="field">
-    <label>Verifikasi Keamanan (${qText})</label>
-    <input id="captchaInput" type="number" required placeholder="Masukkan jawaban angka">
-  </div>`;
+function authView(mode='login',notice=''){
+ const login=mode==='login';
+ const qText = generateMathCaptcha();
+ $('#app').innerHTML=`<main class="auth"><section class="auth-side"><div class="auth-side-inner"><div class="brand"><img src="bidangsd.png" class="app-logo" alt="Logo"><div><h2 style="color:#fff">SIMPEL SPJ</h2><small style="color:#d9eee0">Kabupaten Rembang</small></div></div><h1>Pengelolaan SPJ BOS SD terintegrasi.</h1><p>Kelola RKAS, dokumen SPJ, transaksi, pemeriksaan, temuan, hingga asesmen mutu dengan prinsip minim hambatan sesuai peran Anda.</p><div class="feature"><span>✓ Peran Berbasis Panduan</span><span>✓ Verifikasi Usulan Dinas</span><span>✓ Asesmen Indikator SPJ</span><span>✓ Responsif & Ringan</span></div></div><div class="auth-footer-logos"><div class="footer-logo-item"><img src="logorembang.png" alt="Rembang"><div><span>Dindikpora Kab. Rembang</span><small>Kabupaten Rembang</small></div></div><div class="footer-logo-item"><img src="logopendidikan.png" alt="Kemdikdasmen"><div><span>Direktorat SD Kemdikdasmen</span><small>Pembinaan Sekolah Dasar</small></div></div></div></section><section class="auth-panel"><div class="auth-card"><div class="brand"><img src="bidangsd.png" class="app-logo" alt="Logo"><div><h2>SIMPEL SPJ</h2><small>Masuk ke sistem</small></div></div><div class="tabs"><button class="${login?'active':''}" id="tabLogin">Masuk</button><button class="${!login?'active':''}" id="tabRegister">Pendaftaran</button></div>${notice}<div id="authBody"></div></div></section></main>`;
+ $('#tabLogin').onclick=()=>authView('login');$('#tabRegister').onclick=()=>authView('register');
+ $('#authBody').innerHTML=login?loginForm(qText):registerForm(qText);
 }
 
-function authView(notice=''){
-  const appEl = $('#app');
-  if(!appEl) return;
-  appEl.innerHTML=`<main class="auth">
-    <section class="auth-side"><div class="auth-side-inner">
-      <div class="brand"><img src="bidangsd.png" class="app-logo" alt="Logo"><div><h2 style="color:#fff">SIMPEL SPJ</h2><small style="color:#d9eee0">Kabupaten Rembang</small></div></div>
-      <h1>Pengelolaan SPJ BOS SD yang terintegrasi.</h1>
-      <p>Dilengkapi pusat verifikasi usulan sekolah khusus Dinas Kabupaten untuk mempercepat persetujuan anggaran.</p>
-      <div class="feature"><span>✓ Verifikasi Terpusat Dinas</span><span>✓ Persetujuan 1 Klik</span><span>✓ Manajemen RKAS</span><span>✓ Akuntabel & Transparan</span></div>
-    </div>
-    <div class="auth-footer-logos">
-      <div class="footer-logo-item"><img src="logorembang.png" alt="Logo Rembang"><div><span>Dinas Pendidikan, Pemuda dan Olahraga</span><small>Kabupaten Rembang</small></div></div>
-      <div class="footer-logo-item"><img src="logopendidikan.png" alt="Logo Pendidikan"><div><span>Direktorat SD Kemdikdasmen RI</span><small>Pembinaan Sekolah Dasar</small></div></div>
-    </div></section>
+function loginForm(qText){
+  return `<form id="loginForm">
+    <div class="field"><label>Username / NPSN</label><input id="username" autocomplete="username" required placeholder="Masukkan username atau NPSN"></div>
+    <div class="field"><label>Password</label><div class="password-wrap"><input id="password" type="password" autocomplete="current-password" required placeholder="Masukkan password"><button type="button" class="toggle-pass" onclick="passwordToggle('password')">👁</button></div></div>
+    <div class="field"><label>Verifikasi Keamanan (${qText})</label><input id="captchaInput" type="number" required placeholder="Masukkan jawaban angka"></div>
+    <div id="authMsg"></div>
+    <button class="btn btn-primary full" type="submit" id="loginBtn" style="margin-top:14px">Masuk</button>
+  </form>`;
+}
 
-    <section class="auth-panel"><div class="auth-card">
-      <div class="brand"><img src="bidangsd.png" class="app-logo" alt="Logo"><div><h2>SIMPEL SPJ</h2><small>Masuk ke sistem</small></div></div>
-      ${notice}
-      <form id="loginForm">
-        <div class="field"><label>Username / NPSN</label><input id="username" autocomplete="username" required placeholder="Masukkan username atau NPSN sekolah"></div>
-        <div class="field"><label>Password</label>
-          <div class="password-wrap">
-            <input id="password" type="password" autocomplete="current-password" required placeholder="Masukkan kata sandi">
-            <button type="button" class="toggle-pass" onclick="passwordToggle('password')">👁</button>
-          </div>
-        </div>
-        ${captchaHTML()}
-        <div id="authMsg"></div>
-        <button class="btn btn-primary full" type="submit" id="loginBtn" style="margin-top:16px">Masuk ke Aplikasi</button>
-      </form>
-    </div></section>
-  </main>`;
+function registerForm(qText){
+  return `<div class="message" style="background:#fff7ed;color:#9a3412">Pendaftaran akun mandiri divalidasi oleh administrator Dinas Kabupaten.</div>
+  <form onsubmit="event.preventDefault();$('#registerMsg').innerHTML=msg('Pendaftaran belum aktif. Hubungi Dinas.','error')">
+    <div class="field"><label>Nama Sekolah / Pengguna</label><input required placeholder="Nama instansi"></div>
+    <div class="field"><label>Username / NPSN</label><input required placeholder="NPSN"></div>
+    <div class="field"><label>Password</label><input type="password" required placeholder="Password"></div>
+    <div class="field"><label>Verifikasi Keamanan (${qText})</label><input id="captchaRegInput" type="number" required placeholder="Jawaban angka"></div>
+    <div id="registerMsg"></div>
+    <button class="btn btn-primary full" style="margin-top:12px">Ajukan Pendaftaran</button>
+  </form>`;
 }
 
 async function doLogin(e){
@@ -290,21 +220,19 @@ async function doLogin(e){
   const m=$('#authMsg');
   const userAns = Number($('#captchaInput')?.value);
   if(userAns !== state.captchaAns){
-    if(m) m.innerHTML=msg('Jawaban verifikasi keamanan (captcha) salah. Silakan coba lagi.');
+    m.innerHTML=msg('Jawaban verifikasi keamanan (captcha matematika) salah.');
     return;
   }
-  const b=$('#loginBtn');
-  if(b){ b.disabled=true; b.textContent='Memeriksa akun...'; }
+  const b=$('#loginBtn'); b.disabled=true; b.textContent='Memproses...';
   try{
     const r=await api('login',{username:$('#username').value.trim(),password:$('#password').value});
-    state.token=r.token;
-    state.user=r.user;
+    state.token=r.token; state.user=r.user;
     sessionStorage.setItem('simpel_token',state.token);
     dashboard();
   }catch(err){
-    if(m) m.innerHTML=msg(err.message);
+    m.innerHTML=msg(err.message);
   }finally{
-    if(b){ b.disabled=false; b.textContent='Masuk ke Aplikasi'; }
+    b.disabled=false; b.textContent='Masuk';
   }
 }
 
@@ -312,58 +240,37 @@ function navItems(){
   const role=String(state.user?.role||'').toUpperCase();
   const allowed=ROLE_RULES[role]||ROLE_RULES.SEKOLAH;
   const all=[
-    {id:'home',label:'Beranda Utama',cat:'Utama'},
-    {id:'verifikasiDinas',label:'Verifikasi Usulan Sekolah',cat:'Dinas'},
-    {id:'rkasReview',label:'Periksa & Kelola RKAS',cat:'Keuangan'},
-    {id:'transaksi',label:'Catatan Keuangan & Transaksi',cat:'Keuangan'},
-    {id:'dokumen',label:'Unggah Berkas & SPJ',cat:'Dokumen'},
-    {id:'crosscheck',label:'Pemeriksaan & Validasi',cat:'Audit'},
-    {id:'temuan',label:'Temuan & Perbaikan',cat:'Audit'},
-    {id:'asesmen',label:'Lembar Penilaian Asesmen',cat:'Penilaian'},
-    {id:'rkas',label:'Kelola RKAS (Dinas)',cat:'Keuangan'},
-    {id:'sekolah',label:'Daftar Sekolah',cat:'Master Data'},
-    {id:'penugasan',label:'Penugasan Pengawas',cat:'Master Data'},
-    {id:'master',label:'Referensi Komponen SPJ',cat:'Master Data'},
-    {id:'dbcheck',label:'Cek Kesehatan Database',cat:'Sistem'}
+    {id:'home',label:'Dashboard'},
+    {id:'verifikasiDinas',label:'Verifikasi Usulan Dinas'},
+    {id:'sekolah',label:'Data Sekolah'},
+    {id:'penugasan',label:'Penugasan Pengawas'},
+    {id:'dbcheck',label:'Cek Struktur DB'},
+    {id:'master',label:'Master SPJ & Indikator'},
+    {id:'rkas',label:'Pengelolaan RKAS'},
+    {id:'dokumen',label:'Dokumen SPJ (Drive)'},
+    {id:'transaksi',label:'Transaksi & Realisasi'},
+    {id:'crosscheck',label:'Cross-check Otomatis'},
+    {id:'temuan',label:'Temuan & Verifikasi'},
+    {id:'asesmen',label:'Asesmen Mutu & Finalisasi'}
   ];
   return all.filter(n=>allowed.includes(n.id)||n.id==='home');
 }
 
-function dashboard(){
-  document.body.style.background='var(--bg)';
-  renderShell();
-  loadView('home');
-}
-
+function dashboard(){document.body.style.background='var(--bg)';renderShell();loadView('home')}
 function renderShell(){
   const u=state.user||{};
-  $('#app').innerHTML=`<main class="dashboard"><header class="topbar"><div style="display:flex;align-items:center;gap:10px"><button class="btn btn-light mobile-menu" id="menuBtn" aria-label="Buka menu">☰</button><div class="brand"><img src="bidangsd.png" class="app-logo" alt="Logo"><div><h2>SIMPEL SPJ</h2><small>Peran: <b>${esc(u.role||'Pengguna')}</b></small></div></div></div><div class="top-actions"><span class="muted user-name">${esc(u.nama_pengguna||u.username||'')}</span><button class="btn btn-light" id="logoutBtn">Keluar</button></div></header><div class="layout"><aside class="sidebar" id="sidebar">
-    <div class="nav-group">
-      <div class="nav-section-title">Menu Utama</div>
-      ${navItems().map(n=>`<button class="nav-btn" data-view="${n.id}">${n.label}</button>`).join('')}
-    </div>
-    <div class="sidebar-footer">
-      <div class="sidebar-logo-row"><img src="logorembang.png" alt="Rembang"><div><span>Dindikpora Kab. Rembang</span></div></div>
-      <div class="sidebar-logo-row"><img src="logopendidikan.png" alt="Kemdikdasmen"><div><span>Direktorat SD Kemdikdasmen</span></div></div>
-    </div>
-  </aside><section class="content" id="mainContent"></section></div></main>`;
+  $('#app').innerHTML=`<main class="dashboard"><header class="topbar"><div style="display:flex;align-items:center;gap:9px"><button class="btn btn-light mobile-menu" id="menuBtn" aria-label="Buka menu">☰</button><div class="brand"><img src="bidangsd.png" class="app-logo" alt="Logo"><div><h2>SIMPEL SPJ</h2><small>${esc(u.role||'Pengguna')}</small></div></div></div><div class="top-actions"><span class="muted user-name">${esc(u.nama_pengguna||u.username||'')}</span><button class="btn btn-light" id="logoutBtn">Keluar</button></div></header><div class="layout"><aside class="sidebar" id="sidebar"><div class="nav-group"><div class="nav-section-title">Menu Utama</div>${navItems().map(n=>`<button class="nav-btn" data-view="${n.id}">${n.label}</button>`).join('')}</div><div class="sidebar-footer"><div class="sidebar-logo-row"><img src="logorembang.png" alt="Rembang"><div><span>Dindikpora Rembang</span></div></div><div class="sidebar-logo-row"><img src="logopendidikan.png" alt="Kemdikdasmen"><div><span>Direktorat SD</span></div></div></div></aside><section class="content" id="mainContent"></section></div></main>`;
   $$('[data-view]').forEach(b=>b.onclick=()=>{loadView(b.dataset.view);$('#sidebar')?.classList.remove('open')});
-  $('#logoutBtn').onclick=logout;
-  $('#menuBtn').onclick=()=>$('#sidebar')?.classList.toggle('open'); }  async function logout(){    try{if(state.token)await api('logout')}catch(e){}    state.token=''; state.user=null;    sessionStorage.removeItem('simpel_token');    location.reload(); }  function setActive(view){$$('[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===view))}
+  $('#logoutBtn').onclick=logout;$('#menuBtn').onclick=()=>$('#sidebar')?.classList.toggle('open') } async function logout(){try{if(state.token)await api('logout')}catch(e){}state.token='';state.user=null;sessionStorage.removeItem('simpel_token');authView('login',msg('Anda telah keluar.','ok'))} function setActive(view){$$('[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===view))}
 
 function loadView(view){
   state.view=view; setActive(view);
-  const mainC = $('#mainContent');
-  if(!mainC) return;
-  mainC.innerHTML = '<p class="muted">Memuat halaman...</p>';
-
   if(view==='home') return homeView();
   if(view==='verifikasiDinas') return verifikasiDinasView();
-  if(view==='sekolah') return friendlyTableAction('Daftar Seluruh Sekolah','getSekolah','Daftar sekolah dasar terdaftar di kabupaten.');
-  if(view==='penugasan') return friendlyTableAction('Daftar Penugasan Pengawas','getPenugasanPengawas','Wilayah binaan pengawas sekolah.');
+  if(view==='sekolah') return dataActionView('Data Sekolah','getSekolah');
+  if(view==='penugasan') return dataActionView('Penugasan Pengawas','getPenugasanPengawas');
   if(view==='dbcheck') return dbCheckView();
-  if(view==='master') return friendlyTableAction('Referensi Komponen SPJ','getMasterSPJ','Daftar master komponen dan indikator penilaian.');
-  if(view==='rkasReview') return rkasReviewSchoolView();
+  if(view==='master') return masterView();
   if(view==='rkas') return rkasInteractiveView();
   if(view==='dokumen') return dokumenView();
   if(view==='transaksi') return transaksiView();
@@ -373,465 +280,96 @@ function loadView(view){
 }
 
 function head(title,desc=''){return `<div class="page-head"><div><h1>${title}</h1><div class="muted">${desc}</div></div></div>`}
-
-function verifikasiDinasView(){
-  $('#mainContent').innerHTML=head('Verifikasi Usulan Sekolah','Pusat peninjauan dan persetujuan seluruh usulan / perubahan RKAS dari sekolah')+
-  `<div class="panel">
-     <div class="toolbar"><button class="btn btn-primary" id="loadUsulanBtn">Muat Daftar Usulan Sekolah</button></div>
-     <div id="usulanResultArea" style="margin-top:16px"><p class="muted">Klik tombol di atas untuk menampilkan daftar usulan yang berstatus DIAJUKAN.</p></div>
-   </div>`;
-
-  $('#loadUsulanBtn').onclick = async () => {
-    const area = $('#usulanResultArea');
-    area.innerHTML = '<p class="muted">Memuat data usulan dari server...</p>';
-    try {
-      const res = await api('getSemuaUsulanRKAS', {});
-      const list = res.data || [];
-      if(!list.length){
-        area.innerHTML = `<div class="message ok">Tidak ada usulan sekolah yang sedang menunggu verifikasi (semua sudah diproses).</div>`;
-        return;
-      }
-
-      let html = `<div class="table-wrap"><table class="friendly-table"><thead><tr><th>NPSN</th><th>VERSI</th><th>KODE & REKENING</th><th>URAIAN KEGIATAN</th><th>PAGU</th><th>STATUS</th><th>AKSI KEPUTUSAN</th></tr></thead><tbody>`;
-      list.forEach(item => {
-        html += `<tr>
-          <td><b>${esc(item.npsn)}</b></td>
-          <td>${esc(item.versi_rkas)}</td>
-          <td>${esc(item.kode_rekening)}</td>
-          <td>${esc(item.uraian)}</td>
-          <td><b>${fmtRupiah(item.pagu)}</b></td>
-          <td><span class="badge badge-warning">${esc(item.status_rkas)}</span></td>
-          <td>
-            <div style="display:flex;gap:6px">
-              <button class="btn btn-sm btn-primary" onclick="reviewUsulanDinas('${esc(item.versi_rkas)}', 'APPROVED')">Setujui</button>
-              <button class="btn btn-sm btn-danger" onclick="reviewUsulanDinas('${esc(item.versi_rkas)}', 'DITOLAK')">Tolak</button>
-              <button class="btn btn-sm btn-secondary" onclick="reviewUsulanDinas('${esc(item.versi_rkas)}', 'PERLU_PERBAIKAN')">Perbaikan</button>
-            </div>
-          </td>
-        </tr>`;
-      });
-      html += `</tbody></table></div>`;
-      area.innerHTML = html;
-    } catch(e) {
-      area.innerHTML = `<div class="message error">${esc(e.message)}</div>`;
-    }
+function actionPanel(action,fields=[]){return `<div class="panel"><div class="toolbar"><button class="btn btn-primary run-action">Jalankan</button><button class="btn btn-light clear-res">Bersihkan</button></div><div class="form-grid">${fields.map(f=>`<div class="${f.full?'full-col':''} field"><label>${f.label}</label><input id="f_${f.id}" placeholder="${f.placeholder||''}"></div>`).join('')}</div><pre class="res-pre">Belum ada hasil.</pre></div>`}
+function bindPanel(panel,action,fields=[]){
+  panel.querySelector('.run-action').onclick=async()=>{
+    let payload={}; fields.forEach(f=>payload[f.key||f.id]=panel.querySelector('#f_'+f.id)?.value||'');
+    panel.querySelector('.res-pre').textContent='Memproses...';
+    try{panel.querySelector('.res-pre').textContent=JSON.stringify(await api(action,payload),null,2)}catch(e){panel.querySelector('.res-pre').textContent=e.message}
   };
-}
-
-window.reviewUsulanDinas = async (versi, keputusan) => {
-  if(!confirm(`Apakah Anda yakin ingin memberikan keputusan "${keputusan}" untuk versi usulan ${versi}?`)) return;
-  try {
-    const res = await api('reviewRKAS', {versiRkas: versi, keputusan: keputusan});
-    if(res.success){
-      alert(`Berhasil! Keputusan "${keputusan}" telah disimpan.`);
-      $('#loadUsulanBtn')?.click();
-    } else {
-      alert('Gagal: ' + (res.message || 'Terjadi kesalahan'));
-    }
-  } catch(e) {
-    alert('Gagal terhubung ke server: ' + e.message);
-  }
-};
-
-function selectBulanHTML(id='idPeriode', labelText='Pilih Periode Bulan'){
-  return `<div class="field"><label>${labelText}</label>
-    <select id="${id}">
-      <option value="">-- Pilih Bulan Pelaporan --</option>
-      <option value="BLN-01">Bulan 01 - Januari</option>
-      <option value="BLN-02">Bulan 02 - Februari</option>
-      <option value="BLN-03">Bulan 03 - Maret</option>
-      <option value="BLN-04">Bulan 04 - April</option>
-      <option value="BLN-05">Bulan 05 - Mei</option>
-      <option value="BLN-06">Bulan 06 - Juni</option>
-      <option value="BLN-07">Bulan 07 - Juli</option>
-      <option value="BLN-08">Bulan 08 - Agustus</option>
-      <option value="BLN-09">Bulan 09 - September</option>
-      <option value="BLN-10">Bulan 10 - Oktober</option>
-      <option value="BLN-11">Bulan 11 - November</option>
-      <option value="BLN-12">Bulan 12 - Desember</option>
-    </select>
-  </div>`;
-}
-
-function selectDokumenHTML(id='idSpj', labelText='Pilih Jenis Komponen SPJ'){
-  return `<div class="field"><label>${labelText}</label>
-    <select id="${id}">
-      <option value="">-- Pilih Jenis Komponen SPJ --</option>
-      <option value="BKU">Buku Kas Umum (BKU)</option>
-      <option value="BUKU_BANK">Buku Bank</option>
-      <option value="BKT">Buku Kas Tunai</option>
-      <option value="BUKU_PAJAK">Buku Pajak</option>
-      <option value="REKENING_KORAN">Rekening Koran</option>
-      <option value="INVOICE">Invoice / Nota / Kuitansi</option>
-      <option value="BUKTI_PENDUKUNG">Bukti Pendukung Lainnya</option>
-      <option value="SSP_PUSAT">SSP Pajak Pusat (PPN/PPh)</option>
-      <option value="SSP_DAERAH">SSP Pajak Daerah</option>
-      <option value="FOTO">Foto / Dokumentasi Kegiatan</option>
-    </select>
-  </div>`;
-}
-
-function friendlyTableAction(title,action,desc,fields=[]){
-  $('#mainContent').innerHTML=head(title,desc)+
-  `<div class="panel">
-    <div class="toolbar">
-      <button class="btn btn-primary" id="friendlyLoadBtn">Tampilkan Data</button>
-      <button class="btn btn-light" id="friendlyClearBtn">Bersihkan</button>
-    </div>
-    ${fields.length ? `<div class="form-grid">${fields.map(f=>`<div class="${f.full?'full-col':''} field"><label>${f.label}</label><input id="f_${f.id}" placeholder="${f.placeholder||''}"></div>`).join('')}</div>` : ''}
-    <div id="friendlyResultArea" style="margin-top:16px"><p class="muted">Belum ada data yang dimuat. Klik tombol "Tampilkan Data" di atas.</p></div>
-  </div>`;
-
-  $('#friendlyLoadBtn').onclick = async () => {
-    const area = $('#friendlyResultArea');
-    area.innerHTML = '<p class="muted">Sedang mengambil data dari server...</p>';
-    try {
-      let payload = {};
-      fields.forEach(f => payload[f.key || f.id] = $('#f_'+f.id)?.value || '');
-      const res = await api(action, payload);
-      let list = [];
-      if (Array.isArray(res.data)) list = res.data;
-      else if (Array.isArray(res)) list = res;
-      else if (res && typeof res === 'object') {
-        const foundKey = Object.keys(res).find(k => Array.isArray(res[k]));
-        if (foundKey) list = res[foundKey];
-        else list = [res];
-      }
-
-      if (!list.length) {
-        area.innerHTML = `<div class="message ok">Data berhasil dimuat, namun belum ada catatan yang tersedia.</div>`;
-        return;
-      }
-
-      const keys = Object.keys(list[0]);
-      let html = `<div class="table-wrap"><table class="friendly-table"><thead><tr>`;
-      keys.forEach(k => { html += `<th>${esc(k.replaceAll('_',' ').toUpperCase())}</th>`; });
-      html += `</tr></thead><tbody>`;
-
-      list.forEach(row => {
-        html += `<tr>`;
-        keys.forEach(k => {
-          let val = row[k];
-          if (val === null || val === undefined) val = '-';
-          if (k.includes('status') || k.includes('keputusan')) {
-            const upVal = String(val).toUpperCase();
-            let badgeClass = 'badge-info';
-            if (upVal.includes('APPROVED') || upVal.includes('AKTIF') || upVal.includes('SELESAI')) badgeClass = 'badge-success';
-            else if (upVal.includes('DRAFT') || upVal.includes('DIAJUKAN') || upVal.includes('PERLU')) badgeClass = 'badge-warning';
-            else if (upVal.includes('TOLAK') || upVal.includes('NONAKTIF')) badgeClass = 'badge-danger';
-            html += `<td><span class="badge ${badgeClass}">${esc(val)}</span></td>`;
-          } else if (k.includes('pagu') || k.includes('nilai')) {
-            html += `<td><b>${fmtRupiah(val)}</b></td>`;
-          } else {
-            html += `<td>${esc(val)}</td>`;
-          }
-        });
-        html += `</tr>`;
-      });
-      html += `</tbody></table></div>`;
-      area.innerHTML = html;
-    } catch(err) {
-      area.innerHTML = `<div class="message error">Gagal memuat data: ${esc(err.message)}</div>`;
-    }
-  };
-
-  $('#friendlyClearBtn').onclick = () => {
-    $('#friendlyResultArea').innerHTML = '<p class="muted">Belum ada data yang dimuat.</p>';
-  };
+  panel.querySelector('.clear-res').onclick=()=>panel.querySelector('.res-pre').textContent='Belum ada hasil.';
 }
 
 function homeView(){
   const role=String(state.user?.role||'').toUpperCase();
-  let subtitle = 'Pusat kendali operasional pelaporan keuangan sekolah.';
-  let cardsHTML = '';
-  let wizardBoxes = '';
+  $('#mainContent').innerHTML=head('Dashboard SIMPEL SPJ','Ringkasan akses dan modul aplikasi sesuai peran')+
+  `<div class="cards"><div class="stat"><small>Role Pengguna</small><b>${esc(role)}</b></div><div class="stat"><small>Username</small><b style="font-size:1.1rem">${esc(state.user?.username||'-')}</b></div><div class="stat"><small>Status Sesi</small><b style="font-size:1.1rem">Aktif</b></div><div class="stat"><small>Kabupaten</small><b style="font-size:1.1rem">Rembang</b></div></div>`+
+  `<div class="panel"><h3>Selamat datang di SIMPEL SPJ</h3><p class="muted">Sistem dirancang dengan prinsip minim hambatan (Zero Friction). Pilih menu di sebelah kiri untuk mengelola anggaran RKAS, catatan transaksi, dokumen Google Drive, hingga verifikasi temuan audit dan penilaian asesmen.</p></div>`;
+}
 
-  if(role === 'SEKOLAH'){
-    cardsHTML = `
-      <div class="stat"><small>Status Akun</small><strong>Aktif (Sekolah)</strong></div>
-      <div class="stat"><small>NPSN Terdaftar</small><strong style="font-size:1.1rem">${esc(state.user?.username||'-')}</strong></div>
-      <div class="stat"><small>Sumber RKAS</small><strong style="font-size:1.1rem">Dinas / Usul Perbaikan</strong></div>
-      <div class="stat"><small>Pelaporan</small><strong style="font-size:1.1rem">Bulan Berjalan</strong></div>
-    `;
-    wizardBoxes = `
-      <div class="wizard-card" onclick="loadView('rkasReview')">
-        <h4>📋 1. Periksa & Kelola RKAS</h4>
-        <p>Cek RKAS dari Dinas, tambah item belanja baru berpedoman referensi barang, edit, atau hapus langsung.</p>
-      </div>
-      <div class="wizard-card" onclick="loadView('transaksi')">
-        <h4>💰 2. Catat Transaksi Harian</h4>
-        <p>Rekam transaksi belanja berdasarkan basis RKAS dengan format Rupiah otomatis.</p>
-      </div>
-      <div class="wizard-card" onclick="loadView('dokumen')">
-        <h4>📁 3. Unggah Berkas & SPJ</h4>
-        <p>Pilih Bulan pelaporan dan jenis dokumen untuk diunggah dengan mudah.</p>
-      </div>
-    `;
-  } else if(role === 'PENGAWAS'){
-    subtitle = 'Panel pembinaan dan pemeriksaan dokumen laporan sekolah binaan.';
-    cardsHTML = `
-      <div class="stat"><small>Peran Aktif</small><strong>Pengawas</strong></div>
-      <div class="stat"><small>Nama Pembina</small><strong style="font-size:1.1rem">${esc(state.user?.nama_pengguna||'-')}</strong></div>
-      <div class="stat"><small>Cakupan Tugas</small><strong style="font-size:1.1rem">Sekolah Binaan</strong></div>
-      <div class="stat"><small>Status Sesi</small><strong style="font-size:1.1rem">Aman</strong></div>
-    `;
-    wizardBoxes = `
-      <div class="wizard-card" onclick="loadView('penugasan')">
-        <h4>🏫 Lihat Sekolah Binaan</h4>
-        <p>Periksa daftar sekolah di bawah wilayah pengawasan SK penugasan Anda.</p>
-      </div>
-      <div class="wizard-card" onclick="loadView('crosscheck')">
-        <h4>🔍 Pemeriksaan Otomatis</h4>
-        <p>Sistem otomatis mengecek kesesuaian transaksi, RKAS, dan potensi duplikasi data.</p>
-      </div>
-      <div class="wizard-card" onclick="loadView('asesmen')">
-        <h4>⭐️ Lembar Penilaian Asesmen</h4>
-        <p>Berikan skor dan catatan penilaian kualitatif per indikator untuk sekolah binaan.</p>
-      </div>
-    `;
-  } else {
-    subtitle = 'Pusat manajemen RKAS kabupaten, pemantauan sekolah, dan verifikasi usulan.';
-    cardsHTML = `
-      <div class="stat"><small>Peran Aktif</small><strong>Dinas Kabupaten</strong></div>
-      <div class="stat"><small>Administrator</small><strong style="font-size:1.1rem">${esc(state.user?.nama_pengguna||'-')}</strong></div>
-      <div class="stat"><small>Hak Akses</small><strong style="font-size:1.1rem">Penuh / Kabupaten</strong></div>
-      <div class="stat"><small>Pusat Verifikasi</small><strong style="font-size:1.1rem">Aktif</strong></div>
-    `;
-    wizardBoxes = `
-      <div class="wizard-card" onclick="loadView('verifikasiDinas')">
-        <h4>✅ Verifikasi Usulan Sekolah</h4>
-        <p>Tinjau dan setujui usulan perubahan atau penambahan item RKAS dari sekolah-sekolah.</p>
-      </div>
-      <div class="wizard-card" onclick="loadView('sekolah')">
-        <h4>🏫 Daftar Seluruh Sekolah</h4>
-        <p>Pantau data profil seluruh Sekolah Dasar (SD) di Kabupaten Rembang.</p>
-      </div>
-      <div class="wizard-card" onclick="loadView('dbcheck')">
-        <h4>⚙️ Cek Kesehatan Database</h4>
-        <p>Pastikan struktur 13 tabel spreadsheet sistem selalu sinkron dan valid.</p>
-      </div>
-    `;
-  }
-
-  $('#mainContent').innerHTML=head('Selamat Datang di SIMPEL SPJ', subtitle)+
-  `<div class="cards">${cardsHTML}</div>`+
-  `<div class="panel" style="margin-top:24px"><h3 class="section-title" style="margin-top:0">Panduan Cepat Sesuai Kebutuhan Anda</h3><p class="muted" style="margin-bottom:16px">Klik salah satu kotak panduan di bawah untuk langsung menuju halaman pekerjaan:</p><div class="wizard-cards">${wizardBoxes}</div></div>`;
+function dataActionView(title,action){
+  $('#mainContent').innerHTML=head(title,'Data dari backend')+actionPanel(action);
+  bindPanel($('.panel'),action);
 }
 
 function dbCheckView(){
-  $('#mainContent').innerHTML=head('Cek Kesehatan Database','Validasi struktur kolom 13 tabel pada Google Spreadsheet')+
-  `<div class="panel"><p class="muted" style="margin-bottom:16px">Gunakan tombol ini untuk memastikan seluruh kolom tabel di backend sudah sesuai dengan standar sistem.</p><button class="btn btn-primary" id="checkDbBtn">Mulai Periksa Struktur Database</button><pre id="dbResult" style="margin-top:16px">Belum ada hasil pemeriksaan.</pre></div>`;
+  $('#mainContent').innerHTML=head('Validasi Struktur Database','Pemeriksaan integritas header Google Spreadsheet')+
+  `<div class="panel"><button class="btn btn-primary" id="checkDbBtn">Cek Struktur Database</button><pre id="dbResult" style="margin-top:14px">Belum ada hasil.</pre></div>`;
   $('#checkDbBtn').onclick=async()=>{
-    $('#dbResult').textContent='Sedang memeriksa struktur tabel...';
+    $('#dbResult').textContent='Memeriksa struktur database...';
     try{const r=await api('validateDatabaseStructure');$('#dbResult').textContent=JSON.stringify(r,null,2)}catch(e){$('#dbResult').textContent=e.message}
   };
 }
 
-function rkasReviewSchoolView(){
-  $('#mainContent').innerHTML=head('Periksa & Kelola RKAS Sekolah','Sekolah memeriksa RKAS, menambah item baru berdasarkan referensi barang, serta mengedit atau menghapus langsung')+
-  `<div class="panel"><h3 class="section-title" style="margin-top:0">Plafon RKAS Saat Ini & Aksi Baris</h3><p class="muted" style="margin-bottom:12px">Setiap baris dilengkapi tombol Edit & Hapus (otomatis mengubah status menjadi DIAJUKAN).</p><button class="btn btn-primary" id="loadRkasInfoBtn">Tampilkan RKAS Aktif & Grand Total</button><div id="rkasInfoResult" style="margin-top:14px"></div></div>`+
-  
-  `<div class="panel"><h3 class="section-title" style="margin-top:0">Tambah Item Rincian Belanja Baru</h3><p class="muted" style="margin-bottom:12px">Pilih kode rekening berpedoman pada tabel referensi barang.</p>
-     <div class="form-grid">
-       <div class="field"><label>NPSN Sekolah</label><input id="add_npsn" placeholder="Nomor NPSN"></div>
-       <div class="field"><label>Versi RKAS</label><input id="add_versi" placeholder="Contoh: PERUBAHAN atau V-2026"></div>
-       <div class="field full-col"><label>Pilih Kode Rekening (Referensi Barang)</label>
-         <select id="add_kode">
-           <option value="">-- Pilih Kode Rekening & Rincian Objek --</option>
-           <option value="5.1.02.01.01.0001">5.1.02.01.01.0001 — Belanja Bahan - Bahan Habis Pakai / Material</option>
-           <option value="5.2.02.01.03.0003">5.2.02.01.03.0003 — Belanja Modal Compressor</option>
-           <option value="5.2.04.04.02.0002">5.2.04.04.02.0002 — Belanja Modal Jaringan Distribusi</option>
-           <option value="5.1.02.02.01.0013">5.1.02.02.01.0013 — Belanja Honorarium Narasumber / Pembahas</option>
-           <option value="5.1.02.04.01.0001">5.1.02.04.01.0001 — Belanja Perjalanan Dinas Dalam Negeri</option>
-         </select>
-       </div>
-       <div class="field full-col"><label>Uraian Keterangan Barang / Kegiatan</label><input id="add_uraian" placeholder="Contoh: Pengadaan alat penunjang..."></div>
-       <div class="field"><label>Pagu Anggaran (Rp)</label><input id="add_pagu" type="number" placeholder="0"></div>
-     </div>
-     <button class="btn btn-primary" id="saveNewItemBtn" style="margin-top:12px">Simpan & Ajukan Item Baru</button>
-     <pre id="addRes" style="margin-top:12px">Belum ada aksi.</pre>
-   </div>`;
-
-  $('#loadRkasInfoBtn').onclick = async () => { loadRkasTableData(); };
-
-  $('#saveNewItemBtn').onclick = async () => {
-    const payload = {
-      npsn: $('#add_npsn').value,
-      versi_rkas: $('#add_versi').value,
-      kode_rekening: $('#add_kode').value,
-      uraian: $('#add_uraian').value,
-      pagu: $('#add_pagu').value,
-      status_rkas: 'DIAJUKAN'
-    };
-    $('#addRes').textContent = 'Menyimpan item baru ke server...';
-    try {
-      await api('simpanDetailRKAS', {data: payload});
-      $('#addRes').textContent = 'Berhasil menambahkan item baru! Status otomatis DIAJUKAN.';
-      loadRkasTableData();
-    } catch(e) {
-      $('#addRes').textContent = e.message;
-    }
-  };
+function verifikasiDinasView(){
+  $('#mainContent').innerHTML=head('Verifikasi Usulan RKAS Dinas','Pusat peninjauan usulan perubahan RKAS dari sekolah')+   actionPanel('getSemuaUsulanRKAS')+   actionPanel('reviewRKAS',[{id:'versiRkas',label:'Versi RKAS'},{id:'keputusan',label:'Keputusan (APPROVED / DITOLAK)'}]);   const panels=$$('#mainContent .panel');
+  bindPanel(panels[0],'getSemuaUsulanRKAS');
+  bindPanel(panels[1],'reviewRKAS',[{id:'versiRkas'},{id:'keputusan'}]);
 }
 
-async function loadRkasTableData(){
-  const area = $('#rkasInfoResult');
-  area.innerHTML = '<p class="muted">Memuat data RKAS...</p>';
-  try {
-    const res = await api('rkasAktif', {});
-    const list = res.data || [];
-    if (!list.length) {
-      area.innerHTML = `<div class="message ok">Belum ada RKAS aktif yang disetujui.</div>`;
-      return;
-    }
-
-    const groups = {};
-    let grandTotal = 0;
-
-    list.forEach(r => {
-      const key = r.kode_rekening || 'UMUM';
-      if(!groups[key]) groups[key] = { items: [], total: 0 };
-      groups[key].items.push(r);
-      const paguVal = Number(r.pagu || 0);
-      groups[key].total += paguVal;
-      grandTotal += paguVal;
-    });
-
-    let html = `<div class="table-wrap"><table class="friendly-table"><thead><tr><th>KODE REKENING & RUJUKAN REFERENSI BARANG</th><th>PAGU ANGGARAN</th><th>STATUS & AKSI</th></tr></thead><tbody>`;
-    
-    Object.keys(groups).forEach(code => {
-      const g = groups[code];
-      const refLabel = getReferensiLabel(code);
-      
-      html += `<tr class="subtotal-row"><td colspan="1"><b>SUBTOTAL [${esc(code)}] — ${esc(refLabel)}</b></td><td colspan="2"><b>${fmtRupiah(g.total)}</b></td></tr>`;
-      
-      g.items.forEach(item => {
-        const idRkas = item.id_rkas || '';
-        html += `<tr>
-          <td>&nbsp;&nbsp;&bull; ${esc(item.uraian)}</td>
-          <td><b>${fmtRupiah(item.pagu)}</b></td>
-          <td>
-            <div style="display:flex;align-items:center;gap:8px">
-              <span class="badge badge-success">${esc(item.status_rkas)}</span>
-              <button class="btn btn-sm btn-secondary" onclick="editRkasItem('${idRkas}', '${esc(item.npsn)}', '${esc(item.versi_rkas)}', '${esc(item.kode_rekening)}', '${esc(item.uraian)}', ${item.pagu})">Edit</button>
-              <button class="btn btn-sm btn-danger" onclick="deleteRkasItem('${idRkas}')">Hapus</button>
-            </div>
-          </td>
-        </tr>`;
-      });
-    });
-
-    html += `<tr class="grandtotal-row"><td colspan="1" style="text-align:right"><b>GRAND TOTAL KESELURUHAN PENGELUARAN:</b></td><td colspan="2"><b>${fmtRupiah(grandTotal)}</b></td></tr>`;
-    html += `</tbody></table></div>`;
-    area.innerHTML = html;
-  } catch(e) {
-    area.innerHTML = `<div class="message error">${esc(e.message)}</div>`;
-  }
+function masterView(){
+  $('#mainContent').innerHTML=head('Master SPJ & Indikator','Master, indikator, dan periode')+   actionPanel('getMasterSPJ')+   actionPanel('getMasterIndikator',[{id:'idSpj',label:'ID SPJ (opsional)'}])+   actionPanel('getPeriodeSPJ');   const panels=$$('#mainContent .panel');
+  bindPanel(panels[0],'getMasterSPJ');
+  bindPanel(panels[1],'getMasterIndikator',[{id:'idSpj'}]);
+  bindPanel(panels[2],'getPeriodeSPJ');
 }
-
-window.editRkasItem = async (id, npsn, versi, kode, uraian, pagu) => {
-  const newUraian = prompt("Edit Uraian Kegiatan:", uraian);
-  if(newUraian === null) return;
-  const newPagu = prompt("Edit Nilai Pagu Anggaran (Rp):", pagu);
-  if(newPagu === null) return;
-
-  const payload = {
-    id_rkas: id,
-    npsn: npsn,
-    versi_rkas: versi,
-    kode_rekening: kode,
-    uraian: newUraian,
-    pagu: Number(newPagu),
-    status_rkas: 'DIAJUKAN'
-  };
-
-  try {
-    await api('simpanDetailRKAS', {data: payload});
-    alert('Perubahan berhasil disimpan! Status item berubah menjadi DIAJUKAN.');
-    loadRkasTableData();
-  } catch(e) {
-    alert('Gagal mengedit: ' + e.message);
-  }
-};
-
-window.deleteRkasItem = async (id) => {
-  if(!confirm('Apakah Anda yakin ingin menghapus item rincian RKAS ini?')) return;
-  try {
-    await api('hapusDetailRKAS', {idRkas: id});
-    alert('Item RKAS berhasil dihapus.');
-    loadRkasTableData();
-  } catch(e) {
-    alert('Gagal menghapus: ' + e.message);
-  }
-};
 
 function rkasInteractiveView(){
-  friendlyTableAction('Manajemen RKAS oleh Dinas','rkasAktif','Pusat pengaturan pagu anggaran sekolah oleh Dinas.',[{id:'npsn',label:'NPSN Sekolah'}]);
+  $('#mainContent').innerHTML=head('Pengelolaan RKAS & Detail','Kelola RKAS, buat draft, simpan detail, ajukan, dan review')+
+  actionPanel('rkasAktif',[{id:'npsn',label:'NPSN (Kosongkan jika akun Sekolah)'}])+
+  actionPanel('rkasHistory',[{id:'npsn',label:'NPSN'}])+
+  actionPanel('buatDraftRKAS')+
+  `<div class="panel"><h3 class="section-title" style="margin-top:0">Simpan Detail Item RKAS</h3><div class="form-grid">
+     <div class="field"><label>NPSN</label><input id="d_rkas_npsn" placeholder="NPSN Sekolah"></div>
+     <div class="field"><label>Versi RKAS</label><input id="d_rkas_versi" placeholder="Contoh: V-2026..."></div>
+     <div class="field"><label>ID RKAS (Opsional)</label><input id="d_rkas_id" placeholder="ID RKAS"></div>
+     <div class="field"><label>Kode Rekening</label><input id="d_rkas_kode" placeholder="Kode Rekening"></div>
+     <div class="field full-col"><label>Uraian</label><input id="d_rkas_uraian" placeholder="Uraian kegiatan"></div>
+     <div class="field"><label>Pagu (Nilai Anggaran)</label><input id="d_rkas_pagu" type="number" placeholder="0"></div>
+     <div class="field"><label>Status RKAS</label><input id="d_rkas_status" value="DRAFT"></div>
+   </div><div class="toolbar" style="margin-top:12px"><button class="btn btn-primary" id="saveDetailRkasBtn">Simpan Detail RKAS</button><button class="btn btn-light" id="clearRkasRes">Bersihkan</button></div><pre id="d_rkas_res">Belum ada hasil.</pre></div>`+
+  actionPanel('ajukanRKAS',[{id:'versiRkas',label:'Versi RKAS'}])+
+  actionPanel('reviewRKAS',[{id:'versiRkas',label:'Versi RKAS'},{id:'keputusan',label:'Keputusan (APPROVED / DITOLAK)'}]);
+
+  const panels=$$('#mainContent .panel');
+  bindPanel(panels[0],'rkasAktif',[{id:'npsn'}]);
+  bindPanel(panels[1],'rkasHistory',[{id:'npsn'}]);
+  bindPanel(panels[2],'buatDraftRKAS');
+  bindPanel(panels[4],'ajukanRKAS',[{id:'versiRkas'}]);
+  bindPanel(panels[5],'reviewRKAS',[{id:'versiRkas'},{id:'keputusan'}]);
+
+  $('#saveDetailRkasBtn').onclick=async()=>{
+    const payload={npsn:$('#d_rkas_npsn').value,versi_rkas:$('#d_rkas_versi').value,id_rkas:$('#d_rkas_id').value,kode_rekening:$('#d_rkas_kode').value,uraian:$('#d_rkas_uraian').value,pagu:$('#d_rkas_pagu').value,status_rkas:$('#d_rkas_status').value};
+    $('#d_rkas_res').textContent='Memproses...';
+    try{const r=await api('simpanDetailRKAS',{data:payload});$('#d_rkas_res').textContent=JSON.stringify(r,null,2)}catch(e){$('#d_rkas_res').textContent=e.message}
+  };
+  $('#clearRkasRes').onclick=()=>$('#d_rkas_res').textContent='Belum ada hasil.';
 }
 
 function dokumenView(){
-  $('#mainContent').innerHTML=head('Unggah Berkas & Dokumen SPJ','Kelola dokumen bulanan sekolah dan status pajak N/A')+
-  `<div class="panel"><h3 class="section-title" style="margin-top:0">Daftar Dokumen Terunggah</h3>
-     <div class="form-grid">${selectBulanHTML('doc_p_id', 'Pilih Bulan Pelaporan')}</div>
-     <button class="btn btn-primary" id="loadDocBtn" style="margin-top:10px">Tampilkan Dokumen</button>
-     <div id="docResultArea" style="margin-top:14px"></div>
-   </div>`+
-  `<div class="panel"><h3 class="section-title" style="margin-top:0">Atur Status Pajak N/A</h3>
-     <div class="form-grid">
-       ${selectBulanHTML('na_p', 'Pilih Bulan')}
-       ${selectDokumenHTML('na_spj', 'Pilih Komponen Pajak')}
-       <div class="field full-col"><label>Alasan N/A</label><input id="na_alasan" placeholder="Tidak ada transaksi pajak pada bulan ini"></div>
-     </div>
-     <button class="btn btn-secondary" id="saveNaBtn" style="margin-top:12px">Simpan Status N/A</button>
-     <pre id="naRes" style="margin-top:12px">Belum ada aksi.</pre>
-   </div>`+
-  `<div class="panel"><h3 class="section-title" style="margin-top:0">Unggah File Berkas PDF</h3><button class="btn btn-primary" id="openUpload">Buka Form Unggah Berkas</button></div>`;
-
-  $('#loadDocBtn').onclick = async () => {
-    const area = $('#docResultArea');
-    const pId = $('#doc_p_id').value;
-    if(!pId){ alert('Silakan pilih bulan pelaporan terlebih dahulu.'); return; }
-    area.innerHTML = '<p class="muted">Memuat dokumen...</p>';
-    try {
-      const res = await api('getDokumenSPJ', {idPeriode: pId});
-      const list = res.data || [];
-      if (!list.length) {
-        area.innerHTML = `<div class="message ok">Belum ada dokumen yang diunggah untuk periode ini.</div>`;
-        return;
-      }
-      let html = `<div class="table-wrap"><table class="friendly-table"><thead><tr><th>NPSN</th><th>PERIODE</th><th>KOMPONEN SPJ</th><th>NAMA BERKAS</th><th>STATUS</th><th>LINK TAUTAN</th></tr></thead><tbody>`;
-      list.forEach(d => {
-        html += `<tr><td>${esc(d.npsn)}</td><td>${esc(d.id_periode)}</td><td><b>${esc(d.id_spj)}</b></td><td>${esc(d.nama_file)}</td><td><span class="badge badge-success">${esc(d.status)}</span></td><td>${d.file_url ? `<a href="${esc(d.file_url)}" target="_blank" class="btn btn-secondary" style="padding:4px 10px;min-height:30px;font-size:0.8rem">Buka File</a>` : '-'}</td></tr>`;
-      });
-      html += `</tbody></table></div>`;
-      area.innerHTML = html;
-    } catch(e) {
-      area.innerHTML = `<div class="message error">${esc(e.message)}</div>`;
-    }
-  };
-
-  $('#saveNaBtn').onclick = async () => {
-    const p = $('#na_p').value, s = $('#na_spj').value, a = $('#na_alasan').value;
-    if(!p || !s){ alert('Bulan dan komponen pajak wajib dipilih.'); return; }
-    $('#naRes').textContent = 'Menyimpan...';
-    try {
-      const r = await api('setStatusDokumenSPJNA', {idPeriode: p, idSpj: s, alasan: a});
-      $('#naRes').textContent = JSON.stringify(r, null, 2);
-    } catch(e) {
-      $('#naRes').textContent = e.message;
-    }
-  };
-
+  $('#mainContent').innerHTML=head('Dokumen SPJ (Google Drive)','Dokumen aktif, unggah, dan status N/A')+
+  actionPanel('getDokumenSPJ',[{id:'idPeriode',label:'ID Periode'}])+
+  actionPanel('setStatusDokumenSPJNA',[{id:'idPeriode',label:'ID Periode'},{id:'idSpj',label:'ID SPJ (SSP)'},{id:'alasan',label:'Alasan N/A',full:true}])+
+  `<div class="panel"><button class="btn btn-primary" id="openUpload">Buka formulir unggah dokumen (PDF/File)</button></div>`;
+  const panels=$$('#mainContent .panel');
+  bindPanel(panels[0],'getDokumenSPJ',[{id:'idPeriode'}]);
+  bindPanel(panels[1],'setStatusDokumenSPJNA',[{id:'idPeriode'},{id:'idSpj'},{id:'alasan'}]);
   $('#openUpload').onclick=uploadDokumenView;
 }
 
 function uploadDokumenView(){
-  $('#mainContent').innerHTML=head('Form Unggah Berkas Laporan Bulanan','Pilih bulan dan jenis dokumen SPJ')+
-  `<div class="panel"><form id="uploadForm"><div class="form-grid">
-     ${selectBulanHTML('up_periode', 'Pilih Periode Bulan Pelaporan')}
-     ${selectDokumenHTML('up_spj', 'Pilih Jenis Komponen Dokumen SPJ')}
-     <div class="field full-col"><label>Pilih File Berkas Laporan (.pdf)</label><input id="up_file" type="file" accept=".pdf" required></div>
-   </div><div id="upMsg"></div><button class="btn btn-primary" style="margin-top:14px">Unggah Berkas ke Sistem</button></form><pre id="upResult" style="margin-top:16px">Belum ada berkas diunggah.</pre></div>`;
+  $('#mainContent').innerHTML=head('Unggah Dokumen SPJ','Hanya akun SEKOLAH yang dapat mengunggah dokumen')+
+  `<div class="panel"><form id="uploadForm"><div class="form-grid"><div class="field"><label>ID Periode</label><input id="up_periode" required placeholder="Contoh: BLN-01"></div><div class="field"><label>ID SPJ</label><input id="up_spj" required placeholder="ID Master SPJ"></div><div class="field full-col"><label>Pilih File Dokumen (.pdf)</label><input id="up_file" type="file" accept=".pdf" required></div></div><div id="upMsg"></div><button class="btn btn-primary" style="margin-top:10px">Unggah dan Simpan ke Drive</button></form><pre id="upResult" style="margin-top:14px">Belum ada hasil.</pre></div>`;
   $('#uploadForm').onsubmit=async e=>{
     e.preventDefault(); const f=$('#up_file').files[0]; if(!f)return;
     const reader=new FileReader();
@@ -847,221 +385,77 @@ function uploadDokumenView(){
 }
 
 function transaksiView(){
-  $('#mainContent').innerHTML=head('Catatan Keuangan & Transaksi','Rekam transaksi belanja dengan format Rupiah ribuan')+
-  `<div class="panel">
-    <div class="toolbar">
-      <button class="btn btn-primary" id="friendlyLoadBtn">Tampilkan Data Transaksi</button>
-      <button class="btn btn-light" id="friendlyClearBtn">Bersihkan</button>
-    </div>
-    <div class="form-grid">
-      ${selectBulanHTML('f_idPeriode', 'Pilih Periode Bulan')}
-      <div class="field"><label>NPSN Sekolah (Opsional)</label><input id="f_npsn" placeholder="Nomor NPSN"></div>
-    </div>
-    <div id="friendlyResultArea" style="margin-top:16px"><p class="muted">Belum ada data yang dimuat.</p></div>
-  </div>`;
-
-  $('#friendlyLoadBtn').onclick = async () => {
-    const area = $('#friendlyResultArea');
-    area.innerHTML = '<p class="muted">Mengambil data transaksi...</p>';
-    try {
-      const p = $('#f_idPeriode').value, n = $('#f_npsn').value;
-      const res = await api('getTransaksiSPJ', {idPeriode: p, npsn: n});
-      const list = res.data || [];
-      if (!list.length) {
-        area.innerHTML = `<div class="message ok">Tidak ada data transaksi untuk periode tersebut.</div>`;
-        return;
-      }
-      let html = `<div class="table-wrap"><table class="friendly-table"><thead><tr><th>TANGGAL</th><th>URAIAN TRANSAKSI</th><th>NILAI TRANSAKSI</th><th>NO BUKTI</th><th>PENERIMA</th><th>PAJAK</th></tr></thead><tbody>`;
-      list.forEach(row => {
-        html += `<tr><td>${esc(row.tanggal_transaksi)}</td><td>${esc(row.uraian_transaksi)}</td><td><b>${fmtRupiah(row.nilai_transaksi)}</b></td><td>${esc(row.nomor_bukti)}</td><td>${esc(row.pihak_penerima)}</td><td>${esc(row.pajak)}</td></tr>`;
-      });
-      html += `</tbody></table></div>`;
-      area.innerHTML = html;
-    } catch(err) {
-      area.innerHTML = `<div class="message error">${esc(err.message)}</div>`;
-    }
-  };
-  $('#friendlyClearBtn').onclick = () => { $('#friendlyResultArea').innerHTML = '<p class="muted">Belum ada data yang dimuat.</p>'; };
+  $('#mainContent').innerHTML=head('Transaksi SPJ & Realisasi','Transaksi dan realisasi RKAS')+   actionPanel('getTransaksiSPJ',[{id:'idPeriode',label:'ID Periode'},{id:'npsn',label:'NPSN (Opsional)'}])+   actionPanel('realisasiRKAS',[{id:'npsn',label:'NPSN (Opsional)'}]);   const panels=$$('#mainContent .panel');
+  bindPanel(panels[0],'getTransaksiSPJ',[{id:'idPeriode'},{id:'npsn'}]);
+  bindPanel(panels[1],'realisasiRKAS',[{id:'npsn'}]);
 }
 
 function crosscheckView(){
   const actions=[
-    ['crossCheckTransaksiRKAS','Pemeriksaan Transaksi vs RKAS'],
-    ['crossCheckRealisasiRKAS','Pemeriksaan Realisasi Pagu'],
-    ['crossCheckTransaksiInvoice','Pemeriksaan Kelengkapan Invoice'],
-    ['crossCheckInvoiceBuktiPendukung','Pemeriksaan Bukti Pendukung'],
-    ['crossCheckKelengkapanDokumenSPJ','Pemeriksaan Status Dokumen Utama'],
-    ['crossCheckPotensiDuplikatSPJ','Deteksi Potensi Transaksi Duplikat'],
-    ['crossCheckTransaksiBukuPajak','Pemeriksaan Buku Pajak'],
-    ['jalankanCrossCheckSPJBulanan','Jalankan Seluruh Pemeriksaan Bulanan']
+    ['crossCheckTransaksiRKAS','Transaksi vs RKAS'],
+    ['crossCheckRealisasiRKAS','Realisasi RKAS'],
+    ['crossCheckTransaksiInvoice','Transaksi Invoice'],
+    ['crossCheckInvoiceBuktiPendukung','Invoice & Bukti Pendukung'],
+    ['crossCheckKelengkapanDokumenSPJ','Kelengkapan Dokumen'],
+    ['crossCheckPotensiDuplikatSPJ','Potensi Duplikat'],
+    ['crossCheckTransaksiBukuPajak','Buku Pajak'],
+    ['jalankanCrossCheckSPJBulanan','Cross-check Bulanan Lengkap']
   ];
-  $('#mainContent').innerHTML=head('Pemeriksaan & Validasi Otomatis','Sistem otomatis mendeteksi potensi ketidaksesuaian laporan keuangan')+
-  actions.map(a=>`<div class="panel"><h3>${a[1]}</h3>
-    <div class="form-grid">
-      ${selectBulanHTML(a[0]+'_p', 'Pilih Bulan Pemeriksaan')}
-      <div class="field"><label>NPSN Sekolah</label><input id="${a[0]}_n" placeholder="Nomor NPSN"></div>
-    </div>
-    <button class="btn btn-primary run-cross" data-action="${a[0]}" style="margin-top:12px">Jalankan Pemeriksaan</button>
-    <div id="${a[0]}_r" style="margin-top:12px"><p class="muted">Belum ada hasil pemeriksaan.</p></div>
-  </div>`).join('');
+  $('#mainContent').innerHTML=head('Cross-check Otomatis','Pemeriksaan otomatis dari backend')+
+  actions.map(a=>`<div class="panel"><h3>${a[1]}</h3><div class="form-grid"><div class="field"><label>ID Periode</label><input id="${a[0]}_p" placeholder="ID Periode"></div><div class="field"><label>NPSN</label><input id="${a[0]}_n" placeholder="NPSN Sekolah"></div></div><button class="btn btn-primary run-cross" data-action="${a[0]}" style="margin-top:10px">Jalankan</button><pre id="${a[0]}_r" style="margin-top:10px">Belum ada hasil.</pre></div>`).join('');
 
   $$('.run-cross').forEach(btn=>{
     btn.onclick=async()=>{
       const a=btn.dataset.action, p=$('#'+a+'_p').value, n=$('#'+a+'_n').value;
-      const area = $('#'+a+'_r');
-      area.innerHTML='<p class="muted">Sedang memeriksa data...</p>';
-      try{
-        const res = await api(a,{idPeriode:p,npsn:n});
-        let list = res.findings || res.data || [];
-        if(!list.length){
-          area.innerHTML=`<div class="message ok">Pemeriksaan selesai: Tidak ditemukan adanya temuan atau masalah pada kategori ini.</div>`;
-          return;
-        }
-        let html = `<div class="table-wrap"><table class="friendly-table"><thead><tr><th>KODE TEMUAN</th><th>LEVEL</th><th>SUMBER UTAMA</th><th>NILAI SUMBER</th><th>CATATAN SISTEM</th></tr></thead><tbody>`;
-        list.forEach(item => {
-          html += `<tr><td><b>${esc(item.kode_temuan)}</b></td><td><span class="badge badge-warning">${esc(item.level_temuan)}</span></td><td>${esc(item.sumber_utama)}</td><td>${fmtRupiah(item.nilai_sumber)}</td><td>${esc(item.catatan_sistem)}</td></tr>`;
-        });
-        html += `</tbody></table></div>`;
-        area.innerHTML = html;
-      }catch(e){
-        area.innerHTML=`<div class="message error">${esc(e.message)}</div>`;
-      }
+      $('#'+a+'_r').textContent='Memproses...';
+      try{const r=await api(a,{idPeriode:p,npsn:n});$('#'+a+'_r').textContent=JSON.stringify(r,null,2)}catch(e){$('#'+a+'_r').textContent=e.message}
     };
   });
 }
 
 function temuanView(){
-  $('#mainContent').innerHTML=head('Temuan & Perbaikan Laporan','Kelola catatan hasil temuan audit dan verifikasi pengawas')+
-  `<div class="panel">
-    <div class="toolbar">
-      <button class="btn btn-primary" id="friendlyLoadBtn">Tampilkan Data Temuan</button>
-      <button class="btn btn-light" id="friendlyClearBtn">Bersihkan</button>
-    </div>
-    <div class="form-grid">${selectBulanHTML('f_idPeriode', 'Pilih Periode Bulan')}</div>
-    <div id="friendlyResultArea" style="margin-top:16px"><p class="muted">Belum ada data temuan yang dimuat.</p></div>
-  </div>`+
-  actionPanel('verifikasiTemuanSPJ',[{id:'idTemuan',label:'ID Temuan'},{id:'hasilVerifikasi',label:'Hasil (TERBUKTI / TIDAK_TERBUKTI / PERLU_DATA / N/A)'},{id:'catatan',label:'Catatan Verifikasi Pengawas',full:true}]);
-
-  $('#friendlyLoadBtn').onclick = async () => {
-    const area = $('#friendlyResultArea');
-    area.innerHTML = '<p class="muted">Memuat data temuan...</p>';
-    try {
-      const p = $('#f_idPeriode').value;
-      const res = await api('getTemuanSPJ', {idPeriode: p});
-      const list = res.data || [];
-      if (!list.length) {
-        area.innerHTML = `<div class="message ok">Tidak ada temuan pada periode tersebut.</div>`;
-        return;
-      }
-      let html = `<div class="table-wrap"><table class="friendly-table"><thead><tr><th>ID TEMUAN</th><th>KODE TEMUAN</th><th>LEVEL</th><th>STATUS</th><th>HASIL SISTEM</th><th>VERIFIKASI</th></tr></thead><tbody>`;
-      list.forEach(row => {
-        html += `<tr><td><b>${esc(row.id_temuan)}</b></td><td>${esc(row.kode_temuan)}</td><td><span class="badge badge-warning">${esc(row.level_temuan)}</span></td><td><span class="badge badge-info">${esc(row.status_temuan)}</span></td><td>${esc(row.hasil_sistem)}</td><td><span class="badge badge-success">${esc(row.hasil_verifikasi || 'BELUM')}</span></td></tr>`;
-      });
-      html += `</tbody></table></div>`;
-      area.innerHTML = html;
-    } catch(err) {
-      area.innerHTML = `<div class="message error">${esc(err.message)}</div>`;
-    }
-  };
-  $('#friendlyClearBtn').onclick = () => { $('#friendlyResultArea').innerHTML = '<p class="muted">Belum ada data yang dimuat.</p>'; };
+  $('#mainContent').innerHTML=head('Temuan & Verifikasi Audit','Temuan pemeriksaan SPJ & verifikasi pengawas')+   actionPanel('getTemuanSPJ',[{id:'idPeriode',label:'ID Periode'},{id:'npsn',label:'NPSN'}])+   actionPanel('verifikasiTemuanSPJ',[{id:'idTemuan',label:'ID Temuan'},{id:'hasilVerifikasi',label:'Hasil (TERBUKTI / TIDAK_TERBUKTI / N/A)'},{id:'catatan',label:'Catatan Pengawas',full:true}]);   const panels=$$('#mainContent .panel');
+  bindPanel(panels[0],'getTemuanSPJ',[{id:'idPeriode'},{id:'npsn'}]);
+  bindPanel(panels[1],'verifikasiTemuanSPJ',[{id:'idTemuan'},{id:'hasilVerifikasi'},{id:'catatan'}]);
 }
 
 function asesmenInteractiveView(){
-  $('#mainContent').innerHTML=head('Lembar Penilaian Asesmen','Hitung indikator, simpan indeks kompleksitas, dan masukkan skor penilaian pengawas')+
-  `<div class="panel">
-     <h3 class="section-title" style="margin-top:0">Hitung Indikator Dari Temuan</h3>
-     <div class="form-grid">${selectBulanHTML('ind_p', 'Pilih Periode Bulan')}</div>
-     <button class="btn btn-primary" id="runIndBtn" style="margin-top:10px">Hitung Indikator</button>
-     <div id="indResArea" style="margin-top:12px"></div>
-   </div>`+
-  `<div class="panel">
-     <h3 class="section-title" style="margin-top:0">Simpan Kompleksitas</h3>
-     <div class="form-grid">${selectBulanHTML('kom_p', 'Pilih Periode Bulan')}</div>
-     <button class="btn btn-primary" id="runKomBtn" style="margin-top:10px">Simpan Kompleksitas</button>
-     <pre id="komRes" style="margin-top:12px">Belum ada aksi.</pre>
-   </div>`+
-  `<div class="panel">
-     <h3 class="section-title" style="margin-top:0">Buat atau Ambil Asesmen</h3>
-     <div class="form-grid">${selectBulanHTML('asm_p', 'Pilih Periode Bulan')}</div>
-     <button class="btn btn-primary" id="runAsmBtn" style="margin-top:10px">Ambil Asesmen</button>
-     <pre id="asmRes" style="margin-top:12px">Belum ada aksi.</pre>
-   </div>`+
-  `<div class="panel"><h3 class="section-title" style="margin-top:0">Input Skor Detail Per Indikator</h3><div class="form-grid">
+  $('#mainContent').innerHTML=head('Asesmen & Detail Penilaian Mutu','Hitung indikator, simpan kompleksitas, ambil asesmen, dan input skor detail per indikator')+
+  actionPanel('hitungIndikatorDariTemuan',[{id:'idPeriode',label:'ID Periode'},{id:'npsn',label:'NPSN'}])+
+  actionPanel('simpanKompleksitas',[{id:'idPeriode',label:'ID Periode'},{id:'npsn',label:'NPSN'}])+
+  actionPanel('buatAtauAmbilAsesmen',[{id:'idPeriode',label:'ID Periode'},{id:'npsn',label:'NPSN'}])+
+  
+  `<div class="panel"><h3 class="section-title" style="margin-top:0">Simpan Detail Asesmen (Input Skor Per Indikator)</h3><div class="form-grid">
      <div class="field"><label>ID Asesmen</label><input id="d_asm_id" placeholder="ID Asesmen"></div>
      <div class="field"><label>ID Indikator</label><input id="d_asm_ind" placeholder="ID Indikator"></div>
      <div class="field"><label>Status Berlaku</label><input id="d_asm_status" value="BERLAKU" placeholder="BERLAKU / N/A"></div>
-     <div class="field"><label>Skor Penilaian (0 - 4)</label><input id="d_asm_skor" type="number" min="0" max="4" placeholder="0 - 4"></div>
-     <div class="field full-col"><label>Catatan Pengawas</label><textarea id="d_asm_catatan" rows="2" placeholder="Tuliskan catatan kualitatif..."></textarea></div>
-   </div><button class="btn btn-primary" id="saveDetailAsesmenBtn" style="margin-top:12px">Simpan Skor Indikator</button><pre id="d_asm_res" style="margin-top:12px">Belum ada data skor.</pre></div>`+
-  actionPanel('finalisasiAsesmen',[{id:'idAsesmen',label:'ID Asesmen yang ingin difinalisasi'}]);
+     <div class="field"><label>Skor (0 - 4)</label><input id="d_asm_skor" type="number" min="0" max="4" placeholder="Skor"></div>
+     <div class="field full-col"><label>Catatan Pengawas</label><textarea id="d_asm_catatan" rows="2" placeholder="Catatan..."></textarea></div>
+   </div><div class="toolbar" style="margin-top:12px"><button class="btn btn-primary" id="saveDetailAsesmenBtn">Simpan Detail Asesmen</button><button class="btn btn-light" id="clearAsmRes">Bersihkan</button></div><pre id="d_asm_res" style="margin-top:10px">Belum ada hasil.</pre></div>`+
 
-  $('#runIndBtn').onclick = async () => {
-    const p = $('#ind_p').value;
-    const area = $('#indResArea');
-    area.innerHTML = '<p class="muted">Menghitung indikator...</p>';
-    try {
-      const res = await api('hitungIndikatorDariTemuan', {idPeriode: p});
-      const list = res.data || [];
-      if(!list.length){ area.innerHTML = `<div class="message ok">Tidak ada indikator.</div>`; return; }
-      let html = `<div class="table-wrap"><table class="friendly-table"><thead><tr><th>KODE INDIKATOR</th><th>NAMA INDIKATOR</th><th>BOBOT</th><th>SKOR</th><th>JUMLAH TEMUAN</th></tr></thead><tbody>`;
-      list.forEach(i => {
-        html += `<tr><td><b>${esc(i.kode_indikator)}</b></td><td>${esc(i.nama_indikator)}</td><td>${esc(i.bobot)}</td><td><b>${esc(i.skor)}</b></td><td>${esc(i.jumlah_temuan)}</td></tr>`;
-      });
-      html += `</tbody></table></div>`;
-      area.innerHTML = html;
-    } catch(e) { area.innerHTML = `<div class="message error">${esc(e.message)}</div>`; }
-  };
+  actionPanel('finalisasiAsesmen',[{id:'idAsesmen',label:'ID Asesmen'}]);
 
-  $('#runKomBtn').onclick = async () => {
-    const p = $('#kom_p').value;
-    $('#komRes').textContent = 'Menyimpan kompleksitas...';
-    try {
-      const r = await api('simpanKompleksitas', {idPeriode: p});
-      $('#komRes').textContent = JSON.stringify(r, null, 2);
-    } catch(e) { $('#komRes').textContent = e.message; }
-  };
-
-  $('#runAsmBtn').onclick = async () => {
-    const p = $('#asm_p').value;
-    $('#asmRes').textContent = 'Mengambil asesmen...';
-    try {
-      const r = await api('buatAtauAmbilAsesmen', {idPeriode: p});
-      $('#asmRes').textContent = JSON.stringify(r, null, 2);
-    } catch(e) { $('#asmRes').textContent = e.message; }
-  };
+  const panels=$$('#mainContent .panel');
+  bindPanel(panels[0],'hitungIndikatorDariTemuan',[{id:'idPeriode'},{id:'npsn'}]);
+  bindPanel(panels[1],'simpanKompleksitas',[{id:'idPeriode'},{id:'npsn'}]);
+  bindPanel(panels[2],'buatAtauAmbilAsesmen',[{id:'idPeriode'},{id:'npsn'}]);
+  bindPanel(panels[4],'finalisasiAsesmen',[{id:'idAsesmen'}]);
 
   $('#saveDetailAsesmenBtn').onclick=async()=>{
     const payload={id_asesmen:$('#d_asm_id').value,id_indikator:$('#d_asm_ind').value,status_berlaku:$('#d_asm_status').value,skor:$('#d_asm_skor').value,catatan_pengawas:$('#d_asm_catatan').value};
-    $('#d_asm_res').textContent='Menyimpan nilai...';
+    $('#d_asm_res').textContent='Memproses...';
     try{const r=await api('simpanDetailAsesmen',{data:payload});$('#d_asm_res').textContent=JSON.stringify(r,null,2)}catch(e){$('#d_asm_res').textContent=e.message}
   };
+  $('#clearAsmRes').onclick=()=>$('#d_asm_res').textContent='Belum ada hasil.';
 }
 
 document.addEventListener('submit',e=>{if(e.target.id==='loginForm')doLogin(e)});
-
 window.addEventListener('DOMContentLoaded',()=>{
   try{
     if(state.token){
-      api('getSession').then(r=>{
-        if(r.success && r.data){
-          state.user=r.data;
-          dashboard();
-        }else{
-          state.token='';
-          sessionStorage.removeItem('simpel_token');
-          authView();
-        }
-      }).catch(()=>{
-        state.token='';
-        sessionStorage.removeItem('simpel_token');
-        authView();
-      });
-    }else{
-      authView();
-    }
-  }catch(e){
-    authView();
-  }
+      api('getSession').then(r=>{if(r.success){state.user=r.data||r.user||null;dashboard()}else{state.token='';sessionStorage.removeItem('simpel_token');authView()}}).catch(()=>{state.token='';sessionStorage.removeItem('simpel_token');authView()})
+    }else{authView()}
+  }catch(e){authView('login',msg('Halaman siap digunakan.','ok'))}
 });
 </script>
 <noscript><div style="position:fixed;left:12px;right:12px;bottom:12px;background:#fff0ef;color:#8a1c16;padding:12px;border-radius:12px;border:1px solid #f0c5c1;z-index:9999">JavaScript harus diaktifkan untuk menggunakan SIMPEL SPJ.</div></noscript></body>
