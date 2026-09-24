@@ -235,15 +235,21 @@ function initSlider(type) {
   let isDragging = false;
   let startX = 0;
 
-  const onStart = (clientX) => {
-    if (captchaData[type].verified) return;
-    isDragging = true;
-    startX = clientX - thumb.offsetLeft;
+  const getClientX = (e) => {
+    return e.touches && e.touches.length > 0 ? e.touches[0].clientX : e.clientX;
   };
 
-  const onMove = (clientX) => {
+  const onStart = (e) => {
+    if (captchaData[type].verified) return;
+    isDragging = true;
+    startX = getClientX(e);
+    e.preventDefault(); // Mencegah teks ikut terblok/tertarik di HP
+  };
+
+  const onMove = (e) => {
     if (!isDragging) return;
-    let diff = clientX - startX;
+    let currentX = getClientX(e);
+    let diff = currentX - startX;
     let maxDist = slider.clientWidth - thumb.clientWidth;
 
     if (diff < 0) diff = 0;
@@ -271,17 +277,17 @@ function initSlider(type) {
     }
   };
 
-  // Event Listener Mouse (Komputer / Laptop)
-  thumb.addEventListener('mousedown', (e) => onStart(e.clientX));
-  window.addEventListener('mousemove', (e) => { if (isDragging) onMove(e.clientX); });
+  // Event untuk Mouse (Komputer / Laptop)
+  thumb.addEventListener('mousedown', onStart);
+  window.addEventListener('mousemove', onMove);
   window.addEventListener('mouseup', onEnd);
 
-  // Event Listener Touch (HP / Tablet Layar Sentuh)
-  thumb.addEventListener('touchstart', (e) => onStart(e.touches[0].clientX), { passive: true });
-  window.addEventListener('touchmove', (e) => { if (isDragging && e.touches.length > 0) onMove(e.touches[0].clientX); }, { passive: true });
+  // Event untuk Touch (Layar Sentuh HP / Tablet)
+  thumb.addEventListener('touchstart', onStart, { passive: false });
+  window.addEventListener('touchmove', onMove, { passive: false });
   window.addEventListener('touchend', onEnd);
 }
-
+  
 function switchAuth(type) {
   document.getElementById('loginForm').classList.toggle('hidden', type !== 'login');
   document.getElementById('registerForm').classList.toggle('hidden', type !== 'register');
