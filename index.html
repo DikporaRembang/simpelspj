@@ -753,15 +753,25 @@ async function loadDinasMasterData() {
 async function loadRKASData() {
   const contentArea = document.getElementById('moduleContent');
   
-  // Cek apakah user adalah DINAS untuk menampilkan pilihan filter sekolah
   let filterHtml = '';
+  // Jika role DINAS, tampilkan dropdown pilihan sekolah dan tombol cetak
   if (currentUser.role === 'DINAS') {
     filterHtml = `
-      <div style="margin-bottom: 20px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-        <label style="font-weight: 700; font-size: 13px;">Filter Sekolah (NPSN):</label>
-        <select id="filterNpsn" onchange="fetchRKASByDinas()" style="padding: 10px 14px; border: 1px solid #dbe3ee; border-radius: 10px; background: #fff; min-width: 260px;">
-          <option value="">-- Muat Daftar Sekolah --</option>
-        </select>
+      <div style="margin-bottom: 20px; display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap;">
+        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+          <label style="font-weight: 700; font-size: 13px;">Filter Sekolah (NPSN):</label>
+          <select id="filterNpsn" onchange="fetchRKASByDinas()" style="padding: 10px 14px; border: 1px solid #dbe3ee; border-radius: 10px; background: #fff; min-width: 260px;">
+            <option value="">-- Muat Daftar Sekolah --</option>
+          </select>
+        </div>
+        <button class="btn btn-primary" style="width: auto; padding: 10px 18px; font-size: 13px;" onclick="cetakRKASApproved()">🖨 Cetak Laporan</button>
+      </div>
+    `;
+  } else {
+    // Jika SEKOLAH, tampilkan tombol cetak di sisi kanan atas modul
+    filterHtml = `
+      <div style="margin-bottom: 20px; display: flex; justify-content: flex-end;">
+        <button class="btn btn-primary" style="width: auto; padding: 10px 18px; font-size: 13px;" onclick="cetakRKASApproved()">🖨 Cetak Laporan RKAS</button>
       </div>
     `;
   }
