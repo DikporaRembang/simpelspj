@@ -56,7 +56,7 @@ table{width:100%;border-collapse:collapse;text-align:left;font-size:14px}
 th,td{padding:12px 14px;border-bottom:1px solid #e2e8f0}
 th{background:#f8fafc;color:var(--navy);font-weight:800}
 
-@media(max-width:900px){.auth-wrap{grid-template-columns:1fr;padding:14px}.brand-panel{display:none}.auth-card{max-width:560px;width:100%;margin:auto}.cards{grid-template-columns:1fr 1fr}}
+@media(max-width:900px){.auth-wrap{grid-template-columns:1fr;padding:14px}.brand-panel{display:none}.auth-card{max-width:560px;width:100%}}
 @media(max-width:768px){.shell{flex-direction:column;min-height:100vh}.sidebar{width:100%;padding:14px;flex-direction:row;align-items:center;overflow-x:auto;gap:8px;position:sticky;top:0;z-index:100;box-shadow:0 4px 12px rgba(0,0,0,0.1)}.sidebar h2{display:none}.nav-btn{width:auto;white-space:nowrap;padding:10px 14px;font-size:13px;margin:0}.logout{margin-top:0;background:#dc2626;color:white}.main{padding:16px}.cards{grid-template-columns:1fr}.topbar{flex-direction:column;align-items:flex-start}}
 </style>
 </head>
@@ -210,6 +210,7 @@ async function fetchServerCaptcha(type) {
   }
 }
 
+// Inisialisasi awal saat halaman dibuka
 fetchServerCaptcha('login');
 fetchServerCaptcha('register');
 
@@ -243,7 +244,7 @@ function initSlider(type) {
     if (captchaData[type].verified) return;
     isDragging = true;
     startX = getClientX(e);
-    e.preventDefault(); // Mencegah teks ikut terblok/tertarik di HP
+    e.preventDefault();
   };
 
   const onMove = (e) => {
@@ -258,7 +259,6 @@ function initSlider(type) {
     thumb.style.left = diff + 'px';
     track.style.width = (diff + thumb.clientWidth) + 'px';
 
-    // Jika digeser sampai mendekati ujung kanan (toleransi 10px)
     if (diff >= maxDist - 10) {
       isDragging = false;
       captchaData[type].verified = true;
@@ -277,16 +277,20 @@ function initSlider(type) {
     }
   };
 
-  // Event untuk Mouse (Komputer / Laptop)
   thumb.addEventListener('mousedown', onStart);
   window.addEventListener('mousemove', onMove);
   window.addEventListener('mouseup', onEnd);
 
-  // Event untuk Touch (Layar Sentuh HP / Tablet)
   thumb.addEventListener('touchstart', onStart, { passive: false });
   window.addEventListener('touchmove', onMove, { passive: false });
   window.addEventListener('touchend', onEnd);
 }
+
+// **PENTING:** Inisialisasi slider saat halaman siap
+document.addEventListener('DOMContentLoaded', () => {
+  initSlider('login');
+  initSlider('register');
+});
   
 function switchAuth(type) {
   document.getElementById('loginForm').classList.toggle('hidden', type !== 'login');
@@ -295,7 +299,6 @@ function switchAuth(type) {
   document.getElementById('registerTab').classList.toggle('active', type === 'register');
   document.getElementById('authMessage').textContent = '';
   
-  // Ambil captcha baru jika belum terverifikasi
   if (!captchaData[type].verified && !captchaData[type].id) {
     fetchServerCaptcha(type);
   }
@@ -352,14 +355,15 @@ async function checkIdentityAutoFill() {
 
 async function handleLogin(e) {
   e.preventDefault();
+  const msg = document.getElementById('authMessage');
+
   if (!captchaData.login.verified) { 
-    document.getElementById('authMessage').textContent = 'Geser CAPTCHA terlebih dahulu.'; 
+    msg.textContent = 'Geser CAPTCHA terlebih dahulu.'; 
     return; 
   }
 
   const username = document.getElementById('loginUser').value.trim();
   const password = document.getElementById('loginPass').value;
-  const msg = document.getElementById('authMessage');
   msg.textContent = 'Memproses masuk...';
 
   try {
@@ -370,8 +374,8 @@ async function handleLogin(e) {
         data: { 
           username, 
           password, 
-          captcha_id: captchaData.login.id,     // Mengirim ID asli dari server
-          captcha_answer: 'SUCCESS'             // Diterima backend sebagai validasi sukses
+          captcha_id: captchaData.login.id,     
+          captcha_answer: 'SUCCESS'             
         } 
       })
     });
@@ -386,9 +390,10 @@ async function handleLogin(e) {
       loadDashboardData();
     } else {
       msg.textContent = result.message;
-      // Reset captcha jika gagal agar pengguna bisa verifikasi ulang
       captchaData.login.verified = false;
       fetchServerCaptcha('login');
+      // Reset visual slider login jika gagal
+      resetSliderUI('login');
     }
   } catch (err) {
     msg.textContent = 'Gagal terhubung ke backend Apps Script.';
@@ -397,8 +402,10 @@ async function handleLogin(e) {
 
 async function handleRegister(e) {
   e.preventDefault();
+  const msg = document.getElementById('authMessage');
+
   if (!captchaData.register.verified) { 
-    document.getElementById('authMessage').textContent = 'Geser CAPTCHA terlebih dahulu.'; 
+    msg.textContent = 'Geser CAPTCHA terlebih dahulu.'; 
     return; 
   }
 
@@ -407,7 +414,6 @@ async function handleRegister(e) {
   const name = document.getElementById('regName').value.trim();
   const password = document.getElementById('regPass').value;
   const passwordConfirm = document.getElementById('regPassConfirm').value;
-  const msg = document.getElementById('authMessage');
 
   const hasLetter = /[a-zA-Z]/.test(password);
   const hasNumber = /[0-9]/.test(password);
@@ -442,9 +448,25 @@ async function handleRegister(e) {
       msg.textContent = result.message;
       captchaData.register.verified = false;
       fetchServerCaptcha('register');
+      resetSliderUI('register');
     }
   } catch (err) {
     msg.textContent = 'Gagal mengirim data ke server.';
+  }
+}
+
+// Fungsi bantu untuk mereset tampilan slider ke posisi awal jika gagal
+function resetSliderUI(type) {
+  const slider = document.getElementById(type + 'Slider');
+  const thumb = document.getElementById(type + 'Thumb');
+  const track = document.getElementById(type + 'Track');
+  const text = document.getElementById(type + 'Text');
+  
+  if (slider && thumb) {
+    slider.classList.remove('success');
+    thumb.style.left = '0px';
+    track.style.width = '0px';
+    text.textContent = 'Geser ke kanan untuk verifikasi';
   }
 }
 
