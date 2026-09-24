@@ -70,12 +70,6 @@ button{cursor:pointer}
 .toggle-pass{position:absolute;right:6px;top:4px;border:0;background:transparent;padding:9px;color:var(--muted);font-size:1.1rem}
 .message{padding:13px 15px;border-radius:14px;margin:14px 0;font-size:.92rem}
 .message.error{background:#fff0ef;color:var(--danger)}.message.ok{background:#e9f8ef;color:#146c43}
-.slider{border:1px solid var(--border);border-radius:14px;padding:12px;background:#f8faf8}
-.slider-track{height:10px;background:#dce7df;border-radius:99px;position:relative}
-.slider-progress{height:100%;width:0;background:var(--primary-3);border-radius:99px}
-.slider-knob{width:34px;height:34px;border-radius:50%;background:var(--primary);position:relative;top:-22px;left:0;display:grid;place-items:center;color:#fff;font-size:13px;touch-action:none;user-select:none;box-shadow:0 4px 10px rgba(0,0,0,.15)}
-.slider-status{text-align:center;font-size:.82rem;color:var(--muted);margin-top:-6px;font-weight:600}
-.captcha-ok .slider-progress{width:100%!important;background:#16a34a}.captcha-ok .slider-knob{left:calc(100% - 34px)!important;background:#16a34a}
 
 /* Application shell */
 .dashboard{min-height:100vh}
@@ -100,7 +94,6 @@ button{cursor:pointer}
 .sidebar-logo-row{display:flex;align-items:center;gap:9px}
 .sidebar-logo-row img{width:30px;height:30px;object-fit:contain;background:#fff;border-radius:6px;padding:2px}
 .sidebar-logo-row div span{display:block;font-size:.72rem;color:#fff;line-height:1.2;font-weight:700}
-.sidebar-logo-row div small{font-size:.62rem;color:#d4edda}
 
 .content{padding:clamp(20px,3vw,38px);min-width:0;max-width:1500px;width:100%;margin:0 auto}
 .page-head{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:22px}
@@ -120,7 +113,6 @@ button{cursor:pointer}
 .friendly-table td{padding:12px 14px;border-bottom:1px solid var(--border);color:#2b3a32;vertical-align:middle}
 .friendly-table tr:hover{background:#f8fcf9}
 
-/* Subtotal & Grand Total Styling */
 .subtotal-row{background:#e8f4ec!important;font-weight:800;color:#0f5132}
 .subtotal-row td{border-top:2px solid var(--primary-3);border-bottom:2px solid var(--primary-3)}
 .grandtotal-row{background:#d4edda!important;font-weight:900;color:#0b3d27;font-size:1rem}
@@ -187,7 +179,13 @@ const ROLE_RULES={
   PENGAWAS:['home','sekolah','penugasan','dokumen','transaksi','crosscheck','temuan','asesmen','master']
 };
 
-const state={token:sessionStorage.getItem('simpel_token')||'',user:null,view:'home',cache:{},captcha:false};
+const state={
+  token:sessionStorage.getItem('simpel_token')||'',
+  user:null,
+  view:'home',
+  captchaAns:0
+};
+
 const $=s=>document.querySelector(s),$$=s=>Array.from(document.querySelectorAll(s));
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]||c));
 
@@ -231,32 +229,26 @@ function passwordToggle(id){
   if(el) el.type=el.type==='password'?'text':'password';
 }
 
-function captchaHTML(){
-  return `<div class="slider" id="captchaBox"><div class="muted" style="margin-bottom:8px">Geser ke kanan untuk verifikasi keamanan</div><div class="slider-track"><div class="slider-progress"></div><div class="slider-knob" id="captchaKnob">↔</div></div><div class="slider-status" id="captchaStatus">Geser tombol dari kiri ke kanan</div></div>`;
+/* Captcha Matematika Baru */
+function generateMathCaptcha(){
+  const n1 = Math.floor(Math.random() * 8) + 2;
+  const n2 = Math.floor(Math.random() * 8) + 2;
+  const ops = ['+', '-', '*'];
+  const op = ops[Math.floor(Math.random() * ops.length)];
+  let ans = 0;
+  if(op === '+') ans = n1 + n2;
+  else if(op === '-') ans = n1 - n2;
+  else if(op === '*') ans = n1 * n2;
+  state.captchaAns = ans;
+  return `Berapakah hasil dari ${n1} ${op} ${n2} ?`;
 }
 
-function setupCaptcha(){
-  const box=$('#captchaBox'), knob=$('#captchaKnob');
-  if(!box||!knob)return;
-  let dragging=false;
-  const move=x=>{
-    if(!dragging||state.captcha)return;
-    const rect=box.querySelector('.slider-track').getBoundingClientRect();
-    let pos=Math.max(0,Math.min(rect.width-34,x-rect.left-17));
-    knob.style.left=pos+'px';
-    box.querySelector('.slider-progress').style.width=(pos/(rect.width-34)*100)+'%';
-    if(pos>=rect.width-44){
-      state.captcha=true;
-      box.classList.add('captcha-ok');
-      const statusEl=$('#captchaStatus');
-      if(statusEl) statusEl.textContent='Verifikasi Berhasil';
-    }
-  };
-  const down=e=>{dragging=true;e.preventDefault();};
-  const up=()=>dragging=false;
-  knob.addEventListener('pointerdown',down);
-  window.addEventListener('pointermove',e=>move(e.clientX));
-  window.addEventListener('pointerup',up);
+function captchaHTML(){
+  const qText = generateMathCaptcha();
+  return `<div class="field">
+    <label>Verifikasi Keamanan (${qText})</label>
+    <input id="captchaInput" type="number" required placeholder="Masukkan jawaban angka">
+  </div>`;
 }
 
 function authView(notice=''){
@@ -269,8 +261,6 @@ function authView(notice=''){
       <p>Dilengkapi pusat verifikasi usulan sekolah khusus Dinas Kabupaten untuk mempercepat persetujuan anggaran.</p>
       <div class="feature"><span>✓ Verifikasi Terpusat Dinas</span><span>✓ Persetujuan 1 Klik</span><span>✓ Manajemen RKAS</span><span>✓ Akuntabel & Transparan</span></div>
     </div>
-    
-    <!-- Footer Logos di halaman Login -->
     <div class="auth-footer-logos">
       <div class="footer-logo-item"><img src="logorembang.png" alt="Logo Rembang"><div><span>Dinas Pendidikan, Pemuda dan Olahraga</span><small>Kabupaten Rembang</small></div></div>
       <div class="footer-logo-item"><img src="logopendidikan.png" alt="Logo Pendidikan"><div><span>Direktorat SD Kemdikdasmen RI</span><small>Pembinaan Sekolah Dasar</small></div></div>
@@ -293,14 +283,14 @@ function authView(notice=''){
       </form>
     </div></section>
   </main>`;
-  setupCaptcha();
 }
 
 async function doLogin(e){
   e.preventDefault();
   const m=$('#authMsg');
-  if(!state.captcha){
-    if(m) m.innerHTML=msg('Silakan selesaikan geser verifikasi terlebih dahulu.');
+  const userAns = Number($('#captchaInput')?.value);
+  if(userAns !== state.captchaAns){
+    if(m) m.innerHTML=msg('Jawaban verifikasi keamanan (captcha) salah. Silakan coba lagi.');
     return;
   }
   const b=$('#loginBtn');
@@ -352,7 +342,6 @@ function renderShell(){
       <div class="nav-section-title">Menu Utama</div>
       ${navItems().map(n=>`<button class="nav-btn" data-view="${n.id}">${n.label}</button>`).join('')}
     </div>
-    <!-- Sidebar Footer Logos -->
     <div class="sidebar-footer">
       <div class="sidebar-logo-row"><img src="logorembang.png" alt="Rembang"><div><span>Dindikpora Kab. Rembang</span></div></div>
       <div class="sidebar-logo-row"><img src="logopendidikan.png" alt="Kemdikdasmen"><div><span>Direktorat SD Kemdikdasmen</span></div></div>
@@ -364,6 +353,10 @@ function renderShell(){
 
 function loadView(view){
   state.view=view; setActive(view);
+  const mainC = $('#mainContent');
+  if(!mainC) return;
+  mainC.innerHTML = '<p class="muted">Memuat halaman...</p>';
+
   if(view==='home') return homeView();
   if(view==='verifikasiDinas') return verifikasiDinasView();
   if(view==='sekolah') return friendlyTableAction('Daftar Seluruh Sekolah','getSekolah','Daftar sekolah dasar terdaftar di kabupaten.');
@@ -381,7 +374,6 @@ function loadView(view){
 
 function head(title,desc=''){return `<div class="page-head"><div><h1>${title}</h1><div class="muted">${desc}</div></div></div>`}
 
-// HALAMAN KHUSUS PUSAT VERIFIKASI USULAN SEKOLAH (DINAS)
 function verifikasiDinasView(){
   $('#mainContent').innerHTML=head('Verifikasi Usulan Sekolah','Pusat peninjauan dan persetujuan seluruh usulan / perubahan RKAS dari sekolah')+
   `<div class="panel">
@@ -432,7 +424,7 @@ window.reviewUsulanDinas = async (versi, keputusan) => {
     const res = await api('reviewRKAS', {versiRkas: versi, keputusan: keputusan});
     if(res.success){
       alert(`Berhasil! Keputusan "${keputusan}" telah disimpan.`);
-      $('#loadUsulanBtn').click();
+      $('#loadUsulanBtn')?.click();
     } else {
       alert('Gagal: ' + (res.message || 'Terjadi kesalahan'));
     }
@@ -1051,8 +1043,8 @@ window.addEventListener('DOMContentLoaded',()=>{
   try{
     if(state.token){
       api('getSession').then(r=>{
-        if(r.success){
-          state.user=r.data||r.user||null;
+        if(r.success && r.data){
+          state.user=r.data;
           dashboard();
         }else{
           state.token='';
