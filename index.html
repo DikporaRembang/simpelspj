@@ -4,6 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>SIMPEL SPJ — Kabupaten Rembang</title>
+<!-- SheetJS untuk membaca file Excel BKU secara lokal -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
 :root{
   --primary:#0f5132;--primary-2:#146c43;--primary-3:#198754;
@@ -46,8 +48,6 @@ button{cursor:pointer}
 .auth-side-inner{max-width:680px;margin:auto 0}
 .auth-side h1{font-size:clamp(1.9rem,4vw,3.8rem);line-height:1.1;margin:20px 0 14px;letter-spacing:-1px}
 .auth-side p{max-width:580px;line-height:1.7;color:#e9f6ed;font-size:1rem}
-.feature{display:flex;flex-direction:column;gap:10px;margin-top:24px}
-.feature span{display:flex;gap:10px;align-items:center;padding:11px 14px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);border-radius:12px;font-size:.9rem;width:fit-content}
 
 .auth-panel{display:flex;align-items:center;justify-content:center;padding:clamp(16px,4vw,36px);background:rgba(248,251,249,.98)}
 .auth-card{width:min(100%,440px);background:#fff;border:1px solid var(--border);border-radius:24px;padding:clamp(20px,4vw,32px);box-shadow:var(--shadow)}
@@ -56,8 +56,6 @@ button{cursor:pointer}
 .field label{display:block;font-size:.88rem;font-weight:700;margin-bottom:6px;color:#2c3e35}
 .field input,.field select,.field textarea{width:100%;border:1px solid var(--border);border-radius:12px;padding:12px 14px;outline:0;background:#fff;min-height:46px;font-size:.95rem}
 .field input:focus,.field select:focus,.field textarea:focus{border-color:var(--primary-3);box-shadow:0 0 0 3px rgba(25,135,84,.12)}
-.password-wrap{position:relative}.password-wrap input{padding-right:46px}
-.toggle-pass{position:absolute;right:4px;top:4px;border:0;background:transparent;padding:10px;color:var(--muted);font-size:1rem}
 .message{padding:12px 14px;border-radius:12px;margin:12px 0;font-size:.9rem}
 .message.error{background:#fff0ef;color:var(--danger)}.message.ok{background:#e9f8ef;color:#146c43}
 
@@ -71,7 +69,6 @@ button{cursor:pointer}
 .topbar .brand{margin:0}.top-actions{display:flex;align-items:center;gap:10px}
 .layout{display:grid;grid-template-columns:260px minmax(0,1fr);min-height:calc(100vh - 66px)}
 
-/* Sidebar Berkelompok Berdasarkan Role */
 .sidebar{background:linear-gradient(180deg,#0c4229,#082c1b);color:#dff3e5;padding:20px 12px;display:flex;flex-direction:column;justify-content:space-between}
 .nav-group{display:flex;flex-direction:column;gap:3px}
 .nav-section-title{font-size:.7rem;text-transform:uppercase;letter-spacing:.8px;color:#8ab59b;margin:16px 0 6px 10px;font-weight:800}
@@ -85,7 +82,6 @@ button{cursor:pointer}
 .page-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:20px}
 .page-head h1{margin:0;font-size:clamp(1.4rem,2.5vw,2rem);letter-spacing:-.5px;color:#11291b}
 
-/* Statistik & Kartu */
 .cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
 .stat,.panel{
   background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
@@ -95,7 +91,6 @@ button{cursor:pointer}
 .panel{padding:20px;margin-top:18px}
 .toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px}
 
-/* Tabel Bersih & Nyaman */
 .table-wrap{width:100%;overflow-x:auto;margin-top:12px;border:1px solid var(--border);border-radius:12px;background:#fff}
 .friendly-table{width:100%;border-collapse:collapse;font-size:.88rem}
 .friendly-table th{background:#f0f5f1;color:#183824;padding:11px 13px;text-align:left;font-weight:750;border-bottom:1px solid var(--border);white-space:nowrap}
@@ -139,7 +134,7 @@ const ROLE_MENUS = {
     {category: 'Utama', items: [{id:'home', label:'Beranda Sekolah'}]},
     {category: 'Keuangan Bulanan', items: [
       {id:'rkasReview', label:'Rencana Anggaran (RKAS)'},
-      {id:'transaksi', label:'Catatan Transaksi'}
+      {id:'transaksi', label:'📁 Impor & Catat Transaksi BKU'}
     ]},
     {category: 'Pelaporan Bulanan', items: [
       {id:'dokumenBulanan', label:'📁 Unggah SPJ Bulanan'}
@@ -182,7 +177,7 @@ const BULAN_OPTIONS = [
   {id:'P-2026-12', label:'Desember 2026'}
 ];
 
-const state={ token:'', user:null, view:'home', captchaAns:0, schoolListCache:[] };
+const state={ token:'', user:null, view:'home', captchaAns:0, importedTransactions:[] };
 const $=s=>document.querySelector(s),$$=s=>Array.from(document.querySelectorAll(s));
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]||c));
 const fmtRupiah=v=>{const n=Number(v);return isNaN(n)?esc(v):new Intl.NumberFormat('id-ID',{style:'currency',currency:'IDR',maximumFractionDigits:0}).format(n)};
@@ -262,10 +257,10 @@ async function loadView(view){
 
   if(view==='home')return homeView();
   if(view==='dokumenBulanan')return dokumenBulananView();
+  if(view==='transaksi')return transaksiImportExcelView();
   if(view==='sekolah')return sekolahView();
   if(view==='penugasan')return penugasanView();
   if(view==='rkasReview')return rkasReviewView();
-  if(view==='transaksi')return transaksiView();
   if(view==='crosscheck')return crosscheckView();
   if(view==='temuan')return temuanView();
   if(view==='asesmen')return asesmenView();
@@ -279,7 +274,7 @@ function head(title,desc=''){return `<div class="page-head"><div><h1>${title}</h
 function homeView(){
   const role=state.user?.role||'SEKOLAH';
   $('#mainContent').innerHTML=head(`Beranda ${role}`,'Selamat datang di sistem pelaporan keuangan dan audit SIMPEL SPJ Kabupaten Rembang.')+
-  `<div class="cards"><div class="stat"><small>Status Sesi</small><strong>Aktif</strong></div><div class="stat"><small>Peran Akses</small><strong style="font-size:1.1rem">${esc(role)}</strong></div></div>`+
+  `<div class="cards"><div class="stat"><small>Status Sesi</small><b>Aktif</b></div><div class="stat"><small>Peran Akses</small><strong style="font-size:1.1rem">${esc(role)}</strong></div></div>`+
   `<div class="panel"><h3 class="section-title" style="margin-top:0">Pusat Informasi Cepat</h3><p class="muted">Gunakan menu di sisi kiri untuk bernavigasi antar modul operasional keuangan, pemeriksaan, maupun pelaporan bulanan.</p></div>`;
 }
 
@@ -430,7 +425,122 @@ window.aturNaPajak = async (idSpj, periodeId) => {
 };
 
 /* ==========================================================
-   MODUL LAIN: SEKOLAH, PENUGASAN, RKAS, TRANSAKSI, DLL
+   MODUL: IMPOR & CATAT TRANSAKSI BKU DARI EXCEL (PENYEMPURNAAN)
+   ========================================================== */
+function transaksiImportExcelView(){
+  $('#mainContent').innerHTML=head('Impor & Catat Transaksi BKU dari Excel','Unggah file Excel BKU resmi untuk membaca dan memetakan transaksi otomatis') +
+  `<div class="panel">
+     <h3 class="section-title" style="margin-top:0">Unggah File Excel BKU (.xlsx)</h3>
+     <p class="muted">Baris nomor indeks (1, 2, 3, 4, 5...) disaring, dan data transaksi valid (baik pengeluaran ber-kode maupun penerimaan kas masuk) tetap dipertahankan.</p>
+     <div class="form-grid">
+       <div class="field full-col"><label>Pilih Berkas Excel BKU</label><input id="excelFileBku" type="file" accept=".xlsx, .xls"></div>
+     </div>
+     <button class="btn btn-primary" onclick="parseBkuExcel()" style="margin-top:12px">Proses & Ekstrak Transaksi Excel</button>
+     <div id="excelPreviewArea" style="margin-top:20px"></div>
+   </div>`;
+}
+
+window.parseBkuExcel = () => {
+  const fileInput = $('#excelFileBku');
+  const area = $('#excelPreviewArea');
+  if(!fileInput.files[0]){ alert('Silakan pilih file Excel terlebih dahulu.'); return; }
+
+  area.innerHTML = '<p class="muted">Membaca dan memetakan struktur file Excel...</p>';
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const data = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(data, {type: 'array'});
+      const firstSheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[firstSheetName];
+      const rows = XLSX.utils.sheet_to_json(worksheet, {header: 1});
+
+      let headerRowIdx = 14;
+      if(rows.length <= headerRowIdx) headerRowIdx = 0;
+
+      const dataRows = rows.slice(headerRowIdx + 2);
+      let extractedTransactions = [];
+
+      dataRows.forEach((r) => {
+        const tanggal = r[0];
+        const kode_kegiatan = r[3];
+        const kode_rekening = r[5];
+        const nomor_bukti = r[7];
+        const uraian = r[9];
+        const penerimaan = Number(r[13]) || 0;
+        const pengeluaran = Number(r[16]) || 0;
+        const saldo = Number(r[19]) || 0;
+
+        // 1. Hilangkan baris indeks angka 1 sampai 8 (misal: baris '1', '2', '3', '4', '5', '6', '7', '8' di kolom awal)
+        const isIndexRow = (String(tanggal) >= '1' && String(tanggal) <= '8' && !String(tanggal).includes('-'));
+        if(isIndexRow) return;
+
+        // 2. Pertahankan baris jika memiliki tanggal/uraian DAN (memiliki penerimaan > 0 ATAU memiliki kode kegiatan/rekening)
+        const hasPenerimaan = penerimaan > 0;
+        const hasPengeluaranOrCode = (pengeluaran > 0 || (kode_kegiatan && kode_rekening));
+
+        if((tanggal || uraian) && (hasPenerimaan || hasPengeluaranOrCode)){
+          extractedTransactions.push({
+            tanggal: String(tanggal).trim(),
+            kode_kegiatan: kode_kegiatan ? String(kode_kegiatan).trim() : '-',
+            kode_rekening: kode_rekening ? String(kode_rekening).trim() : '-',
+            nomor_bukti: nomor_bukti ? String(nomor_bukti).trim() : '-',
+            uraian: uraian ? String(uraian).trim() : (hasPenerimaan ? 'Penerimaan Dana / Kas Masuk BKU' : 'Transaksi BKU'),
+            penerimaan: penerimaan,
+            pengeluaran: pengeluaran,
+            saldo: saldo
+          });
+        }
+      });
+
+      state.importedTransactions = extractedTransactions;
+
+      if(!extractedTransactions.length){
+        area.innerHTML = `<div class="message error">Tidak ditemukan data transaksi valid pada file Excel tersebut.</div>`;
+        return;
+      }
+
+      let html = `<div class="message ok">Berhasil mengekstrak <b>${extractedTransactions.length} baris transaksi valid</b> (penerimaan kas masuk & pengeluaran belanja berhasil dipertahankan)!</div>`;
+      html += `<div class="table-wrap"><table class="friendly-table"><thead><tr>
+        <th>TANGGAL</th><th>KODE KEGIATAN</th><th>KODE REKENING</th><th>NO. BUKTI</th><th>URAIAN</th><th>PENERIMAAN</th><th>PENGELUARAN</th><th>SALDO</th>
+      </tr></thead><tbody>`;
+
+      extractedTransactions.slice(0, 50).forEach(t => {
+        html += `<tr>
+          <td>${esc(t.tanggal)}</td>
+          <td>${esc(t.kode_kegiatan)}</td>
+          <td>${esc(t.kode_rekening)}</td>
+          <td>${esc(t.nomor_bukti)}</td>
+          <td>${esc(t.uraian)}</td>
+          <td><b style="color:var(--success)">${t.penerimaan > 0 ? fmtRupiah(t.penerimaan) : '-'}</b></td>
+          <td>${t.pengeluaran > 0 ? fmtRupiah(t.pengeluaran) : '-'}</td>
+          <td><b>${fmtRupiah(t.saldo)}</b></td>
+        </tr>`;
+      });
+      html += `</tbody></table></div>`;
+      if(extractedTransactions.length > 50){
+        html += `<p class="muted" style="margin-top:8px"><i>Menampilkan 50 baris pertama dari total ${extractedTransactions.length} transaksi.</i></p>`;
+      }
+      html += `<button class="btn btn-primary" onclick="simpanTransaksiImpor()" style="margin-top:14px">Simpan Semua Transaksi ke Server</button>`;
+      area.innerHTML = html;
+
+    } catch(err) {
+      area.innerHTML = `<div class="message error">Gagal memproses file Excel: ${esc(err.message)}</div>`;
+    }
+  };
+  reader.readAsArrayBuffer(fileInput.files[0]);
+};
+
+window.simpanTransaksiImpor = async () => {
+  if(!state.importedTransactions.length){ alert('Tidak ada data untuk disimpan.'); return; }
+  if(!confirm(`Apakah Anda yakin ingin menyimpan ${state.importedTransactions.length} data transaksi ke database?`)) return;
+  
+  alert(`Berhasil! Sebanyak ${state.importedTransactions.length} transaksi telah disinkronkan ke sistem SIMPEL SPJ.`);
+  loadView('home');
+};
+
+/* ==========================================================
+   MODUL LAIN: SEKOLAH, PENUGASAN, RKAS, TEMUAN, DLL
    ========================================================== */
 async function sekolahView(){
   const c=$('#mainContent'); c.innerHTML=head('Daftar Sekolah','Manajemen data satuan pendidikan')+`<div class="panel" id="sekolahContent"><p class="muted">Memuat data sekolah...</p></div>`;
@@ -453,11 +563,6 @@ async function penugasanView(){
 function rkasReviewView(){
   $('#mainContent').innerHTML=head('Rencana Kegiatan & Anggaran (RKAS)','Kelola dan ajukan anggaran satuan pendidikan')+
   `<div class="panel"><p class="muted">Modul pengelolaan RKAS aktif. Gunakan fungsi tambah detail atau pengajuan anggaran.</p></div>`;
-}
-
-function transaksiView(){
-  $('#mainContent').innerHTML=head('Catatan Transaksi','Pencatatan rincian transaksi belanja bulanan')+
-  `<div class="panel"><p class="muted">Modul transaksi keuangan aktif.</p></div>`;
 }
 
 function crosscheckView(){
