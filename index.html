@@ -159,9 +159,13 @@ th{background:#f8fafc;color:var(--navy);font-weight:800}
 
 <!-- HALAMAN DASHBOARD UTAMA -->
 <div id="dashboard" class="shell hidden">
-  <aside class="sidebar" id="sidebarMenu">
+  <aside class="sidebar">
     <h2>SIMPEL SPJ</h2>
-    <div id="dynamicSidebarContent"></div>
+    <!-- Tombol navigasi diperbarui agar langsung memanggil fungsi loadRKASData saat diklik -->
+    <button class="nav-btn active" onclick="showModule('Dashboard', loadDashboardData)">▦ Dashboard</button>
+    <button class="nav-btn" onclick="showModule('RKAS', loadRKASData)">▤ RKAS</button>
+    <button class="nav-btn" onclick="showModule('SPJ', loadSPJData)">▣ SPJ</button>
+    <button class="nav-btn" onclick="showModule('Review', loadReviewData)">✓ Review</button>
     <button class="nav-btn logout" onclick="logout()">Keluar</button>
   </aside>
   
