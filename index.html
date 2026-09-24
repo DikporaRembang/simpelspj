@@ -18,8 +18,13 @@
 .tabs button{border:0;background:transparent;padding:12px;border-radius:10px;cursor:pointer;color:var(--muted);font-weight:700}
 .tabs button.active{background:white;color:var(--blue);box-shadow:0 4px 14px #0f172a12}
 .field{margin:15px 0}.field label{display:block;font-size:13px;font-weight:800;margin-bottom:7px}
-.field input,.field select{width:100%;padding:13px 14px;border:1px solid #dbe3ee;border-radius:12px;outline:none;background:#fbfdff}
+.field input,.field select{width:100%;padding:13px 40px 13px 14px;border:1px solid #dbe3ee;border-radius:12px;outline:none;background:#fbfdff}
 .field input:focus,.field select:focus{border-color:var(--blue);box-shadow:0 0 0 4px #2563eb15}
+
+/* Password Container & Toggle Button */
+.password-container{position:relative}
+.password-toggle{position:absolute;right:14px;top:50%;transform:translateY(-50%);background:none;border:0;cursor:pointer;color:var(--muted);font-size:15px;padding:0;font-weight:700}
+.password-toggle:hover{color:var(--blue)}
 
 /* Slider Captcha */
 .slider-captcha{position:relative;background:#eef2f7;border:1px solid #dbe3ee;border-radius:12px;height:48px;display:flex;align-items:center;overflow:hidden;user-select:none}
@@ -32,26 +37,7 @@
 .btn{width:100%;border:0;border-radius:13px;padding:14px 16px;font-weight:800;cursor:pointer;transition:.2s}
 .btn-primary{background:linear-gradient(135deg,var(--blue),#0891b2);color:white}.btn-secondary{background:#e2e8f0;color:var(--navy)}
 .btn:hover{transform:translateY(-1px);filter:brightness(1.03)}.message{font-size:13px;margin-top:12px;color:var(--danger);min-height:18px}
-let currentCaptchaId = '';
 
-async function fetchServerCaptcha(type) {
-  try {
-    const res = await fetch(SCRIPT_URL, {
-      method: 'POST',
-      body: JSON.stringify({ action: 'captcha' })
-    });
-    const result = await res.json();
-    if (result.success) {
-      currentCaptchaId = result.captcha_id; // Menyimpan ID unik dari Cache Service Apps Script
-    }
-  } catch (err) {
-    console.error('Gagal memuat CAPTCHA server');
-  }
-}
-
-// Panggil saat halaman pertama kali dibuka
-fetchServerCaptcha();
-/* Shell & Mobile Optimized Layout */
 .shell{display:flex;min-height:100vh}
 .sidebar{width:260px;background:var(--navy);color:white;padding:24px 16px;display:flex;flex-direction:column;flex-shrink:0}
 .sidebar h2{margin:0 10px 26px;font-size:22px}
@@ -67,33 +53,18 @@ fetchServerCaptcha();
 .panel{background:white;border:1px solid #e2e8f0;border-radius:20px;padding:24px;box-shadow:0 10px 30px #0f172a04}
 .panel h2{margin-top:0;color:var(--navy)}
 .logout{margin-top:auto;background:#ef44441c;color:#fecaca}
-
-/* Table Responsive Helper */
 .table-responsive{width:100%;overflow-x:auto;margin-top:15px}
 table{width:100%;border-collapse:collapse;text-align:left;font-size:14px}
 th,td{padding:12px 14px;border-bottom:1px solid #e2e8f0}
 th{background:#f8fafc;color:var(--navy);font-weight:800}
 
-/* Media Queries untuk HP & Tablet */
-@media(max-width:900px){
-  .auth-wrap{grid-template-columns:1fr;padding:14px}.brand-panel{display:none}
-  .auth-card{max-width:560px;width:100%;margin:auto}.cards{grid-template-columns:1fr 1fr}
-}
-@media(max-width:768px){
-  .shell{flex-direction:column;min-height:100vh}
-  .sidebar{width:100%;padding:14px;flex-direction:row;align-items:center;overflow-x:auto;gap:8px;position:sticky;top:0;z-index:100;box-shadow:0 4px 12px rgba(0,0,0,0.1)}
-  .sidebar h2{display:none}
-  .nav-btn{width:auto;white-space:nowrap;padding:10px 14px;font-size:13px;margin:0}
-  .logout{margin-top:0;background:#dc2626;color:white}
-  .main{padding:16px}
-  .cards{grid-template-columns:1fr}
-  .topbar{flex-direction:column;align-items:flex-start}
-}
+@media(max-width:900px){.auth-wrap{grid-template-columns:1fr;padding:14px}.brand-panel{display:none}.auth-card{max-width:560px;width:100%;margin:auto}.cards{grid-template-columns:1fr 1fr}}
+@media(max-width:768px){.shell{flex-direction:column;min-height:100vh}.sidebar{width:100%;padding:14px;flex-direction:row;align-items:center;overflow-x:auto;gap:8px;position:sticky;top:0;z-index:100;box-shadow:0 4px 12px rgba(0,0,0,0.1)}.sidebar h2{display:none}.nav-btn{width:auto;white-space:nowrap;padding:10px 14px;font-size:13px;margin:0}.logout{margin-top:0;background:#dc2626;color:white}.main{padding:16px}.cards{grid-template-columns:1fr}.topbar{flex-direction:column;align-items:flex-start}}
 </style>
 </head>
 <body>
 
-<!-- HALAMAN AUTHENTICATION (LOGIN & REGISTER) -->
+<!-- HALAMAN AUTHENTICATION -->
 <div id="auth" class="auth-wrap">
   <section class="brand-panel">
     <div class="logo" style="color:#fff">SIMPEL SPJ</div>
@@ -117,7 +88,13 @@ th{background:#f8fafc;color:var(--navy);font-weight:800}
     <!-- Form Login -->
     <form id="loginForm" onsubmit="handleLogin(event)">
       <div class="field"><label>Username / NPSN</label><input id="loginUser" required autocomplete="username"></div>
-      <div class="field"><label>Password</label><input id="loginPass" type="password" required autocomplete="current-password"></div>
+      <div class="field">
+        <label>Password</label>
+        <div class="password-container">
+          <input id="loginPass" type="password" required autocomplete="current-password">
+          <button type="button" class="password-toggle" onclick="togglePassword('loginPass', this)">👁</button>
+        </div>
+      </div>
       <div class="field">
         <label>Verifikasi Geser</label>
         <div id="loginSlider" class="slider-captcha">
@@ -146,8 +123,22 @@ th{background:#f8fafc;color:var(--navy);font-weight:800}
       </div>
 
       <div class="field"><label>Nama Lengkap / Nama Sekolah</label><input id="regName" required placeholder="Terisi otomatis atau manual"></div>
-      <div class="field"><label>Password (Min. 6 Karakter)</label><input id="regPass" type="password" required minlength="6"></div>
-      <div class="field"><label>Konfirmasi Password</label><input id="regPassConfirm" type="password" required minlength="6"></div>
+      
+      <div class="field">
+        <label>Password (Min. 6 Karakter, Kombinasi Huruf & Angka)</label>
+        <div class="password-container">
+          <input id="regPass" type="password" required minlength="6">
+          <button type="button" class="password-toggle" onclick="togglePassword('regPass', this)">👁</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Konfirmasi Password</label>
+        <div class="password-container">
+          <input id="regPassConfirm" type="password" required minlength="6">
+          <button type="button" class="password-toggle" onclick="togglePassword('regPassConfirm', this)">👁</button>
+        </div>
+      </div>
       
       <div class="field">
         <label>Verifikasi Geser</label>
@@ -198,13 +189,24 @@ th{background:#f8fafc;color:var(--navy);font-weight:800}
 </div>
 
 <script>
-// --- URL WEB APP GOOGLE APPS SCRIPT ANDA ---
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyWvJXKr1QZ1zwbeJDoULTUihycj1771SsDlGFy8jnuF4i3DsEbHXlcJU48VDAg17fqDA/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz.../exec';
 
 let currentUser = null;
 const captchaStates = { login: false, register: false };
 
-// Inisialisasi Slider Captcha Sentuh & Mouse
+// Fungsi untuk Toggle (Lihat / Sembunyikan) Password
+function togglePassword(fieldId, btnElement) {
+  const input = document.getElementById(fieldId);
+  if (input.type === 'password') {
+    input.type = 'text';
+    btnElement.textContent = '🔒'; // Indikator password terlihat
+  } else {
+    input.type = 'password';
+    btnElement.textContent = '👁'; // Indikator mata terbuka
+  }
+}
+
+// Inisialisasi Slider Captcha
 function initSlider(type) {
   const slider = document.getElementById(type + 'Slider');
   const thumb = document.getElementById(type + 'Thumb');
@@ -242,7 +244,6 @@ function initSlider(type) {
   window.onmouseup = () => { if (isDragging && !captchaStates[type]) { isDragging = false; thumb.style.left = '0px'; track.style.width = '0px'; } };
   window.onmousemove = (e) => onDrag(e.clientX);
 
-  // Dukungan Layar Sentuh HP / Tablet
   thumb.ontouchstart = (e) => startDrag(e.touches[0].clientX);
   window.ontouchend = () => { if (isDragging && !captchaStates[type]) { isDragging = false; thumb.style.left = '0px'; track.style.width = '0px'; } };
   window.ontouchmove = (e) => onDrag(e.touches[0].clientX);
@@ -279,7 +280,6 @@ function updateRegistrationIdentity() {
   }
 }
 
-// Auto-Fill Nama Sekolah berdasarkan NPSN
 async function checkIdentityAutoFill() {
   const role = document.getElementById('regRole').value;
   const identity = document.getElementById('regIdentity').value.trim();
@@ -309,7 +309,6 @@ async function checkIdentityAutoFill() {
   }
 }
 
-// Logika Login Backend
 async function handleLogin(e) {
   e.preventDefault();
   if (!captchaStates.login) { document.getElementById('authMessage').textContent = 'Geser CAPTCHA terlebih dahulu.'; return; }
@@ -341,7 +340,6 @@ async function handleLogin(e) {
   }
 }
 
-// Logika Pendaftaran Backend
 async function handleRegister(e) {
   e.preventDefault();
   if (!captchaStates.register) { document.getElementById('authMessage').textContent = 'Geser CAPTCHA terlebih dahulu.'; return; }
@@ -353,7 +351,20 @@ async function handleRegister(e) {
   const passwordConfirm = document.getElementById('regPassConfirm').value;
   const msg = document.getElementById('authMessage');
 
-  if (password !== passwordConfirm) { msg.textContent = 'Konfirmasi password tidak cocok.'; return; }
+  // Validasi Kombinasi Huruf dan Angka pada Password
+  const hasLetter = /[a-zA-Z]/.test(password);
+  const hasNumber = /[0-9]/.test(password);
+
+  if (!hasLetter || !hasNumber) {
+    msg.textContent = 'Password harus mengandung kombinasi huruf dan angka.';
+    return;
+  }
+
+  if (password !== passwordConfirm) { 
+    msg.textContent = 'Konfirmasi password tidak cocok.'; 
+    return; 
+  }
+
   msg.textContent = 'Mengirim pendaftaran...';
 
   const actionName = role === 'SEKOLAH' ? 'register' : 'registerPengawas';
@@ -378,7 +389,6 @@ async function handleRegister(e) {
   }
 }
 
-// Modul Router & Integrasi Data Backend
 function showModule(name, loadCallback) {
   document.querySelectorAll('.sidebar .nav-btn').forEach(btn => {
     if(!btn.classList.contains('logout')) btn.classList.remove('active');
@@ -396,7 +406,6 @@ async function loadDashboardData() {
   document.getElementById('moduleContent').innerHTML = `
     <h3>Selamat Datang, ${currentUser.nama_pengguna}</h3>
     <p class="subtitle">Anda masuk sebagai <strong>${currentUser.role}</strong> di lingkungan Dinas Pendidikan dan Kebudayaan Kabupaten Rembang.</p>
-    <p class="subtitle" style="margin-top:15px">Gunakan menu di samping untuk mengakses pengelolaan RKAS, kelengkapan SPJ, serta proses verifikasi asesmen.</p>
   `;
 }
 
@@ -407,21 +416,16 @@ async function loadRKASData() {
       body: JSON.stringify({ action: 'rkasAktif', data: { token: currentUser.token, npsn: currentUser.npsn } })
     });
     const result = await res.json();
-    
     if (result.success && result.data.length > 0) {
       let rows = result.data.map(item => `
         <tr><td>${item.kode_rekening}</td><td>${item.uraian}</td><td>Rp ${Number(item.pagu).toLocaleString('id-ID')}</td><td><span style="color:var(--success);font-weight:bold">${item.status_rkas}</span></td></tr>
       `).join('');
-      
-      document.getElementById('moduleContent').innerHTML = `
-        <p class="subtitle">Daftar RKAS Approved / Aktif:</p>
-        <div class="table-responsive"><table><thead><tr><th>Kode Rekening</th><th>Uraian</th><th>Pagu</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table></div>
-      `;
+      document.getElementById('moduleContent').innerHTML = `<div class="table-responsive"><table><thead><tr><th>Kode Rekening</th><th>Uraian</th><th>Pagu</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table></div>`;
     } else {
-      document.getElementById('moduleContent').innerHTML = '<p class="subtitle">Belum ada data RKAS aktif yang ditemukan.</p>';
+      document.getElementById('moduleContent').innerHTML = '<p class="subtitle">Belum ada data RKAS aktif.</p>';
     }
   } catch(err) {
-    document.getElementById('moduleContent').innerHTML = '<p class="subtitle" style="color:var(--danger)">Gagal memuat data RKAS dari server.</p>';
+    document.getElementById('moduleContent').innerHTML = '<p class="subtitle" style="color:var(--danger)">Gagal memuat RKAS.</p>';
   }
 }
 
@@ -432,16 +436,11 @@ async function loadSPJData() {
       body: JSON.stringify({ action: 'masterSPJ', data: { token: currentUser.token } })
     });
     const result = await res.json();
-    
     if (result.success) {
       let rows = result.data.map(item => `
         <tr><td>${item.kode_spj}</td><td>${item.nama_spj}</td><td>${item.keterangan || '-'}</td></tr>
       `).join('');
-      
-      document.getElementById('moduleContent').innerHTML = `
-        <p class="subtitle">Daftar Master Komponen SPJ (10 Komponen BOS SD):</p>
-        <div class="table-responsive"><table><thead><tr><th>Kode</th><th>Nama Komponen SPJ</th><th>Keterangan</th></tr></thead><tbody>${rows}</tbody></table></div>
-      `;
+      document.getElementById('moduleContent').innerHTML = `<div class="table-responsive"><table><thead><tr><th>Kode</th><th>Nama Komponen SPJ</th><th>Keterangan</th></tr></thead><tbody>${rows}</tbody></table></div>`;
     }
   } catch(err) {
     document.getElementById('moduleContent').innerHTML = '<p class="subtitle" style="color:var(--danger)">Gagal memuat master SPJ.</p>';
@@ -449,10 +448,7 @@ async function loadSPJData() {
 }
 
 async function loadReviewData() {
-  document.getElementById('moduleContent').innerHTML = `
-    <p class="subtitle">Modul Review dan Asesmen Pengawas / Dinas.</p>
-    <p class="subtitle">Fitur verifikasi temuan SPJ dan penilaian kualitas dokumen tersedia sesuai hak akses akun Anda.</p>
-  `;
+  document.getElementById('moduleContent').innerHTML = '<p class="subtitle">Modul Review dan Asesmen Pengawas / Dinas.</p>';
 }
 
 function logout() {
