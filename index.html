@@ -21,12 +21,10 @@
 .field input,.field select{width:100%;padding:13px 40px 13px 14px;border:1px solid #dbe3ee;border-radius:12px;outline:none;background:#fbfdff}
 .field input:focus,.field select:focus{border-color:var(--blue);box-shadow:0 0 0 4px #2563eb15}
 
-/* Password Container & Toggle Button */
 .password-container{position:relative}
 .password-toggle{position:absolute;right:14px;top:50%;transform:translateY(-50%);background:none;border:0;cursor:pointer;color:var(--muted);font-size:15px;padding:0;font-weight:700}
 .password-toggle:hover{color:var(--blue)}
 
-/* Slider Captcha */
 .slider-captcha{position:relative;background:#eef2f7;border:1px solid #dbe3ee;border-radius:12px;height:48px;display:flex;align-items:center;overflow:hidden;user-select:none}
 .slider-track{position:absolute;left:0;top:0;height:100%;background:#bae6fd;width:0;transition:width 0.1s}
 .slider-text{position:relative;width:100%;text-align:center;font-size:13px;font-weight:700;color:var(--muted);z-index:2}
@@ -64,7 +62,6 @@ th{background:#f8fafc;color:var(--navy);font-weight:800}
 </head>
 <body>
 
-<!-- HALAMAN AUTHENTICATION -->
 <div id="auth" class="auth-wrap">
   <section class="brand-panel">
     <div class="logo" style="color:#fff">SIMPEL SPJ</div>
@@ -156,7 +153,7 @@ th{background:#f8fafc;color:var(--navy);font-weight:800}
   </section>
 </div>
 
-<!-- HALAMAN DASHBOARD UTAMA (SHELL) -->
+<!-- HALAMAN DASHBOARD UTAMA -->
 <div id="dashboard" class="shell hidden">
   <aside class="sidebar">
     <h2>SIMPEL SPJ</h2>
@@ -189,24 +186,44 @@ th{background:#f8fafc;color:var(--navy);font-weight:800}
 </div>
 
 <script>
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyWvJXKr1QZ1zwbeJDoULTUihycj1771SsDlGFy8jnuF4i3DsEbHXlcJU48VDAg17fqDA/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz.../exec';
 
 let currentUser = null;
-const captchaStates = { login: false, register: false };
+const captchaData = {
+  login: { verified: false, id: '' },
+  register: { verified: false, id: '' }
+};
 
-// Fungsi untuk Toggle (Lihat / Sembunyikan) Password
+// Ambil token CAPTCHA asli dari Cache Service Backend saat halaman dimuat
+async function fetchServerCaptcha(type) {
+  try {
+    const res = await fetch(SCRIPT_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'captcha' })
+    });
+    const result = await res.json();
+    if (result.success) {
+      captchaData[type].id = result.captcha_id;
+    }
+  } catch (err) {
+    console.error('Gagal mengambil captcha server:', err);
+  }
+}
+
+fetchServerCaptcha('login');
+fetchServerCaptcha('register');
+
 function togglePassword(fieldId, btnElement) {
   const input = document.getElementById(fieldId);
   if (input.type === 'password') {
     input.type = 'text';
-    btnElement.textContent = '🔒'; // Indikator password terlihat
+    btnElement.textContent = '🔒';
   } else {
     input.type = 'password';
-    btnElement.textContent = '👁'; // Indikator mata terbuka
+    btnElement.textContent = '👁';
   }
 }
 
-// Inisialisasi Slider Captcha
 function initSlider(type) {
   const slider = document.getElementById(type + 'Slider');
   const thumb = document.getElementById(type + 'Thumb');
@@ -217,7 +234,7 @@ function initSlider(type) {
   let startX = 0;
 
   const startDrag = (clientX) => {
-    if (captchaStates[type]) return;
+    if (captchaData[type].verified) return;
     isDragging = true;
     startX = clientX;
   };
@@ -234,18 +251,18 @@ function initSlider(type) {
 
     if (diff >= maxDist - 5) {
       isDragging = false;
-      captchaStates[type] = true;
+      captchaData[type].verified = true;
       slider.classList.add('success');
       text.textContent = 'Verifikasi Berhasil!';
     }
   };
 
   thumb.onmousedown = (e) => startDrag(e.clientX);
-  window.onmouseup = () => { if (isDragging && !captchaStates[type]) { isDragging = false; thumb.style.left = '0px'; track.style.width = '0px'; } };
+  window.onmouseup = () => { if (isDragging && !captchaData[type].verified) { isDragging = false; thumb.style.left = '0px'; track.style.width = '0px'; } };
   window.onmousemove = (e) => onDrag(e.clientX);
 
   thumb.ontouchstart = (e) => startDrag(e.touches[0].clientX);
-  window.ontouchend = () => { if (isDragging && !captchaStates[type]) { isDragging = false; thumb.style.left = '0px'; track.style.width = '0px'; } };
+  window.ontouchend = () => { if (isDragging && !captchaData[type].verified) { isDragging = false; thumb.style.left = '0px'; track.style.width = '0px'; } };
   window.ontouchmove = (e) => onDrag(e.touches[0].clientX);
 }
 
@@ -258,6 +275,11 @@ function switchAuth(type) {
   document.getElementById('loginTab').classList.toggle('active', type === 'login');
   document.getElementById('registerTab').classList.toggle('active', type === 'register');
   document.getElementById('authMessage').textContent = '';
+  
+  // Ambil captcha baru jika belum terverifikasi
+  if (!captchaData[type].verified && !captchaData[type].id) {
+    fetchServerCaptcha(type);
+  }
 }
 
 function updateRegistrationIdentity() {
@@ -311,7 +333,10 @@ async function checkIdentityAutoFill() {
 
 async function handleLogin(e) {
   e.preventDefault();
-  if (!captchaStates.login) { document.getElementById('authMessage').textContent = 'Geser CAPTCHA terlebih dahulu.'; return; }
+  if (!captchaData.login.verified) { 
+    document.getElementById('authMessage').textContent = 'Geser CAPTCHA terlebih dahulu.'; 
+    return; 
+  }
 
   const username = document.getElementById('loginUser').value.trim();
   const password = document.getElementById('loginPass').value;
@@ -321,7 +346,15 @@ async function handleLogin(e) {
   try {
     const res = await fetch(SCRIPT_URL, {
       method: 'POST',
-      body: JSON.stringify({ action: 'login', data: { username, password, captcha_id: 'SLIDER_OK', captcha_answer: 'SUCCESS' } })
+      body: JSON.stringify({ 
+        action: 'login', 
+        data: { 
+          username, 
+          password, 
+          captcha_id: captchaData.login.id,     // Mengirim ID asli dari server
+          captcha_answer: 'SUCCESS'             // Diterima backend sebagai validasi sukses
+        } 
+      })
     });
     const result = await res.json();
 
@@ -334,6 +367,9 @@ async function handleLogin(e) {
       loadDashboardData();
     } else {
       msg.textContent = result.message;
+      // Reset captcha jika gagal agar pengguna bisa verifikasi ulang
+      captchaData.login.verified = false;
+      fetchServerCaptcha('login');
     }
   } catch (err) {
     msg.textContent = 'Gagal terhubung ke backend Apps Script.';
@@ -342,7 +378,10 @@ async function handleLogin(e) {
 
 async function handleRegister(e) {
   e.preventDefault();
-  if (!captchaStates.register) { document.getElementById('authMessage').textContent = 'Geser CAPTCHA terlebih dahulu.'; return; }
+  if (!captchaData.register.verified) { 
+    document.getElementById('authMessage').textContent = 'Geser CAPTCHA terlebih dahulu.'; 
+    return; 
+  }
 
   const role = document.getElementById('regRole').value;
   const identity = document.getElementById('regIdentity').value.trim();
@@ -351,7 +390,6 @@ async function handleRegister(e) {
   const passwordConfirm = document.getElementById('regPassConfirm').value;
   const msg = document.getElementById('authMessage');
 
-  // Validasi Kombinasi Huruf dan Angka pada Password
   const hasLetter = /[a-zA-Z]/.test(password);
   const hasNumber = /[0-9]/.test(password);
 
@@ -369,8 +407,8 @@ async function handleRegister(e) {
 
   const actionName = role === 'SEKOLAH' ? 'register' : 'registerPengawas';
   const payloadData = role === 'SEKOLAH' 
-    ? { npsn: identity, password, password_confirm: passwordConfirm, captcha_id: 'SLIDER_OK', captcha_answer: 'SUCCESS' }
-    : { id_pengawas: identity, nama_pengguna: name, password, password_confirm: passwordConfirm, captcha_id: 'SLIDER_OK', captcha_answer: 'SUCCESS' };
+    ? { npsn: identity, password, password_confirm: passwordConfirm, captcha_id: captchaData.register.id, captcha_answer: 'SUCCESS' }
+    : { id_pengawas: identity, nama_pengguna: name, password, password_confirm: passwordConfirm, captcha_id: captchaData.register.id, captcha_answer: 'SUCCESS' };
 
   try {
     const res = await fetch(SCRIPT_URL, {
@@ -383,6 +421,8 @@ async function handleRegister(e) {
       location.reload();
     } else {
       msg.textContent = result.message;
+      captchaData.register.verified = false;
+      fetchServerCaptcha('register');
     }
   } catch (err) {
     msg.textContent = 'Gagal mengirim data ke server.';
