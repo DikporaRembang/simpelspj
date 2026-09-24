@@ -382,9 +382,17 @@ function changePasswordPage(c) {
 
 async function submitChangePassword(e) {
   e.preventDefault();
-  let oldPassword = $('oldPass').value;
-  let newPassword = $('newPass').value;
-  let confirmPassword = $('confirmPass').value;
+  
+  // Mengambil nilai berdasarkan id elemen yang tepat
+  let oldPassword = $('oldPass').value.trim();
+  let newPassword = $('newPass').value.trim();
+  let confirmPassword = $('confirmPass').value.trim();
+
+  // Validasi manual di browser untuk memastikan terbaca
+  if (!oldPassword || !newPassword || !confirmPassword) {
+    alert('Semua kolom password wajib diisi!');
+    return;
+  }
 
   if (newPassword !== confirmPassword) {
     alert('Konfirmasi password baru tidak cocok.');
@@ -396,7 +404,6 @@ async function submitChangePassword(e) {
   btn.textContent = 'Menyimpan...';
 
   try {
-    // Ambil username / npsn user yang sedang aktif
     let identifier = state.user.username || state.user.npsn;
 
     let res = await api('ubahPassword', { 
