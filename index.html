@@ -91,14 +91,18 @@ button{cursor:pointer}
 .panel{padding:22px;margin-top:20px}
 .toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
 
-/* Tabel Hasil Ramah Pengguna */
-.table-container{width:100%;overflow-x:auto;margin-top:14px;border:1px solid var(--border);border-radius:14px;background:#fff}
+.table-wrap{width:100%;overflow-x:auto;margin-top:14px;border:1px solid var(--border);border-radius:14px;background:#fff}
 .friendly-table{width:100%;border-collapse:collapse;font-size:.9rem}
 .friendly-table th{background:#f0f6f2;color:#183824;padding:12px 14px;text-align:left;font-weight:750;border-bottom:2px solid var(--border);white-space:nowrap}
 .friendly-table td{padding:12px 14px;border-bottom:1px solid var(--border);color:#2b3a32;vertical-align:middle}
 .friendly-table tr:hover{background:#f8fcf9}
 
-/* Badge Status Cantik */
+/* Subtotal & Grand Total Styling */
+.subtotal-row{background:#e8f4ec!important;font-weight:800;color:#0f5132}
+.subtotal-row td{border-top:2px solid var(--primary-3);border-bottom:2px solid var(--primary-3)}
+.grandtotal-row{background:#d4edda!important;font-weight:900;color:#0b3d27;font-size:1rem}
+.grandtotal-row td{border-top:3px solid var(--primary);border-bottom:3px solid var(--primary)}
+
 .badge{display:inline-block;padding:5px 12px;border-radius:20px;font-size:.78rem;font-weight:750;text-transform:uppercase}
 .badge-success{background:#e9f8ef;color:#146c43}
 .badge-warning{background:#fef3c7;color:#b45309}
@@ -116,7 +120,6 @@ button{cursor:pointer}
 .wizard-card h4{margin:0 0 6px;color:var(--primary);font-size:1.05rem}
 .wizard-card p{margin:0;color:var(--muted);font-size:.88rem;line-height:1.5}
 
-/* Tablet */
 @media (max-width:1050px){
   .auth{grid-template-columns:1fr}
   .auth-side{display:none}
@@ -131,8 +134,6 @@ button{cursor:pointer}
   .wizard-cards{grid-template-columns:1fr}
   .content{padding:22px}
 }
-
-/* Phone */
 @media (max-width:640px){
   .topbar{padding:10px 14px}.topbar .brand-mark{width:42px;height:42px;border-radius:12px}
   .topbar .brand h2{font-size:.98rem}.top-actions .user-name{display:none}
@@ -151,20 +152,7 @@ button{cursor:pointer}
 </style>
 </head>
 <body>
-<div id="app" class="app">
-  <main class="auth">
-    <section class="auth-side"><div class="auth-side-inner">
-      <div class="brand"><div class="brand-mark">SPJ</div><div><h2 style="color:#fff">SIMPEL SPJ</h2><small style="color:#d9eee0">Kabupaten Rembang</small></div></div>
-      <h1>Pengelolaan SPJ BOS SD yang terintegrasi.</h1>
-      <p>RKAS disajikan oleh Dinas, Sekolah dapat memeriksa dan usulkan perbaikan dengan pilihan menu yang praktis.</p>
-      <div class="feature"><span>✓ Pilihan Bulan & Dokumen List</span><span>✓ Tabel Ramah Awam</span><span>✓ Validasi Mudah</span></div>
-    </div></section>
-    <section class="auth-panel"><div class="auth-card">
-      <div class="brand"><div class="brand-mark">SPJ</div><div><h2>SIMPEL SPJ</h2><small>Masuk ke sistem</small></div></div>
-      <div id="authBody"></div>
-    </div></section>
-  </main>
-</div>
+<div id="app" class="app"></div>
 <script>
 'use strict';
 const API_URL='https://script.google.com/macros/s/AKfycbyWvJXKr1QZ1zwbeJDoULTUihycj1771SsDlGFy8jnuF4i3DsEbHXlcJU48VDAg17fqDA/exec';
@@ -178,10 +166,26 @@ const ROLE_RULES={
 const state={token:sessionStorage.getItem('simpel_token')||'',user:null,view:'home',cache:{},captcha:false};
 const $=s=>document.querySelector(s),$$=s=>Array.from(document.querySelectorAll(s));
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]||c));
-const fmt = v => {
-  if(!isNaN(v)&&typeof v==='number') return new Intl.NumberFormat('id-ID',{style:'currency',currency:'IDR',maximumFractionDigits:0}).format(v);
-  return esc(v);
+
+const fmtRupiah = v => {
+  const n = Number(v);
+  if(isNaN(n)) return esc(v);
+  return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n);
 };
+
+// Pemetaan Rujukan Tabel Referensi Barang
+const REFERENSI_BARANG_MAP = {
+  "5.1.02.01.01.0001": "Belanja Bahan - Bahan Habis Pakai / Material",
+  "5.2.02.01.03.0003": "Belanja Modal Compressor",
+  "5.2.04.04.02.0002": "Belanja Modal Jaringan Distribusi",
+  "5.1.02.02.01.0013": "Belanja Honorarium Narasumber / Pembahas",
+  "5.1.02.04.01.0001": "Belanja Perjalanan Dinas Dalam Negeri"
+};
+
+function getReferensiLabel(code){
+  return REFERENSI_BARANG_MAP[code] || "Rincian Objek Belanja Kegiatan";
+}
+
 function msg(text,type='error'){return `<div class="message ${type}">${esc(text)}</div>`}
 
 async function api(action,payload={}){
@@ -190,23 +194,91 @@ async function api(action,payload={}){
   const r=await fetch(API_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(body)});
   const data=await r.json(); if(!data.success)throw new Error(data.message||'Permintaan gagal'); return data;
 }
-function passwordToggle(id){const el=document.getElementById(id);el.type=el.type==='password'?'text':'password'}
-function captchaHTML(){return `<div class="slider" id="captchaBox"><div class="muted" style="margin-bottom:8px">Geser ke kanan untuk verifikasi keamanan</div><div class="slider-track"><div class="slider-progress"></div><div class="slider-knob" id="captchaKnob">↔</div></div><div class="slider-status" id="captchaStatus">Geser tombol dari kiri ke kanan</div></div>`}
-function setupCaptcha(){
- const box=$('#captchaBox'),knob=$('#captchaKnob');if(!box||!knob)return;
- let dragging=false;
- const move=x=>{if(!dragging||state.captcha)return;const rect=box.querySelector('.slider-track').getBoundingClientRect();let pos=Math.max(0,Math.min(rect.width-34,x-rect.left-17));knob.style.left=pos+'px';box.querySelector('.slider-progress').style.width=(pos/(rect.width-34)*100)+'%';if(pos>=rect.width-44){state.captcha=true;box.classList.add('captcha-ok');$('#captchaStatus').textContent='Verifikasi Berhasil';}};
- const down=e=>{dragging=true;e.preventDefault()};const up=()=>dragging=false;
- knob.addEventListener('pointerdown',down);window.addEventListener('pointermove',e=>move(e.clientX));window.addEventListener('pointerup',up);
+
+function passwordToggle(id){
+  const el=document.getElementById(id);
+  if(el) el.type=el.type==='password'?'text':'password';
 }
 
-function authView(mode='login',notice=''){
- const login=mode==='login';
- $('#app').innerHTML=`<main class="auth"><section class="auth-side"><div><div class="brand"><div class="brand-mark">SPJ</div><div><h2>SIMPEL SPJ</h2><small>Kabupaten Rembang</small></div></div><h1>Pengelolaan SPJ BOS SD yang terintegrasi.</h1><p>RKAS disajikan oleh Dinas, Sekolah dapat memeriksa dan mengusulkan perbaikan sebagai basis penilaian.</p><div class="feature"><span>✓ Pilihan List Periode & Dokumen</span><span>✓ Tabel Ramah Awam</span><span>✓ Validasi Mudah</span></div></div></section><section class="auth-panel"><div class="auth-card"><div class="brand"><div class="brand-mark">SPJ</div><div><h2>SIMPEL SPJ</h2><small>Masuk ke sistem</small></div></div>${notice}<div id="authBody"></div></div></section></main>`;
- $('#authBody').innerHTML=login?loginForm():''; if(login)setupCaptcha();
+function captchaHTML(){
+  return `<div class="slider" id="captchaBox"><div class="muted" style="margin-bottom:8px">Geser ke kanan untuk verifikasi keamanan</div><div class="slider-track"><div class="slider-progress"></div><div class="slider-knob" id="captchaKnob">↔</div></div><div class="slider-status" id="captchaStatus">Geser tombol dari kiri ke kanan</div></div>`;
 }
-function loginForm(){return `<form id="loginForm"><div class="field"><label>Username / NPSN</label><input id="username" autocomplete="username" required placeholder="Masukkan username atau NPSN sekolah"></div><div class="field"><label>Password</label><div class="password-wrap"><input id="password" type="password" autocomplete="current-password" required placeholder="Masukkan kata sandi"><button type="button" class="toggle-pass" onclick="passwordToggle('password')">👁</button></div></div>${captchaHTML()}<div id="authMsg"></div><button class="btn btn-primary full" type="submit" id="loginBtn" style="margin-top:16px">Masuk ke Aplikasi</button></form>`}
-async function doLogin(e){e.preventDefault();const m=$('#authMsg');if(!state.captcha){m.innerHTML=msg('Silakan selesaikan geser verifikasi terlebih dahulu.');return}const b=$('#loginBtn');b.disabled=true;b.textContent='Memeriksa akun...';try{const r=await api('login',{username:$('#username').value.trim(),password:$('#password').value});state.token=r.token;state.user=r.user;sessionStorage.setItem('simpel_token',state.token);dashboard();}catch(err){m.innerHTML=msg(err.message)}finally{b.disabled=false;b.textContent='Masuk ke Aplikasi'}}
+
+function setupCaptcha(){
+  const box=$('#captchaBox'), knob=$('#captchaKnob');
+  if(!box||!knob)return;
+  let dragging=false;
+  const move=x=>{
+    if(!dragging||state.captcha)return;
+    const rect=box.querySelector('.slider-track').getBoundingClientRect();
+    let pos=Math.max(0,Math.min(rect.width-34,x-rect.left-17));
+    knob.style.left=pos+'px';
+    box.querySelector('.slider-progress').style.width=(pos/(rect.width-34)*100)+'%';
+    if(pos>=rect.width-44){
+      state.captcha=true;
+      box.classList.add('captcha-ok');
+      const statusEl=$('#captchaStatus');
+      if(statusEl) statusEl.textContent='Verifikasi Berhasil';
+    }
+  };
+  const down=e=>{dragging=true;e.preventDefault();};
+  const up=()=>dragging=false;
+  knob.addEventListener('pointerdown',down);
+  window.addEventListener('pointermove',e=>move(e.clientX));
+  window.addEventListener('pointerup',up);
+}
+
+function authView(notice=''){
+  const appEl = $('#app');
+  if(!appEl) return;
+  appEl.innerHTML=`<main class="auth">
+    <section class="auth-side"><div class="auth-side-inner">
+      <div class="brand"><div class="brand-mark">SPJ</div><div><h2 style="color:#fff">SIMPEL SPJ</h2><small style="color:#d9eee0">Kabupaten Rembang</small></div></div>
+      <h1>Pengelolaan SPJ BOS SD yang terintegrasi.</h1>
+      <p>RKAS disajikan dengan subtotal kode rekening (referensi barang), grand total, dan format nominal rupiah yang rapi.</p>
+      <div class="feature"><span>✓ Format Rupiah Ribuan</span><span>✓ Subtotal & Rujukan Barang</span><span>✓ Grand Total Akumulatif</span></div>
+    </div></section>
+    <section class="auth-panel"><div class="auth-card">
+      <div class="brand"><div class="brand-mark">SPJ</div><div><h2>SIMPEL SPJ</h2><small>Masuk ke sistem</small></div></div>
+      ${notice}
+      <form id="loginForm">
+        <div class="field"><label>Username / NPSN</label><input id="username" autocomplete="username" required placeholder="Masukkan username atau NPSN sekolah"></div>
+        <div class="field"><label>Password</label>
+          <div class="password-wrap">
+            <input id="password" type="password" autocomplete="current-password" required placeholder="Masukkan kata sandi">
+            <button type="button" class="toggle-pass" onclick="passwordToggle('password')">👁</button>
+          </div>
+        </div>
+        ${captchaHTML()}
+        <div id="authMsg"></div>
+        <button class="btn btn-primary full" type="submit" id="loginBtn" style="margin-top:16px">Masuk ke Aplikasi</button>
+      </form>
+    </div></section>
+  </main>`;
+  setupCaptcha();
+}
+
+async function doLogin(e){
+  e.preventDefault();
+  const m=$('#authMsg');
+  if(!state.captcha){
+    if(m) m.innerHTML=msg('Silakan selesaikan geser verifikasi terlebih dahulu.');
+    return;
+  }
+  const b=$('#loginBtn');
+  if(b){ b.disabled=true; b.textContent='Memeriksa akun...'; }
+  try{
+    const r=await api('login',{username:$('#username').value.trim(),password:$('#password').value});
+    state.token=r.token;
+    state.user=r.user;
+    sessionStorage.setItem('simpel_token',state.token);
+    dashboard();
+  }catch(err){
+    if(m) m.innerHTML=msg(err.message);
+  }finally{
+    if(b){ b.disabled=false; b.textContent='Masuk ke Aplikasi'; }
+  }
+}
 
 function navItems(){
   const role=String(state.user?.role||'').toUpperCase();
@@ -228,7 +300,12 @@ function navItems(){
   return all.filter(n=>allowed.includes(n.id)||n.id==='home');
 }
 
-function dashboard(){document.body.style.background='var(--bg)';renderShell();loadView('home')}
+function dashboard(){
+  document.body.style.background='var(--bg)';
+  renderShell();
+  loadView('home');
+}
+
 function renderShell(){
   const u=state.user||{};
   $('#app').innerHTML=`<main class="dashboard"><header class="topbar"><div style="display:flex;align-items:center;gap:10px"><button class="btn btn-light mobile-menu" id="menuBtn" aria-label="Buka menu">☰</button><div class="brand"><div class="brand-mark">SPJ</div><div><h2>SIMPEL SPJ</h2><small>Peran: <b>${esc(u.role||'Pengguna')}</b></small></div></div></div><div class="top-actions"><span class="muted user-name">${esc(u.nama_pengguna||u.username||'')}</span><button class="btn btn-light" id="logoutBtn">Keluar</button></div></header><div class="layout"><aside class="sidebar" id="sidebar">
@@ -236,7 +313,8 @@ function renderShell(){
     ${navItems().map(n=>`<button class="nav-btn" data-view="${n.id}">${n.label}</button>`).join('')}
   </aside><section class="content" id="mainContent"></section></div></main>`;
   $$('[data-view]').forEach(b=>b.onclick=()=>{loadView(b.dataset.view);$('#sidebar')?.classList.remove('open')});
-  $('#logoutBtn').onclick=logout;$('#menuBtn').onclick=()=>$('#sidebar')?.classList.toggle('open'); } async function logout(){try{if(state.token)await api('logout')}catch(e){}state.token='';state.user=null;sessionStorage.removeItem('simpel_token');authView('login',msg('Anda telah keluar dari aplikasi.','ok'))} function setActive(view){$$('[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===view))}
+  $('#logoutBtn').onclick=logout;
+  $('#menuBtn').onclick=()=>$('#sidebar')?.classList.toggle('open'); }  async function logout(){   try{if(state.token)await api('logout')}catch(e){}   state.token=''; state.user=null;   sessionStorage.removeItem('simpel_token');   location.reload(); }  function setActive(view){$$('[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===view))}
 
 function loadView(view){
   state.view=view; setActive(view);
@@ -256,7 +334,6 @@ function loadView(view){
 
 function head(title,desc=''){return `<div class="page-head"><div><h1>${title}</h1><div class="muted">${desc}</div></div></div>`}
 
-// Helper Pilihan List Bulan (Dropdown Generator)
 function selectBulanHTML(id='idPeriode', labelText='Pilih Periode Bulan'){
   return `<div class="field"><label>${labelText}</label>
     <select id="${id}">
@@ -277,7 +354,6 @@ function selectBulanHTML(id='idPeriode', labelText='Pilih Periode Bulan'){
   </div>`;
 }
 
-// Helper Pilihan List Jenis Dokumen SPJ (Dropdown Generator)
 function selectDokumenHTML(id='idSpj', labelText='Pilih Jenis Komponen SPJ'){
   return `<div class="field"><label>${labelText}</label>
     <select id="${id}">
@@ -346,7 +422,7 @@ function friendlyTableAction(title,action,desc,fields=[]){
             else if (upVal.includes('TOLAK') || upVal.includes('NONAKTIF')) badgeClass = 'badge-danger';
             html += `<td><span class="badge ${badgeClass}">${esc(val)}</span></td>`;
           } else if (k.includes('pagu') || k.includes('nilai')) {
-            html += `<td><b>${esc(val)}</b></td>`;
+            html += `<td><b>${fmtRupiah(val)}</b></td>`;
           } else {
             html += `<td>${esc(val)}</td>`;
           }
@@ -367,7 +443,7 @@ function friendlyTableAction(title,action,desc,fields=[]){
 
 function homeView(){
   const role=String(state.user?.role||'').toUpperCase();
-  let subtitle = 'Pusat kendali operasional pelaporan keuangan sekolah (RKAS dari Dinas & Usul Perbaikan Sekolah).';
+  let subtitle = 'Pusat kendali operasional pelaporan keuangan sekolah.';
   let cardsHTML = '';
   let wizardBoxes = '';
 
@@ -381,15 +457,15 @@ function homeView(){
     wizardBoxes = `
       <div class="wizard-card" onclick="loadView('rkasReview')">
         <h4>📋 1. Periksa & Usul Perbaikan RKAS</h4>
-        <p>Cek RKAS dari Dinas, tentukan apakah sudah benar atau perlu perbaikan, lalu ajukan usulan perubahan.</p>
+        <p>Cek RKAS dari Dinas dengan subtotal rujukan referensi barang, lalu ajukan usulan perubahan.</p>
       </div>
       <div class="wizard-card" onclick="loadView('transaksi')">
         <h4>💰 2. Catat Transaksi Harian</h4>
-        <p>Rekam transaksi belanja berdasarkan basis RKAS yang valid untuk penilaian selanjutnya.</p>
+        <p>Rekam transaksi belanja berdasarkan basis RKAS dengan format Rupiah otomatis.</p>
       </div>
       <div class="wizard-card" onclick="loadView('dokumen')">
         <h4>📁 3. Unggah Berkas & SPJ</h4>
-        <p>Pilih Bulan pelaporan dan jenis dokumen (BKU, Nota, Buku Bank) untuk diunggah dengan mudah.</p>
+        <p>Pilih Bulan pelaporan dan jenis dokumen untuk diunggah dengan mudah.</p>
       </div>
     `;
   } else if(role === 'PENGAWAS'){
@@ -403,11 +479,11 @@ function homeView(){
     wizardBoxes = `
       <div class="wizard-card" onclick="loadView('penugasan')">
         <h4>🏫 Lihat Sekolah Binaan</h4>
-        <p>Periksa daftar sekolah yang berada di bawah wilayah pengawasan SK penugasan Anda.</p>
+        <p>Periksa daftar sekolah di bawah wilayah pengawasan SK penugasan Anda.</p>
       </div>
       <div class="wizard-card" onclick="loadView('crosscheck')">
-        <h4>🔍 Jalankan Pemeriksaan Otomatis</h4>
-        <p>Sistem otomatis mengecek kesesuaian transaksi, RKAS, dan potensi duplikasi data sekolah.</p>
+        <h4>🔍 Pemeriksaan Otomatis</h4>
+        <p>Sistem otomatis mengecek kesesuaian transaksi, RKAS, dan potensi duplikasi data.</p>
       </div>
       <div class="wizard-card" onclick="loadView('asesmen')">
         <h4>⭐️ Lembar Penilaian Asesmen</h4>
@@ -425,7 +501,7 @@ function homeView(){
     wizardBoxes = `
       <div class="wizard-card" onclick="loadView('rkas')">
         <h4>📋 Kelola & Input RKAS Sekolah</h4>
-        <p>Unggah atau masukkan rincian pagu anggaran RKAS awal untuk masing-masing sekolah.</p>
+        <p>Unggah atau masukkan rincian pagu anggaran RKAS awal lengkap dengan subtotal rujukan referensi barang.</p>
       </div>
       <div class="wizard-card" onclick="loadView('sekolah')">
         <h4>🏫 Daftar Seluruh Sekolah</h4>
@@ -453,23 +529,23 @@ function dbCheckView(){
 }
 
 function rkasReviewSchoolView(){
-  $('#mainContent').innerHTML=head('Periksa & Usul Perbaikan RKAS','Sekolah memeriksa RKAS dari Dinas dan dapat mengajukan usulan perbaikan sebagai basis penilaian')+
-  `<div class="panel"><h3 class="section-title" style="margin-top:0">Plafon RKAS Saat Ini</h3><p class="muted" style="margin-bottom:12px">Tekan tombol di bawah untuk melihat rincian anggaran yang ditetapkan Dinas.</p><button class="btn btn-primary" id="loadRkasInfoBtn">Tampilkan RKAS Aktif</button><div id="rkasInfoResult" style="margin-top:14px"></div></div>`+
-  `<div class="panel"><h3 class="section-title" style="margin-top:0">Buat Draft Usulan Perbaikan RKAS Baru</h3><p class="muted" style="margin-bottom:12px">Jika RKAS dari Dinas perlu perbaikan, buat draft usulan baru di sini.</p><button class="btn btn-primary" id="btnDraftUsul">Buat Draft Usulan Perbaikan</button><pre id="resDraftUsul" style="margin-top:12px">Belum ada aksi.</pre></div>`+
-  `<div class="panel"><h3 class="section-title" style="margin-top:0">Simpan Rincian Usul Item Belanja RKAS</h3><p class="muted" style="margin-bottom:12px">Masukkan item usulan perbaikan anggaran per kode rekening.</p><div class="form-grid">
+  $('#mainContent').innerHTML=head('Periksa & Usul Perbaikan RKAS','Sekolah memeriksa RKAS dari Dinas (dengan subtotal rujukan referensi barang dan grand total)')+
+  `<div class="panel"><h3 class="section-title" style="margin-top:0">Plafon RKAS Saat Ini</h3><p class="muted" style="margin-bottom:12px">Rincian anggaran dikelompokkan dengan subtotal kode rekening beserta rujukan nama dari tabel referensi barang, dilengkapi Grand Total.</p><button class="btn btn-primary" id="loadRkasInfoBtn">Tampilkan RKAS Aktif, Subtotal & Grand Total</button><div id="rkasInfoResult" style="margin-top:14px"></div></div>`+
+  `<div class="panel"><h3 class="section-title" style="margin-top:0">Buat Draft Usulan Perbaikan RKAS Baru</h3><button class="btn btn-primary" id="btnDraftUsul">Buat Draft Usulan Perbaikan</button><pre id="resDraftUsul" style="margin-top:12px">Belum ada aksi.</pre></div>`+
+  `<div class="panel"><h3 class="section-title" style="margin-top:0">Simpan Rincian Usul Item Belanja RKAS</h3><div class="form-grid">
      <div class="field"><label>NPSN Sekolah</label><input id="u_rkas_npsn" placeholder="Nomor NPSN"></div>
      <div class="field"><label>Versi Usulan RKAS</label><input id="u_rkas_versi" placeholder="Contoh: USUL-2026-01"></div>
      <div class="field"><label>ID RKAS (Opsional)</label><input id="u_rkas_id" placeholder="ID Unik RKAS"></div>
-     <div class="field"><label>Kode Rekening</label><input id="u_rkas_kode" placeholder="Contoh: 5.1.2..."></div>
-     <div class="field full-col"><label>Uraian Usulan Kegiatan</label><input id="u_rkas_uraian" placeholder="Keterangan uraian usulan perbaikan"></div>
+     <div class="field"><label>Kode Rekening</label><input id="u_rkas_kode" placeholder="Contoh: 5.1.02.01.01.0001"></div>
+     <div class="field full-col"><label>Uraian Usulan Kegiatan</label><input id="u_rkas_uraian" placeholder="Keterangan uraian usulan"></div>
      <div class="field"><label>Pagu Usulan (Rp)</label><input id="u_rkas_pagu" type="number" placeholder="0"></div>
      <div class="field"><label>Status</label><input id="u_rkas_status" value="DRAFT"></div>
    </div><div class="toolbar" style="margin-top:14px"><button class="btn btn-primary" id="saveUsulRkasBtn">Simpan Baris Usulan</button><button class="btn btn-light" id="clearUsulRes">Bersihkan</button></div><pre id="u_rkas_res" style="margin-top:12px">Belum ada data.</pre></div>`+
-  `<div class="panel"><h3 class="section-title" style="margin-top:0">Ajukan Usulan ke Dinas</h3><div class="field"><label>Versi Usulan RKAS yang ingin dikirim</label><input id="f_ajukan_versi" placeholder="Contoh: USUL-2026-01"></div><button class="btn btn-primary" id="ajukanUsulBtn">Kirim Pengajuan Usulan</button><pre id="resAjukanUsul" style="margin-top:12px">Belum ada aksi.</pre></div>`;
+  `<div class="panel"><h3 class="section-title" style="margin-top:0">Ajukan Usulan ke Dinas</h3><div class="field"><label>Versi Usulan RKAS</label><input id="f_ajukan_versi" placeholder="Contoh: USUL-2026-01"></div><button class="btn btn-primary" id="ajukanUsulBtn">Kirim Pengajuan Usulan</button><pre id="resAjukanUsul" style="margin-top:12px">Belum ada aksi.</pre></div>`;
 
   $('#loadRkasInfoBtn').onclick = async () => {
     const area = $('#rkasInfoResult');
-    area.innerHTML = '<p class="muted">Memuat data RKAS...</p>';
+    area.innerHTML = '<p class="muted">Memuat data RKAS, menghitung subtotal rujukan referensi barang & grand total...</p>';
     try {
       const res = await api('rkasAktif', {});
       const list = res.data || [];
@@ -477,10 +553,36 @@ function rkasReviewSchoolView(){
         area.innerHTML = `<div class="message ok">Belum ada RKAS aktif yang disetujui.</div>`;
         return;
       }
-      let html = `<div class="table-wrap"><table class="friendly-table"><thead><tr><th>KODE REKENING</th><th>URAIAN KEGIATAN</th><th>PAGU (IDR)</th><th>STATUS</th></tr></thead><tbody>`;
+
+      const groups = {};
+      let grandTotal = 0;
+
       list.forEach(r => {
-        html += `<tr><td><b>${esc(r.kode_rekening)}</b></td><td>${esc(r.uraian)}</td><td><b>${esc(r.pagu)}</b></td><td><span class="badge badge-success">${esc(r.status_rkas)}</span></td></tr>`;
+        const key = r.kode_rekening || 'UMUM';
+        if(!groups[key]) groups[key] = { items: [], total: 0 };
+        groups[key].items.push(r);
+        const paguVal = Number(r.pagu || 0);
+        groups[key].total += paguVal;
+        grandTotal += paguVal;
       });
+
+      let html = `<div class="table-wrap"><table class="friendly-table"><thead><tr><th>KODE REKENING & RUJUKAN REFERENSI BARANG</th><th>PAGU ANGGARAN</th><th>STATUS</th></tr></thead><tbody>`;
+      
+      Object.keys(groups).forEach(code => {
+        const g = groups[code];
+        const refLabel = getReferensiLabel(code);
+        
+        // BARIS SUBTOTAL DILETAKKAN DI ATAS RINCIAN DENGAN KETERANGAN RUJUKAN REFERENSI BARANG
+        html += `<tr class="subtotal-row"><td colspan="1"><b>SUBTOTAL [${esc(code)}] — ${esc(refLabel)}</b></td><td colspan="2"><b>${fmtRupiah(g.total)}</b></td></tr>`;
+        
+        g.items.forEach(item => {
+          html += `<tr><td>&nbsp;&nbsp;&bull; ${esc(item.uraian)}</td><td><b>${fmtRupiah(item.pagu)}</b></td><td><span class="badge badge-success">${esc(item.status_rkas)}</span></td></tr>`;
+        });
+      });
+
+      // BARIS GRAND TOTAL AKUMULATIF DI BAGIAN PALING BAWAH
+      html += `<tr class="grandtotal-row"><td colspan="1" style="text-align:right"><b>GRAND TOTAL KESELURUHAN PENGELUARAN:</b></td><td colspan="2"><b>${fmtRupiah(grandTotal)}</b></td></tr>`;
+
       html += `</tbody></table></div>`;
       area.innerHTML = html;
     } catch(e) {
@@ -519,9 +621,7 @@ function rkasInteractiveView(){
 function dokumenView(){
   $('#mainContent').innerHTML=head('Unggah Berkas & Dokumen SPJ','Kelola dokumen bulanan sekolah dan status pajak N/A')+
   `<div class="panel"><h3 class="section-title" style="margin-top:0">Daftar Dokumen Terunggah</h3>
-     <div class="form-grid">
-       ${selectBulanHTML('doc_p_id', 'Pilih Bulan Pelaporan')}
-     </div>
+     <div class="form-grid">${selectBulanHTML('doc_p_id', 'Pilih Bulan Pelaporan')}</div>
      <button class="btn btn-primary" id="loadDocBtn" style="margin-top:10px">Tampilkan Dokumen</button>
      <div id="docResultArea" style="margin-top:14px"></div>
    </div>`+
@@ -534,7 +634,7 @@ function dokumenView(){
      <button class="btn btn-secondary" id="saveNaBtn" style="margin-top:12px">Simpan Status N/A</button>
      <pre id="naRes" style="margin-top:12px">Belum ada aksi.</pre>
    </div>`+
-  `<div class="panel"><h3 class="section-title" style="margin-top:0">Unggah File Berkas PDF</h3><p class="muted" style="margin-bottom:12px">Tentukan bulan pelaporan serta jenis dokumen sebelum mengunggah file PDF.</p><button class="btn btn-primary" id="openUpload">Buka Form Unggah Berkas</button></div>`;
+  `<div class="panel"><h3 class="section-title" style="margin-top:0">Unggah File Berkas PDF</h3><button class="btn btn-primary" id="openUpload">Buka Form Unggah Berkas</button></div>`;
 
   $('#loadDocBtn').onclick = async () => {
     const area = $('#docResultArea');
@@ -575,11 +675,11 @@ function dokumenView(){
 }
 
 function uploadDokumenView(){
-  $('#mainContent').innerHTML=head('Form Unggah Berkas Laporan Bulanan','Pilih bulan dan jenis dokumen SPJ melalui pilihan list yang praktis')+
+  $('#mainContent').innerHTML=head('Form Unggah Berkas Laporan Bulanan','Pilih bulan dan jenis dokumen SPJ')+
   `<div class="panel"><form id="uploadForm"><div class="form-grid">
      ${selectBulanHTML('up_periode', 'Pilih Periode Bulan Pelaporan')}
      ${selectDokumenHTML('up_spj', 'Pilih Jenis Komponen Dokumen SPJ')}
-     <div class="field full-col"><label>Pilih File Berkas Laporan (.pdf)</label><input id="up_file" type="file" accept=".pdf" required><small class="muted" style="display:block;margin-top:6px">Pastikan dokumen berformat PDF dan sudah ditandatangani/dicap basah.</small></div>
+     <div class="field full-col"><label>Pilih File Berkas Laporan (.pdf)</label><input id="up_file" type="file" accept=".pdf" required></div>
    </div><div id="upMsg"></div><button class="btn btn-primary" style="margin-top:14px">Unggah Berkas ke Sistem</button></form><pre id="upResult" style="margin-top:16px">Belum ada berkas diunggah.</pre></div>`;
   $('#uploadForm').onsubmit=async e=>{
     e.preventDefault(); const f=$('#up_file').files[0]; if(!f)return;
@@ -596,10 +696,10 @@ function uploadDokumenView(){
 }
 
 function transaksiView(){
-  $('#mainContent').innerHTML=head('Catatan Keuangan & Transaksi','Rekam transaksi belanja dan pantau realisasi pagu anggaran')+
+  $('#mainContent').innerHTML=head('Catatan Keuangan & Transaksi','Rekam transaksi belanja dengan format Rupiah ribuan')+
   `<div class="panel">
     <div class="toolbar">
-      <button class="btn btn-primary" id="friendlyLoadBtn">Tampilkan Data</button>
+      <button class="btn btn-primary" id="friendlyLoadBtn">Tampilkan Data Transaksi</button>
       <button class="btn btn-light" id="friendlyClearBtn">Bersihkan</button>
     </div>
     <div class="form-grid">
@@ -620,9 +720,9 @@ function transaksiView(){
         area.innerHTML = `<div class="message ok">Tidak ada data transaksi untuk periode tersebut.</div>`;
         return;
       }
-      let html = `<div class="table-wrap"><table class="friendly-table"><thead><tr><th>TANGGAL</th><th>URAIAN TRANSAKSI</th><th>NILAI</th><th>NO BUKTI</th><th>PENERIMA</th><th>PAJAK</th></tr></thead><tbody>`;
+      let html = `<div class="table-wrap"><table class="friendly-table"><thead><tr><th>TANGGAL</th><th>URAIAN TRANSAKSI</th><th>NILAI TRANSAKSI</th><th>NO BUKTI</th><th>PENERIMA</th><th>PAJAK</th></tr></thead><tbody>`;
       list.forEach(row => {
-        html += `<tr><td>${esc(row.tanggal_transaksi)}</td><td>${esc(row.uraian_transaksi)}</td><td><b>${esc(row.nilai_transaksi)}</b></td><td>${esc(row.nomor_bukti)}</td><td>${esc(row.pihak_penerima)}</td><td>${esc(row.pajak)}</td></tr>`;
+        html += `<tr><td>${esc(row.tanggal_transaksi)}</td><td>${esc(row.uraian_transaksi)}</td><td><b>${fmtRupiah(row.nilai_transaksi)}</b></td><td>${esc(row.nomor_bukti)}</td><td>${esc(row.pihak_penerima)}</td><td>${esc(row.pajak)}</td></tr>`;
       });
       html += `</tbody></table></div>`;
       area.innerHTML = html;
@@ -668,7 +768,7 @@ function crosscheckView(){
         }
         let html = `<div class="table-wrap"><table class="friendly-table"><thead><tr><th>KODE TEMUAN</th><th>LEVEL</th><th>SUMBER UTAMA</th><th>NILAI SUMBER</th><th>CATATAN SISTEM</th></tr></thead><tbody>`;
         list.forEach(item => {
-          html += `<tr><td><b>${esc(item.kode_temuan)}</b></td><td><span class="badge badge-warning">${esc(item.level_temuan)}</span></td><td>${esc(item.sumber_utama)}</td><td>${esc(item.nilai_sumber)}</td><td>${esc(item.catatan_sistem)}</td></tr>`;
+          html += `<tr><td><b>${esc(item.kode_temuan)}</b></td><td><span class="badge badge-warning">${esc(item.level_temuan)}</span></td><td>${esc(item.sumber_utama)}</td><td>${fmtRupiah(item.nilai_sumber)}</td><td>${esc(item.catatan_sistem)}</td></tr>`;
         });
         html += `</tbody></table></div>`;
         area.innerHTML = html;
@@ -686,9 +786,7 @@ function temuanView(){
       <button class="btn btn-primary" id="friendlyLoadBtn">Tampilkan Data Temuan</button>
       <button class="btn btn-light" id="friendlyClearBtn">Bersihkan</button>
     </div>
-    <div class="form-grid">
-      ${selectBulanHTML('f_idPeriode', 'Pilih Periode Bulan')}
-    </div>
+    <div class="form-grid">${selectBulanHTML('f_idPeriode', 'Pilih Periode Bulan')}</div>
     <div id="friendlyResultArea" style="margin-top:16px"><p class="muted">Belum ada data temuan yang dimuat.</p></div>
   </div>`+
   actionPanel('verifikasiTemuanSPJ',[{id:'idTemuan',label:'ID Temuan'},{id:'hasilVerifikasi',label:'Hasil (TERBUKTI / TIDAK_TERBUKTI / PERLU_DATA / N/A)'},{id:'catatan',label:'Catatan Verifikasi Pengawas',full:true}]);
@@ -737,13 +835,13 @@ function asesmenInteractiveView(){
      <button class="btn btn-primary" id="runAsmBtn" style="margin-top:10px">Ambil Asesmen</button>
      <pre id="asmRes" style="margin-top:12px">Belum ada aksi.</pre>
    </div>`+
-  `<div class="panel"><h3 class="section-title" style="margin-top:0">Input Skor Detail Per Indikator</h3><p class="muted" style="margin-bottom:12px">Masukkan nilai skor (0 sampai 4) serta catatan penilaian pengawas.</p><div class="form-grid">
+  `<div class="panel"><h3 class="section-title" style="margin-top:0">Input Skor Detail Per Indikator</h3><div class="form-grid">
      <div class="field"><label>ID Asesmen</label><input id="d_asm_id" placeholder="ID Asesmen"></div>
      <div class="field"><label>ID Indikator</label><input id="d_asm_ind" placeholder="ID Indikator"></div>
      <div class="field"><label>Status Berlaku</label><input id="d_asm_status" value="BERLAKU" placeholder="BERLAKU / N/A"></div>
      <div class="field"><label>Skor Penilaian (0 - 4)</label><input id="d_asm_skor" type="number" min="0" max="4" placeholder="0 - 4"></div>
      <div class="field full-col"><label>Catatan Pengawas</label><textarea id="d_asm_catatan" rows="2" placeholder="Tuliskan catatan kualitatif..."></textarea></div>
-   </div><div class="toolbar" style="margin-top:12px"><button class="btn btn-primary" id="saveDetailAsesmenBtn">Simpan Skor Indikator</button><button class="btn btn-light" id="clearAsmRes">Bersihkan</button></div><pre id="d_asm_res" style="margin-top:12px">Belum ada data skor.</pre></div>`+
+   </div><button class="btn btn-primary" id="saveDetailAsesmenBtn" style="margin-top:12px">Simpan Skor Indikator</button><pre id="d_asm_res" style="margin-top:12px">Belum ada data skor.</pre></div>`+
   actionPanel('finalisasiAsesmen',[{id:'idAsesmen',label:'ID Asesmen yang ingin difinalisasi'}]);
 
   $('#runIndBtn').onclick = async () => {
@@ -786,16 +884,33 @@ function asesmenInteractiveView(){
     $('#d_asm_res').textContent='Menyimpan nilai...';
     try{const r=await api('simpanDetailAsesmen',{data:payload});$('#d_asm_res').textContent=JSON.stringify(r,null,2)}catch(e){$('#d_asm_res').textContent=e.message}
   };
-  $('#clearAsmRes').onclick=()=>$('#d_asm_res').textContent='Belum ada data skor.';
 }
 
 document.addEventListener('submit',e=>{if(e.target.id==='loginForm')doLogin(e)});
+
 window.addEventListener('DOMContentLoaded',()=>{
   try{
     if(state.token){
-      api('getSession').then(r=>{if(r.success){state.user=r.data||r.user||null;dashboard()}else{state.token='';sessionStorage.removeItem('simpel_token');authView()}}).catch(()=>{state.token='';sessionStorage.removeItem('simpel_token');authView()})
-    }else{authView()}
-  }catch(e){authView('login',msg('Halaman siap digunakan.','ok'))}
+      api('getSession').then(r=>{
+        if(r.success){
+          state.user=r.data||r.user||null;
+          dashboard();
+        }else{
+          state.token='';
+          sessionStorage.removeItem('simpel_token');
+          authView();
+        }
+      }).catch(()=>{
+        state.token='';
+        sessionStorage.removeItem('simpel_token');
+        authView();
+      });
+    }else{
+      authView();
+    }
+  }catch(e){
+    authView();
+  }
 });
 </script>
 <noscript><div style="position:fixed;left:12px;right:12px;bottom:12px;background:#fff0ef;color:#8a1c16;padding:12px;border-radius:12px;border:1px solid #f0c5c1;z-index:9999">JavaScript harus diaktifkan untuk menggunakan SIMPEL SPJ.</div></noscript></body>
