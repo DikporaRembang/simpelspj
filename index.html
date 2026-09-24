@@ -156,8 +156,8 @@ button{cursor:pointer}
     <section class="auth-side"><div class="auth-side-inner">
       <div class="brand"><div class="brand-mark">SPJ</div><div><h2 style="color:#fff">SIMPEL SPJ</h2><small style="color:#d9eee0">Kabupaten Rembang</small></div></div>
       <h1>Pengelolaan SPJ BOS SD yang terintegrasi.</h1>
-      <p>RKAS disajikan oleh Dinas, Sekolah dapat memeriksa dan mengusulkan perbaikan sebagai basis penilaian.</p>
-      <div class="feature"><span>✓ RKAS dari Dinas</span><span>✓ Usul Perbaikan Sekolah</span><span>✓ Tampilan Tabel Ramah Awam</span></div>
+      <p>RKAS disajikan oleh Dinas, Sekolah dapat memeriksa dan usulkan perbaikan dengan pilihan menu yang praktis.</p>
+      <div class="feature"><span>✓ Pilihan Bulan & Dokumen List</span><span>✓ Tabel Ramah Awam</span><span>✓ Validasi Mudah</span></div>
     </div></section>
     <section class="auth-panel"><div class="auth-card">
       <div class="brand"><div class="brand-mark">SPJ</div><div><h2>SIMPEL SPJ</h2><small>Masuk ke sistem</small></div></div>
@@ -177,7 +177,7 @@ const ROLE_RULES={
 
 const state={token:sessionStorage.getItem('simpel_token')||'',user:null,view:'home',cache:{},captcha:false};
 const $=s=>document.querySelector(s),$$=s=>Array.from(document.querySelectorAll(s));
-const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;}'}[c]||c));
+const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]||c));
 const fmt = v => {
   if(!isNaN(v)&&typeof v==='number') return new Intl.NumberFormat('id-ID',{style:'currency',currency:'IDR',maximumFractionDigits:0}).format(v);
   return esc(v);
@@ -202,7 +202,7 @@ function setupCaptcha(){
 
 function authView(mode='login',notice=''){
  const login=mode==='login';
- $('#app').innerHTML=`<main class="auth"><section class="auth-side"><div><div class="brand"><div class="brand-mark">SPJ</div><div><h2>SIMPEL SPJ</h2><small>Kabupaten Rembang</small></div></div><h1>Pengelolaan SPJ BOS SD yang terintegrasi.</h1><p>RKAS disajikan oleh Dinas, Sekolah dapat memeriksa dan mengusulkan perbaikan sebagai basis penilaian.</p><div class="feature"><span>✓ RKAS dari Dinas</span><span>✓ Usul Perbaikan Sekolah</span><span>✓ Tampilan Tabel Ramah Awam</span></div></div></section><section class="auth-panel"><div class="auth-card"><div class="brand"><div class="brand-mark">SPJ</div><div><h2>SIMPEL SPJ</h2><small>Masuk ke sistem</small></div></div>${notice}<div id="authBody"></div></div></section></main>`;
+ $('#app').innerHTML=`<main class="auth"><section class="auth-side"><div><div class="brand"><div class="brand-mark">SPJ</div><div><h2>SIMPEL SPJ</h2><small>Kabupaten Rembang</small></div></div><h1>Pengelolaan SPJ BOS SD yang terintegrasi.</h1><p>RKAS disajikan oleh Dinas, Sekolah dapat memeriksa dan mengusulkan perbaikan sebagai basis penilaian.</p><div class="feature"><span>✓ Pilihan List Periode & Dokumen</span><span>✓ Tabel Ramah Awam</span><span>✓ Validasi Mudah</span></div></div></section><section class="auth-panel"><div class="auth-card"><div class="brand"><div class="brand-mark">SPJ</div><div><h2>SIMPEL SPJ</h2><small>Masuk ke sistem</small></div></div>${notice}<div id="authBody"></div></div></section></main>`;
  $('#authBody').innerHTML=login?loginForm():''; if(login)setupCaptcha();
 }
 function loginForm(){return `<form id="loginForm"><div class="field"><label>Username / NPSN</label><input id="username" autocomplete="username" required placeholder="Masukkan username atau NPSN sekolah"></div><div class="field"><label>Password</label><div class="password-wrap"><input id="password" type="password" autocomplete="current-password" required placeholder="Masukkan kata sandi"><button type="button" class="toggle-pass" onclick="passwordToggle('password')">👁</button></div></div>${captchaHTML()}<div id="authMsg"></div><button class="btn btn-primary full" type="submit" id="loginBtn" style="margin-top:16px">Masuk ke Aplikasi</button></form>`}
@@ -255,6 +255,46 @@ function loadView(view){
 }
 
 function head(title,desc=''){return `<div class="page-head"><div><h1>${title}</h1><div class="muted">${desc}</div></div></div>`}
+
+// Helper Pilihan List Bulan (Dropdown Generator)
+function selectBulanHTML(id='idPeriode', labelText='Pilih Periode Bulan'){
+  return `<div class="field"><label>${labelText}</label>
+    <select id="${id}">
+      <option value="">-- Pilih Bulan Pelaporan --</option>
+      <option value="BLN-01">Bulan 01 - Januari</option>
+      <option value="BLN-02">Bulan 02 - Februari</option>
+      <option value="BLN-03">Bulan 03 - Maret</option>
+      <option value="BLN-04">Bulan 04 - April</option>
+      <option value="BLN-05">Bulan 05 - Mei</option>
+      <option value="BLN-06">Bulan 06 - Juni</option>
+      <option value="BLN-07">Bulan 07 - Juli</option>
+      <option value="BLN-08">Bulan 08 - Agustus</option>
+      <option value="BLN-09">Bulan 09 - September</option>
+      <option value="BLN-10">Bulan 10 - Oktober</option>
+      <option value="BLN-11">Bulan 11 - November</option>
+      <option value="BLN-12">Bulan 12 - Desember</option>
+    </select>
+  </div>`;
+}
+
+// Helper Pilihan List Jenis Dokumen SPJ (Dropdown Generator)
+function selectDokumenHTML(id='idSpj', labelText='Pilih Jenis Komponen SPJ'){
+  return `<div class="field"><label>${labelText}</label>
+    <select id="${id}">
+      <option value="">-- Pilih Jenis Komponen SPJ --</option>
+      <option value="BKU">Buku Kas Umum (BKU)</option>
+      <option value="BUKU_BANK">Buku Bank</option>
+      <option value="BKT">Buku Kas Tunai</option>
+      <option value="BUKU_PAJAK">Buku Pajak</option>
+      <option value="REKENING_KORAN">Rekening Koran</option>
+      <option value="INVOICE">Invoice / Nota / Kuitansi</option>
+      <option value="BUKTI_PENDUKUNG">Bukti Pendukung Lainnya</option>
+      <option value="SSP_PUSAT">SSP Pajak Pusat (PPN/PPh)</option>
+      <option value="SSP_DAERAH">SSP Pajak Daerah</option>
+      <option value="FOTO">Foto / Dokumentasi Kegiatan</option>
+    </select>
+  </div>`;
+}
 
 function friendlyTableAction(title,action,desc,fields=[]){
   $('#mainContent').innerHTML=head(title,desc)+
@@ -478,13 +518,28 @@ function rkasInteractiveView(){
 
 function dokumenView(){
   $('#mainContent').innerHTML=head('Unggah Berkas & Dokumen SPJ','Kelola dokumen bulanan sekolah dan status pajak N/A')+
-  `<div class="panel"><h3 class="section-title" style="margin-top:0">Daftar Dokumen Terunggah</h3><div class="field"><label>ID Periode</label><input id="doc_p_id" placeholder="Contoh: BLN-01"></div><button class="btn btn-primary" id="loadDocBtn">Tampilkan Dokumen</button><div id="docResultArea" style="margin-top:14px"></div></div>`+
-  `<div class="panel"><h3 class="section-title" style="margin-top:0">Atur Status Pajak N/A</h3><div class="form-grid"><div class="field"><label>ID Periode</label><input id="na_p" placeholder="BLN-01"></div><div class="field"><label>ID SPJ Pajak</label><input id="na_spj" placeholder="SSP_PUSAT"></div><div class="field full-col"><label>Alasan N/A</label><input id="na_alasan" placeholder="Tidak ada transaksi pajak bulan ini"></div></div><button class="btn btn-secondary" id="saveNaBtn" style="margin-top:12px">Simpan Status N/A</button><pre id="naRes" style="margin-top:12px">Belum ada aksi.</pre></div>`+
+  `<div class="panel"><h3 class="section-title" style="margin-top:0">Daftar Dokumen Terunggah</h3>
+     <div class="form-grid">
+       ${selectBulanHTML('doc_p_id', 'Pilih Bulan Pelaporan')}
+     </div>
+     <button class="btn btn-primary" id="loadDocBtn" style="margin-top:10px">Tampilkan Dokumen</button>
+     <div id="docResultArea" style="margin-top:14px"></div>
+   </div>`+
+  `<div class="panel"><h3 class="section-title" style="margin-top:0">Atur Status Pajak N/A</h3>
+     <div class="form-grid">
+       ${selectBulanHTML('na_p', 'Pilih Bulan')}
+       ${selectDokumenHTML('na_spj', 'Pilih Komponen Pajak')}
+       <div class="field full-col"><label>Alasan N/A</label><input id="na_alasan" placeholder="Tidak ada transaksi pajak pada bulan ini"></div>
+     </div>
+     <button class="btn btn-secondary" id="saveNaBtn" style="margin-top:12px">Simpan Status N/A</button>
+     <pre id="naRes" style="margin-top:12px">Belum ada aksi.</pre>
+   </div>`+
   `<div class="panel"><h3 class="section-title" style="margin-top:0">Unggah File Berkas PDF</h3><p class="muted" style="margin-bottom:12px">Tentukan bulan pelaporan serta jenis dokumen sebelum mengunggah file PDF.</p><button class="btn btn-primary" id="openUpload">Buka Form Unggah Berkas</button></div>`;
 
   $('#loadDocBtn').onclick = async () => {
     const area = $('#docResultArea');
     const pId = $('#doc_p_id').value;
+    if(!pId){ alert('Silakan pilih bulan pelaporan terlebih dahulu.'); return; }
     area.innerHTML = '<p class="muted">Memuat dokumen...</p>';
     try {
       const res = await api('getDokumenSPJ', {idPeriode: pId});
@@ -506,6 +561,7 @@ function dokumenView(){
 
   $('#saveNaBtn').onclick = async () => {
     const p = $('#na_p').value, s = $('#na_spj').value, a = $('#na_alasan').value;
+    if(!p || !s){ alert('Bulan dan komponen pajak wajib dipilih.'); return; }
     $('#naRes').textContent = 'Menyimpan...';
     try {
       const r = await api('setStatusDokumenSPJNA', {idPeriode: p, idSpj: s, alasan: a});
@@ -519,40 +575,10 @@ function dokumenView(){
 }
 
 function uploadDokumenView(){
-  $('#mainContent').innerHTML=head('Form Unggah Berkas Laporan Bulanan','Pilih bulan ke berapa dan jenis dokumen SPJ yang akan diunggah')+
+  $('#mainContent').innerHTML=head('Form Unggah Berkas Laporan Bulanan','Pilih bulan dan jenis dokumen SPJ melalui pilihan list yang praktis')+
   `<div class="panel"><form id="uploadForm"><div class="form-grid">
-     <div class="field"><label>Pilih Periode Bulan</label>
-       <select id="up_periode" required>
-         <option value="">-- Pilih Bulan Pelaporan --</option>
-         <option value="BLN-01">Bulan 01 - Januari</option>
-         <option value="BLN-02">Bulan 02 - Februari</option>
-         <option value="BLN-03">Bulan 03 - Maret</option>
-         <option value="BLN-04">Bulan 04 - April</option>
-         <option value="BLN-05">Bulan 05 - Mei</option>
-         <option value="BLN-06">Bulan 06 - Juni</option>
-         <option value="BLN-07">Bulan 07 - Juli</option>
-         <option value="BLN-08">Bulan 08 - Agustus</option>
-         <option value="BLN-09">Bulan 09 - September</option>
-         <option value="BLN-10">Bulan 10 - Oktober</option>
-         <option value="BLN-11">Bulan 11 - November</option>
-         <option value="BLN-12">Bulan 12 - Desember</option>
-       </select>
-     </div>
-     <div class="field"><label>Pilih Jenis Dokumen SPJ</label>
-       <select id="up_spj" required>
-         <option value="">-- Pilih Jenis Komponen --</option>
-         <option value="BKU">Buku Kas Umum (BKU)</option>
-         <option value="BUKU_BANK">Buku Bank</option>
-         <option value="BKT">Buku Kas Tunai</option>
-         <option value="BUKU_PAJAK">Buku Pajak</option>
-         <option value="REKENING_KORAN">Rekening Koran</option>
-         <option value="INVOICE">Invoice / Nota / Kuitansi</option>
-         <option value="BUKTI_PENDUKUNG">Bukti Pendukung Lainnya</option>
-         <option value="SSP_PUSAT">SSP Pajak Pusat (PPN/PPh)</option>
-         <option value="SSP_DAERAH">SSP Pajak Daerah</option>
-         <option value="FOTO">Foto / Dokumentasi Kegiatan</option>
-       </select>
-     </div>
+     ${selectBulanHTML('up_periode', 'Pilih Periode Bulan Pelaporan')}
+     ${selectDokumenHTML('up_spj', 'Pilih Jenis Komponen Dokumen SPJ')}
      <div class="field full-col"><label>Pilih File Berkas Laporan (.pdf)</label><input id="up_file" type="file" accept=".pdf" required><small class="muted" style="display:block;margin-top:6px">Pastikan dokumen berformat PDF dan sudah ditandatangani/dicap basah.</small></div>
    </div><div id="upMsg"></div><button class="btn btn-primary" style="margin-top:14px">Unggah Berkas ke Sistem</button></form><pre id="upResult" style="margin-top:16px">Belum ada berkas diunggah.</pre></div>`;
   $('#uploadForm').onsubmit=async e=>{
@@ -570,7 +596,41 @@ function uploadDokumenView(){
 }
 
 function transaksiView(){
-  friendlyTableAction('Catatan Keuangan & Transaksi','getTransaksiSPJ','Rekam transaksi belanja dan pantau realisasi pagu anggaran.',[{id:'idPeriode',label:'ID Periode'},{id:'npsn',label:'NPSN Sekolah'}]);
+  $('#mainContent').innerHTML=head('Catatan Keuangan & Transaksi','Rekam transaksi belanja dan pantau realisasi pagu anggaran')+
+  `<div class="panel">
+    <div class="toolbar">
+      <button class="btn btn-primary" id="friendlyLoadBtn">Tampilkan Data</button>
+      <button class="btn btn-light" id="friendlyClearBtn">Bersihkan</button>
+    </div>
+    <div class="form-grid">
+      ${selectBulanHTML('f_idPeriode', 'Pilih Periode Bulan')}
+      <div class="field"><label>NPSN Sekolah (Opsional)</label><input id="f_npsn" placeholder="Nomor NPSN"></div>
+    </div>
+    <div id="friendlyResultArea" style="margin-top:16px"><p class="muted">Belum ada data yang dimuat.</p></div>
+  </div>`;
+
+  $('#friendlyLoadBtn').onclick = async () => {
+    const area = $('#friendlyResultArea');
+    area.innerHTML = '<p class="muted">Mengambil data transaksi...</p>';
+    try {
+      const p = $('#f_idPeriode').value, n = $('#f_npsn').value;
+      const res = await api('getTransaksiSPJ', {idPeriode: p, npsn: n});
+      const list = res.data || [];
+      if (!list.length) {
+        area.innerHTML = `<div class="message ok">Tidak ada data transaksi untuk periode tersebut.</div>`;
+        return;
+      }
+      let html = `<div class="table-wrap"><table class="friendly-table"><thead><tr><th>TANGGAL</th><th>URAIAN TRANSAKSI</th><th>NILAI</th><th>NO BUKTI</th><th>PENERIMA</th><th>PAJAK</th></tr></thead><tbody>`;
+      list.forEach(row => {
+        html += `<tr><td>${esc(row.tanggal_transaksi)}</td><td>${esc(row.uraian_transaksi)}</td><td><b>${esc(row.nilai_transaksi)}</b></td><td>${esc(row.nomor_bukti)}</td><td>${esc(row.pihak_penerima)}</td><td>${esc(row.pajak)}</td></tr>`;
+      });
+      html += `</tbody></table></div>`;
+      area.innerHTML = html;
+    } catch(err) {
+      area.innerHTML = `<div class="message error">${esc(err.message)}</div>`;
+    }
+  };
+  $('#friendlyClearBtn').onclick = () => { $('#friendlyResultArea').innerHTML = '<p class="muted">Belum ada data yang dimuat.</p>'; };
 }
 
 function crosscheckView(){
@@ -585,7 +645,14 @@ function crosscheckView(){
     ['jalankanCrossCheckSPJBulanan','Jalankan Seluruh Pemeriksaan Bulanan']
   ];
   $('#mainContent').innerHTML=head('Pemeriksaan & Validasi Otomatis','Sistem otomatis mendeteksi potensi ketidaksesuaian laporan keuangan')+
-  actions.map(a=>`<div class="panel"><h3>${a[1]}</h3><div class="form-grid"><div class="field"><label>ID Periode</label><input id="${a[0]}_p" placeholder="Contoh: BLN-01"></div><div class="field"><label>NPSN Sekolah</label><input id="${a[0]}_n" placeholder="Nomor NPSN"></div></div><button class="btn btn-primary run-cross" data-action="${a[0]}" style="margin-top:12px">Jalankan Pemeriksaan</button><div id="${a[0]}_r" style="margin-top:12px"><p class="muted">Belum ada hasil pemeriksaan.</p></div></div>`).join('');
+  actions.map(a=>`<div class="panel"><h3>${a[1]}</h3>
+    <div class="form-grid">
+      ${selectBulanHTML(a[0]+'_p', 'Pilih Bulan Pemeriksaan')}
+      <div class="field"><label>NPSN Sekolah</label><input id="${a[0]}_n" placeholder="Nomor NPSN"></div>
+    </div>
+    <button class="btn btn-primary run-cross" data-action="${a[0]}" style="margin-top:12px">Jalankan Pemeriksaan</button>
+    <div id="${a[0]}_r" style="margin-top:12px"><p class="muted">Belum ada hasil pemeriksaan.</p></div>
+  </div>`).join('');
 
   $$('.run-cross').forEach(btn=>{
     btn.onclick=async()=>{
@@ -613,15 +680,63 @@ function crosscheckView(){
 }
 
 function temuanView(){
-  friendlyTableAction('Temuan & Perbaikan Laporan','getTemuanSPJ','Kelola catatan hasil temuan audit dan verifikasi pengawas.',[{id:'idPeriode',label:'ID Periode'}]);
+  $('#mainContent').innerHTML=head('Temuan & Perbaikan Laporan','Kelola catatan hasil temuan audit dan verifikasi pengawas')+
+  `<div class="panel">
+    <div class="toolbar">
+      <button class="btn btn-primary" id="friendlyLoadBtn">Tampilkan Data Temuan</button>
+      <button class="btn btn-light" id="friendlyClearBtn">Bersihkan</button>
+    </div>
+    <div class="form-grid">
+      ${selectBulanHTML('f_idPeriode', 'Pilih Periode Bulan')}
+    </div>
+    <div id="friendlyResultArea" style="margin-top:16px"><p class="muted">Belum ada data temuan yang dimuat.</p></div>
+  </div>`+
+  actionPanel('verifikasiTemuanSPJ',[{id:'idTemuan',label:'ID Temuan'},{id:'hasilVerifikasi',label:'Hasil (TERBUKTI / TIDAK_TERBUKTI / PERLU_DATA / N/A)'},{id:'catatan',label:'Catatan Verifikasi Pengawas',full:true}]);
+
+  $('#friendlyLoadBtn').onclick = async () => {
+    const area = $('#friendlyResultArea');
+    area.innerHTML = '<p class="muted">Memuat data temuan...</p>';
+    try {
+      const p = $('#f_idPeriode').value;
+      const res = await api('getTemuanSPJ', {idPeriode: p});
+      const list = res.data || [];
+      if (!list.length) {
+        area.innerHTML = `<div class="message ok">Tidak ada temuan pada periode tersebut.</div>`;
+        return;
+      }
+      let html = `<div class="table-wrap"><table class="friendly-table"><thead><tr><th>ID TEMUAN</th><th>KODE TEMUAN</th><th>LEVEL</th><th>STATUS</th><th>HASIL SISTEM</th><th>VERIFIKASI</th></tr></thead><tbody>`;
+      list.forEach(row => {
+        html += `<tr><td><b>${esc(row.id_temuan)}</b></td><td>${esc(row.kode_temuan)}</td><td><span class="badge badge-warning">${esc(row.level_temuan)}</span></td><td><span class="badge badge-info">${esc(row.status_temuan)}</span></td><td>${esc(row.hasil_sistem)}</td><td><span class="badge badge-success">${esc(row.hasil_verifikasi || 'BELUM')}</span></td></tr>`;
+      });
+      html += `</tbody></table></div>`;
+      area.innerHTML = html;
+    } catch(err) {
+      area.innerHTML = `<div class="message error">${esc(err.message)}</div>`;
+    }
+  };
+  $('#friendlyClearBtn').onclick = () => { $('#friendlyResultArea').innerHTML = '<p class="muted">Belum ada data yang dimuat.</p>'; };
 }
 
 function asesmenInteractiveView(){
   $('#mainContent').innerHTML=head('Lembar Penilaian Asesmen','Hitung indikator, simpan indeks kompleksitas, dan masukkan skor penilaian pengawas')+
-  actionPanel('hitungIndikatorDariTemuan',[{id:'idPeriode',label:'ID Periode'}])+
-  actionPanel('simpanKompleksitas',[{id:'idPeriode',label:'ID Periode'}])+
-  actionPanel('buatAtauAmbilAsesmen',[{id:'idPeriode',label:'ID Periode'}])+
-  
+  `<div class="panel">
+     <h3 class="section-title" style="margin-top:0">Hitung Indikator Dari Temuan</h3>
+     <div class="form-grid">${selectBulanHTML('ind_p', 'Pilih Periode Bulan')}</div>
+     <button class="btn btn-primary" id="runIndBtn" style="margin-top:10px">Hitung Indikator</button>
+     <div id="indResArea" style="margin-top:12px"></div>
+   </div>`+
+  `<div class="panel">
+     <h3 class="section-title" style="margin-top:0">Simpan Kompleksitas</h3>
+     <div class="form-grid">${selectBulanHTML('kom_p', 'Pilih Periode Bulan')}</div>
+     <button class="btn btn-primary" id="runKomBtn" style="margin-top:10px">Simpan Kompleksitas</button>
+     <pre id="komRes" style="margin-top:12px">Belum ada aksi.</pre>
+   </div>`+
+  `<div class="panel">
+     <h3 class="section-title" style="margin-top:0">Buat atau Ambil Asesmen</h3>
+     <div class="form-grid">${selectBulanHTML('asm_p', 'Pilih Periode Bulan')}</div>
+     <button class="btn btn-primary" id="runAsmBtn" style="margin-top:10px">Ambil Asesmen</button>
+     <pre id="asmRes" style="margin-top:12px">Belum ada aksi.</pre>
+   </div>`+
   `<div class="panel"><h3 class="section-title" style="margin-top:0">Input Skor Detail Per Indikator</h3><p class="muted" style="margin-bottom:12px">Masukkan nilai skor (0 sampai 4) serta catatan penilaian pengawas.</p><div class="form-grid">
      <div class="field"><label>ID Asesmen</label><input id="d_asm_id" placeholder="ID Asesmen"></div>
      <div class="field"><label>ID Indikator</label><input id="d_asm_ind" placeholder="ID Indikator"></div>
@@ -629,14 +744,42 @@ function asesmenInteractiveView(){
      <div class="field"><label>Skor Penilaian (0 - 4)</label><input id="d_asm_skor" type="number" min="0" max="4" placeholder="0 - 4"></div>
      <div class="field full-col"><label>Catatan Pengawas</label><textarea id="d_asm_catatan" rows="2" placeholder="Tuliskan catatan kualitatif..."></textarea></div>
    </div><div class="toolbar" style="margin-top:12px"><button class="btn btn-primary" id="saveDetailAsesmenBtn">Simpan Skor Indikator</button><button class="btn btn-light" id="clearAsmRes">Bersihkan</button></div><pre id="d_asm_res" style="margin-top:12px">Belum ada data skor.</pre></div>`+
-
   actionPanel('finalisasiAsesmen',[{id:'idAsesmen',label:'ID Asesmen yang ingin difinalisasi'}]);
 
-  const panels=$$('#mainContent .panel');
-  bindPanel(panels[0],'hitungIndikatorDariTemuan',[{id:'idPeriode'},{id:'npsn'}]);
-  bindPanel(panels[1],'simpanKompleksitas',[{id:'idPeriode'},{id:'npsn'}]);
-  bindPanel(panels[2],'buatAtauAmbilAsesmen',[{id:'idPeriode'},{id:'npsn'}]);
-  bindPanel(panels[4],'finalisasiAsesmen',[{id:'idAsesmen'}]);
+  $('#runIndBtn').onclick = async () => {
+    const p = $('#ind_p').value;
+    const area = $('#indResArea');
+    area.innerHTML = '<p class="muted">Menghitung indikator...</p>';
+    try {
+      const res = await api('hitungIndikatorDariTemuan', {idPeriode: p});
+      const list = res.data || [];
+      if(!list.length){ area.innerHTML = `<div class="message ok">Tidak ada indikator.</div>`; return; }
+      let html = `<div class="table-wrap"><table class="friendly-table"><thead><tr><th>KODE INDIKATOR</th><th>NAMA INDIKATOR</th><th>BOBOT</th><th>SKOR</th><th>JUMLAH TEMUAN</th></tr></thead><tbody>`;
+      list.forEach(i => {
+        html += `<tr><td><b>${esc(i.kode_indikator)}</b></td><td>${esc(i.nama_indikator)}</td><td>${esc(i.bobot)}</td><td><b>${esc(i.skor)}</b></td><td>${esc(i.jumlah_temuan)}</td></tr>`;
+      });
+      html += `</tbody></table></div>`;
+      area.innerHTML = html;
+    } catch(e) { area.innerHTML = `<div class="message error">${esc(e.message)}</div>`; }
+  };
+
+  $('#runKomBtn').onclick = async () => {
+    const p = $('#kom_p').value;
+    $('#komRes').textContent = 'Menyimpan kompleksitas...';
+    try {
+      const r = await api('simpanKompleksitas', {idPeriode: p});
+      $('#komRes').textContent = JSON.stringify(r, null, 2);
+    } catch(e) { $('#komRes').textContent = e.message; }
+  };
+
+  $('#runAsmBtn').onclick = async () => {
+    const p = $('#asm_p').value;
+    $('#asmRes').textContent = 'Mengambil asesmen...';
+    try {
+      const r = await api('buatAtauAmbilAsesmen', {idPeriode: p});
+      $('#asmRes').textContent = JSON.stringify(r, null, 2);
+    } catch(e) { $('#asmRes').textContent = e.message; }
+  };
 
   $('#saveDetailAsesmenBtn').onclick=async()=>{
     const payload={id_asesmen:$('#d_asm_id').value,id_indikator:$('#d_asm_ind').value,status_berlaku:$('#d_asm_status').value,skor:$('#d_asm_skor').value,catatan_pengawas:$('#d_asm_catatan').value};
