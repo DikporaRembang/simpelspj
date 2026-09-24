@@ -230,44 +230,57 @@ function initSlider(type) {
   const track = document.getElementById(type + 'Track');
   const text = document.getElementById(type + 'Text');
 
+  if (!slider || !thumb) return;
+
   let isDragging = false;
   let startX = 0;
 
-  const startDrag = (clientX) => {
+  const onStart = (clientX) => {
     if (captchaData[type].verified) return;
     isDragging = true;
-    startX = clientX;
+    startX = clientX - thumb.offsetLeft;
   };
 
-  const onDrag = (clientX) => {
+  const onMove = (clientX) => {
     if (!isDragging) return;
     let diff = clientX - startX;
     let maxDist = slider.clientWidth - thumb.clientWidth;
+
     if (diff < 0) diff = 0;
     if (diff > maxDist) diff = maxDist;
 
     thumb.style.left = diff + 'px';
     track.style.width = (diff + thumb.clientWidth) + 'px';
 
-    if (diff >= maxDist - 5) {
+    // Jika digeser sampai mendekati ujung kanan (toleransi 10px)
+    if (diff >= maxDist - 10) {
       isDragging = false;
       captchaData[type].verified = true;
       slider.classList.add('success');
+      thumb.style.left = maxDist + 'px';
+      track.style.width = '100%';
       text.textContent = 'Verifikasi Berhasil!';
     }
   };
 
-  thumb.onmousedown = (e) => startDrag(e.clientX);
-  window.onmouseup = () => { if (isDragging && !captchaData[type].verified) { isDragging = false; thumb.style.left = '0px'; track.style.width = '0px'; } };
-  window.onmousemove = (e) => onDrag(e.clientX);
+  const onEnd = () => {
+    if (isDragging && !captchaData[type].verified) {
+      isDragging = false;
+      thumb.style.left = '0px';
+      track.style.width = '0px';
+    }
+  };
 
-  thumb.ontouchstart = (e) => startDrag(e.touches[0].clientX);
-  window.ontouchend = () => { if (isDragging && !captchaData[type].verified) { isDragging = false; thumb.style.left = '0px'; track.style.width = '0px'; } };
-  window.ontouchmove = (e) => onDrag(e.touches[0].clientX);
+  // Event Listener Mouse (Komputer / Laptop)
+  thumb.addEventListener('mousedown', (e) => onStart(e.clientX));
+  window.addEventListener('mousemove', (e) => { if (isDragging) onMove(e.clientX); });
+  window.addEventListener('mouseup', onEnd);
+
+  // Event Listener Touch (HP / Tablet Layar Sentuh)
+  thumb.addEventListener('touchstart', (e) => onStart(e.touches[0].clientX), { passive: true });
+  window.addEventListener('touchmove', (e) => { if (isDragging && e.touches.length > 0) onMove(e.touches[0].clientX); }, { passive: true });
+  window.addEventListener('touchend', onEnd);
 }
-
-initSlider('login');
-initSlider('register');
 
 function switchAuth(type) {
   document.getElementById('loginForm').classList.toggle('hidden', type !== 'login');
