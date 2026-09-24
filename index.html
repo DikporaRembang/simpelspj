@@ -474,6 +474,7 @@ async function dokumenBulananView(){
   if(state.selectedPeriode) await renderDokumenTable();
 }
 
+// Perbarui fungsi renderDokumenTable agar tombol aksi langsung memicu upload file lokal
 async function renderDokumenTable(){
   const area=$('#dokumenArea'); if(!area)return;
   const periode=$('#periodeSelect').value; if(!periode){area.innerHTML=msg('Pilih periode terlebih dahulu.','ok');return;}
@@ -490,14 +491,82 @@ async function renderDokumenTable(){
     const status=st?.status||d?.status||'BELUM_UPLOAD';
     let action='';
     if(status==='N/A') action=badge('N/A','warning');
-    else if(d?.file_url) action=`<a class="btn btn-sm btn-secondary" href="${esc(d.file_url)}" target="_blank" rel="noopener">Lihat</a> <button class="btn btn-sm btn-light" onclick="openUpload('${esc(c.id)}','${esc(c.nama)}')">Ganti</button>`;
-    else action=`<button class="btn btn-sm btn-primary" onclick="openUpload('${esc(c.id)}','${esc(c.nama)}')">Unggah PDF</button>`;
+    else if(d?.file_url) action=`<a class="btn btn-sm btn-secondary" href="${esc(d.file_url)}" target="_blank" rel="noopener">Lihat File</a> <button class="btn btn-sm btn-light" onclick="openUpload('${esc(c.id)}','${esc(c.nama)}')">Ganti File</button>`;
+    else action=`<button class="btn btn-sm btn-primary" onclick="openUpload('${esc(c.id)}','${esc(c.nama)}')">Unggah File</button>`;
     if(['SPJ-04','SPJ-08','SPJ-09'].includes(String(c.id))) action+=` <button class="btn btn-sm btn-light" onclick="setNA('${esc(c.id)}')">N/A</button>`;
     const type=status==='SUDAH_UPLOAD'||status==='SELESAI_DINILAI'?'success':status==='N/A'||status==='PERLU_PERBAIKAN'?'warning':'danger';
     return `<tr><td><b>${esc(c.nama)}</b></td><td>${badge(status,type)}</td><td>${action}</td></tr>`;
   }).join('');
   area.innerHTML=`<div class="table-wrap"><table class="friendly-table"><thead><tr><th>Komponen</th><th>Status</th><th>Aksi</th></tr></thead><tbody>${rows||emptyRow(3)}</tbody></table></div>`;
 }
+
+// Modal dialog untuk unggah file lokal (PDF/Excel) langsung diproses secara base64
+window.openUpload = function(idSpj, namaSpj) {
+  const periode = $('#periodeSelect')?.value || state.selectedPeriode;
+  if (!periode) return;
+
+  const wrap = document.createElement('div');
+  wrap.id = 'modalUploadOverlay';
+  wrap.innerHTML = `
+    <div style="position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:999">
+      <div style="background:#fff;padding:24px;border-radius:20px;width:min(94%,480px);box-shadow:0 10px 30px rgba(0,0,0,.2)">
+        <h3 style="margin-top:0;color:var(--primary)">Unggah Dokumen SPJ</h3>
+        <p class="muted">${esc(namaSpj)}</p>
+        <form id="uploadLocalForm">
+          <div class="field">
+            <label>Pilih Berkas (PDF / Excel)</label>
+            <input id="localFile" type="file" accept=".pdf,.xlsx,.xls" required>
+          </div>
+          <div id="uploadMsg"></div>
+          <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px">
+            <button type="button" class="btn btn-light" onclick="$('#modalUploadOverlay').remove()">Batal</button>
+            <button class="btn btn-primary" id="uploadBtn">Unggah ke Server</button>
+          </div>
+        </form>
+      </div>
+    </div>`;
+  document.body.appendChild(wrap);
+
+  $('#uploadLocalForm').onsubmit = async e => {
+    e.preventDefault();
+    const file = $('#localFile').files[0];
+    if (!file) return;
+
+    const btn = $('#uploadBtn');
+    btn.disabled = true;
+    btn.textContent = 'Mengunggah...';
+
+    try {
+      // Konversi file lokal menjadi Base64 layaknya modul Impor Excel BKU
+      const base64Data = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
+      const base64String = String(base64Data).split(',')[1] || '';
+
+      // Kirim ke backend Apps Script
+      await api('uploadDanSimpanDokumenSPJ', {
+        data: {
+          id_periode: periode,
+          id_spj: idSpj,
+          nama_file: file.name,
+          mimeType: file.type,
+          base64: base64String
+        }
+      });
+
+      $('#modalUploadOverlay').remove();
+      await renderDokumenTable();
+    } catch (err) {
+      $('#uploadMsg').innerHTML = msg(errorText(err));
+      btn.disabled = false;
+      btn.textContent = 'Unggah ke Server';
+    }
+  };
+};
 
 window.openUpload=function(idSpj,namaSpj){
   const periode=$('#periodeSelect')?.value||state.selectedPeriode;
