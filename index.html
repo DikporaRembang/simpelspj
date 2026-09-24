@@ -9,7 +9,7 @@
   --primary:#0f5132;--primary-2:#146c43;--primary-3:#198754;
   --accent:#f0a500;--bg:#f5f8f6;--surface:#fff;--surface-2:#edf5ef;
   --text:#18231d;--muted:#66736b;--border:#dbe6de;--danger:#b42318;--success:#198754;
-  --shadow:0 14px 40px rgba(20,50,34,.10);--radius:20px;
+  --shadow:0 14px 40px rgba(20,50,34,.12);--radius:20px;
 }
 *{box-sizing:border-box}
 html{scroll-behavior:smooth}
@@ -19,10 +19,13 @@ button{cursor:pointer}
 .app{min-height:100vh}
 .hidden{display:none!important}
 .muted{color:var(--muted);font-size:.9rem}
+
+/* Brand & Logos */
 .brand{display:flex;align-items:center;gap:12px}
-.brand-mark{width:48px;height:48px;border-radius:15px;background:linear-gradient(145deg,var(--primary-3),var(--primary));color:#fff;display:grid;place-items:center;font-weight:900;letter-spacing:.5px;box-shadow:0 8px 20px rgba(15,81,50,.22)}
+.app-logo{width:46px;height:46px;object-fit:contain;border-radius:12px;background:#fff;padding:4px;box-shadow:0 4px 12px rgba(0,0,0,.1)}
 .brand h2{font-size:1.08rem;margin:0}
 .brand small{color:var(--muted)}
+
 .btn{border:0;border-radius:13px;padding:10px 16px;font-weight:700;transition:.18s;min-height:42px;display:inline-flex;align-items:center;justify-content:center;gap:6px;font-size:.9rem}
 .btn:active{transform:translateY(1px)}
 .btn:disabled{opacity:.5;cursor:not-allowed}
@@ -33,22 +36,32 @@ button{cursor:pointer}
 .btn-sm{padding:6px 10px;min-height:32px;font-size:.8rem;border-radius:8px}
 .full{width:100%}
 
-/* Landing / login */
+/* Landing / login dengan Background Gambar Kantor Dindikpora */
 .auth{
-  min-height:100vh;display:grid;grid-template-columns:minmax(0,1.08fr) minmax(380px,.92fr);
-  background:
-    radial-gradient(circle at 15% 15%,rgba(255,255,255,.16),transparent 30%),
-    linear-gradient(135deg,#0b3d27,#12643d 58%,#198754);
+  min-height:100vh;display:grid;grid-template-columns:minmax(0,1.1fr) minmax(380px,.9fr);
+  background: 
+    linear-gradient(rgba(11, 61, 39, 0.88), rgba(18, 100, 61, 0.82)),
+    url('kantordindikpora.jpeg') center/cover no-repeat;
+  position:relative;
 }
-.auth-side{color:#fff;padding:clamp(28px,6vw,84px);display:flex;align-items:center}
-.auth-side-inner{max-width:700px}
-.auth-side h1{font-size:clamp(2rem,4.5vw,4.4rem);line-height:1.02;margin:26px 0 18px;letter-spacing:-1.5px}
+.auth-side{color:#fff;padding:clamp(28px,6vw,84px);display:flex;flex-direction:column;justify-content:space-between}
+.auth-side-inner{max-width:700px;margin:auto 0}
+.auth-side h1{font-size:clamp(2rem,4.5vw,4.2rem);line-height:1.05;margin:24px 0 16px;letter-spacing:-1.2px}
 .auth-side p{max-width:620px;line-height:1.75;color:#e9f6ed;font-size:1.02rem}
-.feature{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:30px}
-.feature span{display:flex;gap:10px;align-items:center;padding:13px 15px;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.08);border-radius:15px;font-size:.92rem}
-.auth-panel{display:flex;align-items:center;justify-content:center;padding:clamp(16px,4vw,40px);background:rgba(248,251,249,.96)}
-.auth-card{width:min(100%,480px);background:#fff;border:1px solid rgba(255,255,255,.8);border-radius:26px;padding:clamp(22px,4vw,38px);box-shadow:var(--shadow)}
+.feature{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:28px}
+.feature span{display:flex;gap:10px;align-items:center;padding:13px 15px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.1);backdrop-filter:blur(6px);border-radius:15px;font-size:.92rem}
+
+/* Footer Logos di halaman Login */
+.auth-footer-logos{display:flex;align-items:center;gap:16px;margin-top:30px;padding-top:20px;border-top:1px solid rgba(255,255,255,.2);flex-wrap:wrap}
+.footer-logo-item{display:flex;align-items:center;gap:10px}
+.footer-logo-item img{width:38px;height:38px;object-fit:contain;background:#fff;border-radius:8px;padding:3px}
+.footer-logo-item div span{display:block;font-size:.78rem;font-weight:700;color:#fff;line-height:1.2}
+.footer-logo-item div small{font-size:.68rem;color:#d4edda}
+
+.auth-panel{display:flex;align-items:center;justify-content:center;padding:clamp(16px,4vw,40px);background:rgba(248,251,249,.96);backdrop-filter:blur(8px)}
+.auth-card{width:min(100%,480px);background:#fff;border:1px solid rgba(255,255,255,.9);border-radius:26px;padding:clamp(22px,4vw,38px);box-shadow:var(--shadow)}
 .auth-card .brand{margin-bottom:18px}
+
 .field{margin:15px 0}
 .field label{display:block;font-size:.9rem;font-weight:700;margin-bottom:7px;color:#2c3e35}
 .field input,.field select,.field textarea{width:100%;border:1px solid var(--border);border-radius:14px;padding:13px 15px;outline:0;background:#fff;min-height:48px;font-size:.95rem}
@@ -67,19 +80,28 @@ button{cursor:pointer}
 /* Application shell */
 .dashboard{min-height:100vh}
 .topbar{
-  position:sticky;top:0;z-index:50;background:rgba(255,255,255,.94);backdrop-filter:blur(12px);
+  position:sticky;top:0;z-index:50;background:rgba(255,255,255,.95);backdrop-filter:blur(12px);
   border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;
   gap:12px;padding:12px clamp(16px,3vw,34px)
 }
 .topbar .brand{margin:0}.top-actions{display:flex;align-items:center;gap:10px}
 .layout{display:grid;grid-template-columns:270px minmax(0,1fr);min-height:calc(100vh - 74px)}
-.sidebar{background:linear-gradient(180deg,#0c4229,#0a3522);color:#dff3e5;padding:20px 14px}
+.sidebar{background:linear-gradient(180deg,#0c4229,#0a3522);color:#dff3e5;padding:20px 14px;display:flex;flex-direction:column;justify-content:space-between}
+.nav-group{display:flex;flex-direction:column}
 .nav-section-title{font-size:.75rem;text-transform:uppercase;letter-spacing:1px;color:#8ab59b;margin:16px 0 8px 12px;font-weight:800}
 .nav-btn{
   width:100%;text-align:left;border:0;background:transparent;color:#dceee2;padding:13px 14px;
   border-radius:14px;margin:4px 0;font-weight:650;display:flex;align-items:center;gap:11px;font-size:.95rem;transition:.15s
 }
 .nav-btn.active,.nav-btn:hover{background:rgba(255,255,255,.14);color:#fff}
+
+/* Sidebar Footer Logos */
+.sidebar-footer{padding-top:16px;border-top:1px solid rgba(255,255,255,.15);display:flex;flex-direction:column;gap:10px}
+.sidebar-logo-row{display:flex;align-items:center;gap:9px}
+.sidebar-logo-row img{width:30px;height:30px;object-fit:contain;background:#fff;border-radius:6px;padding:2px}
+.sidebar-logo-row div span{display:block;font-size:.72rem;color:#fff;line-height:1.2;font-weight:700}
+.sidebar-logo-row div small{font-size:.62rem;color:#d4edda}
+
 .content{padding:clamp(20px,3vw,38px);min-width:0;max-width:1500px;width:100%;margin:0 auto}
 .page-head{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:22px}
 .page-head h1{margin:0;font-size:clamp(1.5rem,3vw,2.2rem);letter-spacing:-.5px;color:#11291b}
@@ -136,7 +158,7 @@ button{cursor:pointer}
   .content{padding:22px}
 }
 @media (max-width:640px){
-  .topbar{padding:10px 14px}.topbar .brand-mark{width:42px;height:42px;border-radius:12px}
+  .topbar{padding:10px 14px}.topbar .app-logo{width:38px;height:38px}
   .topbar .brand h2{font-size:.98rem}.top-actions .user-name{display:none}
   .layout{min-height:calc(100vh - 64px)}
   .sidebar{top:64px}
@@ -149,6 +171,7 @@ button{cursor:pointer}
   .btn{padding:11px 14px;min-height:44px;font-size:.9rem}
   .auth-panel{padding:12px}.auth-card{padding:22px;border-radius:20px}
   .feature{grid-template-columns:1fr}
+  .auth-side{display:flex;padding:24px}
 }
 </style>
 </head>
@@ -241,13 +264,20 @@ function authView(notice=''){
   if(!appEl) return;
   appEl.innerHTML=`<main class="auth">
     <section class="auth-side"><div class="auth-side-inner">
-      <div class="brand"><div class="brand-mark">SPJ</div><div><h2 style="color:#fff">SIMPEL SPJ</h2><small style="color:#d9eee0">Kabupaten Rembang</small></div></div>
+      <div class="brand"><img src="bidangsd.png" class="app-logo" alt="Logo"><div><h2 style="color:#fff">SIMPEL SPJ</h2><small style="color:#d9eee0">Kabupaten Rembang</small></div></div>
       <h1>Pengelolaan SPJ BOS SD yang terintegrasi.</h1>
       <p>Dilengkapi pusat verifikasi usulan sekolah khusus Dinas Kabupaten untuk mempercepat persetujuan anggaran.</p>
-      <div class="feature"><span>✓ Verifikasi Terpusat Dinas</span><span>✓ Persetujuan 1 Klik</span><span>✓ Manajemen RKAS</span></div>
+      <div class="feature"><span>✓ Verifikasi Terpusat Dinas</span><span>✓ Persetujuan 1 Klik</span><span>✓ Manajemen RKAS</span><span>✓ Akuntabel & Transparan</span></div>
+    </div>
+    
+    <!-- Footer Logos di halaman Login -->
+    <div class="auth-footer-logos">
+      <div class="footer-logo-item"><img src="logorembang.png" alt="Logo Rembang"><div><span>Dinas Pendidikan, Pemuda dan Olahraga</span><small>Kabupaten Rembang</small></div></div>
+      <div class="footer-logo-item"><img src="logopendidikan.png" alt="Logo Pendidikan"><div><span>Direktorat SD Kemdikdasmen RI</span><small>Pembinaan Sekolah Dasar</small></div></div>
     </div></section>
+
     <section class="auth-panel"><div class="auth-card">
-      <div class="brand"><div class="brand-mark">SPJ</div><div><h2>SIMPEL SPJ</h2><small>Masuk ke sistem</small></div></div>
+      <div class="brand"><img src="bidangsd.png" class="app-logo" alt="Logo"><div><h2>SIMPEL SPJ</h2><small>Masuk ke sistem</small></div></div>
       ${notice}
       <form id="loginForm">
         <div class="field"><label>Username / NPSN</label><input id="username" autocomplete="username" required placeholder="Masukkan username atau NPSN sekolah"></div>
@@ -317,13 +347,20 @@ function dashboard(){
 
 function renderShell(){
   const u=state.user||{};
-  $('#app').innerHTML=`<main class="dashboard"><header class="topbar"><div style="display:flex;align-items:center;gap:10px"><button class="btn btn-light mobile-menu" id="menuBtn" aria-label="Buka menu">☰</button><div class="brand"><div class="brand-mark">SPJ</div><div><h2>SIMPEL SPJ</h2><small>Peran: <b>${esc(u.role||'Pengguna')}</b></small></div></div></div><div class="top-actions"><span class="muted user-name">${esc(u.nama_pengguna||u.username||'')}</span><button class="btn btn-light" id="logoutBtn">Keluar</button></div></header><div class="layout"><aside class="sidebar" id="sidebar">
-    <div class="nav-section-title">Menu Utama</div>
-    ${navItems().map(n=>`<button class="nav-btn" data-view="${n.id}">${n.label}</button>`).join('')}
+  $('#app').innerHTML=`<main class="dashboard"><header class="topbar"><div style="display:flex;align-items:center;gap:10px"><button class="btn btn-light mobile-menu" id="menuBtn" aria-label="Buka menu">☰</button><div class="brand"><img src="bidangsd.png" class="app-logo" alt="Logo"><div><h2>SIMPEL SPJ</h2><small>Peran: <b>${esc(u.role||'Pengguna')}</b></small></div></div></div><div class="top-actions"><span class="muted user-name">${esc(u.nama_pengguna||u.username||'')}</span><button class="btn btn-light" id="logoutBtn">Keluar</button></div></header><div class="layout"><aside class="sidebar" id="sidebar">
+    <div class="nav-group">
+      <div class="nav-section-title">Menu Utama</div>
+      ${navItems().map(n=>`<button class="nav-btn" data-view="${n.id}">${n.label}</button>`).join('')}
+    </div>
+    <!-- Sidebar Footer Logos -->
+    <div class="sidebar-footer">
+      <div class="sidebar-logo-row"><img src="logorembang.png" alt="Rembang"><div><span>Dindikpora Kab. Rembang</span></div></div>
+      <div class="sidebar-logo-row"><img src="logopendidikan.png" alt="Kemdikdasmen"><div><span>Direktorat SD Kemdikdasmen</span></div></div>
+    </div>
   </aside><section class="content" id="mainContent"></section></div></main>`;
   $$('[data-view]').forEach(b=>b.onclick=()=>{loadView(b.dataset.view);$('#sidebar')?.classList.remove('open')});
   $('#logoutBtn').onclick=logout;
-  $('#menuBtn').onclick=()=>$('#sidebar')?.classList.toggle('open'); }  async function logout(){   try{if(state.token)await api('logout')}catch(e){}   state.token=''; state.user=null;   sessionStorage.removeItem('simpel_token');   location.reload(); }  function setActive(view){$$('[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===view))}
+  $('#menuBtn').onclick=()=>$('#sidebar')?.classList.toggle('open'); }  async function logout(){    try{if(state.token)await api('logout')}catch(e){}    state.token=''; state.user=null;    sessionStorage.removeItem('simpel_token');    location.reload(); }  function setActive(view){$$('[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===view))}
 
 function loadView(view){
   state.view=view; setActive(view);
@@ -391,17 +428,10 @@ function verifikasiDinasView(){
 
 window.reviewUsulanDinas = async (versi, keputusan) => {
   if(!confirm(`Apakah Anda yakin ingin memberikan keputusan "${keputusan}" untuk versi usulan ${versi}?`)) return;
-  
   try {
-    // 1. Berikan umpan balik instan ke pengguna (Toast / Alert ringan)
-    console.log(`Memproses ${keputusan} untuk ${versi}...`);
-    
-    // 2. Kirim request ke backend
     const res = await api('reviewRKAS', {versiRkas: versi, keputusan: keputusan});
-    
     if(res.success){
       alert(`Berhasil! Keputusan "${keputusan}" telah disimpan.`);
-      // Refresh tabel otomatis tanpa reload halaman penuh
       $('#loadUsulanBtn').click();
     } else {
       alert('Gagal: ' + (res.message || 'Terjadi kesalahan'));
@@ -643,7 +673,7 @@ function rkasReviewSchoolView(){
     };
     $('#addRes').textContent = 'Menyimpan item baru ke server...';
     try {
-      const r = await api('simpanDetailRKAS', {data: payload});
+      await api('simpanDetailRKAS', {data: payload});
       $('#addRes').textContent = 'Berhasil menambahkan item baru! Status otomatis DIAJUKAN.';
       loadRkasTableData();
     } catch(e) {
