@@ -1098,7 +1098,6 @@ window.toggleRegisterFields = function() {
   }
 };
 
-// Fungsi pencarian otomatis nama sekolah dan pengisian otomatis username berdasarkan NPSN
 window.autoFillSekolahByNpsn = async function(npsn) {
   if(!npsn || npsn.trim().length < 4) return;
   
@@ -1106,29 +1105,37 @@ window.autoFillSekolahByNpsn = async function(npsn) {
   const namaSekolahInput = $('#regNamaSekolah');
   const usernameInput = $('#regUsername');
   
-  if(namaSekolahInput) namaSekolahInput.value = 'Mencari data sekolah...';
+  if(namaSekolahInput) {
+    namaSekolahInput.value = 'Mencari data sekolah...';
+  }
+  if(usernameInput) {
+    usernameInput.value = cleanNpsn;
+  }
 
   try {
-    // Memanggil API getSekolah untuk menarik daftar/data sekolah dari backend/database
     const res = await api('getSekolah', {});
-    const list = res.data || [];
+    // Mendukung berbagai bentuk struktur balikan data dari API (array langsung atau di dalam .data)
+    const list = Array.isArray(res) ? res : (res.data || res.sekolah || []);
     
-    // Mencari data sekolah yang NPSN-nya cocok
-    const found = list.find(s => String(s.npsn).trim() === cleanNpsn);
+    // Cari data yang NPSN-nya cocok (mengonversi keduanya ke string untuk menghindari beda tipe data)
+    const found = list.find(s => String(s.npsn || s.NPSN || '').trim() === cleanNpsn);
     
     if(found) {
-      // Mengisi otomatis nama satuan pendidikan dari properti nama_sekolah di database
-      if(namaSekolahInput) namaSekolahInput.value = found.nama_sekolah || found.nama_satuan_pendidikan || '';
-      // Username otomatis disamakan dengan NPSN untuk akun sekolah
-      if(usernameInput) usernameInput.value = cleanNpsn;
+      // Ambil nama dari berbagai kemungkinan nama properti di database
+      const namaVal = found.nama_sekolah || found.nama_satuan_pendidikan || found.nama || found.sekolah || '';
+      if(namaSekolahInput) {
+        namaSekolahInput.value = namaVal;
+      }
     } else {
-      if(namaSekolahInput) namaSekolahInput.value = '';
-      if(usernameInput) usernameInput.value = cleanNpsn;
-      alert('NPSN tidak ditemukan di dalam database tabel sekolah. Silakan ketik nama satuan pendidikan secara manual.');
+      if(namaSekolahInput) {
+        namaSekolahInput.value = '';
+      }
+      alert('NPSN tidak ditemukan di database tabel sekolah. Silakan ketik nama satuan pendidikan secara manual.');
     }
   } catch(e) {
-    if(namaSekolahInput) namaSekolahInput.value = '';
-    if(usernameInput) usernameInput.value = cleanNpsn;
+    if(namaSekolahInput) {
+      namaSekolahInput.value = '';
+    }
     console.warn('Gagal memuat otomatis nama sekolah:', errorText(e));
   }
 };
