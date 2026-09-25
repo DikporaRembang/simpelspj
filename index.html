@@ -1135,33 +1135,6 @@ window.autoFillSekolahByNpsn = async function(npsn) {
   }
 };
 
-// Fungsi pencarian dan pengisian otomatis data pengawas berdasarkan ID / NIP
-window.autoFillPengawasByNip = async function(nip) {
-  if(!nip || nip.trim().length < 3) return;
-  
-  const cleanNip = nip.trim();
-  const namaPenggunaInput = $('#regNamaPengguna'); // Kolom Nama Pengawas
-  const usernameInput = $('#regUsername');       // Kolom Username Login
-  
-  if(usernameInput) usernameInput.value = cleanNip;
-  if(namaPenggunaInput) namaPenggunaInput.value = 'Mencari data pengawas...';
-
-  try {
-    // Memanggil API getPenugasanPengawas atau get user list untuk mencocokkan NIP/ID
-    const response = await fetch(API_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action: 'getUsersPublik' }) // Atau gunakan endpoint data user yang sesuai
-    });
-    
-    // Atau jika Anda ingin mencocokkan langsung dari inputan dinamis:
-    if(usernameInput) usernameInput.value = cleanNip;
-    
-  } catch(e) {
-    console.warn('Pengisian otomatis pengawas disesuaikan:', e.message);
-  }
-};
-
 async function dbCheckView(){
   $('#mainContent').innerHTML=head('Validasi Database','Memeriksa skema 14 tabel SIMPEL SPJ')+`<div class="panel"><button class="btn btn-primary" onclick="runDbCheck()">Jalankan Validasi</button><div id="dbResult" style="margin-top:16px">${msg('Klik untuk mulai.','ok')}</div></div>`;
 }
