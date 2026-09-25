@@ -58,64 +58,83 @@ button{cursor:pointer}
   letter-spacing: .3px;
 }
 
-/* Animasi Sambutan Eksklusif "SELAMAT DATANG CEO BOS" */
-@keyframes welcomeIn {
-  0% { opacity: 0; transform: scale(0.8) translateY(20px); }
-  20% { opacity: 1; transform: scale(1) translateY(0); }
-  80% { opacity: 1; transform: scale(1) translateY(0); }
-  100% { opacity: 0; transform: scale(1.05) translateY(-20px); visibility: hidden; }
+/* Animasi Sambutan Super Smooth "SELAMAT DATANG CEO SD" */
+@keyframes smoothWelcome {
+  0% { 
+    opacity: 0; 
+    transform: scale(0.92) translateY(10px); 
+    backdrop-filter: blur(0px);
+  }
+  25% { 
+    opacity: 1; 
+    transform: scale(1) translateY(0); 
+    backdrop-filter: blur(10px);
+  }
+  75% { 
+    opacity: 1; 
+    transform: scale(1) translateY(0); 
+    backdrop-filter: blur(10px);
+  }
+  100% { 
+    opacity: 0; 
+    transform: scale(1.03) translateY(-10px); 
+    backdrop-filter: blur(0px);
+    visibility: hidden; 
+  }
 }
+
 .welcome-overlay {
   position: fixed;
   inset: 0;
-  background: linear-gradient(135deg, #0A192F 0%, #0F4C3A 100%);
+  background: linear-gradient(135deg, rgba(10,25,47,0.96) 0%, rgba(15,76,58,0.96) 100%);
   z-index: 9999;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-direction: column;
-  animation: welcomeIn 2.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-  padding: 20px;
+  animation: smoothWelcome 3.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  padding: 24px;
   text-align: center;
 }
 .welcome-logo-lg {
-  width: 80px;
-  height: 80px;
+  width: 84px;
+  height: 84px;
   object-fit: contain;
   background: #fff;
-  border-radius: 20px;
+  border-radius: 22px;
   padding: 10px;
-  box-shadow: 0 10px 30px rgba(0,0,0,.3);
-  margin-bottom: 20px;
+  box-shadow: 0 12px 35px rgba(0,0,0,.35);
+  margin-bottom: 22px;
   animation: logoBounce 1.2s infinite;
 }
 .welcome-title-anim {
-  font-size: clamp(1.8rem, 4vw, 3rem);
+  font-size: clamp(1.8rem, 4.5vw, 3.2rem);
   font-weight: 900;
   text-transform: uppercase;
   background: linear-gradient(to right, #FBF5B7, #D4AF37, #FCF6BA, #B38728);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  letter-spacing: 1.5px;
+  letter-spacing: 1.8px;
   margin: 0;
-  text-shadow: 0 10px 30px rgba(0,0,0,.4);
+  text-shadow: 0 10px 30px rgba(0,0,0,.3);
 }
 .welcome-subtitle-anim {
   color: #cbd5e1;
-  font-size: 1rem;
-  margin-top: 10px;
+  font-size: 1.05rem;
+  margin-top: 12px;
   font-weight: 500;
-  letter-spacing: .5px;
+  letter-spacing: .6px;
 }
 
-.btn{border:0;border-radius:12px;padding:10px 18px;font-weight:700;transition:.2s;min-height:44px;display:inline-flex;align-items:center;justify-content:center;gap:8px;font-size:.9rem}
+/* Tombol Ramah Sentuhan (Touch-Friendly) */
+.btn{border:0;border-radius:12px;padding:12px 20px;font-weight:700;transition:.2s;min-height:48px;display:inline-flex;align-items:center;justify-content:center;gap:8px;font-size:.95rem}
 .btn:active{transform:translateY(1px)}
 .btn:disabled{opacity:.5;cursor:not-allowed}
 .btn-primary{background:linear-gradient(135deg, var(--primary-2), var(--primary-3));color:#fff;box-shadow:0 4px 14px rgba(15,76,58,.25)}.btn-primary:hover{opacity:.9}
 .btn-secondary{background:#e2f8ec;color:var(--primary-2)}
 .btn-light{background:#fff;border:1px solid var(--border);color:var(--text)}
 .btn-danger{background:#fee4e2;color:var(--danger)}
-.btn-sm{padding:6px 12px;min-height:34px;font-size:.82rem;border-radius:8px}
+.btn-sm{padding:8px 14px;min-height:38px;font-size:.85rem;border-radius:10px}
 .full{width:100%}
 
 /* Landing / login profesional */
@@ -139,10 +158,10 @@ button{cursor:pointer}
 .auth-card{width:min(100%,460px);background:#fff;border:1px solid var(--border);border-radius:24px;padding:clamp(24px,4vw,36px);box-shadow:0 20px 40px rgba(10,25,47,.1)}
 
 .field{margin:16px 0}
-.field label{display:block;font-size:.88rem;font-weight:700;margin-bottom:6px;color:var(--primary)}
-.field input,.field select,.field textarea{width:100%;border:1px solid var(--border);border-radius:12px;padding:12px 16px;outline:0;background:#fff;min-height:48px;font-size:.95rem;transition:.2s}
+.field label{display:block;font-size:.9rem;font-weight:700;margin-bottom:6px;color:var(--primary)}
+.field input,.field select,.field textarea{width:100%;border:1px solid var(--border);border-radius:12px;padding:14px 16px;outline:0;background:#fff;min-height:50px;font-size:1rem;transition:.2s}
 .field input:focus,.field select:focus,.field textarea:focus{border-color:var(--primary-2);box-shadow:0 0 0 4px rgba(15,76,58,.12)}
-.message{padding:12px 16px;border-radius:12px;margin:14px 0;font-size:.9rem}
+.message{padding:14px 16px;border-radius:12px;margin:14px 0;font-size:.95rem}
 .message.error{background:#fef2f2;color:var(--danger);border:1px solid #fecaca}.message.ok{background:#f0fdf4;color:var(--success);border:1px solid #bbf7d0}
 
 /* Application shell & sidebar bernuansa keuangan */
@@ -157,10 +176,10 @@ button{cursor:pointer}
 
 .sidebar{background:linear-gradient(180deg,#0A192F,#0F4C3A);color:#e2e8f0;padding:24px 16px;display:flex;flex-direction:column;justify-content:space-between;border-right:1px solid rgba(255,255,255,.05)}
 .nav-group{display:flex;flex-direction:column;gap:4px}
-.nav-section-title{font-size:.7rem;text-transform:uppercase;letter-spacing:1px;color:var(--gold);margin:18px 0 8px 12px;font-weight:800}
+.nav-section-title{font-size:.75rem;text-transform:uppercase;letter-spacing:1px;color:var(--gold);margin:18px 0 8px 12px;font-weight:800}
 .nav-btn{
-  width:100%;text-align:left;border:0;background:transparent;color:#cbd5e1;padding:12px 14px;
-  border-radius:12px;font-weight:650;display:flex;align-items:center;gap:12px;font-size:.9rem;transition:.18s
+  width:100%;text-align:left;border:0;background:transparent;color:#cbd5e1;padding:14px 16px;
+  border-radius:12px;font-weight:650;display:flex;align-items:center;gap:12px;font-size:.95rem;transition:.18s;min-height:48px
 }
 .nav-btn.active,.nav-btn:hover{background:rgba(255,255,255,.1);color:#fff;transform:translateX(3px)}
 
@@ -183,29 +202,30 @@ button{cursor:pointer}
 .panel{padding:24px;margin-top:20px}
 .toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}
 
-.table-wrap{width:100%;overflow-x:auto;margin-top:14px;border:1px solid var(--border);border-radius:14px;background:#fff}
-.friendly-table{width:100%;border-collapse:collapse;font-size:.9rem}
-.friendly-table th{background:#f1f5f9;color:var(--primary);padding:13px 16px;text-align:left;font-weight:800;border-bottom:1px solid var(--border);white-space:nowrap}
-.friendly-table td{padding:13px 16px;border-bottom:1px solid var(--border);color:#334155;vertical-align:middle}
+.table-wrap{width:100%;overflow-x:auto;margin-top:14px;border:1px solid var(--border);border-radius:14px;background:#fff;-webkit-overflow-scrolling:touch}
+.friendly-table{width:100%;border-collapse:collapse;font-size:.95rem}
+.friendly-table th{background:#f1f5f9;color:var(--primary);padding:14px 16px;text-align:left;font-weight:800;border-bottom:1px solid var(--border);white-space:nowrap}
+.friendly-table td{padding:14px 16px;border-bottom:1px solid var(--border);color:#334155;vertical-align:middle}
 .friendly-table tr:hover{background:#f8fafc}
 
-.badge{display:inline-block;padding:5px 12px;border-radius:20px;font-size:.75rem;font-weight:800;text-transform:uppercase;letter-spacing:.3px}
+.badge{display:inline-block;padding:6px 12px;border-radius:20px;font-size:.78rem;font-weight:800;text-transform:uppercase;letter-spacing:.3px}
 .badge-success{background:#f0fdf4;color:var(--success);border:1px solid #bbf7d0}
 .badge-warning{background:#fefce8;color:#a16207;border:1px solid #fef08a}
 .badge-danger{background:#fef2f2;color:var(--danger);border:1px solid #fecaca}
 .badge-info{background:#f0f9ff;color:#0369a1;border:1px solid #bae6fd}
 
-.form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 16px}
+.form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 16px}
 .form-grid .full-col{grid-column:1/-1}
 .section-title{font-weight:800;margin:20px 0 12px;color:var(--primary);font-size:1.1rem}
 .mobile-menu{display:none}
 
+/* Responsivitas Optimal untuk Tablet & HP (< 1050px) */
 @media (max-width:1050px){
   .auth{grid-template-columns:1fr}
   .auth-side{display:none}
   .layout{grid-template-columns:1fr}
   .sidebar{
-    position:fixed;left:0;top:72px;bottom:0;width:min(85vw,280px);z-index:45;
+    position:fixed;left:0;top:72px;bottom:0;width:min(85vw,300px);z-index:45;
     transform:translateX(-105%);transition:transform .25s cubic-bezier(.4,0,.2,1);box-shadow:20px 0 40px rgba(0,0,0,.2)
   }
   .sidebar.open{transform:translateX(0)}
@@ -213,12 +233,17 @@ button{cursor:pointer}
   .cards{grid-template-columns:repeat(2,minmax(0,1fr))}
   .content{padding:16px}
 }
+
+/* Responsivitas Khusus Ponsel Pintar (< 640px) */
 @media (max-width:640px){
   .topbar{padding:10px 14px}
   .cards{grid-template-columns:1fr;gap:12px}
   .form-grid{grid-template-columns:1fr}
   .form-grid .full-col{grid-column:auto}
-  .auth-panel{padding:12px}.auth-card{padding:20px;border-radius:20px}
+  .auth-panel{padding:12px}
+  .auth-card{padding:20px;border-radius:20px}
+  .btn{padding:12px 16px;min-height:50px;font-size:1rem} /* Ergonomi jempol di layar HP */
+  .friendly-table th, .friendly-table td{padding:12px 14px;font-size:.9rem}
 }
 </style>
 </head>
@@ -226,10 +251,6 @@ button{cursor:pointer}
 <div id="app" class="app"></div>
 <script>
 'use strict';
-
-/* ============================================================================
- * SIMPEL SPJ - FRONTEND MASTER (FINANCIAL THEME + WELCOME CEO BOS ANIMATION)
- * ========================================================================== */
 
 const API_URL = 'https://script.google.com/macros/s/AKfycbyWvJXKr1QZ1zwbeJDoULTUihycj1771SsDlGFy8jnuF4i3DsEbHXlcJU48VDAg17fqDA/exec';
 
@@ -268,7 +289,8 @@ const state = {
   captchaAns: 0
 };
 
-const $ = s => document.querySelector(s); const $$ = s => Array.from(document.querySelectorAll(s));
+const $ = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
 const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmtRupiah = v => {
   const n = Number(v);
@@ -363,7 +385,6 @@ async function doLogin(e){
     state.token=r.token; state.user=r.user || {};
     sessionStorage.setItem('simpel_token',state.token);
     
-    // Tampilkan Animasi Selamat Datang CEO BOS Sesaat Setelah Login Berhasil
     showWelcomeAnimation(() => {
       startApp();
     });
@@ -375,14 +396,18 @@ function showWelcomeAnimation(callback){
   overlay.className = 'welcome-overlay';
   overlay.innerHTML = `
     <img src="bidangsd.png" class="welcome-logo-lg" alt="Logo">
-    <h1 class="welcome-title-anim">SELAMAT DATANG CEO BOS</h1>
+    <h1 class="welcome-title-anim">SELAMAT DATANG CEO SD</h1>
     <div class="welcome-subtitle-anim">Sistem Pengelolaan Keuangan & SPJ Terintegrasi</div>
   `;
   document.body.appendChild(overlay);
   setTimeout(() => {
-    overlay.remove();
-    if(callback) callback();
-  }, 2500); // Tampil selama 2.5 detik lalu hilang otomatis
+    overlay.style.transition = 'opacity 0.6s ease';
+    overlay.style.opacity = '0';
+    setTimeout(() => {
+      overlay.remove();
+      if(callback) callback();
+    }, 600);
+  }, 2600); 
 }
 
 async function restoreSession(){
@@ -448,7 +473,7 @@ async function loadView(view){
   const c=$('#mainContent'); if(!c)return;
   c.innerHTML=loading('Memuat modul...');
   try{
-    const map={home:homeView,dokumenBulanan:dokumenBulananView,statusSpj:statusSpjView,transaksi:transaksiView,sekolah:sekolahView,penugasan:penugasanView,rkasReview:rkasView,crosscheck:crosscheckView,temuan:temuanView,asesmen:asesmenView,dbCheck:dbCheckView};
+    const map={home:homeView,dokumenBulanan:dokumenBulananView,statusSpj:statusSpjView,transaksi:transaksiView,sekolah:sekolahView,penugasan:penugasanView,rkasReview:rkasReview,crosscheck:crosscheckView,temuan:temuanView,asesmen:asesmenView,dbCheck:dbCheckView};
     if(!map[view]) throw new Error('Modul belum tersedia: '+view);
     await map[view]();
   }catch(e){c.innerHTML=msg(errorText(e));}
@@ -548,8 +573,8 @@ window.openNaModal = function(idSpj, namaSpj) {
   const wrap = document.createElement('div');
   wrap.id = 'modalNaOverlay';
   wrap.innerHTML = `
-    <div style="position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:999">
-      <div style="background:#fff;padding:28px;border-radius:24px;width:min(94%,480px);box-shadow:0 20px 40px rgba(0,0,0,.2)">
+    <div style="position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:999;padding:16px">
+      <div style="background:#fff;padding:28px;border-radius:24px;width:min(100%,480px);box-shadow:0 20px 40px rgba(0,0,0,.2)">
         <h3 style="margin-top:0;color:var(--primary)">Atur Status N/A Pajak</h3>
         <p class="muted">${esc(namaSpj)}</p>
         <form id="naForm">
@@ -586,8 +611,8 @@ window.openUpload = function(idSpj, namaSpj) {
   const wrap = document.createElement('div');
   wrap.id = 'modalUploadOverlay';
   wrap.innerHTML = `
-    <div style="position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:999">
-      <div style="background:#fff;padding:28px;border-radius:24px;width:min(94%,480px);box-shadow:0 20px 40px rgba(0,0,0,.2)">
+    <div style="position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:999;padding:16px">
+      <div style="background:#fff;padding:28px;border-radius:24px;width:min(100%,480px);box-shadow:0 20px 40px rgba(0,0,0,.2)">
         <h3 style="margin-top:0;color:var(--primary)">Unggah Berkas PDF</h3>
         <p class="muted" style="margin-bottom:14px">${esc(namaSpj)}</p>
         <form id="uploadLocalForm">
@@ -671,13 +696,13 @@ async function renderTransaksi(){
 window.openTransactionForm=function(){
   const p=$('#periodeSelect').value;if(!p)return;
   const wrap=document.createElement('div');wrap.id='trxModal';
-  wrap.innerHTML=`<div style="position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:999"><div style="background:#fff;padding:28px;border-radius:24px;width:min(94%,650px);max-height:90vh;overflow:auto"><h3 style="margin-top:0;color:var(--primary)">Tambah Transaksi SPJ</h3><form id="trxForm"><div class="form-grid"><div class="field"><label>Tanggal</label><input id="trxTanggal" type="date" required></div><div class="field"><label>Nilai Transaksi (Rp)</label><input id="trxNilai" type="number" min="0" step="1" required></div><div class="field"><label>Kode Rekening</label><input id="trxKode" required></div><div class="field"><label>Nomor Bukti</label><input id="trxBukti" required></div><div class="field full-col"><label>Uraian Transaksi</label><textarea id="trxUraian" rows="3" required></textarea></div><div class="field"><label>Pihak Penerima</label><input id="trxPihak"></div><div class="field"><label>Jenis Belanja</label><input id="trxJenis"></div><div class="field"><label>Jenis Pembayaran</label><input id="trxPembayaran"></div><div class="field"><label>Pajak</label><input id="trxPajak" placeholder="PPN / PPh / Tidak Ada"></div></div><div id="trxMsg"></div><div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px"><button type="button" class="btn btn-light" onclick="$('#trxModal').remove()">Batal</button><button class="btn btn-primary">Simpan Transaksi</button></div></form></div></div>`;
+  wrap.innerHTML=`<div style="position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:999;padding:16px"><div style="background:#fff;padding:28px;border-radius:24px;width:min(100%,650px);max-height:90vh;overflow:auto"><h3 style="margin-top:0;color:var(--primary)">Tambah Transaksi SPJ</h3><form id="trxForm"><div class="form-grid"><div class="field"><label>Tanggal</label><input id="trxTanggal" type="date" required></div><div class="field"><label>Nilai Transaksi (Rp)</label><input id="trxNilai" type="number" min="0" step="1" required></div><div class="field"><label>Kode Rekening</label><input id="trxKode" required></div><div class="field"><label>Nomor Bukti</label><input id="trxBukti" required></div><div class="field full-col"><label>Uraian Transaksi</label><textarea id="trxUraian" rows="3" required></textarea></div><div class="field"><label>Pihak Penerima</label><input id="trxPihak"></div><div class="field"><label>Jenis Belanja</label><input id="trxJenis"></div><div class="field"><label>Jenis Pembayaran</label><input id="trxPembayaran"></div><div class="field"><label>Pajak</label><input id="trxPajak" placeholder="PPN / PPh / Tidak Ada"></div></div><div id="trxMsg"></div><div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px"><button type="button" class="btn btn-light" onclick="$('#trxModal').remove()">Batal</button><button class="btn btn-primary">Simpan Transaksi</button></div></form></div></div>`;
   document.body.appendChild(wrap);
   $('#trxForm').onsubmit=async e=>{e.preventDefault();try{await api('simpanTransaksiSPJ',{data:{id_periode:p,tanggal_transaksi:$('#trxTanggal').value,nilai_transaksi:Number($('#trxNilai').value),kode_rekening:$('#trxKode').value.trim(),nomor_bukti:$('#trxBukti').value.trim(),uraian_transaksi:$('#trxUraian').value.trim(),pihak_penerima:$('#trxPihak').value.trim(),jenis_belanja:$('#trxJenis').value.trim(),jenis_pembayaran:$('#trxPembayaran').value.trim(),pajak:$('#trxPajak').value.trim()}});$('#trxModal').remove();await renderTransaksi();}catch(err){$('#trxMsg').innerHTML=msg(errorText(err));}};
 };
 
 window.openExcelImport=function(){
-  const area=document.createElement('div');area.id='excelModal';area.innerHTML=`<div style="position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:999"><div style="background:#fff;padding:28px;border-radius:24px;width:min(96%,900px);max-height:90vh;overflow:auto"><h3 style="margin-top:0;color:var(--primary)">Impor BKU Excel</h3><div class="field"><label>File Excel (.xlsx / .xls)</label><input id="excelFile" type="file" accept=".xlsx,.xls"></div><div id="excelPreview"></div><div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px"><button class="btn btn-light" onclick="$('#excelModal').remove()">Tutup</button><button class="btn btn-primary" onclick="parseExcelBku()">Baca File</button></div></div></div>`;document.body.appendChild(area);
+  const area=document.createElement('div');area.id='excelModal';area.innerHTML=`<div style="position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:999;padding:16px"><div style="background:#fff;padding:28px;border-radius:24px;width:min(100%,900px);max-height:90vh;overflow:auto"><h3 style="margin-top:0;color:var(--primary)">Impor BKU Excel</h3><div class="field"><label>File Excel (.xlsx / .xls)</label><input id="excelFile" type="file" accept=".xlsx,.xls"></div><div id="excelPreview"></div><div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px"><button class="btn btn-light" onclick="$('#excelModal').remove()">Tutup</button><button class="btn btn-primary" onclick="parseExcelBku()">Baca File</button></div></div></div>`;document.body.appendChild(area);
 };
 window.parseExcelBku=function(){
   const f=$('#excelFile').files[0], out=$('#excelPreview');if(!f){out.innerHTML=msg('Pilih file Excel.');return;}
@@ -696,7 +721,7 @@ window.saveImportedTransactions=async function(){
 // ============================================================================
 // RKAS & REVIEW DINAS
 // ============================================================================
-async function rkasView(){
+async function rkasReview(){
   if(isDinas()){
     await renderDinasRkasReview();
   } else {
@@ -753,14 +778,14 @@ async function renderDinasRkasReview(){
      </div>`;
 }
 
-window.createDraftRkas = async function(){ try{const r=await api('buatDraftRKAS');alert(`Draft ${r.versi_rkas||''} berhasil dibuat.`);await rkasView();}catch(e){alert(errorText(e));} };
+window.createDraftRkas = async function(){ try{const r=await api('buatDraftRKAS');alert(`Draft ${r.versi_rkas||''} berhasil dibuat.`);await rkasReview();}catch(e){alert(errorText(e));} };
 window.doReviewRkas = async function(versi, keputusan){
   const catatan = prompt(`Konfirmasi keputusan Dinas menjadi [${keputusan}] untuk versi ${versi}? Catatan opsional:`) || '';
   if(catatan===null) return;
   try {
     await api('reviewRKAS', {versiRkas: versi, keputusan: keputusan});
     alert('Keputusan review berhasil disimpan.');
-    await rkasView();
+    await rkasReview();
   } catch(e) {
     alert(errorText(e));
   }
