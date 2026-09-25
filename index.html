@@ -773,6 +773,86 @@ window.runDbCheck=async function(){const r=$('#dbResult');r.innerHTML=loading();
 // ============================================================================
 document.addEventListener('submit',e=>{if(e.target.id==='loginForm')doLogin(e);});
 window.addEventListener('DOMContentLoaded',restoreSession);
+
+// Fungsi universal untuk membuka dialog unggah file (sama persis konsepnya dengan impor Excel BKU)
+window.openUpload = function(idSpj, namaSpj) {
+  const periode = $('#periodeSelect')?.value || state.selectedPeriode;
+  if (!periode) {
+    alert('Pilih periode bulan terlebih dahulu.');
+    return;
+  }
+
+  // Buat modal dialog unggah yang bersih dan responsif
+  const wrap = document.createElement('div');
+  wrap.id = 'modalUploadOverlay';
+  wrap.innerHTML = `
+    <div style="position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:999">
+      <div style="background:#fff;padding:24px;border-radius:20px;width:min(94%,460px);box-shadow:0 10px 30px rgba(0,0,0,.2)">
+        <h3 style="margin-top:0;color:var(--primary)">Unggah Berkas / Dokumen</h3>
+        <p class="muted" style="margin-bottom:14px">${esc(namaSpj)}</p>
+        <form id="uploadLocalForm">
+          <div class="field">
+            <label>Pilih Berkas (PDF / Excel)</label>
+            <input id="localFile" type="file" accept=".pdf,.xlsx,.xls" required style="padding:10px">
+          </div>
+          <div id="uploadMsg" style="margin:10px 0"></div>
+          <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px">
+            <button type="button" class="btn btn-light" onclick="$('#modalUploadOverlay').remove()">Batal</button>
+            <button class="btn btn-primary" id="uploadBtn">Unggah Sekarang</button>
+          </div>
+        </form>
+      </div>
+    </div>`;
+  document.body.appendChild(wrap);
+
+  // Proses pembacaan file lokal persis seperti impor Excel
+  $('#uploadLocalForm').onsubmit = async e => {
+    e.preventDefault();
+    const file = $('#localFile').files[0];
+    if (!file) return;
+
+    const btn = $('#uploadBtn');
+    btn.disabled = true;
+    btn.textContent = 'Memproses berkas...';
+
+    const reader = new FileReader();
+    reader.onload = async () => {
+      try {
+        // Ambil string base64 murni setelah koma
+        const base64String = String(reader.result).split(',')[1] || '';
+
+        // Kirim ke backend Apps Script (backend akan otomatis menyimpan ke folder storage pusat Dinas)
+        const res = await api('uploadDanSimpanDokumenSPJ', {
+          data: {
+            id_periode: periode,
+            id_spj: idSpj,
+            nama_file: file.name,
+            mimeType: file.type,
+            base64: base64String
+          }
+        });
+
+        if(res.success){
+          alert('Berhasil! Berkas telah disimpan ke storage pusat Dinas.');
+          $('#modalUploadOverlay').remove();
+          if(typeof renderDokumenTable === 'function') renderDokumenTable();
+        } else {
+          throw new Error(res.message || 'Gagal menyimpan file');
+        }
+      } catch (err) {
+        $('#uploadMsg').innerHTML = msg(err.message);
+        btn.disabled = false;
+        btn.textContent = 'Unggah Sekarang';
+      }
+    };
+    reader.onerror = () => {
+      $('#uploadMsg').innerHTML = msg('Gagal membaca berkas dari perangkat lokal.');
+      btn.disabled = false;
+      btn.textContent = 'Unggah Sekarang';
+    };
+    reader.readAsDataURL(file);
+  };
+};
 </script>
 </body>
 </html>
