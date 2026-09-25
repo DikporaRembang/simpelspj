@@ -953,6 +953,21 @@ window.editScore=async function(idAsesmen, idIndikator, current){
   try{await api('simpanDetailAsesmen',{data:{id_asesmen:idAsesmen,id_indikator:idIndikator,skor:n,catatan_pengawas:'',status_berlaku:'BERLAKU'}});await openAssessment();}catch(e){alert(errorText(e));}
 };
 
+// Helper universal untuk menampilkan identitas Sekolah lengkap dengan Kecamatan
+function formatSekolahLabel(npsn, namaSekolah = '', kecamatan = '') {
+  if (!npsn) return '-';
+  const cleanNpsn = esc(npsn);
+  const cleanNama = esc(namaSekolah || 'Satuan Pendidikan');
+  const cleanKec = esc(kecamatan ? `Kec. ${kecamatan}` : '');
+  return `<b>${cleanNpsn}</b> — ${cleanNama} ${cleanKec ? `<small class="muted">(${cleanKec})</small>` : ''}`;
+}
+
+// Helper universal untuk menampilkan identitas Pengawas
+function formatPengawasLabel(idPengawas, namaPengguna = '') {
+  if (!idPengawas) return '-';
+  return `<b>${esc(idPengawas)}</b> ${namaPengguna ? `<span style="color:var(--muted);font-size:0.88rem">(${esc(namaPengguna)})</span>` : ''}`;
+}
+
 async function dbCheckView(){
   $('#mainContent').innerHTML=head('Validasi Database','Memeriksa skema 14 tabel SIMPEL SPJ')+`<div class="panel"><button class="btn btn-primary" onclick="runDbCheck()">Jalankan Validasi</button><div id="dbResult" style="margin-top:16px">${msg('Klik untuk mulai.','ok')}</div></div>`;
 }
