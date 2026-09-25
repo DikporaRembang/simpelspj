@@ -284,6 +284,9 @@ function authView(notice=''){
           <div id="authMsg"></div>
           <button class="btn btn-primary full" type="submit" style="margin-top:8px">Masuk ke Aplikasi</button>
         </form>
+        <div style="text-align:center;margin-top:16px">
+          <a href="#" onclick="showRegisterView(event)" style="color:var(--primary-2);font-weight:700;font-size:0.9rem;text-decoration:none">Belum punya akun? Pendaftaran Akun Baru</a>
+        </div>
       </div></section>
     </main>`;
 }
@@ -298,6 +301,78 @@ async function doLogin(e){
     showWelcomeAnimation(() => { startApp(); });
   }catch(err){$('#authMsg').innerHTML=msg(errorText(err));}
 }
+
+window.showRegisterView = function(e) {
+  if(e) e.preventDefault();
+  const card = $('.auth-card');
+  if(!card) return;
+  card.innerHTML = `
+    <div class="brand" style="margin-bottom:16px">
+      <img src="bidangsd.png" class="app-logo" alt="Logo">
+      <div><h2>SIMPEL SPJ</h2><small>Pendaftaran Akun Baru (Sekolah / Pengawas)</small></div>
+    </div>
+    <form id="registerForm">
+      <div class="field">
+        <label>Pilih Peran (Role)</label>
+        <select id="regRole" required onchange="toggleRegisterFields()">
+          <option value="SEKOLAH">Satuan Pendidikan (Sekolah)</option>
+          <option value="PENGAWAS">Pengawas Pembina</option>
+        </select>
+      </div>
+      <div class="field" id="fieldNpsnGroup">
+        <label>NPSN Sekolah</label>
+        <input id="regNpsn" placeholder="Contoh: 20301234">
+      </div>
+      <div class="field" id="fieldNamaGroup">
+        <label>Nama Satuan Pendidikan</label>
+        <input id="regNamaSekolah" placeholder="Contoh: SD Negeri 1 Rembang">
+      </div>
+      <div class="field" id="fieldNipGroup" style="display:none">
+        <label>NIP / ID Pengawas</label>
+        <input id="regNip" placeholder="Contoh: 196611061986081001">
+      </div>
+      <div class="field"><label>Username</label><input id="regUsername" required placeholder="Username untuk login"></div>
+      <div class="field"><label>Kata Sandi</label><input id="regPassword" type="password" required placeholder="Minimal 6 karakter"></div>
+      <div id="regMsg"></div>
+      <button class="btn btn-primary full" type="submit" style="margin-top:10px">Daftarkan Akun Sekarang</button>
+      <div style="text-align:center;margin-top:14px">
+        <a href="#" onclick="authView()" style="color:var(--muted);font-size:0.88rem;text-decoration:none">← Kembali ke Halaman Masuk</a>
+      </div>
+    </form>`;
+
+  window.toggleRegisterFields = function() {
+    const roleVal = $('#regRole').value;
+    if(roleVal === 'PENGAWAS') {
+      $('#fieldNpsnGroup').style.display = 'none';
+      $('#fieldNamaGroup').style.display = 'none';
+      $('#fieldNipGroup').style.display = 'block';
+    } else {
+      $('#fieldNpsnGroup').style.display = 'block';
+      $('#fieldNamaGroup').style.display = 'block';
+      $('#fieldNipGroup').style.display = 'none';
+    }
+  };
+
+  $('#registerForm').onsubmit = async function(ev) {
+    ev.preventDefault();
+    const roleVal = $('#regRole').value;
+    const payload = {
+      role: roleVal,
+      npsn: roleVal === 'SEKOLAH' ? $('#regNpsn').value.trim() : '',
+      nama_sekolah: roleVal === 'SEKOLAH' ? $('#regNamaSekolah').value.trim() : '',
+      username: $('#regUsername').value.trim(),
+      password: $('#regPassword').value,
+      nip_pengawas: roleVal === 'PENGAWAS' ? $('#regNip').value.trim() : ''
+    };
+    try {
+      const res = await api('registerAkun', { data: payload });
+      alert(res.message || 'Pendaftaran akun berhasil! Silakan masuk.');
+      authView();
+    } catch(err) {
+      $('#regMsg').innerHTML = msg(errorText(err));
+    }
+  };
+};
 
 function showWelcomeAnimation(callback){
   const overlay = document.createElement('div');
@@ -548,9 +623,16 @@ window.parseExcelBku=function(){
     rows.slice(16).forEach(row=>{
       const tanggal=row[0], kodeKegi=row[3], kodeReken=row[5], bukti=row[7], uraian=row[9], penerimaan=Number(row[13])||0, pengeluaran=Number(row[16])||0;
       if(String(tanggal)>='1'&&String(tanggal)<='8'&&!String(tanggal).includes('-')) return;
-      if(!kodeKegi||!kodeReken) return;
-      if(penerimaan<=0&&pengeluaran<=0) return;
-      data.push({tanggal:String(tanggal).trim(),kode_rekening:String(kodeReken).trim(),nomor_bukti:String(bukti||'-').trim(),uraian_transaksi:String(uraian||'Transaksi BKU').trim(),nilai_transaksi:pengeluaran||penerimaan});
+      const hasPenerimaan = penerimaan > 0;
+      const hasPengeluaranOrCode = (pengeluaran > 0 || (kodeKegi && kodeReken));
+      if(!hasPenerimaan && !hasPengeluaranOrCode) return;
+      data.push({
+        tanggal:String(tanggal).trim(),
+        kode_rekening:kodeReken?String(kodeReken).trim():'-',
+        nomor_bukti:String(bukti||'-').trim(),
+        uraian_transaksi:String(uraian||(hasPenerimaan?'Penerimaan Dana / Kas Masuk BKU':'Transaksi BKU')).trim(),
+        nilai_transaksi:pengeluaran||penerimaan
+      });
     });
     state.importedTransactions=data;
     out.innerHTML=msg(`Berhasil membaca ${data.length} transaksi valid.`,'ok')+`<div class="table-wrap"><table class="friendly-table"><thead><tr><th>Tanggal</th><th>Kode Rekening</th><th>No Bukti</th><th>Uraian</th><th>Nilai</th></tr></thead><tbody>${data.slice(0,50).map(x=>`<tr><td>${esc(x.tanggal)}</td><td>${esc(x.kode_rekening)}</td><td>${esc(x.nomor_bukti)}</td><td>${esc(x.uraian_transaksi)}</td><td>${fmtRupiah(x.nilai_transaksi)}</td></tr>`).join('')}</tbody></table></div><button class="btn btn-primary" style="margin-top:12px" onclick="saveImportedTransactions()">Simpan Transaksi</button>`;
@@ -728,7 +810,7 @@ async function loadPesanData(){
   try {
     const res = await safeApi('getPesan', {}, { data: [] });
     // Filter hanya menampilkan pesan yang statusnya BELUM selesai agar otomatis hilang jika sudah dieksekusi/dibalas
-    const list = (res.data || []).filter(x => String(x.status_pesan || 'BELUM').toUpperCase() !== 'SELESAI');
+    const list = (res.data || []).filter(x => String(x.status_baca || x.status_pesan || 'BELUM').toUpperCase() !== 'SELESAI');
 
     const rows = list.map(x => `
       <tr>
@@ -796,7 +878,6 @@ window.openBalasPesanModal = function(idPesan, pengirimAsal) {
     e.preventDefault();
     const isi = $('#balasIsi').value.trim(); if(!isi) return;
     try {
-      // Kirim balasan dan otomatis tandai selesai (notifikasi hilang)
       await api('kirimPesan', { data: { tujuan: pengirimAsal, subjek: 'Re: Balasan Pesan', isi_pesan: isi, kategori: 'BALASAN', pengirim: state.user?.username || ownNpsn() } });
       if(idPesan) { await api('updateStatusPesan', { id_pesan: idPesan, status_pesan: 'SELESAI' }); }
       alert('Balasan terkirim dan notifikasi telah diselesaikan.'); $('#balasModal').remove(); await loadPesanData();
