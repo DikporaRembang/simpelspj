@@ -359,48 +359,6 @@ window.showRegisterView = function(e) {
   // Handle submit pendaftaran ke backend
   $('#registerForm').onsubmit = async ev => {
     ev.preventDefault();
-    const role = $('#regRole').value;
-    const npsn = role === 'SEKOLAH' ? $('#regNpsn').value.trim() : '';
-    const namaPengguna = $('#regNamaSekolah').value.trim();
-    const username = $('#regUsername').value.trim();
-    const password = $('#regPassword').value;
-    const nip = role === 'PENGAWAS' ? $('#regNip').value.trim() : '';
-
-    const msgBox = $('#regMsg');
-    msgBox.innerHTML = '<p class="muted">Memproses pendaftaran akun...</p>';
-
-    try {
-      const res = await api('registerUser', {
-        role,
-        npsn,
-        nama_pengguna: namaPengguna,
-        username,
-        password,
-        nip
-      });
-      msgBox.innerHTML = msg('Pendaftaran berhasil! Silakan masuk.', 'ok');
-      setTimeout(() => { authView(); }, 1500);
-    } catch(err) {
-      msgBox.innerHTML = msg(errorText(err));
-    }
-  };
-};
-
-  window.toggleRegisterFields = function() {
-    const roleVal = $('#regRole').value;
-    if(roleVal === 'PENGAWAS') {
-      $('#fieldNpsnGroup').style.display = 'none';
-      $('#fieldNamaGroup').style.display = 'none';
-      $('#fieldNipGroup').style.display = 'block';
-    } else {
-      $('#fieldNpsnGroup').style.display = 'block';
-      $('#fieldNamaGroup').style.display = 'block';
-      $('#fieldNipGroup').style.display = 'none';
-    }
-  };
-
-  $('#registerForm').onsubmit = async function(ev) {
-    ev.preventDefault();
     const roleVal = $('#regRole').value;
     const payload = {
       role: roleVal,
@@ -410,14 +368,49 @@ window.showRegisterView = function(e) {
       password: $('#regPassword').value,
       nip_pengawas: roleVal === 'PENGAWAS' ? $('#regNip').value.trim() : ''
     };
+    const msgBox = $('#regMsg');
+    msgBox.innerHTML = '<p class="muted">Memproses pendaftaran akun...</p>';
+
     try {
       const res = await api('registerAkun', { data: payload });
-      alert(res.message || 'Pendaftaran akun berhasil! Silakan masuk.');
-      authView();
+      msgBox.innerHTML = msg(res.message || 'Pendaftaran akun berhasil! Silakan masuk.', 'ok');
+      setTimeout(() => { authView(); }, 1500);
     } catch(err) {
-      $('#regMsg').innerHTML = msg(errorText(err));
+      msgBox.innerHTML = msg(errorText(err));
     }
   };
+};
+
+// Fungsi untuk mengubah tampilan form berdasarkan Role yang dipilih
+window.toggleRegisterFields = function() {
+  const roleVal = $('#regRole').value;
+  const fieldNpsn = $('#fieldNpsnGroup');
+  const fieldNip = $('#fieldNipGroup');
+  const labelNama = $('#labelNamaUser');
+  const labelUser = $('#labelUsername');
+  const inpUsername = $('#regUsername');
+
+  if(roleVal === 'SEKOLAH') {
+    if(fieldNpsn) fieldNpsn.style.display = 'block';
+    if(fieldNip) fieldNip.style.display = 'none';
+    if($('#fieldNamaGroup')) $('#fieldNamaGroup').style.display = 'block';
+    if(labelNama) labelNama.textContent = 'Nama Satuan Pendidikan';
+    if(labelUser) labelUser.textContent = 'Username (Otomatis NPSN)';
+    if(inpUsername) {
+      inpUsername.readOnly = true;
+      inpUsername.placeholder = 'Terisi otomatis dari NPSN';
+    }
+  } else {
+    if(fieldNpsn) fieldNpsn.style.display = 'none';
+    if($('#fieldNamaGroup')) $('#fieldNamaGroup').style.display = 'none';
+    if(fieldNip) fieldNip.style.display = 'block';
+    if(labelNama) labelNama.textContent = 'Nama Lengkap & Gelar Pengawas';
+    if(labelUser) labelUser.textContent = 'Username Login Pengawas';
+    if(inpUsername) {
+      inpUsername.readOnly = false;
+      inpUsername.placeholder = 'Contoh: ahmad_pengawas';
+    }
+  }
 };
 
 function showWelcomeAnimation(callback){
@@ -1114,9 +1107,8 @@ window.autoFillSekolahByNpsn = async function(npsn) {
     const found = list.find(s => String(s.npsn).trim() === String(npsn).trim());
     if(found) {
       $('#regNamaSekolah').value = found.nama_sekolah || '';
-      $('#regUsername').value = found.npsn; // Username otomatis menjadi NPSN
+      $('#regUsername').value = found.npsn;
     } else {
-      // Jika tidak ditemukan di database master, biarkan user mengetik manual tapi username tetap diset NPSN
       $('#regUsername').value = npsn;
     }
   } catch(e) {
