@@ -129,73 +129,34 @@ button{cursor:pointer}
 'use strict';
 
 /* ============================================================================
- * SIMPEL SPJ - FRONTEND MASTER
- * Sinkron dengan code.gs compiled backend
+ * SIMPEL SPJ - FRONTEND MASTER (SYNCHRONIZED WITH BACKEND)
  * ========================================================================== */
 
-// ============================================================================
-// 01. KONFIGURASI
-// ============================================================================
 const API_URL = 'https://script.google.com/macros/s/AKfycbyWvJXKr1QZ1zwbeJDoULTUihycj1771SsDlGFy8jnuF4i3DsEbHXlcJU48VDAg17fqDA/exec';
 
 const ROLE_MENUS = {
   SEKOLAH: [
-    { category:'UTAMA', items:[
-      {id:'home', label:'Beranda'}
-    ]},
-    { category:'RKAS & KEUANGAN', items:[
-      {id:'rkasReview', label:'RKAS'},
-      {id:'transaksi', label:'Transaksi SPJ'}
-    ]},
-    { category:'PELAPORAN SPJ', items:[
-      {id:'dokumenBulanan', label:'Dokumen SPJ Bulanan'},
-      {id:'statusSpj', label:'Status SPJ'}
-    ]}
+    { category:'UTAMA', items:[{id:'home', label:'Beranda'}]},
+    { category:'RKAS & KEUANGAN', items:[{id:'rkasReview', label:'RKAS & Realisasi'},{id:'transaksi', label:'Transaksi SPJ'}]},
+    { category:'PELAPORAN SPJ', items:[{id:'dokumenBulanan', label:'Dokumen SPJ Bulanan'},{id:'statusSpj', label:'Status SPJ'}]}
   ],
   DINAS: [
-    { category:'UTAMA', items:[
-      {id:'home', label:'Dashboard Dinas'},
-      {id:'sekolah', label:'Daftar Sekolah'}
-    ]},
-    { category:'MANAJEMEN', items:[
-      {id:'penugasan', label:'Penugasan Pengawas'},
-      {id:'rkasReview', label:'Review RKAS'}
-    ]},
-    { category:'MONITORING', items:[
-      {id:'crosscheck', label:'Pemeriksaan SPJ'},
-      {id:'temuan', label:'Temuan SPJ'},
-      {id:'dbCheck', label:'Validasi Database'}
-    ]}
+    { category:'UTAMA', items:[{id:'home', label:'Dashboard Dinas'},{id:'sekolah', label:'Daftar Sekolah'}]},
+    { category:'MANAJEMEN', items:[{id:'penugasan', label:'Penugasan Pengawas'},{id:'rkasReview', label:'Review & Usulan RKAS'}]},
+    { category:'MONITORING', items:[{id:'crosscheck', label:'Pemeriksaan SPJ'},{id:'temuan', label:'Temuan SPJ'},{id:'dbCheck', label:'Validasi Database'}]}
   ],
   PENGAWAS: [
-    { category:'UTAMA', items:[
-      {id:'home', label:'Beranda Pengawas'},
-      {id:'penugasan', label:'Sekolah Binaan'}
-    ]},
-    { category:'PEMERIKSAAN', items:[
-      {id:'crosscheck', label:'Cross-check SPJ'},
-      {id:'temuan', label:'Temuan & Verifikasi'},
-      {id:'asesmen', label:'Asesmen SPJ'}
-    ]}
+    { category:'UTAMA', items:[{id:'home', label:'Beranda Pengawas'},{id:'penugasan', label:'Sekolah Binaan'}]},
+    { category:'PEMERIKSAAN', items:[{id:'crosscheck', label:'Cross-check SPJ'},{id:'temuan', label:'Temuan & Verifikasi'},{id:'asesmen', label:'Asesmen SPJ'}]}
   ]
 };
 
 const COMPONENT_FALLBACK = [
-  ['SPJ-01','Buku Kas Umum (BKU)'],
-  ['SPJ-02','Buku Pembantu Bank'],
-  ['SPJ-03','Buku Pembantu Kas Tunai'],
-  ['SPJ-04','Buku Pembantu Pajak'],
-  ['SPJ-05','Rekening Koran Bank'],
-  ['SPJ-06','Invoice / Nota / Kuitansi'],
-  ['SPJ-07','Bukti Pendukung Lainnya'],
-  ['SPJ-08','SSP Pajak Pusat'],
-  ['SPJ-09','SSP Pajak Daerah'],
-  ['SPJ-10','Foto / Dokumentasi']
+  ['SPJ-01','Buku Kas Umum (BKU)'],['SPJ-02','Buku Pembantu Bank'],['SPJ-03','Buku Pembantu Kas Tunai'],
+  ['SPJ-04','Buku Pembantu Pajak'],['SPJ-05','Rekening Koran Bank'],['SPJ-06','Invoice / Nota / Kuitansi'],
+  ['SPJ-07','Bukti Pendukung Lainnya'],['SPJ-08','SSP Pajak Pusat'],['SPJ-09','SSP Pajak Daerah'],['SPJ-10','Foto / Dokumentasi']
 ].map(([id,nama])=>({id,nama}));
 
-// ============================================================================
-// 02. STATE & UTILITAS
-// ============================================================================
 const state = {
   token: sessionStorage.getItem('simpel_token') || '',
   user: null,
@@ -205,12 +166,10 @@ const state = {
   masterSpj: [],
   periode: [],
   importedTransactions: [],
-  captchaAns: 0,
-  busy: false
+  captchaAns: 0
 };
 
-const $ = s => document.querySelector(s);
-const $$ = s => Array.from(document.querySelectorAll(s));
+const $ = s => document.querySelector(s); const $$ = s => Array.from(document.querySelectorAll(s));
 const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmtRupiah = v => {
   const n = Number(v);
@@ -227,116 +186,79 @@ const ownNpsn = () => String(state.user?.npsn || state.user?.username || '').tri
 
 function errorText(err){ return err?.message || String(err || 'Terjadi kesalahan.'); }
 function loading(text='Memuat data...'){ return `<p class="muted">${esc(text)}</p>`; }
-function head(title,desc=''){
-  return `<div class="page-head"><div><h1>${esc(title)}</h1>${desc?`<div class="muted">${esc(desc)}</div>`:''}</div></div>`;
-}
-function emptyRow(cols,text='Tidak ada data.'){
-  return `<tr><td colspan="${cols}" class="muted" style="text-align:center;padding:25px">${esc(text)}</td></tr>`;
-}
+function head(title,desc=''){ return `<div class="page-head"><div><h1>${esc(title)}</h1>${desc?`<div class="muted">${esc(desc)}</div>`:''}</div></div>`; }
+function emptyRow(cols,text='Tidak ada data.'){ return `<tr><td colspan="${cols}" class="muted" style="text-align:center;padding:25px">${esc(text)}</td></tr>`; }
 
-// ============================================================================
-// 03. API CLIENT
-// ============================================================================
 async function api(action, payload={}){
   const body = { action, ...payload };
   if(state.token) body.token = state.token;
-
-  const response = await fetch(API_URL, {
-    method:'POST',
-    headers:{'Content-Type':'text/plain;charset=utf-8'},
-    body:JSON.stringify(body)
-  });
-
+  const response = await fetch(API_URL, {method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(body)});
   if(!response.ok) throw new Error(`Server HTTP ${response.status}`);
   const data = await response.json();
   if(!data.success) throw new Error(data.message || 'Permintaan gagal.');
   return data;
 }
-
-async function safeApi(action,payload={},fallback=null){
-  try{return await api(action,payload);}catch(e){return fallback;}
-}
+async function safeApi(action,payload={},fallback=null){ try{return await api(action,payload);}catch(e){return fallback;} }
 
 // ============================================================================
-// 04. AUTHENTICATION
+// AUTHENTICATION
 // ============================================================================
 function generateMathCaptcha(){
-  const a=Math.floor(Math.random()*7)+2;
-  const b=Math.floor(Math.random()*6)+1;
-  state.captchaAns=a+b;
-  return `Berapa hasil ${a} + ${b} ?`;
+  const a=Math.floor(Math.random()*7)+2, b=Math.floor(Math.random()*6)+1;
+  state.captchaAns=a+b; return `Berapa hasil ${a} + ${b} ?`;
 }
-
 function authView(notice=''){
   document.body.style.background='var(--bg)';
   $('#app').innerHTML=`
     <main class="auth">
-      <section class="auth-side">
-        <div class="auth-side-inner">
-          <div class="brand"><div class="app-logo">SPJ</div><div><h2 style="color:#fff">SIMPEL SPJ</h2><small style="color:#d9eee0">Kabupaten Rembang</small></div></div>
-          <h1>Penilaian SPJ BOS SD yang terstruktur.</h1>
-          <p>Pengelolaan RKAS, dokumen SPJ, transaksi, pemeriksaan silang, temuan, dan asesmen berada dalam satu alur kerja.</p>
-        </div>
-      </section>
-      <section class="auth-panel">
-        <div class="auth-card">
-          <div class="brand"><div class="app-logo">SPJ</div><div><h2>SIMPEL SPJ</h2><small>Masuk ke sistem</small></div></div>
-          ${notice}
-          <form id="loginForm">
-            <div class="field"><label>Username / NPSN</label><input id="username" required autocomplete="username" placeholder="Masukkan username atau NPSN"></div>
-            <div class="field"><label>Kata Sandi</label><input id="password" type="password" required autocomplete="current-password" placeholder="Masukkan password"></div>
-            <div class="field"><label>Verifikasi Keamanan (${generateMathCaptcha()})</label><input id="captchaInput" type="number" required placeholder="Jawaban angka"></div>
-            <div id="authMsg"></div>
-            <button class="btn btn-primary full" type="submit">Masuk ke Aplikasi</button>
-          </form>
-        </div>
-      </section>
+      <section class="auth-side"><div class="auth-side-inner">
+        <div class="brand"><div class="app-logo">SPJ</div><div><h2 style="color:#fff">SIMPEL SPJ</h2><small style="color:#d9eee0">Kabupaten Rembang</small></div></div>
+        <h1>Penilaian SPJ BOS SD yang terstruktur.</h1>
+        <p>Pengelolaan RKAS, dokumen SPJ, transaksi, pemeriksaan silang, temuan, dan asesmen berada dalam satu alur kerja.</p>
+      </div></section>
+      <section class="auth-panel"><div class="auth-card">
+        <div class="brand"><div class="app-logo">SPJ</div><div><h2>SIMPEL SPJ</h2><small>Masuk ke sistem</small></div></div>
+        ${notice}
+        <form id="loginForm">
+          <div class="field"><label>Username / NPSN</label><input id="username" required autocomplete="username" placeholder="Masukkan username atau NPSN"></div>
+          <div class="field"><label>Kata Sandi</label><input id="password" type="password" required autocomplete="current-password" placeholder="Masukkan password"></div>
+          <div class="field"><label>Verifikasi Keamanan (${generateMathCaptcha()})</label><input id="captchaInput" type="number" required placeholder="Jawaban angka"></div>
+          <div id="authMsg"></div>
+          <button class="btn btn-primary full" type="submit">Masuk ke Aplikasi</button>
+        </form>
+      </div></section>
     </main>`;
 }
-
 async function doLogin(e){
   e.preventDefault();
-  if(Number($('#captchaInput').value)!==state.captchaAns){
-    $('#authMsg').innerHTML=msg('Jawaban verifikasi salah.');
-    return;
-  }
+  if(Number($('#captchaInput').value)!==state.captchaAns){$('#authMsg').innerHTML=msg('Jawaban verifikasi salah.');return;}
   try{
     const r=await api('login',{username:$('#username').value.trim(),password:$('#password').value});
-    state.token=r.token;
-    state.user=r.user || {};
+    state.token=r.token; state.user=r.user || {};
     sessionStorage.setItem('simpel_token',state.token);
     await startApp();
-  }catch(err){ $('#authMsg').innerHTML=msg(errorText(err)); }
+  }catch(err){$('#authMsg').innerHTML=msg(errorText(err));}
 }
-
 async function restoreSession(){
   if(!state.token){authView();return;}
   try{
     const r=await api('getSession');
     if(!r.data) throw new Error('Sesi berakhir.');
-    state.user=r.data;
-    await startApp();
-  }catch(e){
-    state.token=''; state.user=null; sessionStorage.removeItem('simpel_token'); authView();
-  }
+    state.user=r.data; await startApp();
+  }catch(e){state.token=''; state.user=null; sessionStorage.removeItem('simpel_token'); authView();}
 }
-
 async function logout(){
   try{if(state.token) await api('logout');}catch(e){}
-  state.token=''; state.user=null;
-  sessionStorage.removeItem('simpel_token');
-  authView(msg('Anda telah keluar dari aplikasi.','ok'));
+  state.token=''; state.user=null; sessionStorage.removeItem('simpel_token'); authView(msg('Anda telah keluar dari aplikasi.','ok'));
 }
 
 // ============================================================================
-// 05. APP SHELL & NAVIGATION
+// APP SHELL & NAVIGATION
 // ============================================================================
 async function startApp(){
   document.body.style.background='var(--bg)';
-  renderShell();
-  await loadView('home');
+  renderShell(); await loadView('home');
 }
-
 function renderShell(){
   const menus=ROLE_MENUS[role()] || ROLE_MENUS.SEKOLAH;
   $('#app').innerHTML=`
@@ -357,45 +279,23 @@ function renderShell(){
         <section class="content" id="mainContent"></section>
       </div>
     </main>`;
-
   $$('[data-view]').forEach(b=>b.onclick=()=>{loadView(b.dataset.view);$('#sidebar')?.classList.remove('open');});
-  $('#logoutBtn').onclick=logout;
-  $('#menuBtn').onclick=()=>$('#sidebar')?.classList.toggle('open');
-}
-
-function setActive(view){
-  $$('[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===view));
-}
-
+  $('#logoutBtn').onclick=logout; $('#menuBtn').onclick=()=>$('#sidebar')?.classList.toggle('open'); } function setActive(view){ $$('[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===view)); }
 async function loadView(view){
   state.view=view; setActive(view);
   const c=$('#mainContent'); if(!c)return;
   c.innerHTML=loading('Memuat modul...');
   try{
-    const map={
-      home:homeView,
-      dokumenBulanan:dokumenBulananView,
-      statusSpj:statusSpjView,
-      transaksi:transaksiView,
-      sekolah:sekolahView,
-      penugasan:penugasanView,
-      rkasReview:rkasView,
-      crosscheck:crosscheckView,
-      temuan:temuanView,
-      asesmen:asesmenView,
-      dbCheck:dbCheckView
-    };
+    const map={home:homeView,dokumenBulanan:dokumenBulananView,statusSpj:statusSpjView,transaksi:transaksiView,sekolah:sekolahView,penugasan:penugasanView,rkasReview:rkasView,crosscheck:crosscheckView,temuan:temuanView,asesmen:asesmenView,dbCheck:dbCheckView};
     if(!map[view]) throw new Error('Modul belum tersedia: '+view);
     await map[view]();
   }catch(e){c.innerHTML=msg(errorText(e));}
 }
 
 // ============================================================================
-// 06. DASHBOARD
+// DASHBOARD
 // ============================================================================
 async function homeView(){
-  const r=await safeApi('getRingkasanSPJBulanan',{idPeriode:state.selectedPeriode||''},null);
-  const summary=r?.ringkasan || {};
   $('#mainContent').innerHTML=head(`Beranda ${role()}`,'Ringkasan akses dan pekerjaan SIMPEL SPJ')+
     `<div class="cards">
       <div class="stat"><small>Pengguna</small><strong style="font-size:1.1rem">${esc(state.user?.nama_pengguna||'-')}</strong></div>
@@ -406,56 +306,35 @@ async function homeView(){
     <div class="panel">
       <h3 class="section-title" style="margin-top:0">Alur Kerja SIMPEL SPJ</h3>
       <div class="form-grid">
-        <div><b>1. RKAS</b><p class="muted">RKAS aktif menjadi dasar transaksi SPJ.</p></div>
-        <div><b>2. Transaksi</b><p class="muted">Transaksi dicatat dan dikaitkan dengan RKAS.</p></div>
-        <div><b>3. Dokumen</b><p class="muted">10 komponen SPJ bulanan dilengkapi.</p></div>
-        <div><b>4. Pemeriksaan</b><p class="muted">Sistem menghasilkan temuan untuk diverifikasi Pengawas.</p></div>
+        <div><b>1. RKAS</b><p class="muted">RKAS aktif dan usulan diverifikasi oleh Dinas.</p></div>
+        <div><b>2. Transaksi</b><p class="muted">Catatan BKU dan pemantauan realisasi anggaran.</p></div>
+        <div><b>3. Dokumen</b><p class="muted">Kelengkapan 10 komponen SPJ dan status N/A pajak.</p></div>
+        <div><b>4. Pemeriksaan</b><p class="muted">Validasi temuan otomatis dan asesmen pengawas.</p></div>
       </div>
     </div>`;
 }
 
 // ============================================================================
-// 07. MASTER SPJ & PERIODE
+// MASTER DATA & PERIODE
 // ============================================================================
 async function ensureMasters(){
-  if(!state.masterSpj.length){
-    const r=await safeApi('getMasterSPJ',{},null);
-    state.masterSpj=r?.data||[];
-  }
-  if(!state.periode.length){
-    const r=await safeApi('getPeriodeSPJ',{},null);
-    state.periode=r?.data||[];
-  }
+  if(!state.masterSpj.length){ const r=await safeApi('getMasterSPJ',{},null); state.masterSpj=r?.data||[]; }
+  if(!state.periode.length){ const r=await safeApi('getPeriodeSPJ',{},null); state.periode=r?.data||[]; }
 }
-
 async function periodeSelect(id='periodeSelect',required=true){
   await ensureMasters();
-
-  // Periode SPJ ditampilkan sebagai daftar bulan. Jika master periode sudah
-  // tersedia di database, gunakan ID database dan nama bulan dari master.
-  // Jika master belum terisi, sediakan fallback Januari–Desember 2026.
   const namaBulan=['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
   let periods=state.periode||[];
-
   if(!periods.length){
-    periods=namaBulan.map((nama,i)=>({
-      id_periode:`PER-2026-${String(i+1).padStart(2,'0')}`,
-      nama_periode:`${nama} 2026`,
-      tahun:2026,
-      bulan:i+1
-    }));
+    periods=namaBulan.map((nama,i)=>({id_periode:`PER-2026-${String(i+1).padStart(2,'0')}`,nama_periode:`${nama} 2026`,tahun:2026,bulan:i+1}));
   }
-
   const options=periods.map(p=>{
-    const bulan=Number(p.bulan||0);
-    const tahun=Number(p.tahun||2026);
+    const bulan=Number(p.bulan||0), tahun=Number(p.tahun||2026);
     const label=bulan>=1&&bulan<=12 ? `${namaBulan[bulan-1]} ${tahun}` : (p.nama_periode||p.id_periode);
     return `<option value="${esc(p.id_periode)}">${esc(label)}</option>`;
   }).join('');
-
   return `<select id="${id}" ${required?'required':''}><option value="">-- Pilih Bulan SPJ --</option>${options}</select>`;
 }
-
 async function componentList(){
   await ensureMasters();
   const active=state.masterSpj.filter(x=>String(x.status_aktif).toUpperCase()!=='NONAKTIF').sort((a,b)=>Number(a.urutan||0)-Number(b.urutan||0));
@@ -463,18 +342,17 @@ async function componentList(){
 }
 
 // ============================================================================
-// 08. DOKUMEN SPJ SEKOLAH
+// DOKUMEN SPJ & N/A PAJAK (TERAKOMODASI PENUH)
 // ============================================================================
 async function dokumenBulananView(){
   const periods=await periodeSelect();
-  $('#mainContent').innerHTML=head('Dokumen SPJ Bulanan','Unggah 10 komponen SPJ dan pantau statusnya')+
+  $('#mainContent').innerHTML=head('Dokumen SPJ Bulanan','Unggah 10 komponen SPJ, atur status N/A pajak, dan pantau arsip')+
     `<div class="panel"><div class="form-grid"><div class="field"><label>Periode</label>${periods}</div></div><div id="dokumenArea" style="margin-top:18px">${msg('Pilih periode untuk menampilkan dokumen.','ok')}</div></div>`;
   $('#periodeSelect').value=state.selectedPeriode;
   $('#periodeSelect').onchange=()=>{state.selectedPeriode=$('#periodeSelect').value;renderDokumenTable();};
   if(state.selectedPeriode) await renderDokumenTable();
 }
 
-// Perbarui fungsi renderDokumenTable agar tombol aksi langsung memicu upload file lokal
 async function renderDokumenTable(){
   const area=$('#dokumenArea'); if(!area)return;
   const periode=$('#periodeSelect').value; if(!periode){area.innerHTML=msg('Pilih periode terlebih dahulu.','ok');return;}
@@ -490,114 +368,109 @@ async function renderDokumenTable(){
     const st=statuses.find(x=>String(x.id_spj)===String(c.id));
     const status=st?.status||d?.status||'BELUM_UPLOAD';
     let action='';
-    if(status==='N/A') action=badge('N/A','warning');
-    else if(d?.file_url) action=`<a class="btn btn-sm btn-secondary" href="${esc(d.file_url)}" target="_blank" rel="noopener">Lihat File</a> <button class="btn btn-sm btn-light" onclick="openUpload('${esc(c.id)}','${esc(c.nama)}')">Ganti File</button>`;
-    else action=`<button class="btn btn-sm btn-primary" onclick="openUpload('${esc(c.id)}','${esc(c.nama)}')">Unggah File</button>`;
-    if(['SPJ-04','SPJ-08','SPJ-09'].includes(String(c.id))) action+=` <button class="btn btn-sm btn-light" onclick="setNA('${esc(c.id)}')">N/A</button>`;
+    if(status==='N/A') action=badge('N/A (Tidak Ada Transaksi Pajak)','warning');
+    else if(d?.file_url) action=`<a class="btn btn-sm btn-secondary" href="${esc(d.file_url)}" target="_blank" rel="noopener">Lihat File</a> <button class="btn btn-sm btn-light" onclick="openUpload('${esc(c.id)}','${esc(c.nama)}')">Ganti</button>`;
+    else action=`<button class="btn btn-sm btn-primary" onclick="openUpload('${esc(c.id)}','${esc(c.nama)}')">Unggah</button>`;
+    
+    // Logika backend setStatusDokumenSPJNA terakomodasi untuk komponen pajak (SPJ-04, SPJ-08, SPJ-09)
+    if(['SPJ-04','SPJ-08','SPJ-09'].includes(String(c.id))) action+=` <button class="btn btn-sm btn-light" onclick="openNaModal('${esc(c.id)}','${esc(c.nama)}')">Set N/A</button>`;
+    
     const type=status==='SUDAH_UPLOAD'||status==='SELESAI_DINILAI'?'success':status==='N/A'||status==='PERLU_PERBAIKAN'?'warning':'danger';
     return `<tr><td><b>${esc(c.nama)}</b></td><td>${badge(status,type)}</td><td>${action}</td></tr>`;
   }).join('');
   area.innerHTML=`<div class="table-wrap"><table class="friendly-table"><thead><tr><th>Komponen</th><th>Status</th><th>Aksi</th></tr></thead><tbody>${rows||emptyRow(3)}</tbody></table></div>`;
 }
 
-// Modal dialog untuk unggah file lokal (PDF/Excel) langsung diproses secara base64
-window.openUpload = function(idSpj, namaSpj) {
+// Modal dialog interaktif untuk memasukkan alasan N/A pajak (Backend: setStatusDokumenSPJNA)
+window.openNaModal = function(idSpj, namaSpj) {
   const periode = $('#periodeSelect')?.value || state.selectedPeriode;
-  if (!periode) return;
-
+  if(!periode) return;
   const wrap = document.createElement('div');
-  wrap.id = 'modalUploadOverlay';
+  wrap.id = 'modalNaOverlay';
   wrap.innerHTML = `
     <div style="position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:999">
-      <div style="background:#fff;padding:24px;border-radius:20px;width:min(94%,480px);box-shadow:0 10px 30px rgba(0,0,0,.2)">
-        <h3 style="margin-top:0;color:var(--primary)">Unggah Dokumen SPJ</h3>
+      <div style="background:#fff;padding:24px;border-radius:20px;width:min(94%,460px);box-shadow:0 10px 30px rgba(0,0,0,.2)">
+        <h3 style="margin-top:0;color:var(--primary)">Atur Status N/A Pajak</h3>
         <p class="muted">${esc(namaSpj)}</p>
-        <form id="uploadLocalForm">
+        <form id="naForm">
           <div class="field">
-            <label>Pilih Berkas (PDF / Excel)</label>
-            <input id="localFile" type="file" accept=".pdf,.xlsx,.xls" required>
+            <label>Alasan N/A (Wajib diisi)</label>
+            <textarea id="naAlasan" rows="3" required placeholder="Contoh: Tidak ada transaksi kena pajak pada bulan ini..."></textarea>
           </div>
-          <div id="uploadMsg"></div>
+          <div id="naMsg"></div>
           <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px">
-            <button type="button" class="btn btn-light" onclick="$('#modalUploadOverlay').remove()">Batal</button>
-            <button class="btn btn-primary" id="uploadBtn">Unggah ke Server</button>
+            <button type="button" class="btn btn-light" onclick="$('#modalNaOverlay').remove()">Batal</button>
+            <button class="btn btn-primary">Simpan Status N/A</button>
           </div>
         </form>
       </div>
     </div>`;
   document.body.appendChild(wrap);
-
-  $('#uploadLocalForm').onsubmit = async e => {
+  $('#naForm').onsubmit = async e => {
     e.preventDefault();
-    const file = $('#localFile').files[0];
-    if (!file) return;
-
-    const btn = $('#uploadBtn');
-    btn.disabled = true;
-    btn.textContent = 'Mengunggah...';
-
+    const alasan = $('#naAlasan').value.trim();
+    if(!alasan) return;
     try {
-      // Konversi file lokal menjadi Base64 layaknya modul Impor Excel BKU
-      const base64Data = await new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
-
-      const base64String = String(base64Data).split(',')[1] || '';
-
-      // Kirim ke backend Apps Script
-      await api('uploadDanSimpanDokumenSPJ', {
-        data: {
-          id_periode: periode,
-          id_spj: idSpj,
-          nama_file: file.name,
-          mimeType: file.type,
-          base64: base64String
-        }
-      });
-
-      $('#modalUploadOverlay').remove();
+      await api('setStatusDokumenSPJNA', {idPeriode: periode, idSpj: idSpj, alasan: alasan});
+      $('#modalNaOverlay').remove();
       await renderDokumenTable();
-    } catch (err) {
-      $('#uploadMsg').innerHTML = msg(errorText(err));
-      btn.disabled = false;
-      btn.textContent = 'Unggah ke Server';
+    } catch(err) {
+      $('#naMsg').innerHTML = msg(errorText(err));
     }
   };
 };
 
-window.openUpload=function(idSpj,namaSpj){
-  const periode=$('#periodeSelect')?.value||state.selectedPeriode;
-  if(!periode)return;
-  const wrap=document.createElement('div');
-  wrap.id='modalUploadOverlay';
-  wrap.innerHTML=`<div style="position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:999"><div style="background:#fff;padding:24px;border-radius:20px;width:min(92%,460px);box-shadow:0 10px 30px rgba(0,0,0,.2)"><h3 style="margin-top:0;color:var(--primary)">Unggah Dokumen SPJ</h3><p class="muted">${esc(namaSpj)}</p><form id="uploadForm"><div class="field"><label>File PDF</label><input id="uploadFile" type="file" accept="application/pdf,.pdf" required></div><div id="uploadMsg"></div><div style="display:flex;justify-content:flex-end;gap:8px"><button type="button" class="btn btn-light" onclick="$('#modalUploadOverlay').remove()">Batal</button><button class="btn btn-primary" id="uploadBtn">Unggah</button></div></form></div></div>`;
+window.openUpload = function(idSpj, namaSpj) {
+  const periode = $('#periodeSelect')?.value || state.selectedPeriode;
+  if (!periode) { alert('Pilih periode bulan terlebih dahulu.'); return; }
+  const wrap = document.createElement('div');
+  wrap.id = 'modalUploadOverlay';
+  wrap.innerHTML = `
+    <div style="position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:999">
+      <div style="background:#fff;padding:24px;border-radius:20px;width:min(94%,460px);box-shadow:0 10px 30px rgba(0,0,0,.2)">
+        <h3 style="margin-top:0;color:var(--primary)">Unggah Berkas / Dokumen</h3>
+        <p class="muted" style="margin-bottom:14px">${esc(namaSpj)}</p>
+        <form id="uploadLocalForm">
+          <div class="field">
+            <label>Pilih Berkas PDF</label>
+            <input id="localFile" type="file" accept=".pdf" required style="padding:10px">
+          </div>
+          <div id="uploadMsg" style="margin:10px 0"></div>
+          <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px">
+            <button type="button" class="btn btn-light" onclick="$('#modalUploadOverlay').remove()">Batal</button>
+            <button class="btn btn-primary" id="uploadBtn">Unggah Sekarang</button>
+          </div>
+        </form>
+      </div>
+    </div>`;
   document.body.appendChild(wrap);
-  $('#uploadForm').onsubmit=async e=>{
-    e.preventDefault(); const file=$('#uploadFile').files[0]; if(!file)return;
-    if(file.type!=='application/pdf' && !/\.pdf$/i.test(file.name)){ $('#uploadMsg').innerHTML=msg('File harus PDF.');return; }
-    const btn=$('#uploadBtn'); btn.disabled=true; btn.textContent='Mengunggah...';
-    try{
-      const base64=String(await new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=reject;r.readAsDataURL(file);})).split(',')[1]||'';
-      await api('uploadDanSimpanDokumenSPJ',{data:{id_periode:periode,id_spj:idSpj,nama_file:file.name,mimeType:file.type,base64}});
-      $('#modalUploadOverlay').remove(); await renderDokumenTable();
-    }catch(err){$('#uploadMsg').innerHTML=msg(errorText(err));btn.disabled=false;btn.textContent='Unggah';}
+  $('#uploadLocalForm').onsubmit = async e => {
+    e.preventDefault();
+    const file = $('#localFile').files[0];
+    if (!file) return;
+    const btn = $('#uploadBtn'); btn.disabled = true; btn.textContent = 'Memproses berkas...';
+    const reader = new FileReader();
+    reader.onload = async () => {
+      try {
+        const base64String = String(reader.result).split(',')[1] || '';
+        const res = await api('uploadDanSimpanDokumenSPJ', {
+          data: { id_periode: periode, id_spj: idSpj, nama_file: file.name, mimeType: file.type, base64: base64String }
+        });
+        if(res.success){
+          $('#modalUploadOverlay').remove();
+          await renderDokumenTable();
+        } else { throw new Error(res.message || 'Gagal menyimpan file'); }
+      } catch (err) {
+        $('#uploadMsg').innerHTML = msg(err.message);
+        btn.disabled = false; btn.textContent = 'Unggah Sekarang';
+      }
+    };
+    reader.readAsDataURL(file);
   };
 };
 
-window.setNA=async function(idSpj){
-  const periode=$('#periodeSelect')?.value||state.selectedPeriode;
-  const alasan=prompt('Masukkan alasan N/A. N/A hanya digunakan jika komponen memang tidak berlaku, bukan karena dokumen belum tersedia.');
-  if(alasan===null)return;
-  if(!alasan.trim()){alert('Alasan wajib diisi.');return;}
-  try{await api('setStatusDokumenSPJNA',{idPeriode:periode,idSpj,alasan:alasan.trim()});await renderDokumenTable();}
-  catch(e){alert(errorText(e));}
-};
-
 // ============================================================================
-// 09. STATUS SPJ
+// STATUS SPJ
 // ============================================================================
 async function statusSpjView(){
   const periods=await periodeSelect();
@@ -613,12 +486,12 @@ async function renderStatus(){
   try{
     const [s,r]=await Promise.all([api('statusSPJBulanan',{idPeriode:p}),safeApi('ringkasanSPJBulanan',{idPeriode:p},null)]);
     const rows=(s.data||[]).map(x=>`<tr><td>${esc(x.nama_spj||x.id_spj)}</td><td>${badge(x.status,x.status==='SELESAI_DINILAI'?'success':x.status==='N/A'?'warning':'info')}</td></tr>`).join('');
-    area.innerHTML=`<div class="cards"><div class="stat"><small>Total Komponen</small><strong>${fmtNum(r?.total||s.data?.length||0)}</strong></div><div class="stat"><small>Status Keseluruhan</small><strong style="font-size:1.05rem">${esc(r?.status||'-')}</strong></div></div><div class="table-wrap"><table class="friendly-table"><thead><tr><th>Komponen</th><th>Status</th></tr></thead><tbody>${rows||emptyRow(2)}</tbody></table></div>`;
+    area.innerHTML=`<div class="cards"><div class="stat"><small>Total Komponen</small><strong>${fmtNum(s.data?.length||0)}</strong></div><div class="stat"><small>Status Keseluruhan</small><strong style="font-size:1.05rem">${esc(r?.status_umum||'-')}</strong></div></div><div class="table-wrap"><table class="friendly-table"><thead><tr><th>Komponen</th><th>Status</th></tr></thead><tbody>${rows||emptyRow(2)}</tbody></table></div>`;
   }catch(e){area.innerHTML=msg(errorText(e));}
 }
 
 // ============================================================================
-// 10. TRANSAKSI SPJ
+// TRANSAKSI SPJ
 // ============================================================================
 async function transaksiView(){
   const periods=await periodeSelect();
@@ -661,20 +534,81 @@ window.saveImportedTransactions=async function(){
 };
 
 // ============================================================================
-// 11. RKAS
+// RKAS & REVIEW DINAS (TERAKOMODASI PENUH)
 // ============================================================================
 async function rkasView(){
-  const r=await safeApi('rkasAktif',{}, {data:[]});
-  const h=await safeApi('rkasHistory',{}, {data:[]});
-  const rows=(r.data||[]).map(x=>`<tr><td>${esc(x.kode_rekening)}</td><td>${esc(x.uraian)}</td><td>${fmtRupiah(x.pagu)}</td><td>${badge(x.status_rkas,'success')}</td></tr>`).join('');
-  $('#mainContent').innerHTML=head('RKAS','RKAS aktif menjadi referensi transaksi SPJ')+
-    `<div class="panel"><div class="toolbar">${isSchool()?'<button class="btn btn-primary" onclick="createDraftRkas()">Buat Draft RKAS</button>':''}<button class="btn btn-light" onclick="loadView('rkasReview')">Refresh</button></div><div class="table-wrap"><table class="friendly-table"><thead><tr><th>Kode Rekening</th><th>Uraian</th><th>Pagu</th><th>Status</th></tr></thead><tbody>${rows||emptyRow(4,'Belum ada RKAS aktif.')}</tbody></table></div></div>
-    <div class="panel"><h3 class="section-title" style="margin-top:0">Riwayat RKAS</h3><div class="table-wrap"><table class="friendly-table"><thead><tr><th>Versi</th><th>NPSN</th><th>Status</th><th>Updated</th></tr></thead><tbody>${(h.data||[]).map(x=>`<tr><td>${esc(x.versi_rkas)}</td><td>${esc(x.npsn)}</td><td>${badge(x.status_rkas,'info')}</td><td>${esc(x.updated_at)}</td></tr>`).join('')||emptyRow(4)}</tbody></table></div></div>`;
+  if(isDinas()){
+    await renderDinasRkasReview();
+  } else {
+    await renderSchoolRkasAndRealisasi();
+  }
 }
-window.createDraftRkas=async function(){try{const r=await api('buatDraftRKAS');alert(`Draft ${r.versi_rkas||''} berhasil dibuat.`);await rkasView();}catch(e){alert(errorText(e));}};
+
+async function renderSchoolRkasAndRealasasi(){
+  const [r,h,real]=await Promise.all([
+    safeApi('rkasAktif',{}, {data:[]}),
+    safeApi('rkasHistory',{}, {data:[]}),
+    safeApi('realisasiRKAS',{}, {data:[]})
+  ]);
+  const rows=(r.data||[]).map(x=>`<tr><td>${esc(x.kode_rekening)}</td><td>${esc(x.uraian)}</td><td>${fmtRupiah(x.pagu)}</td><td>${badge(x.status_rkas,'success')}</td></tr>`).join('');
+  const realRows=(real.data||[]).map(x=>`<tr><td>${esc(x.kode_rekening)}</td><td>${esc(x.uraian)}</td><td>${fmtRupiah(x.pagu)}</td><td>${fmtRupiah(x.total_realisasi)}</td><td>${fmtRupiah(x.sisa_pagu)}</td><td>${badge(x.status,x.status==='NORMAL'?'success':'warning')}</td></tr>`).join('');
+
+  $('#mainContent').innerHTML=head('RKAS & Realisasi Anggaran','Pengelolaan RKAS aktif dan pemantauan realisasi terhadap pagu')+
+    `<div class="panel">
+       <h3 class="section-title" style="margin-top:0">Pagu RKAS Aktif (Approved)</h3>
+       <div class="toolbar">${isSchool()?'<button class="btn btn-primary" onclick="createDraftRkas()">Buat Draft RKAS</button>':''}</div>
+       <div class="table-wrap"><table class="friendly-table"><thead><tr><th>Kode Rekening</th><th>Uraian</th><th>Pagu</th><th>Status</th></tr></thead><tbody>${rows||emptyRow(4,'Belum ada RKAS aktif.')}</tbody></table></div>
+     </div>
+     <div class="panel">
+       <h3 class="section-title" style="margin-top:0">Monitoring Realisasi Pagu RKAS (Backend: getRealisasiRKAS)</h3>
+       <div class="table-wrap"><table class="friendly-table"><thead><tr><th>Kode</th><th>Uraian</th><th>Pagu</th><th>Realisasi</th><th>Sisa Pagu</th><th>Status</th></tr></thead><tbody>${realRows||emptyRow(6,'Belum ada data realisasi.')}</tbody></table></div>
+     </div>
+     <div class="panel">
+       <h3 class="section-title" style="margin-top:0">Riwayat Versi RKAS</h3>
+       <div class="table-wrap"><table class="friendly-table"><thead><tr><th>Versi</th><th>NPSN</th><th>Status</th><th>Updated</th></tr></thead><tbody>${(h.data||[]).map(x=>`<tr><td>${esc(x.versi_rkas)}</td><td>${esc(x.npsn)}</td><td>${badge(x.status_rkas,'info')}</td><td>${esc(x.updated_at)}</td></tr>`).join('')||emptyRow(4)}</tbody></table></div>
+     </div>`;
+}
+
+// Panel khusus Dinas untuk me-review usulan RKAS berstatus DIAJUKAN (Backend: getSemuaUsulanRKAS & reviewRKAS)
+async function renderDinasRkasReview(){
+  const res = await safeApi('getSemuaUsulanRKAS',{}, {data:[]});
+  const list = res.data || [];
+  const rows = list.map(x=>`
+    <tr>
+      <td><b>${esc(x.npsn)}</b></td>
+      <td>${esc(x.versi_rkas)}</td>
+      <td>${esc(x.kode_rekening)}</td>
+      <td>${esc(x.uraian)}</td>
+      <td><b>${fmtRupiah(x.pagu)}</b></td>
+      <td>${badge(x.status_rkas,'warning')}</td>
+      <td>
+        <button class="btn btn-sm btn-primary" onclick="doReviewRkas('${esc(x.versi_rkas)}','APPROVED')">Setujui</button>
+        <button class="btn btn-sm btn-light" onclick="doReviewRkas('${esc(x.versi_rkas)}','PERLU_PERBAIKAN')">Perbaiki</button>
+        <button class="btn btn-sm btn-danger" onclick="doReviewRkas('${esc(x.versi_rkas)}','DITOLAK')">Tolak</button>
+      </td>
+    </tr>`).join('');
+
+  $('#mainContent').innerHTML=head('Review & Persetujuan RKAS (Dinas)','Pusat verifikasi usulan anggaran sekolah yang berstatus DIAJUKAN')+
+    `<div class="panel">
+       <div class="table-wrap"><table class="friendly-table"><thead><tr><th>NPSN</th><th>Versi</th><th>Kode</th><th>Uraian</th><th>Pagu</th><th>Status</th><th>Aksi Dinas</th></tr></thead><tbody>${rows||emptyRow(7,'Tidak ada usulan RKAS berstatus DIAJUKAN.')}</tbody></table></div>
+     </div>`;
+}
+
+window.createDraftRkas = async function(){ try{const r=await api('buatDraftRKAS');alert(`Draft ${r.versi_rkas||''} berhasil dibuat.`);await rkasView();}catch(e){alert(errorText(e));} };
+window.doReviewRkas = async function(versi, keputusan){
+  const catatan = prompt(`Konfirmasi keputusan Dinas menjadi [${keputusan}] untuk versi ${versi}? Catatan opsional:`) || '';
+  if(catatan===null) return;
+  try {
+    await api('reviewRKAS', {versiRkas: versi, keputusan: keputusan});
+    alert('Keputusan review berhasil disimpan.');
+    await rkasView();
+  } catch(e) {
+    alert(errorText(e));
+  }
+};
 
 // ============================================================================
-// 12. DATA SEKOLAH & PENUGASAN
+// DATA SEKOLAH & PENUGASAN
 // ============================================================================
 async function sekolahView(){
   const c=$('#mainContent');c.innerHTML=head('Daftar Sekolah','Data satuan pendidikan yang terdaftar sebagai pengguna')+`<div class="panel" id="sekolahContent">${loading()}</div>`;
@@ -686,14 +620,14 @@ async function penugasanView(){
 }
 
 // ============================================================================
-// 13. CROSS-CHECK
+// CROSS-CHECK
 // ============================================================================
 async function crosscheckView(){
   const periods=await periodeSelect();
   let schoolOptions='';
   if(isDinas()||isPengawas()){
     const r=await safeApi('getSekolah',{}, {data:[]});
-    schoolOptions=`<div class="field"><label>Sekolah</label><select id="npsnSelect"><option value="">-- Pilih Sekolah --</option>${(r.data||[]).map(x=>`<option value="${esc(x.npsn)}">${esc(x.npsn)} - ${esc(x.nama_sekolah)}</option>`).join('')}</select></div>`;
+    schoolOptions=`<div class="field"><label>Sekolah</label><select id="npsnSelect"><option value="">-- Pilih Sekolah --</option>${(r.data||[]).map(x=>`<option value="${esc(x.npsn)}">${esc(x.npsn)} -${esc(x.nama_sekolah)}</option>`).join('')}</select></div>`;
   }
   $('#mainContent').innerHTML=head('Pemeriksaan SPJ','Jalankan seluruh cross-check CX-01 s.d. CX-18 untuk menghasilkan temuan sistem')+
     `<div class="panel"><div class="form-grid"><div class="field"><label>Periode</label>${periods}</div>${schoolOptions}</div><div class="toolbar"><button class="btn btn-primary" onclick="runCrossCheck()">Jalankan Cross-check Bulanan</button><button class="btn btn-light" onclick="loadView('temuan')">Lihat Temuan</button></div><div id="crossResult"></div></div>`;
@@ -703,18 +637,17 @@ async function crosscheckView(){
 window.runCrossCheck=async function(){
   const p=$('#periodeSelect').value,n=isSchool()?ownNpsn():$('#npsnSelect')?.value;if(!p||!n){alert('Periode dan sekolah wajib dipilih.');return;}
   state.selectedPeriode=p;state.selectedNpsn=n;const out=$('#crossResult');out.innerHTML=loading('Menjalankan pemeriksaan silang...');
-  try{const r=await api('jalankanCrossCheckSPJBulanan',{idPeriode:p,npsn:n});out.innerHTML=msg(`Cross-check selesai. ${r.count||0} temuan baru diproses.`,'ok')+renderCrossSummary(r);}catch(e){out.innerHTML=msg(errorText(e));}
+  try{const r=await api('jalankanCrossCheckSPJBulanan',{idPeriode:p,npsn:n});out.innerHTML=msg(`Cross-check selesai. ${r.jumlah_baru||r.count||0} temuan baru diproses.`,'ok');}catch(e){out.innerHTML=msg(errorText(e));}
 };
-function renderCrossSummary(r){return `<div class="cards"><div class="stat"><small>Total</small><strong>${fmtNum(r.count||0)}</strong></div><div class="stat"><small>Warning</small><strong>${fmtNum(r.levels?.WARNING||0)}</strong></div><div class="stat"><small>Perlu Verifikasi</small><strong>${fmtNum(r.levels?.PERLU_VERIFIKASI||0)}</strong></div><div class="stat"><small>Critical</small><strong>${fmtNum(r.levels?.CRITICAL||0)}</strong></div></div>`;}
 
 // ============================================================================
-// 14. TEMUAN & VERIFIKASI
+// TEMUAN & VERIFIKASI
 // ============================================================================
 async function temuanView(){
   const periods=await periodeSelect();
   let schoolOptions='';
   if(isDinas()||isPengawas()){
-    const r=await safeApi('getSekolah',{}, {data:[]});schoolOptions=`<div class="field"><label>Sekolah</label><select id="npsnSelect"><option value="">-- Pilih Sekolah --</option>${(r.data||[]).map(x=>`<option value="${esc(x.npsn)}">${esc(x.npsn)} - ${esc(x.nama_sekolah)}</option>`).join('')}</select></div>`;
+    const r=await safeApi('getSekolah',{}, {data:[]});schoolOptions=`<div class="field"><label>Sekolah</label><select id="npsnSelect"><option value="">-- Pilih Sekolah --</option>${(r.data||[]).map(x=>`<option value="${esc(x.npsn)}">${esc(x.npsn)} -${esc(x.nama_sekolah)}</option>`).join('')}</select></div>`;
   }
   $('#mainContent').innerHTML=head('Temuan & Verifikasi','Temuan sistem harus diverifikasi Pengawas sebelum menjadi dasar asesmen')+
     `<div class="panel"><div class="form-grid"><div class="field"><label>Periode</label>${periods}</div>${schoolOptions}</div><div class="toolbar"><button class="btn btn-primary" onclick="loadFindings()">Tampilkan Temuan</button></div><div id="findingArea">${msg('Pilih periode dan sekolah.','ok')}</div></div>`;
@@ -733,13 +666,13 @@ window.verifyFinding=async function(id){
 };
 
 // ============================================================================
-// 15. ASESMEN
+// ASESMEN
 // ============================================================================
 async function asesmenView(){
   const periods=await periodeSelect();
   let schoolOptions='';
   if(isPengawas()||isDinas()){
-    const r=await safeApi('getSekolah',{}, {data:[]});schoolOptions=`<div class="field"><label>Sekolah</label><select id="npsnSelect"><option value="">-- Pilih Sekolah --</option>${(r.data||[]).map(x=>`<option value="${esc(x.npsn)}">${esc(x.npsn)} - ${esc(x.nama_sekolah)}</option>`).join('')}</select></div>`;
+    const r=await safeApi('getSekolah',{}, {data:[]});schoolOptions=`<div class="field"><label>Sekolah</label><select id="npsnSelect"><option value="">-- Pilih Sekolah --</option>${(r.data||[]).map(x=>`<option value="${esc(x.npsn)}">${esc(x.npsn)} -${esc(x.nama_sekolah)}</option>`).join('')}</select></div>`;
   }
   $('#mainContent').innerHTML=head('Asesmen SPJ','Penilaian indikator, kompleksitas, dan nilai akhir')+
     `<div class="panel"><div class="form-grid"><div class="field"><label>Periode</label>${periods}</div>${schoolOptions}</div><div class="toolbar"><button class="btn btn-primary" onclick="openAssessment()">Buka Asesmen</button></div><div id="assessmentArea"></div></div>`;
@@ -748,20 +681,34 @@ async function asesmenView(){
 window.openAssessment=async function(){
   const p=$('#periodeSelect').value,n=isSchool()?ownNpsn():$('#npsnSelect')?.value;if(!p||!n){alert('Periode dan sekolah wajib dipilih.');return;}state.selectedPeriode=p;state.selectedNpsn=n;
   const a=$('#assessmentArea');a.innerHTML=loading('Menyiapkan asesmen...');
-  try{const r=await api('buatAtauAmbilAsesmen',{idPeriode:p,npsn:n});renderAssessment(r);}catch(e){a.innerHTML=msg(errorText(e));}
+  try{
+    const r=await api('buatAtauAmbilAsesmen',{idPeriode:p,npsn:n});
+    const indRes=await safeApi('hitungIndikatorDariTemuan',{idPeriode:p,npsn:n},{data:[]});
+    renderAssessment(r, indRes.data||[]);
+  }catch(e){a.innerHTML=msg(errorText(e));}
 };
-function renderAssessment(r){
-  const a=r.data||r.asesmen||r;const details=r.details||r.detail||[];const rows=details.map(d=>`<tr><td>${esc(d.kode_indikator||d.id_indikator)}</td><td>${esc(d.nama_indikator||'-')}</td><td>${esc(d.metode_pemeriksaan||'-')}</td><td>${d.skor===''||d.skor==null?'-':esc(d.skor)}</td><td>${isPengawas()&&String(d.metode_pemeriksaan).toUpperCase()==='MANUAL'?`<button class="btn btn-sm btn-primary" onclick="editScore('${esc(d.id_detail)}',${esc(d.skor==null?'null':d.skor)})">Isi Skor</button>`:'-'}</td></tr>`).join('');
-  $('#assessmentArea').innerHTML=`<div class="cards"><div class="stat"><small>Status</small><strong style="font-size:1.05rem">${esc(a.status_asesmen||'-')}</strong></div><div class="stat"><small>Nilai Kualitas</small><strong>${a.nilai_kualitas??'-'}</strong></div><div class="stat"><small>Kompleksitas</small><strong>${a.indeks_kompleksitas??'-'}</strong></div><div class="stat"><small>Nilai Akhir</small><strong>${a.nilai_akhir??'-'}</strong></div></div><div class="table-wrap"><table class="friendly-table"><thead><tr><th>Kode</th><th>Indikator</th><th>Metode</th><th>Skor</th><th>Aksi</th></tr></thead><tbody>${rows||emptyRow(5)}</tbody></table></div>${isPengawas()?`<div class="toolbar"><button class="btn btn-primary" onclick="finalizeAssessment('${esc(a.id_asesmen||r.id_asesmen||'')}')">Finalisasi Asesmen</button></div>`:''}`;
+function renderAssessment(r, indicators){
+  const a=r.data||r.asesmen||r;
+  const rows=indicators.map(d=>`<tr><td>${esc(d.kode_indikator)}</td><td>${esc(d.nama_indikator)}</td><td>${esc(d.bobot)}</td><td><b>${esc(d.skor)}</b></td><td>${isPengawas()?`<button class="btn btn-sm btn-primary" onclick="editScore('${esc(a.id_asesmen)}','${esc(d.id_indikator)}',${d.skor})">Edit Skor</button>`:'-'}</td></tr>`).join('');
+  $('#assessmentArea').innerHTML=`
+    <div class="cards">
+      <div class="stat"><small>Status</small><strong style="font-size:1.05rem">${esc(a.status_asesmen||'-')}</strong></div>
+      <div class="stat"><small>Nilai Kualitas</small><strong>${a.nilai_kualitas??'-'}</strong></div>
+      <div class="stat"><small>Kompleksitas</small><strong>${a.indeks_kompleksitas??'-'}</strong></div>
+      <div class="stat"><small>Nilai Akhir</small><strong>${a.nilai_akhir??'-'}</strong></div>
+    </div>
+    <div class="table-wrap"><table class="friendly-table"><thead><tr><th>Kode</th><th>Indikator</th><th>Bobot</th><th>Skor</th><th>Aksi</th></tr></thead><tbody>${rows||emptyRow(5)}</tbody></table></div>
+    ${isPengawas()?`<div class="toolbar" style="margin-top:14px"><button class="btn btn-primary" onclick="finalizeAssessment('${esc(a.id_asesmen)}')">Finalisasi Asesmen</button></div>`:''}`;
 }
-window.editScore=async function(idDetail,current){
-  const v=prompt('Masukkan skor indikator 0 sampai 4:',current==null?'4':current);if(v===null)return;const n=Number(v);if(!Number.isInteger(n)||n<0||n>4){alert('Skor harus bilangan bulat 0–4.');return;}
-  try{await api('simpanDetailAsesmen',{data:{id_detail:idDetail,skor:n}});await openAssessment();}catch(e){alert(errorText(e));}
+window.editScore=async function(idAsesmen, idIndikator, current){
+  const v=prompt('Masukkan skor indikator 0 sampai 4:',current??4);if(v===null)return;const n=Number(v);if(!Number.isInteger(n)||n<0||n>4){alert('Skor harus bilangan bulat 0–4.');return;}
+  const catatan=prompt('Catatan pengawas (opsional):','')||'';
+  try{await api('simpanDetailAsesmen',{data:{id_asesmen:idAsesmen,id_indikator:idIndikator,skor:n,catatan_pengawas:catatan,status_berlaku:'BERLAKU'}});await openAssessment();}catch(e){alert(errorText(e));}
 };
-window.finalizeAssessment=async function(id){if(!id)return;if(!confirm('Finalisasi asesmen? Pastikan seluruh indikator yang wajib telah dinilai dan temuan telah diverifikasi.'))return;try{await api('finalisasiAsesmen',{idAsesmen:id});await openAssessment();}catch(e){alert(errorText(e));}};
+window.finalizeAssessment=async function(id){if(!id)return;if(!confirm('Finalisasi asesmen? Pastikan seluruh indikator telah dinilai.'))return;try{await api('finalisasiAsesmen',{idAsesmen:id});await openAssessment();}catch(e){alert(errorText(e));};};
 
 // ============================================================================
-// 16. VALIDASI DATABASE
+// VALIDASI DATABASE
 // ============================================================================
 async function dbCheckView(){
   $('#mainContent').innerHTML=head('Validasi Database','Memeriksa struktur 13 tabel SIMPEL SPJ')+`<div class="panel"><button class="btn btn-primary" onclick="runDbCheck()">Jalankan Validasi</button><div id="dbResult" style="margin-top:15px">${msg('Klik tombol untuk memulai.','ok')}</div></div>`;
@@ -769,90 +716,10 @@ async function dbCheckView(){
 window.runDbCheck=async function(){const r=$('#dbResult');r.innerHTML=loading();try{const x=await api('validateDatabaseStructure');r.innerHTML=msg(x.message||'Struktur database valid.','ok')+`<pre style="white-space:pre-wrap;background:#f7faf8;padding:12px;border-radius:10px">${esc(JSON.stringify(x.data||x,null,2))}</pre>`;}catch(e){r.innerHTML=msg(errorText(e));}};
 
 // ============================================================================
-// 17. INITIALIZATION
+// INITIALIZATION
 // ============================================================================
 document.addEventListener('submit',e=>{if(e.target.id==='loginForm')doLogin(e);});
 window.addEventListener('DOMContentLoaded',restoreSession);
-
-// Fungsi universal untuk membuka dialog unggah file (sama persis konsepnya dengan impor Excel BKU)
-window.openUpload = function(idSpj, namaSpj) {
-  const periode = $('#periodeSelect')?.value || state.selectedPeriode;
-  if (!periode) {
-    alert('Pilih periode bulan terlebih dahulu.');
-    return;
-  }
-
-  // Buat modal dialog unggah yang bersih dan responsif
-  const wrap = document.createElement('div');
-  wrap.id = 'modalUploadOverlay';
-  wrap.innerHTML = `
-    <div style="position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:999">
-      <div style="background:#fff;padding:24px;border-radius:20px;width:min(94%,460px);box-shadow:0 10px 30px rgba(0,0,0,.2)">
-        <h3 style="margin-top:0;color:var(--primary)">Unggah Berkas / Dokumen</h3>
-        <p class="muted" style="margin-bottom:14px">${esc(namaSpj)}</p>
-        <form id="uploadLocalForm">
-          <div class="field">
-            <label>Pilih Berkas (PDF / Excel)</label>
-            <input id="localFile" type="file" accept=".pdf,.xlsx,.xls" required style="padding:10px">
-          </div>
-          <div id="uploadMsg" style="margin:10px 0"></div>
-          <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px">
-            <button type="button" class="btn btn-light" onclick="$('#modalUploadOverlay').remove()">Batal</button>
-            <button class="btn btn-primary" id="uploadBtn">Unggah Sekarang</button>
-          </div>
-        </form>
-      </div>
-    </div>`;
-  document.body.appendChild(wrap);
-
-  // Proses pembacaan file lokal persis seperti impor Excel
-  $('#uploadLocalForm').onsubmit = async e => {
-    e.preventDefault();
-    const file = $('#localFile').files[0];
-    if (!file) return;
-
-    const btn = $('#uploadBtn');
-    btn.disabled = true;
-    btn.textContent = 'Memproses berkas...';
-
-    const reader = new FileReader();
-    reader.onload = async () => {
-      try {
-        // Ambil string base64 murni setelah koma
-        const base64String = String(reader.result).split(',')[1] || '';
-
-        // Kirim ke backend Apps Script (backend akan otomatis menyimpan ke folder storage pusat Dinas)
-        const res = await api('uploadDanSimpanDokumenSPJ', {
-          data: {
-            id_periode: periode,
-            id_spj: idSpj,
-            nama_file: file.name,
-            mimeType: file.type,
-            base64: base64String
-          }
-        });
-
-        if(res.success){
-          alert('Berhasil! Berkas telah disimpan ke storage pusat Dinas.');
-          $('#modalUploadOverlay').remove();
-          if(typeof renderDokumenTable === 'function') renderDokumenTable();
-        } else {
-          throw new Error(res.message || 'Gagal menyimpan file');
-        }
-      } catch (err) {
-        $('#uploadMsg').innerHTML = msg(err.message);
-        btn.disabled = false;
-        btn.textContent = 'Unggah Sekarang';
-      }
-    };
-    reader.onerror = () => {
-      $('#uploadMsg').innerHTML = msg('Gagal membaca berkas dari perangkat lokal.');
-      btn.disabled = false;
-      btn.textContent = 'Unggah Sekarang';
-    };
-    reader.readAsDataURL(file);
-  };
-};
 </script>
 </body>
 </html>
