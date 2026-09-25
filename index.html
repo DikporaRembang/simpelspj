@@ -331,9 +331,11 @@ window.showRegisterView = function(e) {
         <input id="regNamaSekolah" required placeholder="Contoh: SD Negeri 1 Rembang">
       </div>
 
+      <!-- BAGIAN NIP PENGAWAS YANG DISINKRONKAN DENGAN USERNAME -->
       <div class="field" id="fieldNipGroup" style="display:none">
         <label>NIP / ID Pengawas</label>
-        <input id="regNip" placeholder="Contoh: 196611061986081001">
+        <input id="regNip" placeholder="Contoh: 196611061986081001" oninput="$('#regUsername').value = this.value">
+        <small class="muted" style="font-size:0.75rem;">Username login akan terisi otomatis dari NIP/ID yang diketik.</small>
       </div>
 
       <div class="field">
@@ -353,10 +355,8 @@ window.showRegisterView = function(e) {
       </div>
     </form>`;
 
-  // Jalankan sekali untuk setelan awal (Sekolah)
   toggleRegisterFields();
 
-  // Handle submit pendaftaran ke backend
   $('#registerForm').onsubmit = async ev => {
     ev.preventDefault();
     const roleVal = $('#regRole').value;
@@ -366,7 +366,8 @@ window.showRegisterView = function(e) {
       nama_sekolah: roleVal === 'SEKOLAH' ? $('#regNamaSekolah').value.trim() : '',
       username: $('#regUsername').value.trim(),
       password: $('#regPassword').value,
-      nip_pengawas: roleVal === 'PENGAWAS' ? $('#regNip').value.trim() : ''
+      nip_pengawas: roleVal === 'PENGAWAS' ? $('#regNip').value.trim() : '',
+      nama_pengguna: roleVal === 'PENGAWAS' ? $('#regNamaSekolah').value.trim() : '' // Mengambil dari input nama
     };
     const msgBox = $('#regMsg');
     msgBox.innerHTML = '<p class="muted">Memproses pendaftaran akun...</p>';
