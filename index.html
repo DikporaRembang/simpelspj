@@ -1105,38 +1105,32 @@ window.autoFillSekolahByNpsn = async function(npsn) {
   const namaSekolahInput = $('#regNamaSekolah');
   const usernameInput = $('#regUsername');
   
-  if(namaSekolahInput) {
-    namaSekolahInput.value = 'Mencari data sekolah...';
-  }
-  if(usernameInput) {
-    usernameInput.value = cleanNpsn;
-  }
+  if(namaSekolahInput) namaSekolahInput.value = 'Mencari data sekolah...';
+  if(usernameInput) usernameInput.value = cleanNpsn;
 
   try {
-    const res = await api('getSekolah', {});
-    // Mendukung berbagai bentuk struktur balikan data dari API (array langsung atau di dalam .data)
+    // Kita tembak langsung tanpa menyertakan state.token yang invalid di halaman login
+    const response = await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'getSekolah' }) // Tanpa token
+    });
+    
+    const res = await response.json();
     const list = Array.isArray(res) ? res : (res.data || res.sekolah || []);
     
-    // Cari data yang NPSN-nya cocok (mengonversi keduanya ke string untuk menghindari beda tipe data)
     const found = list.find(s => String(s.npsn || s.NPSN || '').trim() === cleanNpsn);
     
     if(found) {
-      // Ambil nama dari berbagai kemungkinan nama properti di database
       const namaVal = found.nama_sekolah || found.nama_satuan_pendidikan || found.nama || found.sekolah || '';
-      if(namaSekolahInput) {
-        namaSekolahInput.value = namaVal;
-      }
+      if(namaSekolahInput) namaSekolahInput.value = namaVal;
     } else {
-      if(namaSekolahInput) {
-        namaSekolahInput.value = '';
-      }
+      if(namaSekolahInput) namaSekolahInput.value = '';
       alert('NPSN tidak ditemukan di database tabel sekolah. Silakan ketik nama satuan pendidikan secara manual.');
     }
   } catch(e) {
-    if(namaSekolahInput) {
-      namaSekolahInput.value = '';
-    }
-    console.warn('Gagal memuat otomatis nama sekolah:', errorText(e));
+    if(namaSekolahInput) namaSekolahInput.value = '';
+    console.warn('Gagal memuat otomatis nama sekolah:', e.message);
   }
 };
 
