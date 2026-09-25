@@ -79,7 +79,7 @@ button{cursor:pointer}
 .btn-sm{padding:8px 14px;min-height:38px;font-size:.85rem;border-radius:10px}
 .full{width:100%}
 
-/* Landing / login profesional dengan Background Kantor Dindikpora */
+/* Landing / login profesional dengan Background Kantor Dindikpora (.jpeg) */
 .auth{
   min-height:100vh;display:grid;grid-template-columns:minmax(0,1.2fr) minmax(400px,.9fr);
   background: var(--bg); position:relative; overflow:hidden;
@@ -87,7 +87,7 @@ button{cursor:pointer}
 .auth-side{
   color:#fff; padding:clamp(32px,6vw,80px); display:flex; flex-direction:column; justify-content:space-between; position:relative;
   background: 
-    linear-gradient(135deg, rgba(10, 25, 47, 0.88), rgba(15, 76, 58, 0.85)),
+    linear-gradient(135deg, rgba(10, 25, 47, 0.82), rgba(15, 76, 58, 0.78)),
     url('kantordindikpora.jpeg') center/cover no-repeat;
 }
 .auth-side-inner{max-width:680px;margin:auto 0;position:relative;z-index:2}
@@ -165,7 +165,6 @@ button{cursor:pointer}
 .section-title{font-weight:800;margin:20px 0 12px;color:var(--primary);font-size:1.1rem}
 .mobile-menu{display:none}
 
-/* Responsivitas Optimal untuk Tablet & HP (< 1050px) */
 @media (max-width:1050px){
   .auth{grid-template-columns:1fr}
   .auth-side{display:none}
@@ -250,6 +249,12 @@ const isDinas = () => role()==='DINAS';
 const isPengawas = () => role()==='PENGAWAS';
 const ownNpsn = () => String(state.user?.npsn || state.user?.username || '').trim();
 
+function formatUserLabel(username, namaPengguna){
+  if(!username && !namaPengguna) return '-';
+  if(!namaPengguna) return esc(username);
+  return `<b>${esc(username)}</b> <span style="color:var(--muted);font-size:0.88rem">(${esc(namaPengguna)})</span>`;
+}
+
 function errorText(err){ return err?.message || String(err || 'Terjadi kesalahan.'); }
 
 function loading(text='Memuat data...'){ 
@@ -296,7 +301,7 @@ function authView(notice=''){
         <div class="footer-logos">
           <div class="footer-logo-item">
             <img src="logorembang.png" alt="Rembang">
-            <div><span>DINDIKPORA REMBANG</span><small>Pemerintah Kab. Rembang</small></div>
+            <div><span>PEMERINTAH KABUPATEN REMBANG</span><small>Dinas Pendidikan, Pemuda dan Olahraga</small></div>
           </div>
           <div class="footer-logo-item">
             <img src="logopendidikan.png" alt="Kemdikdasmen">
@@ -376,6 +381,7 @@ async function startApp(){
 }
 function renderShell(){
   const menus=ROLE_MENUS[role()] || ROLE_MENUS.SEKOLAH;
+  const userFullLabel = formatUserLabel(state.user?.username || state.user?.npsn, state.user?.nama_pengguna);
   $('#app').innerHTML=`
     <main class="dashboard">
       <header class="topbar">
@@ -387,7 +393,7 @@ function renderShell(){
           </div>
         </div>
         <div class="top-actions">
-          <span class="muted" style="font-weight:600">${esc(state.user?.nama_pengguna || state.user?.username || '')}</span>
+          <span class="muted" style="font-weight:600">${userFullLabel}</span>
           <button class="btn btn-light btn-sm" id="logoutBtn">Keluar</button>
         </div>
       </header>
@@ -399,7 +405,7 @@ function renderShell(){
           <div class="sidebar-footer">
             <div class="sidebar-footer-item">
               <img src="logorembang.png" alt="Rembang">
-              <div><span>DINDIKPORA REMBANG</span><small>Kab. Rembang</small></div>
+              <div><span>PEMKAB REMBANG</span><small>DINDIKPORA</small></div>
             </div>
             <div class="sidebar-footer-item">
               <img src="logopendidikan.png" alt="Kemdikdasmen">
@@ -411,40 +417,22 @@ function renderShell(){
       </div>
     </main>`;
   $$('[data-view]').forEach(b=>b.onclick=()=>{loadView(b.dataset.view);$('#sidebar')?.classList.remove('open');});
-  $('#logoutBtn').onclick=logout; $('#menuBtn').onclick=()=>$('#sidebar')?.classList.toggle('open'); } function setActive(view){ $$('[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===view)); }
+  $('#logoutBtn').onclick=logout; $('#menuBtn').onclick=()=>$('#sidebar')?.classList.toggle('open');
+}
 async function loadView(view){
   state.view=view; setActive(view);
-  const c=$('#mainContent'); if(!c)return;
-  c.innerHTML=loading('Memuat modul...');
-  try{
-    const map={
-      home: homeView,
-      dokumenBulanan: dokumenBulananView,
-      statusSpj: statusSpjView,
-      transaksi: transaksiView,
-      sekolah: sekolahView,
-      penugasan: penugasanView,
-      dinasMonitoring: dinasMonitoringView,
-      rkasReview: rkasReview,
-      crosscheck: crosscheckView,
-      temuan: temuanView,
-      asesmen: asesmenView,
-      dbCheck: dbCheckView
-    };
-    if(!map[view]) throw new Error('Modul belum tersedia: '+view);
-    await map[view]();
-  }catch(e){c.innerHTML=msg(errorText(e));}
-}
+  const c=$('#mainContent'); if(!c)return;   c.innerHTML=loading('Memuat modul...');   try{     const map={       home: homeView,       dokumenBulanan: dokumenBulananView,       statusSpj: statusSpjView,       transaksi: transaksiView,       sekolah: sekolahView,       penugasan: penugasanView,       dinasMonitoring: dinasMonitoringView,       rkasReview: rkasReview,       crosscheck: crosscheckView,       temuan: temuanView,       asesmen: asesmenView,       dbCheck: dbCheckView     };     if(!map[view]) throw new Error('Modul belum tersedia: '+view);     await map[view]();   }catch(e){c.innerHTML=msg(errorText(e));} } function setActive(view){ $$('[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===view)); }
 
 // ============================================================================
 // DASHBOARD
 // ============================================================================
 async function homeView(){
+  const userFullLabel = formatUserLabel(state.user?.username || state.user?.npsn, state.user?.nama_pengguna);
   $('#mainContent').innerHTML=head(`Beranda ${role()}`,'Pusat kendali dan manajemen tata kelola keuangan sekolah')+
     `<div class="cards">
-      <div class="stat"><small>Pengguna</small><strong style="font-size:1.1rem">${esc(state.user?.nama_pengguna||'-')}</strong></div>
+      <div class="stat"><small>Pengguna</small><strong style="font-size:1.1rem">${userFullLabel}</strong></div>
       <div class="stat"><small>Peran Sistem</small><strong>${esc(role())}</strong></div>
-      <div class="stat"><small>Identitas / NPSN</small><strong style="font-size:1.1rem">${esc(state.user?.npsn||'-')}</strong></div>
+      <div class="stat"><small>Kabupaten</small><strong style="font-size:1.1rem">Rembang</strong></div>
       <div class="stat"><small>Status Sesi</small><strong>Aman</strong></div>
     </div>
     <div class="panel">
@@ -458,9 +446,6 @@ async function homeView(){
     </div>`;
 }
 
-// ============================================================================
-// MASTER DATA & PERIODE (SEMESTER 1 & 2)
-// ============================================================================
 async function ensureMasters(){
   if(!state.masterSpj.length){ const r=await safeApi('getMasterSPJ',{},null); state.masterSpj=r?.data||[]; }
 }
@@ -605,9 +590,6 @@ window.openUpload = function(idSpj, namaSpj) {
   };
 };
 
-// ============================================================================
-// STATUS SPJ
-// ============================================================================
 async function statusSpjView(){
   const periods=await periodeSelect();
   $('#mainContent').innerHTML=head('Status SPJ Semesteran','Ringkasan kelengkapan dan status pemeriksaan')+
@@ -626,9 +608,6 @@ async function renderStatus(){
   }catch(e){area.innerHTML=msg(errorText(e));}
 }
 
-// ============================================================================
-// TRANSAKSI SPJ
-// ============================================================================
 async function transaksiView(){
   const periods=await periodeSelect();
   $('#mainContent').innerHTML=head('Transaksi SPJ','Pencatatan BKU dan sinkronisasi anggaran')+
@@ -649,7 +628,25 @@ window.openTransactionForm=function(){
   const wrap=document.createElement('div');wrap.id='trxModal';
   wrap.innerHTML=`<div style="position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:999;padding:16px"><div style="background:#fff;padding:28px;border-radius:24px;width:min(100%,650px);max-height:90vh;overflow:auto"><h3 style="margin-top:0;color:var(--primary)">Tambah Transaksi SPJ</h3><form id="trxForm"><div class="form-grid"><div class="field"><label>Tanggal</label><input id="trxTanggal" type="date" required></div><div class="field"><label>Nilai Transaksi (Rp)</label><input id="trxNilai" type="number" min="0" step="1" required></div><div class="field"><label>Kode Rekening</label><input id="trxKode" required></div><div class="field"><label>Nomor Bukti</label><input id="trxBukti" required></div><div class="field full-col"><label>Uraian Transaksi</label><textarea id="trxUraian" rows="3" required></textarea></div><div class="field"><label>Pihak Penerima</label><input id="trxPihak"></div><div class="field"><label>Jenis Belanja</label><input id="trxJenis"></div><div class="field"><label>Jenis Pembayaran</label><input id="trxPembayaran"></div><div class="field"><label>Pajak</label><input id="trxPajak" placeholder="PPN / PPh / Tidak Ada"></div></div><div id="trxMsg"></div><div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px"><button type="button" class="btn btn-light" onclick="$('#trxModal').remove()">Batal</button><button class="btn btn-primary">Simpan Transaksi</button></div></form></div></div>`;
   document.body.appendChild(wrap);
-  $('#trxForm').onsubmit=async e=>{e.preventDefault();try{await api('simpanTransaksiSPJ',{data:{id_periode:p,tanggal_transaksi:$('#trxTanggal').value,nilai_transaksi:Number($('#trxNilai').value),kode_rekening:$('#trxKode').value.trim(),nomor_bukti:$('#trxBukti').value.trim(),uraian_transaksi:$('#trxUraian').value.trim(),pihak_penerima:$('#trxPihak').value.trim(),jenis_belanja:$('#trxJenis').value.trim(),jenis_pembayaran:$('#trxPembayaran').value.trim(),pajak:$('#trxPajak').value.trim()}});$('#trxModal').remove();await renderTransaksi();}catch(err){$('#trxMsg').innerHTML=msg(errorText(err));}};
+  $('#trxForm').onsubmit=async e=>{
+    e.preventDefault();
+    try{
+      await api('simpanTransaksiSPJ',{data:{
+        id_periode:p,
+        tanggal_transaksi:$('#trxTanggal').value,
+        nilai_transaksi:Number($('#trxNilai').value),
+        kode_rekening:$('#trxKode').value.trim(),
+        nomor_bukti:$('#trxBukti').value.trim(),
+        uraian_transaksi:$('#trxUraian').value.trim(),
+        pihak_penerima:$('#trxPihak').value.trim(),
+        jenis_belanja:$('#trxJenis').value.trim(),
+        jenis_pembayaran:$('#trxPembayaran').value.trim(),
+        pajak:$('#trxPajak').value.trim()
+      }});
+      $('#trxModal').remove();
+      await renderTransaksi();
+    }catch(err){$('#trxMsg').innerHTML=msg(errorText(err));}
+  };
 };
 
 window.openExcelImport=function(){
@@ -669,9 +666,6 @@ window.saveImportedTransactions=async function(){
   alert(`Selesai. Berhasil: ${ok}. Gagal: ${fail}.`);$('#excelModal')?.remove();await renderTransaksi();
 };
 
-// ============================================================================
-// RKAS & REVIEW DINAS
-// ============================================================================
 async function rkasReview(){
   if(isDinas()){
     await renderDinasRkasReview();
@@ -743,79 +737,64 @@ window.doReviewRkas = async function(versi, keputusan){
 };
 
 // ============================================================================
-// DATA SEKOLAH & PENUGASAN (WORKFLOW PENGAWAS & DINAS)
+// DATA SEKOLAH & PENUGASAN (DENGAN PENCARIAN CEPAT & NAMA LENGKAP)
 // ============================================================================
 async function sekolahView(){
-  const c=$('#mainContent');c.innerHTML=head('Daftar Sekolah','Data satuan pendidikan terdaftar')+`<div class="panel" id="sekolahContent">${loading()}</div>`;
-  try{const r=await api('getSekolah');const rows=(r.data||[]).map(x=>`<tr><td><b>${esc(x.npsn)}</b></td><td>${esc(x.nama_sekolah)}</td><td>${esc(x.kecamatan)}</td><td>${esc(x.alamat_lengkap||'-')}</td></tr>`).join('');$('#sekolahContent').innerHTML=`<div class="table-wrap"><table class="friendly-table"><thead><tr><th>NPSN</th><th>Sekolah</th><th>Kecamatan</th><th>Alamat</th></tr></thead><tbody>${rows||emptyRow(4)}</tbody></table></div>`;}catch(e){$('#sekolahContent').innerHTML=msg(errorText(e));}
+  const c=$('#mainContent');
+  c.innerHTML=head('Daftar Sekolah','Data satuan pendidikan terdaftar')+
+    `<div class="toolbar"><input id="searchSekolahInput" placeholder="🔍 Cari berdasarkan Nama Sekolah atau NPSN..." style="max-width:350px"></div>`+
+    `<div class="panel" id="sekolahContent">${loading()}</div>`;
+  try{
+    const r=await api('getSekolah');
+    const list = r.data || [];
+    renderSekolahTable(list);
+    $('#searchSekolahInput').oninput = e => {
+      const q = e.target.value.toLowerCase();
+      const filtered = list.filter(x => String(x.npsn).toLowerCase().includes(q) || String(x.nama_sekolah||'').toLowerCase().includes(q) || String(x.kecamatan||'').toLowerCase().includes(q));
+      renderSekolahTable(filtered);
+    };
+  }catch(e){$('#sekolahContent').innerHTML=msg(errorText(e));}
+}
+
+function renderSekolahTable(list){
+  const rows = list.map(x=>`<tr><td><b>${esc(x.npsn)}</b></td><td>${esc(x.nama_sekolah)}</td><td>${esc(x.kecamatan)}</td><td>${esc(x.alamat_lengkap||'-')}</td></tr>`).join('');
+  $('#sekolahContent').innerHTML=`<div class="table-wrap"><table class="friendly-table"><thead><tr><th>NPSN</th><th>Sekolah</th><th>Kecamatan</th><th>Alamat</th></tr></thead><tbody>${rows||emptyRow(4)}</tbody></table></div>`;
 }
 
 async function penugasanView(){
   if(isPengawas()){
     const c = $('#mainContent');
     c.innerHTML = head('Sekolah Binaan Saya', 'Pilih sekolah binaan untuk langsung melakukan audit dan penilaian SPJ') +
+                  `<div class="toolbar"><input id="searchBinaanInput" placeholder="🔍 Cari Sekolah Binaan..." style="max-width:320px"></div>`+
                   `<div id="binaanArea" style="margin-top:16px">${loading('Memuat daftar sekolah binaan...')}</div>`;
     try {
       const res = await api('getPenugasanPengawas');
       const list = res.data || [];
-      if(!list.length){
-        $('#binaanArea').innerHTML = msg('Belum ada penugasan sekolah binaan aktif.', 'warning');
-        return;
-      }
-      let html = `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;">`;
-      list.forEach(item => {
-        html += `
-          <div class="panel" style="margin-top:0;display:flex;flex-direction:column;justify-content:space-between;border-top:4px solid var(--primary-3);">
-            <div>
-              <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
-                <span class="badge badge-success">BINAAN AKTIF</span>
-                <small class="muted">NPSN: <b>${esc(item.npsn)}</b></small>
-              </div>
-              <h3 style="margin:8px 0;color:var(--primary);font-size:1.15rem">${esc(item.nama_sekolah || 'Satuan Pendidikan SD')}</h3>
-              <p class="muted" style="font-size:0.88rem;margin-bottom:14px">Kecamatan: ${esc(item.kecamatan || 'Kab. Rembang')}</p>
-            </div>
-            <div style="display:flex;gap:8px;flex-wrap:wrap;border-top:1px solid var(--border);padding-top:12px;margin-top:auto">
-              <button class="btn btn-sm btn-primary" onclick="quickActionAsesmen('${esc(item.npsn)}')">📝 Nilai SPJ</button>
-              <button class="btn btn-sm btn-secondary" onclick="quickActionTemuan('${esc(item.npsn)}')">🔍 Periksa Temuan</button>
-            </div>
-          </div>`;
-      });
-      html += `</div>`;
-      $('#binaanArea').innerHTML = html;
+      window._cachedBinaan = list;
+      renderBinaanCards(list);
+      $('#searchBinaanInput').oninput = e => {
+        const q = e.target.value.toLowerCase();
+        const filtered = window._cachedBinaan.filter(x => String(x.npsn).toLowerCase().includes(q) || String(x.nama_sekolah||'').toLowerCase().includes(q));
+        renderBinaanCards(filtered);
+      };
     } catch(e) {
       $('#binaanArea').innerHTML = msg(errorText(e));
     }
   } else if(isDinas()) {
     const c = $('#mainContent');
     c.innerHTML = head('Manajemen Penugasan Pengawas', 'Atur dan petakan pengawas ke sekolah-sekolah binaan') +
-                  `<div class="toolbar"><button class="btn btn-primary" onclick="openTambahPenugasanModal()">+ Tambah Penugasan Baru</button></div>` +
+                  `<div class="toolbar"><button class="btn btn-primary" onclick="openTambahPenugasanModal()">+ Tambah Penugasan Baru</button><input id="searchPenugasanInput" placeholder="🔍 Cari NPSN atau Pengawas..." style="max-width:320px"></div>` +
                   `<div class="panel" id="penugasanContent">${loading()}</div>`;
     try {
       const res = await api('getPenugasanPengawas');
-      const rows = (res.data || []).map(x => `
-        <tr>
-          <td><b>${esc(x.id_pengawas || x.nama_pengawas || '-')}</b></td>
-          <td><b>${esc(x.npsn)}</b></td>
-          <td>${esc(x.tanggal_mulai || '-')}</td>
-          <td>${esc(x.tanggal_selesai || '-')}</td>
-          <td>${badge(x.status || 'AKTIF', 'success')}</td>
-        </tr>`).join('');
-      
-      $('#penugasanContent').innerHTML = `
-        <div class="table-wrap">
-          <table class="friendly-table">
-            <thead>
-              <tr>
-                <th>Pengawas</th>
-                <th>NPSN Sekolah</th>
-                <th>Tanggal Mulai</th>
-                <th>Tanggal Selesai</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>${rows || emptyRow(5)}</tbody>
-          </table>
-        </div>`;
+      const list = res.data || [];
+      window._cachedPenugasan = list;
+      renderPenugasanTable(list);
+      $('#searchPenugasanInput').oninput = e => {
+        const q = e.target.value.toLowerCase();
+        const filtered = window._cachedPenugasan.filter(x => String(x.npsn).toLowerCase().includes(q) || String(x.id_pengawas||'').toLowerCase().includes(q) || String(x.nama_pengawas||'').toLowerCase().includes(q));
+        renderPenugasanTable(filtered);
+      };
     } catch(e) {
       $('#penugasanContent').innerHTML = msg(errorText(e));
     }
@@ -825,12 +804,64 @@ async function penugasanView(){
                   `<div class="panel" id="penugasanContent">${loading()}</div>`;
     try {
       const r = await api('getPenugasanPengawas');
-      const rows = (r.data || []).map(x => `<tr><td>${esc(x.id_pengawas||'-')}</td><td>${esc(x.npsn)}</td><td>${esc(x.tanggal_mulai||'-')}</td><td>${badge(x.status,'info')}</td></tr>`).join('');
+      const rows = (r.data||[]).map(x=>`<tr><td>${formatUserLabel(x.id_pengawas, x.nama_pengawas)}</td><td>${esc(x.npsn)}</td><td>${esc(x.tanggal_mulai||'-')}</td><td>${badge(x.status,'info')}</td></tr>`).join('');
       $('#penugasanContent').innerHTML = `<div class="table-wrap"><table class="friendly-table"><thead><tr><th>Pengawas Pembina</th><th>NPSN</th><th>Mulai</th><th>Status</th></tr></thead><tbody>${rows||emptyRow(4)}</tbody></table></div>`;
     } catch(e) {
       $('#penugasanContent').innerHTML = msg(errorText(e));
     }
   }
+}
+
+function renderBinaanCards(list){
+  const area = $('#binaanArea');
+  if(!list.length){ area.innerHTML = msg('Tidak ada sekolah binaan ditemukan.', 'warning'); return; }
+  let html = `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;">`;
+  list.forEach(item => {
+    html += `
+      <div class="panel" style="margin-top:0;display:flex;flex-direction:column;justify-content:space-between;border-top:4px solid var(--primary-3);">
+        <div>
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+            <span class="badge badge-success">BINAAN AKTIF</span>
+            <small class="muted">NPSN: <b>${esc(item.npsn)}</b></small>
+          </div>
+          <h3 style="margin:8px 0;color:var(--primary);font-size:1.15rem">${esc(item.nama_sekolah || 'Satuan Pendidikan SD')}</h3>
+          <p class="muted" style="font-size:0.88rem;margin-bottom:14px">Kecamatan: ${esc(item.kecamatan || 'Kab. Rembang')}</p>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;border-top:1px solid var(--border);padding-top:12px;margin-top:auto">
+          <button class="btn btn-sm btn-primary" onclick="quickActionAsesmen('${esc(item.npsn)}')">📝 Nilai SPJ</button>
+          <button class="btn btn-sm btn-secondary" onclick="quickActionTemuan('${esc(item.npsn)}')">🔍 Periksa Temuan</button>
+        </div>
+      </div>`;
+  });
+  html += `</div>`;
+  area.innerHTML = html;
+}
+
+function renderPenugasanTable(list){
+  const rows = list.map(x => `
+    <tr>
+      <td>${formatUserLabel(x.id_pengawas, x.nama_pengawas)}</td>
+      <td><b>${esc(x.npsn)}</b></td>
+      <td>${esc(x.tanggal_mulai || '-')}</td>
+      <td>${esc(x.tanggal_selesai || '-')}</td>
+      <td>${badge(x.status || 'AKTIF', 'success')}</td>
+    </tr>`).join('');
+  
+  $('#penugasanContent').innerHTML = `
+    <div class="table-wrap">
+      <table class="friendly-table">
+        <thead>
+          <tr>
+            <th>Pengawas Pembina</th>
+            <th>NPSN Sekolah</th>
+            <th>Tanggal Mulai</th>
+            <th>Tanggal Selesai</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>${rows || emptyRow(5)}</tbody>
+      </table>
+    </div>`;
 }
 
 window.openTambahPenugasanModal = function() {
@@ -883,10 +914,13 @@ window.openTambahPenugasanModal = function() {
   };
 };
 
-// Command Center Dinas & Kirim Peringatan
+// ============================================================================
+// COMMAND CENTER DINAS (DENGAN PENCARIAN CEPAT)
+// ============================================================================
 async function dinasMonitoringView(){
   const c = $('#mainContent');
   c.innerHTML = head('Command Center Dinas', 'Pusat pemantauan kinerja sekolah, pengawas, dan pengiriman peringatan instan') +
+                `<div class="toolbar"><input id="searchDinasCenter" placeholder="🔍 Cari Sekolah atau NPSN..." style="max-width:350px"></div>`+
                 `<div id="dinasCenterArea" style="margin-top:16px">${loading('Memuat data Command Center...')}</div>`;
   
   try {
@@ -895,65 +929,78 @@ async function dinasMonitoringView(){
       safeApi('getPenugasanPengawas', {}, {data:[]})
     ]);
     
-    const listSekolah = sekolahRes.data || [];
-    const listPenugasan = penugasanRes.data || [];
+    window._cachedDinasSekolah = sekolahRes.data || [];
+    window._cachedDinasPenugasan = penugasanRes.data || [];
 
-    let html = `
-      <div class="cards" style="margin-bottom:20px">
-        <div class="stat"><small>Total Sekolah SD</small><strong>${fmtNum(listSekolah.length)}</strong></div>
-        <div class="stat"><small>Penugasan Aktif</small><strong>${fmtNum(listPenugasan.length)}</strong></div>
-        <div class="stat"><small>Status Sistem</small><strong style="font-size:1.1rem;color:var(--success)">Optimal</strong></div>
-        <div class="stat"><small>Wilayah</small><strong style="font-size:1.1rem">Kab. Rembang</strong></div>
-      </div>
+    renderDinasCenterTable(window._cachedDinasSekolah, window._cachedDinasPenugasan);
 
-      <div class="panel">
-        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:14px">
-          <h3 class="section-title" style="margin:0">Monitoring & Aksi Cepat Pengawas & Sekolah</h3>
-          <button class="btn btn-primary btn-sm" onclick="openBroadcastModal()">📢 Kirim Pengumuman Massal</button>
-        </div>
-        
-        <div class="table-wrap">
-          <table class="friendly-table">
-            <thead>
-              <tr>
-                <th>NPSN</th>
-                <th>Nama Sekolah / Satuan Pendidikan</th>
-                <th>Kecamatan</th>
-                <th>Pengawas Binaan</th>
-                <th>Aksi Peringatan / Pesan</th>
-              </tr>
-            </thead>
-            <tbody>`;
-
-    if(!listSekolah.length){
-      html += emptyRow(5, 'Tidak ada data sekolah.');
-    } else {
-      listSekolah.forEach(s => {
-        const penugasanItem = listPenugasan.find(p => String(p.npsn).trim() === String(s.npsn).trim());
-        const namaPengawas = penugasanItem?.id_pengawas || penugasanItem?.nama_pengawas || 'Belum Ditugaskan';
-        
-        html += `
-          <tr>
-            <td><b>${esc(s.npsn)}</b></td>
-            <td>${esc(s.nama_sekolah)}</td>
-            <td>${esc(s.kecamatan || '-')}</td>
-            <td>${badge(namaPengawas, penugasanItem ? 'success' : 'warning')}</td>
-            <td>
-              <div style="display:flex;gap:6px;flex-wrap:wrap">
-                <button class="btn btn-sm btn-primary" onclick="openPeringatanModal('SEKOLAH','${esc(s.npsn)}','${esc(s.nama_sekolah)}')">✉️ Pesan Sekolah</button>
-                <button class="btn btn-sm btn-secondary" onclick="openPeringatanModal('PENGAWAS','${esc(namaPengawas)}','Pengawas: ${esc(namaPengawas)}')">⚠️ Teguran Pengawas</button>
-              </div>
-            </td>
-          </tr>`;
-      });
-    }
-
-    html += `</tbody></table></div></div>`;
-    $('#dinasCenterArea').innerHTML = html;
+    $('#searchDinasCenter').oninput = e => {
+      const q = e.target.value.toLowerCase();
+      const filtered = window._cachedDinasSekolah.filter(s => String(s.npsn).toLowerCase().includes(q) || String(s.nama_sekolah||'').toLowerCase().includes(q) || String(s.kecamatan||'').toLowerCase().includes(q));
+      renderDinasCenterTable(filtered, window._cachedDinasPenugasan);
+    };
 
   } catch(e) {
     $('#dinasCenterArea').innerHTML = msg(errorText(e));
   }
+}
+
+function renderDinasCenterTable(listSekolah, listPenugasan){
+  const area = $('#dinasCenterArea');
+  if(!area) return;
+
+  let html = `
+    <div class="cards" style="margin-bottom:20px">
+      <div class="stat"><small>Total Sekolah SD</small><strong>${fmtNum(listSekolah.length)}</strong></div>
+      <div class="stat"><small>Penugasan Aktif</small><strong>${fmtNum(listPenugasan.length)}</strong></div>
+      <div class="stat"><small>Status Sistem</small><strong style="font-size:1.1rem;color:var(--success)">Optimal</strong></div>
+      <div class="stat"><small>Wilayah</small><strong style="font-size:1.1rem">Kab. Rembang</strong></div>
+    </div>
+
+    <div class="panel">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:14px">
+        <h3 class="section-title" style="margin:0">Monitoring & Aksi Cepat Pengawas & Sekolah</h3>
+        <button class="btn btn-primary btn-sm" onclick="openBroadcastModal()">📢 Kirim Pengumuman Massal</button>
+      </div>
+      
+      <div class="table-wrap">
+        <table class="friendly-table">
+          <thead>
+            <tr>
+              <th>NPSN</th>
+              <th>Nama Sekolah / Satuan Pendidikan</th>
+              <th>Kecamatan</th>
+              <th>Pengawas Binaan</th>
+              <th>Aksi Peringatan / Pesan</th>
+            </tr>
+          </thead>
+          <tbody>`;
+
+  if(!listSekolah.length){
+    html += emptyRow(5, 'Tidak ada data sekolah ditemukan.');
+  } else {
+    listSekolah.forEach(s => {
+      const penugasanItem = listPenugasan.find(p => String(p.npsn).trim() === String(s.npsn).trim());
+      const pengawasLabel = formatUserLabel(penugasanItem?.id_pengawas, penugasanItem?.nama_pengawas) || 'Belum Ditugaskan';
+      
+      html += `
+        <tr>
+          <td><b>${esc(s.npsn)}</b></td>
+          <td>${esc(s.nama_sekolah)}</td>
+          <td>${esc(s.kecamatan || '-')}</td>
+          <td>${badge(penugasanItem ? 'Binaan' : 'Belum', penugasanItem ? 'success' : 'warning')} ${pengawasLabel}</td>
+          <td>
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+              <button class="btn btn-sm btn-primary" onclick="openPeringatanModal('SEKOLAH','${esc(s.npsn)}','${esc(s.nama_sekolah)}')">✉️ Pesan Sekolah</button>
+              <button class="btn btn-sm btn-secondary" onclick="openPeringatanModal('PENGAWAS','${esc(penugasanItem?.id_pengawas || '')}','Pengawas ${esc(penugasanItem?.nama_pengawas || '')}')">⚠️ Teguran Pengawas</button>
+            </div>
+          </td>
+        </tr>`;
+    });
+  }
+
+  html += `</tbody></table></div></div>`;
+  area.innerHTML = html;
 }
 
 window.openPeringatanModal = function(targetType, targetId, targetName) {
@@ -1013,14 +1060,14 @@ window.quickActionTemuan = function(npsn) {
 };
 
 // ============================================================================
-// CROSS-CHECK
+// CROSS-CHECK & TEMUAN & ASESMEN (DENGAN PENCARIAN SEKOLAH)
 // ============================================================================
 async function crosscheckView(){
   const periods=await periodeSelect();
   let schoolOptions='';
   if(isDinas()||isPengawas()){
     const r=await safeApi('getSekolah',{}, {data:[]});
-    schoolOptions=`<div class="field"><label>Sekolah Binaan / Target</label><select id="npsnSelect"><option value="">-- Pilih Sekolah --</option>${(r.data||[]).map(x=>`<option value="${esc(x.npsn)}" ${state.selectedNpsn===x.npsn?'selected':''}>${esc(x.npsn)} -${esc(x.nama_sekolah)}</option>`).join('')}</select></div>`;
+    schoolOptions=`<div class="field"><label>Pilih Sekolah Binaan / Target</label><select id="npsnSelect"><option value="">-- Pilih Sekolah --</option>${(r.data||[]).map(x=>`<option value="${esc(x.npsn)}" ${state.selectedNpsn===x.npsn?'selected':''}>${esc(x.npsn)} -${esc(x.nama_sekolah)}</option>`).join('')}</select></div>`;
   }
   $('#mainContent').innerHTML=head('Pemeriksaan SPJ','Jalankan cross-check sistem otomatis')+
     `<div class="panel"><div class="form-grid"><div class="field"><label>Periode Semester</label>${periods}</div>${schoolOptions}</div><div class="toolbar"><button class="btn btn-primary" onclick="runCrossCheck()">Jalankan Cross-check</button><button class="btn btn-light" onclick="loadView('temuan')">Lihat Temuan</button></div><div id="crossResult"></div></div>`;
@@ -1032,14 +1079,11 @@ window.runCrossCheck=async function(){
   try{const r=await api('jalankanCrossCheckSPJBulanan',{idPeriode:p,npsn:n});out.innerHTML=msg(`Cross-check selesai. ${r.jumlah_baru||r.count||0} temuan baru diproses.`,'ok');}catch(e){out.innerHTML=msg(errorText(e));}
 };
 
-// ============================================================================
-// TEMUAN & VERIFIKASI
-// ============================================================================
 async function temuanView(){
   const periods=await periodeSelect();
   let schoolOptions='';
   if(isDinas()||isPengawas()){
-    const r=await safeApi('getSekolah',{}, {data:[]});schoolOptions=`<div class="field"><label>Sekolah Target</label><select id="npsnSelect"><option value="">-- Pilih Sekolah --</option>${(r.data||[]).map(x=>`<option value="${esc(x.npsn)}" ${state.selectedNpsn===x.npsn?'selected':''}>${esc(x.npsn)} -${esc(x.nama_sekolah)}</option>`).join('')}</select></div>`;
+    const r=await safeApi('getSekolah',{}, {data:[]});schoolOptions=`<div class="field"><label>Pilih Sekolah Target</label><select id="npsnSelect"><option value="">-- Pilih Sekolah --</option>${(r.data||[]).map(x=>`<option value="${esc(x.npsn)}" ${state.selectedNpsn===x.npsn?'selected':''}>${esc(x.npsn)} -${esc(x.nama_sekolah)}</option>`).join('')}</select></div>`;
   }
   $('#mainContent').innerHTML=head('Temuan & Verifikasi','Kelola catatan hasil temuan audit')+
     `<div class="panel"><div class="form-grid"><div class="field"><label>Periode Semester</label>${periods}</div>${schoolOptions}</div><div class="toolbar"><button class="btn btn-primary" onclick="loadFindings()">Tampilkan Temuan</button></div><div id="findingArea">${msg('Pilih periode dan sekolah.','ok')}</div></div>`;
@@ -1057,14 +1101,11 @@ window.verifyFinding=async function(id){
   try{await api('verifikasiTemuanSPJ',{idTemuan:id,hasilVerifikasi:hasil.toUpperCase(),catatan});await loadFindings();}catch(e){alert(errorText(e));}
 };
 
-// ============================================================================
-// ASESMEN
-// ============================================================================
 async function asesmenView(){
   const periods=await periodeSelect();
   let schoolOptions='';
   if(isPengawas()||isDinas()){
-    const r=await safeApi('getSekolah',{}, {data:[]});schoolOptions=`<div class="field"><label>Sekolah Binaan</label><select id="npsnSelect"><option value="">-- Pilih Sekolah --</option>${(r.data||[]).map(x=>`<option value="${esc(x.npsn)}" ${state.selectedNpsn===x.npsn?'selected':''}>${esc(x.npsn)} -${esc(x.nama_sekolah)}</option>`).join('')}</select></div>`;
+    const r=await safeApi('getSekolah',{}, {data:[]});schoolOptions=`<div class="field"><label>Pilih Sekolah Binaan</label><select id="npsnSelect"><option value="">-- Pilih Sekolah --</option>${(r.data||[]).map(x=>`<option value="${esc(x.npsn)}" ${state.selectedNpsn===x.npsn?'selected':''}>${esc(x.npsn)} -${esc(x.nama_sekolah)}</option>`).join('')}</select></div>`;
   }
   $('#mainContent').innerHTML=head('Asesmen SPJ','Lembar penilaian indikator & nilai akhir')+
     `<div class="panel"><div class="form-grid"><div class="field"><label>Periode Semester</label>${periods}</div>${schoolOptions}</div><div class="toolbar"><button class="btn btn-primary" onclick="openAssessment()">Buka Asesmen</button></div><div id="assessmentArea"></div></div>`;
@@ -1100,17 +1141,11 @@ window.editScore=async function(idAsesmen, idIndikator, current){
 };
 window.finalizeAssessment=async function(id){if(!id)return;if(!confirm('Finalisasi asesmen? Pastikan seluruh indikator telah dinilai.'))return;try{await api('finalisasiAsesmen',{idAsesmen:id});await openAssessment();}catch(e){alert(errorText(e));};};
 
-// ============================================================================
-// VALIDASI DATABASE
-// ============================================================================
 async function dbCheckView(){
   $('#mainContent').innerHTML=head('Validasi Database','Memeriksa struktur 13 tabel SIMPEL SPJ')+`<div class="panel"><button class="btn btn-primary" onclick="runDbCheck()">Jalankan Validasi</button><div id="dbResult" style="margin-top:16px">${msg('Klik tombol untuk memulai.','ok')}</div></div>`;
 }
 window.runDbCheck=async function(){const r=$('#dbResult');r.innerHTML=loading();try{const x=await api('validateDatabaseStructure');r.innerHTML=msg(x.message||'Struktur database valid.','ok')+`<pre style="white-space:pre-wrap;background:#f7faf8;padding:14px;border-radius:12px;border:1px solid var(--border)">${esc(JSON.stringify(x.data||x,null,2))}</pre>`;}catch(e){r.innerHTML=msg(errorText(e));}};
 
-// ============================================================================
-// INITIALIZATION
-// ============================================================================
 document.addEventListener('submit',e=>{if(e.target.id==='loginForm')doLogin(e);});
 window.addEventListener('DOMContentLoaded',restoreSession);
 </script>
