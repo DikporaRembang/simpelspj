@@ -981,6 +981,31 @@ function formatSekolahLabel(npsn, namaSekolah = '', kecamatan = '') {
   return `<b>${cleanNpsn}</b> — ${cleanNama} ${cleanKec ? `<small class="muted">(${cleanKec})</small>` : ''}`;
 }
 
+// Di dalam fungsi tampilan menu Dinas (misal: penugasanView)
+function penugasanView() {
+  $('#mainContent').innerHTML = head('Manajemen Penugasan Pengawas', 'Atur wilayah binaan pengawas sekolah') +
+    `<div class="panel">
+       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+         <h3>Daftar Penugasan Aktif</h3>
+         <button class="btn btn-primary" onclick="triggerDistribusiPenugasanAdil()">
+           ⚡ Distribusi Otomatis Adil & Lintas Kecamatan
+         </button>
+       </div>
+       
+       <!-- Kotak hasil statistik distribusi -->
+       <div id="distribusiResult" style="display:none; margin-bottom:16px;"></div>
+       
+       <div id="penugasanContent">
+         <!-- Tabel penugasan akan dimuat di sini -->
+       </div>
+     </div>`;
+     
+  // Panggil fungsi untuk memuat data tabel penugasan yang ada
+  if (typeof loadPenugasanList === 'function') {
+    loadPenugasanList();
+  }
+}
+
 // Helper universal untuk menampilkan identitas Pengawas
 function formatPengawasLabel(idPengawas, namaPengguna = '') {
   if (!idPengawas) return '-';
