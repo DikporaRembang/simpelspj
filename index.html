@@ -702,7 +702,28 @@ async function penugasanView(){
     } catch(e) { $('#binaanArea').innerHTML = msg(errorText(e)); }
   } else if(isDinas()) {
     const c = $('#mainContent');
-    c.innerHTML = head('Manajemen Penugasan Pengawas', 'Atur pengawas ke sekolah binaan') + `<div class="toolbar"><button class="btn btn-primary" onclick="openTambahPenugasanModal()">+ Tambah Penugasan</button><input id="searchPenugasanInput" placeholder="🔍 Cari NPSN atau Pengawas..." style="max-width:320px"></div><div class="panel" id="penugasanContent">${loading()}</div>`;
+    // PASTIKAN STRUKTUR HTML INI LENGKAP SUPAYA TABEL MUNCUL
+    c.innerHTML = head('Manajemen Penugasan Pengawas', 'Atur pengawas ke sekolah binaan') + 
+      `<div class="panel">
+         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap:wrap; gap:12px;">
+           <h3 style="margin:0">Daftar Penugasan Aktif</h3>
+           <button class="btn btn-primary" onclick="triggerDistribusiPenugasanAdil()">
+             ⚡ Distribusi Otomatis Adil & Lintas Kecamatan
+           </button>
+         </div>
+         
+         <!-- Kotak hasil statistik distribusi -->
+         <div id="distribusiResult" style="display:none; margin-bottom:16px;"></div>
+         
+         <div class="toolbar" style="margin-top:12px">
+           <button class="btn btn-primary" onclick="openTambahPenugasanModal()">+ Tambah Penugasan</button>
+           <input id="searchPenugasanInput" placeholder="🔍 Cari NPSN atau Pengawas..." style="max-width:320px">
+         </div>
+         
+         <!-- INI ELEMEN PENTING YANG SEBELUMNYA HILANG -->
+         <div id="penugasanContent">${loading()}</div>
+       </div>`;
+       
     try {
       const res = await api('getPenugasanPengawas'); const list = res.data || [];
       window._cachedPenugasan = list; renderPenugasanTable(list);
