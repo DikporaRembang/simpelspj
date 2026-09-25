@@ -544,7 +544,7 @@ async function rkasView(){
   }
 }
 
-async function renderSchoolRkasAndRealasasi(){
+async function renderSchoolRkasAndRealisasi(){
   const [r,h,real]=await Promise.all([
     safeApi('rkasAktif',{}, {data:[]}),
     safeApi('rkasHistory',{}, {data:[]}),
