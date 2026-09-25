@@ -319,26 +319,72 @@ window.showRegisterView = function(e) {
           <option value="PENGAWAS">Pengawas Pembina</option>
         </select>
       </div>
+
       <div class="field" id="fieldNpsnGroup">
         <label>NPSN Sekolah</label>
-        <input id="regNpsn" placeholder="Contoh: 20301234">
+        <input id="regNpsn" placeholder="Contoh: 20301234" onblur="autoFillSekolahByNpsn(this.value)">
+        <small class="muted" style="font-size:0.75rem;">Ketik NPSN lalu klik di luar kotak untuk mengisi nama sekolah otomatis.</small>
       </div>
+
       <div class="field" id="fieldNamaGroup">
-        <label>Nama Satuan Pendidikan</label>
-        <input id="regNamaSekolah" placeholder="Contoh: SD Negeri 1 Rembang">
+        <label id="labelNamaUser">Nama Satuan Pendidikan</label>
+        <input id="regNamaSekolah" required placeholder="Contoh: SD Negeri 1 Rembang">
       </div>
+
       <div class="field" id="fieldNipGroup" style="display:none">
         <label>NIP / ID Pengawas</label>
         <input id="regNip" placeholder="Contoh: 196611061986081001">
       </div>
-      <div class="field"><label>Username</label><input id="regUsername" required placeholder="Username untuk login"></div>
-      <div class="field"><label>Kata Sandi</label><input id="regPassword" type="password" required placeholder="Minimal 6 karakter"></div>
+
+      <div class="field">
+        <label id="labelUsername">Username</label>
+        <input id="regUsername" required placeholder="Username untuk login">
+      </div>
+
+      <div class="field">
+        <label>Kata Sandi</label>
+        <input id="regPassword" type="password" required placeholder="Minimal 6 karakter">
+      </div>
+
       <div id="regMsg"></div>
       <button class="btn btn-primary full" type="submit" style="margin-top:10px">Daftarkan Akun Sekarang</button>
       <div style="text-align:center;margin-top:14px">
         <a href="#" onclick="authView()" style="color:var(--muted);font-size:0.88rem;text-decoration:none">← Kembali ke Halaman Masuk</a>
       </div>
     </form>`;
+
+  // Jalankan sekali untuk setelan awal (Sekolah)
+  toggleRegisterFields();
+
+  // Handle submit pendaftaran ke backend
+  $('#registerForm').onsubmit = async ev => {
+    ev.preventDefault();
+    const role = $('#regRole').value;
+    const npsn = role === 'SEKOLAH' ? $('#regNpsn').value.trim() : '';
+    const namaPengguna = $('#regNamaSekolah').value.trim();
+    const username = $('#regUsername').value.trim();
+    const password = $('#regPassword').value;
+    const nip = role === 'PENGAWAS' ? $('#regNip').value.trim() : '';
+
+    const msgBox = $('#regMsg');
+    msgBox.innerHTML = '<p class="muted">Memproses pendaftaran akun...</p>';
+
+    try {
+      const res = await api('registerUser', {
+        role,
+        npsn,
+        nama_pengguna: namaPengguna,
+        username,
+        password,
+        nip
+      });
+      msgBox.innerHTML = msg('Pendaftaran berhasil! Silakan masuk.', 'ok');
+      setTimeout(() => { authView(); }, 1500);
+    } catch(err) {
+      msgBox.innerHTML = msg(errorText(err));
+    }
+  };
+};
 
   window.toggleRegisterFields = function() {
     const roleVal = $('#regRole').value;
@@ -1032,6 +1078,51 @@ function formatPengawasLabel(idPengawas, namaPengguna = '') {
   if (!idPengawas) return '-';
   return `<b>${esc(idPengawas)}</b> ${namaPengguna ? `<span style="color:var(--muted);font-size:0.88rem">(${esc(namaPengguna)})</span>` : ''}`;
 }
+
+// Fungsi untuk mengubah tampilan form berdasarkan Role yang dipilih
+window.toggleRegisterFields = function() {
+  const role = $('#regRole').value;
+  const fieldNpsn = $('#fieldNpsnGroup');
+  const fieldNip = $('#fieldNipGroup');
+  const labelNama = $('#labelNamaUser');
+  const labelUser = $('#labelUsername');
+  const inpUsername = $('#regUsername');
+
+  if(role === 'SEKOLAH') {
+    fieldNpsn.style.display = 'block';
+    fieldNip.style.display = 'none';
+    labelNama.textContent = 'Nama Satuan Pendidikan';
+    labelUser.textContent = 'Username (Otomatis NPSN)';
+    inpUsername.readOnly = true;
+    inpUsername.placeholder = 'Terisi otomatis dari NPSN';
+  } else {
+    fieldNpsn.style.display = 'none';
+    fieldNip.style.display = 'block';
+    labelNama.textContent = 'Nama Lengkap & Gelar Pengawas';
+    labelUser.textContent = 'Username Login Pengawas';
+    inpUsername.readOnly = false;
+    inpUsername.placeholder = 'Contoh: ahmad_pengawas';
+  }
+};
+
+// Fungsi pencarian otomatis nama sekolah saat NPSN selesai diketik
+window.autoFillSekolahByNpsn = async function(npsn) {
+  if(!npsn || npsn.length < 4) return;
+  try {
+    const res = await api('getSekolah', {});
+    const list = res.data || [];
+    const found = list.find(s => String(s.npsn).trim() === String(npsn).trim());
+    if(found) {
+      $('#regNamaSekolah').value = found.nama_sekolah || '';
+      $('#regUsername').value = found.npsn; // Username otomatis menjadi NPSN
+    } else {
+      // Jika tidak ditemukan di database master, biarkan user mengetik manual tapi username tetap diset NPSN
+      $('#regUsername').value = npsn;
+    }
+  } catch(e) {
+    $('#regUsername').value = npsn;
+  }
+};
 
 async function dbCheckView(){
   $('#mainContent').innerHTML=head('Validasi Database','Memeriksa skema 14 tabel SIMPEL SPJ')+`<div class="panel"><button class="btn btn-primary" onclick="runDbCheck()">Jalankan Validasi</button><div id="dbResult" style="margin-top:16px">${msg('Klik untuk mulai.','ok')}</div></div>`;
