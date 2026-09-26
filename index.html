@@ -534,9 +534,11 @@ async function startApp(){
 }
 
 function renderShell(){
-  const menus = ROLE_MENUS[role()] || ROLE_MENUS.DINAS || ROLE_MENUS.SEKOLAH || [];
+  // Mengambil role secara aman dengan fallback otomatis ke SEKOLAH jika undefined
+  const currentRole = role() || 'SEKOLAH';
+  const menus = ROLE_MENUS[currentRole] || ROLE_MENUS.DINAS || ROLE_MENUS.SEKOLAH || [];
   
-  // --- INI BAGIAN KECAMATAN & ALAMAT (TETAP AMAN & UTUH) ---
+  // Informasi identitas sekolah / pengguna di topbar
   const userObj = state.user || {};
   let schoolInfoText = '';
 
@@ -549,9 +551,8 @@ function renderShell(){
     let details = [kecVal, alamatVal].filter(Boolean).join(' — ');
     schoolInfoText = `<b>${esc(npsnVal)}</b> — ${esc(namaVal)}${details ? ` <small class="muted" style="font-size:0.75rem">(${esc(details)})</small>` : ''}`;
   } else {
-    schoolInfoText = `<b>${esc(userObj.username || userObj.npsn || '')}</b> (${esc(userObj.nama_pengguna || role())})`;
+    schoolInfoText = `<b>${esc(userObj.username || userObj.npsn || '')}</b> (${esc(userObj.nama_pengguna || currentRole)})`;
   }
-  // ---------------------------------------------------------
 
   $('#app').innerHTML=`
     <main class="dashboard">
@@ -560,7 +561,7 @@ function renderShell(){
           <button class="btn btn-light mobile-menu" id="menuBtn" aria-label="Menu">☰</button>
           <div class="brand">
             <img src="bidangsd.png" class="app-logo" alt="Logo">
-            <div><h2>SIMPEL SPJ</h2><small>Peran: <b>${esc(role())}</b></small></div>
+            <div><h2>SIMPEL SPJ</h2><small>Peran: <b>${esc(currentRole)}</b></small></div>
           </div>
         </div>
         <div class="top-actions">
