@@ -203,14 +203,20 @@ const ROLE_MENUS = {
     { category:'PELAPORAN SPJ', items:[{id:'dokumenBulanan', label:'Dokumen SPJ Semesteran'},{id:'statusSpj', label:'Status SPJ'}]}
   ],
   DINAS: [
-    { category:'UTAMA', items:[{id:'home', label:'Dashboard Dinas'},{id:'dinasMonitoring', label:'Command Center Dinas'}, {id:'pesan', label:'Pusat Pesan & Teguran'}]},
-    { category:'MANAJEMEN', items:[{id:'sekolah', label:'Daftar Sekolah'},{id:'penugasan', label:'Penugasan Pengawas'},{id:'rkasReview', label:'Review & Usulan RKAS'}]},
-    { category:'MONITORING & AUDIT', items:[{id:'crosscheck', label:'Pemeriksaan SPJ'},{id:'temuan', label:'Temuan SPJ'},{id:'dbCheck', label:'Validasi Database'}]}
+    { id: 'dashboard', label: 'Dashboard Utama' },
+    { id: 'sekolah', label: 'Data Satuan Pendidikan' },
+    { id: 'penugasan', label: 'Penugasan Pengawas' },
+    { id: 'monitoringGlobal', label: 'Monitoring Pagu & SPJ' }, // <--- TAMBAHKAN MENU INI DI SINI
+    { id: 'rkasDinas', label: 'Verifikasi RKAS' },
+    { id: 'pesan', label: 'Pesan Koordinasi' }
   ],
   PENGAWAS: [
-    { category:'UTAMA', items:[{id:'home', label:'Beranda Pengawas'},{id:'penugasan', label:'Sekolah Binaan'}, {id:'pesan', label:'Pesan & Feedback'}]},
-    { category:'PEMERIKSAAN', items:[{id:'crosscheck', label:'Cross-check SPJ'},{id:'temuan', label:'Temuan & Verifikasi'},{id:'asesmen', label:'Asesmen SPJ'}]}
-  ]
+    { id: 'dashboard', label: 'Dashboard Pengawas' },
+    { id: 'sekolahBinaan', label: 'Sekolah Binaan' },
+    { id: 'monitoringGlobal', label: 'Monitoring Sekolah Binaan' }, // <--- Bisa dipasang juga untuk Pengawas
+    { id: 'asesmen', label: 'Asesmen & Penilaian' },
+    { id: 'pesan', label: 'Pesan Koordinasi' }
+  ],
 };
 
 const COMPONENT_FALLBACK = [
