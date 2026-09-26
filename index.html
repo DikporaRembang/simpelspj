@@ -197,26 +197,28 @@ button{cursor:pointer}
 const API_URL = 'https://script.google.com/macros/s/AKfycbyWvJXKr1QZ1zwbeJDoULTUihycj1771SsDlGFy8jnuF4i3DsEbHXlcJU48VDAg17fqDA/exec';
 
 const ROLE_MENUS = {
-  SEKOLAH: [
-    { category:'UTAMA', items:[{id:'home', label:'Beranda Utama'}, {id:'pesan', label:'Pesan & Koordinasi'}]},
-    { category:'RKAS & KEUANGAN', items:[{id:'rkasReview', label:'RKAS & Realisasi'},{id:'transaksi', label:'Transaksi SPJ'}]},
-    { category:'PELAPORAN SPJ', items:[{id:'dokumenBulanan', label:'Dokumen SPJ Semesteran'},{id:'statusSpj', label:'Status SPJ'}]}
-  ],
   DINAS: [
     { id: 'dashboard', label: 'Dashboard Utama' },
     { id: 'sekolah', label: 'Data Satuan Pendidikan' },
     { id: 'penugasan', label: 'Penugasan Pengawas' },
-    { id: 'monitoringGlobal', label: 'Monitoring Pagu & SPJ' }, // <--- TAMBAHKAN MENU INI DI SINI
+    { id: 'monitoringGlobal', label: 'Monitoring Pagu & SPJ' },
     { id: 'rkasDinas', label: 'Verifikasi RKAS' },
     { id: 'pesan', label: 'Pesan Koordinasi' }
   ],
   PENGAWAS: [
     { id: 'dashboard', label: 'Dashboard Pengawas' },
     { id: 'sekolahBinaan', label: 'Sekolah Binaan' },
-    { id: 'monitoringGlobal', label: 'Monitoring Sekolah Binaan' }, // <--- Bisa dipasang juga untuk Pengawas
+    { id: 'monitoringGlobal', label: 'Monitoring Sekolah Binaan' },
     { id: 'asesmen', label: 'Asesmen & Penilaian' },
     { id: 'pesan', label: 'Pesan Koordinasi' }
   ],
+  SEKOLAH: [
+    { id: 'home', label: 'Dashboard Sekolah' },
+    { id: 'dokumenBulanan', label: 'Dokumen SPJ Bulanan' },
+    { id: 'statusSpj', label: 'Status SPJ' },
+    { id: 'transaksi', label: 'Transaksi Belanja' },
+    { id: 'pesan', label: 'Pesan Koordinasi' }
+  ]
 };
 
 const COMPONENT_FALLBACK = [
