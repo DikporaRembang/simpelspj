@@ -807,8 +807,15 @@ window.loadDinasRkasTab = async function(statusFilter){
     const res = await safeApi('getSemuaUsulanRKAS', {}, {data:[]});
     const list = res.data || [];
     
-    // Filter data sesuai status yang dipilih
-    const filtered = list.filter(x => String(x.status_rkas || '').toUpperCase() === statusFilter);
+    // Filter fleksibel mencakup berbagai variasi penulisan status di database
+    const filtered = list.filter(x => {
+      const st = String(x.status_rkas || '').toUpperCase();
+      if(statusFilter === 'APPROVED'){
+        return st === 'APPROVED' || st === 'DISETUJUI' || st === 'SELESAI';
+      } else {
+        return st === 'DIAJUKAN' || st === 'PENDING' || st === 'MENUNGGU';
+      }
+    });
 
     const rows = filtered.map(x=>`
       <tr>
@@ -817,9 +824,9 @@ window.loadDinasRkasTab = async function(statusFilter){
         <td>${esc(x.kode_rekening)}</td>
         <td>${esc(x.uraian)}</td>
         <td><b>${fmtRupiah(x.pagu)}</b></td>
-        <td>${badge(x.status_rkas, x.status_rkas==='APPROVED'?'success':'warning')}</td>
+        <td>${badge(x.status_rkas, ['APPROVED','DISETUJUI','SELESAI'].includes(String(x.status_rkas).toUpperCase())?'success':'warning')}</td>
         <td>
-          ${statusFilter === 'DIAJUKAN' ? `
+          {statusFilter === 'DIAJUKAN' ? `
             <button class="btn btn-sm btn-primary" onclick="doReviewRkas('${esc(x.versi_rkas)}','APPROVED')">Setujui</button>
             <button class="btn btn-sm btn-light" onclick="doReviewRkas('${esc(x.versi_rkas)}','PERLU_PERBAIKAN')">Perbaiki</button>
             <button class="btn btn-sm btn-danger" onclick="doReviewRkas('${esc(x.versi_rkas)}','DITOLAK')">Tolak</button>
