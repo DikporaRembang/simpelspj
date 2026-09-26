@@ -1554,12 +1554,16 @@ window.editScore=async function(idAsesmen, idIndikator, current){
   try{await api('simpanDetailAsesmen',{data:{id_asesmen:idAsesmen,id_indikator:idIndikator,skor:n,catatan_pengawas:'',status_berlaku:'BERLAKU'}});await openAssessment();}catch(e){alert(errorText(e));}
 };
 
-function formatSekolahLabel(npsn, namaSekolah = '', kecamatan = '') {
-  if (!npsn) return '-';
+// Helper identitas sekolah dengan Kecamatan & Alamat Lengkap
+function formatSekolahLabel(npsn, namaSekolah = '', kecamatan = '', alamat = ''){
+  if(!npsn) return '-';
   const cleanNpsn = esc(npsn);
-  const cleanNama = esc(namaSekolah || 'Satuan Pendidikan');
-  const cleanKec = esc(kecamatan ? `Kec. ${kecamatan}` : '');
-  return `<b>${cleanNpsn}</b> — ${cleanNama} ${cleanKec ? `<small class="muted">(${cleanKec})</small>` : ''}`;
+  const cleanNama = esc(namaSekolah || state.user?.nama_sekolah || 'Satuan Pendidikan');
+  const cleanKec = esc(kecamatan || state.user?.kecamatan ? `Kec. ${kecamatan || state.user?.kecamatan}` : '');
+  const cleanAlamat = esc(alamat || state.user?.alamat_lengkap ? `${alamat || state.user?.alamat_lengkap}` : '');
+  
+  let detailInfo = [cleanKec, cleanAlamat].filter(Boolean).join(' — ');
+  return `<b>${cleanNpsn}</b> — ${cleanNama} ${detailInfo ? `<small class="muted" style="display:block;font-size:0.75rem">📍 ${detailInfo}</small>` : ''}`;
 }
 
 function formatPengawasLabel(idPengawas, namaPengguna = '') {
