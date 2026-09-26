@@ -381,7 +381,7 @@ window.showRegisterView = function(e) {
         <input id="regUsername" required placeholder="Username untuk login" readonly style="background:#f1f5f9; cursor:not-allowed;">
       </div>
 
-      <!-- KOTAK PASSWORD DENGAN IKON MATA -->
+      <!-- KOTAK PASSWORD DENGAN IKON MATA INTERAKTIF -->
       <div class="field">
         <label>Kata Sandi</label>
         <div class="password-wrapper">
@@ -400,7 +400,7 @@ window.showRegisterView = function(e) {
     </form>`;
 
   toggleRegisterFields();
-
+  
   $('#registerForm').onsubmit = async ev => {
     ev.preventDefault();
     const roleVal = $('#regRole').value;
