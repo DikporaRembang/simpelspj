@@ -819,27 +819,39 @@ async function penugasanView(){
   }
 }
 
-function renderBinaanCards(list){
-  const area = $('#binaanArea'); if(!list.length){ area.innerHTML = msg('Tidak ada sekolah binaan ditemukan.', 'warning'); return; }
-  let html = `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px;">`;
-  list.forEach(item => {
-    html += `<div class="panel" style="margin-top:0;display:flex;flex-direction:column;justify-content:space-between;border-top:4px solid var(--primary-3);">
+// Fungsi untuk merender daftar kartu sekolah binaan khusus akun Pengawas
+function renderBinaanCards(list) {
+  const area = $('#binaanArea');
+  if (!area) return;
+  
+  if (!list || list.length === 0) {
+    area.innerHTML = msg('Belum ada sekolah binaan yang ditugaskan kepada Anda.', 'ok');
+    return;
+  }
+
+  const cardsHtml = list.map(x => `
+    <div class="panel" style="margin-top:12px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;">
       <div>
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
-          <span class="badge badge-success">BINAAN AKTIF</span>
-          <small class="muted">NPSN: <b>${esc(item.npsn)}</b></small>
-        </div>
-        <h3 style="margin:8px 0;color:var(--primary);font-size:1.15rem">${esc(item.nama_sekolah || 'Satuan Pendidikan SD')}</h3>
-        <p class="muted" style="font-size:0.88rem;margin-bottom:14px">📍 Kecamatan: <b>${esc(item.kecamatan || 'Kab. Rembang')}</b></p>
+        <h3 style="margin:0 0 4px; color:var(--primary); font-size:1.1rem;">${esc(x.nama_sekolah || 'Sekolah Binaan')}</h3>
+        <p class="muted" style="margin:0">NPSN: <b>${esc(x.npsn)}</b> | Kecamatan: ${esc(x.kecamatan || '-')}</p>
       </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;border-top:1px solid var(--border);padding-top:12px;margin-top:auto">
-        <button class="btn btn-sm btn-primary" onclick="quickActionAsesmen('${esc(item.npsn)}')">📝 Nilai SPJ</button> 
-        <button class="btn btn-sm btn-secondary" onclick="quickActionTemuan('${esc(item.npsn)}')">🔍 Temuan</button>
+      <div>
+        <button class="btn btn-sm btn-primary" onclick="pilihSekolahBinaan('${esc(x.npsn)}')">
+          Pilih Sekolah Ini
+        </button>
       </div>
-    </div>`;
-  });
-  html += `</div>`; area.innerHTML = html;
+    </div>
+  `).join('');
+
+  area.innerHTML = cardsHtml;
 }
+
+// Handler ketika pengawas memilih salah satu sekolah binaannya untuk diaudit/dikelola
+window.pilihSekolahBinaan = function(npsn) {
+  state.selectedNpsn = npsn;
+  alert(`Sekolah binaan dengan NPSN ${npsn} dipilih. Anda sekarang dapat melanjutkan ke menu Cross-check atau Asesmen.`);
+  loadView('crosscheck'); // Langsung mengarahkan ke halaman pemeriksaan/cross-check
+};
 
 function renderPenugasanTable(list){
   const rows = list.map(x => `<tr>
