@@ -774,16 +774,72 @@ async function renderSchoolRkasAndRealisasi(){
 }
 
 async function renderDinasRkasReview(){
-  const res = await safeApi('getSemuaUsulanRKAS',{}, {data:[]});
-  const rows=(res.data||[]).map(x=>`<tr><td><b>${esc(x.npsn)}</b></td><td>${esc(x.versi_rkas)}</td><td>${esc(x.kode_rekening)}</td><td>${esc(x.uraian)}</td><td><b>${fmtRupiah(x.pagu)}</b></td><td>${badge(x.status_rkas,'warning')}</td><td><button class="btn btn-sm btn-primary" onclick="doReviewRkas('${esc(x.versi_rkas)}','APPROVED')">Setujui</button> <button class="btn btn-sm btn-danger" onclick="doReviewRkas('${esc(x.versi_rkas)}','DITOLAK')">Tolak</button></td></tr>`).join('');
-  $('#mainContent').innerHTML=head('Review & Persetujuan RKAS (Dinas)','Pusat verifikasi usulan anggaran sekolah')+`<div class="panel"><div class="table-wrap"><table class="friendly-table"><thead><tr><th>NPSN</th><th>Versi</th><th>Kode</th><th>Uraian</th><th>Pagu</th><th>Status</th><th>Aksi</th></tr></thead><tbody>${rows||emptyRow(7,'Tidak ada usulan RKAS berstatus DIAJUKAN.')}</tbody></table></div></div>`;
+  const c = $('#mainContent');
+  c.innerHTML = head('Review & Persetujuan RKAS (Dinas)', 'Pusat verifikasi usulan anggaran sekolah') +
+    `<div class="toolbar">
+       <button class="btn btn-sm btn-primary" onclick="loadDinasRkasTab('DIAJUKAN')">Menunggu Review</button>
+       <button class="btn btn-sm btn-light" onclick="loadDinasRkasTab('APPROVED')">Sudah Disetujui (Approved)</button>
+     </div>
+     <div class="panel" id="dinasRkasPanel">${loading('Memuat data RKAS...')}</div>`;
+  
+  await loadDinasRkasTab('DIAJUKAN');
 }
 
-window.createDraftRkas = async function(){ try{const r=await api('buatDraftRKAS');alert(`Draft ${r.versi_rkas||''} berhasil dibuat.`);await rkasReview();}catch(e){alert(errorText(e));} };
-window.doReviewRkas = async function(versi, keputusan){
-  const catatan = prompt(`Konfirmasi keputusan Dinas menjadi [${keputusan}] untuk versi ${versi}:`) || '';
-  if(catatan===null) return;
-  try { await api('reviewRKAS', {versiRkas: versi, keputusan: keputusan}); alert('Keputusan berhasil disimpan.'); await rkasReview(); } catch(e) { alert(errorText(e)); }
+window.loadDinasRkasTab = async function(statusFilter){
+  // Ubah status tombol aktif
+  $$('.toolbar button').forEach(b => {
+    b.className = b.textContent.includes(statusFilter === 'APPROVED' ? 'Disetujui' : 'Menunggu') ? 'btn btn-sm btn-primary' : 'btn btn-sm btn-light';
+  });
+
+  const panel = $('#dinasRkasPanel');
+  if(!panel) return;
+  panel.innerHTML = loading();
+
+  try {
+    // Memanggil API usulan atau master RKAS dinas
+    const res = await safeApi('getSemuaUsulanRKAS', {}, {data:[]});
+    const list = res.data || [];
+    
+    // Filter berdasarkan status yang dipilih (DIAJUKAN atau APPROVED)
+    const filtered = list.filter(x => String(x.status_rkas || '').toUpperCase() === statusFilter);
+
+    const rows = filtered.map(x=>`
+      <tr>
+        <td><b>${esc(x.npsn)}</b></td>
+        <td>${esc(x.versi_rkas)}</td>
+        <td>${esc(x.kode_rekening)}</td>
+        <td>${esc(x.uraian)}</td>
+        <td><b>${fmtRupiah(x.pagu)}</b></td>
+        <td>${badge(x.status_rkas, x.status_rkas==='APPROVED'?'success':'warning')}</td>
+        <td>
+          ${statusFilter === 'DIAJUKAN' ? `
+            <button class="btn btn-sm btn-primary" onclick="doReviewRkas('${esc(x.versi_rkas)}','APPROVED')">Setujui</button>
+            <button class="btn btn-sm btn-light" onclick="doReviewRkas('${esc(x.versi_rkas)}','PERLU_PERBAIKAN')">Perbaiki</button>
+            <button class="btn btn-sm btn-danger" onclick="doReviewRkas('${esc(x.versi_rkas)}','DITOLAK')">Tolak</button>
+          ` : `<span class="muted">Telah Disetujui</span>`}
+        </td>
+      </tr>`).join('');
+
+    panel.innerHTML = `
+      <div class="table-wrap">
+        <table class="friendly-table">
+          <thead>
+            <tr>
+              <th>NPSN</th>
+              <th>Versi</th>
+              <th>Kode</th>
+              <th>Uraian</th>
+              <th>Pagu</th>
+              <th>Status</th>
+              <th>Aksi Dinas</th>
+            </tr>
+          </thead>
+          <tbody>${rows || emptyRow(7, `Tidak ada data RKAS dengan status ${statusFilter}.`)}</tbody>
+        </table>
+      </div>`;
+  } catch(e) {
+    panel.innerHTML = msg(errorText(e));
+  }
 };
 
 async function sekolahView(){
