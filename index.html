@@ -400,6 +400,56 @@ window.toggleRegisterFields = function() {
   const fieldNip = $('#fieldNipGroup');
   const fieldNamaPengawas = $('#fieldNamaPengawasGroup');
   const fieldNamaGroup = $('#fieldNamaGroup');
+  
+  const inpNamaSekolah = $('#regNamaSekolah');
+  const inpNamaPengawas = $('#regNamaPengawas');
+  const inpUsername = $('#regUsername');
+  const labelUser = $('#labelUsername');
+
+  if(roleVal === 'SEKOLAH') {
+    if(fieldNpsn) fieldNpsn.style.display = 'block';
+    if(fieldNip) fieldNip.style.display = 'none';
+    if(fieldNamaPengawas) fieldNamaPengawas.style.display = 'none';
+    if(fieldNamaGroup) fieldNamaGroup.style.display = 'block';
+    
+    // Atur atribut required aktif untuk sekolah, nonaktif untuk pengawas
+    if(inpNamaSekolah) inpNamaSekolah.required = true;
+    if(inpNamaPengawas) inpNamaPengawas.required = false;
+
+    if(labelUser) labelUser.textContent = 'Username (Otomatis NPSN)';
+    if(inpUsername) {
+      inpUsername.value = $('#regNpsn')?.value.trim() || '';
+    }
+  } else {
+    if(fieldNpsn) fieldNpsn.style.display = 'none';
+    if(fieldNamaGroup) fieldNamaGroup.style.display = 'none';
+    if(fieldNip) fieldNip.style.display = 'block';
+    if(fieldNamaPengawas) fieldNamaPengawas.style.display = 'block';
+    
+    // Atur atribut required aktif untuk pengawas, nonaktif untuk sekolah
+    if(inpNamaSekolah) inpNamaSekolah.required = false;
+    if(inpNamaPengawas) inpNamaPengawas.required = true;
+
+    if(labelUser) labelUser.textContent = 'Username Login Pengawas (Sinkron NIP)';
+    if(inpUsername) {
+      inpUsername.value = $('#regNip')?.value.trim() || '';
+    }
+  }
+};
+
+window.syncPengawasUsername = function(val) {
+  const usernameField = $('#regUsername');
+  if(usernameField) {
+    usernameField.value = val.trim();
+  }
+};
+
+window.toggleRegisterFields = function() {
+  const roleVal = $('#regRole').value;
+  const fieldNpsn = $('#fieldNpsnGroup');
+  const fieldNip = $('#fieldNipGroup');
+  const fieldNamaPengawas = $('#fieldNamaPengawasGroup');
+  const fieldNamaGroup = $('#fieldNamaGroup');
   const labelUser = $('#labelUsername');
   const inpUsername = $('#regUsername');
 
