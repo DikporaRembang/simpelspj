@@ -561,8 +561,6 @@ async function periodeSelect(id = 'periodeSelect', required = true, defaultMode 
   await ensurePeriodeMaster();
   
   const userRole = role();
-  // Dinas dan Pengawas diberi kebebasan memilih mode (Bulanan/Semesteran) lewat tombol switcher
-  // Sekolah secara default fokus bulanan, tapi bisa melihat rekap semester jika diperlukan.
   const allowToggle = (userRole === 'DINAS' || userRole === 'PENGAWAS' || userRole === 'SEKOLAH');
   
   let currentMode = sessionStorage.getItem('simpel_periode_mode_' + id) || defaultMode;
@@ -612,12 +610,10 @@ async function periodeSelect(id = 'periodeSelect', required = true, defaultMode 
 
 window.switchPeriodeMode = function(elementId, mode) {
   sessionStorage.setItem('simpel_periode_mode_' + elementId, mode);
-  // Refresh view saat ini agar dropdown memperbarui opsi pilihannya seketika
   loadView(state.view);
 };
 
 async function dokumenBulananView(){
-  // Panggil dengan mode 'semester' agar dropdown menampilkan pilihan SEM-1-2026 dan SEM-2-2026
   const periods = await periodeSelect('periodeSelect', true, 'semester');
   
   $('#mainContent').innerHTML = head('Dokumen SPJ Semesteran', 'Kelola 10 komponen laporan dan status N/A pajak') +
@@ -779,7 +775,7 @@ async function renderSchoolRkasAndRealisasi(){
       <td>${badge(x.status_rkas,'success')}</td>
       <td>
         ${isSchool() ? `
-          <button class="btn btn-sm btn-light" onclick="openEditRkasItem('${esc(x.id_rkas\vert{}\vert{}x.kode_rekening)}','${esc(x.uraian)}',${x.pagu},'${esc(x.kode_rekening)}')">✏️ Ubah</button>
+          <button class="btn btn-sm btn-light" onclick="openEditRkasItem('${esc(x.id_rkas \vert{}\vert{} x.kode_rekening)}','${esc(x.uraian)}',${x.pagu},'${esc(x.kode_rekening)}')">✏️ Ubah</button>
         ` : '-'}
       </td>
     </tr>`).join('');
@@ -806,7 +802,6 @@ async function renderSchoolRkasAndRealisasi(){
      </div>`;
 }
 
-// Modal Ubah / Edit Item RKAS yang sudah ada
 window.openEditRkasItem = function(idRkas, uraianLama, paguLama, kodeLama){
   const wrap = document.createElement('div');
   wrap.id = 'editRkasModal';
@@ -846,7 +841,6 @@ window.openEditRkasItem = function(idRkas, uraianLama, paguLama, kodeLama){
       pagu: Number($('#editPagu').value)
     };
     try {
-      // Memanggil API backend untuk update RKAS
       await api('updateItemRKAS', { data: payload });
       alert('Perubahan rincian RKAS berhasil disimpan.');
       $('#editRkasModal').remove();
@@ -857,7 +851,6 @@ window.openEditRkasItem = function(idRkas, uraianLama, paguLama, kodeLama){
   };
 };
 
-// Modal Tambah Usulan Item Baru RKAS
 window.openTambahItemRkasModal = function(){
   const wrap = document.createElement('div');
   wrap.id = 'tambahItemModal';
@@ -895,7 +888,7 @@ window.openTambahItemRkasModal = function(){
       kode_rekening: $('#tambahKode').value.trim(),
       uraian: $('#tambahUraian').value.trim(),
       pagu: Number($('#tambahPagu').value),
-      status_rkas: 'DIAJUKAN' // Masuk ke antrean review Dinas kembali
+      status_rkas: 'DIAJUKAN'
     };
     try {
       await api('tambahUsulanItemRKAS', { data: payload });
@@ -907,6 +900,7 @@ window.openTambahItemRkasModal = function(){
     }
   };
 };
+
 async function renderDinasRkasReview(){
   const c = $('#mainContent');
   c.innerHTML = head('Review & Persetujuan RKAS (Dinas)', 'Pusat verifikasi usulan anggaran sekolah') +
@@ -929,7 +923,7 @@ async function renderDinasRkasReview(){
 }
 
 window.loadDinasRkasTab = async function(statusFilter){
-  _activeDinasStatus = statusFilter;
+  window._activeDinasStatus = statusFilter;
   const btnDiajukan = $('#btnTabDiajukan');
   const btnApproved = $('#btnTabApproved');
   
@@ -950,11 +944,8 @@ window.loadDinasRkasTab = async function(statusFilter){
   try {
     const res = await safeApi('getSemuaUsulanRKAS', {}, {data:[]});
     const list = res.data || [];
-    
-    // Simpan seluruh data ke variabel global
-    _currentDinasRkasList = list;
+    window._currentDinasRkasList = list;
 
-    // Isi pilihan dropdown versi secara otomatis
     const versiSet = new Set();
     list.forEach(x => { if(x.versi_rkas) versiSet.add(String(x.versi_rkas).toUpperCase()); });
     const selectVersi = $('#filterVersiRkas');
@@ -980,22 +971,19 @@ window.filterAndRenderDinasRkasTable = function(){
 
   if(!panel) return;
 
-  // 1. Filter berdasarkan tab status (DIAJUKAN vs APPROVED)
-  let filtered = _currentDinasRkasList.filter(x => {
+  let filtered = (window._currentDinasRkasList || []).filter(x => {
     const st = String(x.status_rkas || '').toUpperCase();
-    if(_activeDinasStatus === 'APPROVED'){
+    if(window._activeDinasStatus === 'APPROVED'){
       return st === 'APPROVED' || st === 'DISETUJUI' || st === 'SELESAI';
     } else {
       return st === 'DIAJUKAN' || st === 'PENDING' || st === 'MENUNGGU';
     }
   });
 
-  // 2. Filter berdasarkan versi RKAS
   if(selectedVersi){
     filtered = filtered.filter(x => String(x.versi_rkas || '').toUpperCase() === selectedVersi);
   }
 
-  // 3. Filter berdasarkan kotak pencarian teks
   if(keyword){
     filtered = filtered.filter(x => 
       String(x.npsn || '').toLowerCase().includes(keyword) ||
@@ -1004,7 +992,6 @@ window.filterAndRenderDinasRkasTable = function(){
     );
   }
 
-  // Hitung Sub-Total Pagu secara dinamis
   const subTotalPagu = filtered.reduce((sum, item) => sum + Number(item.pagu || 0), 0);
 
   if(statArea){
@@ -1030,7 +1017,7 @@ window.filterAndRenderDinasRkasTable = function(){
       <td><b>${fmtRupiah(x.pagu)}</b></td>
       <td>${badge(x.status_rkas, ['APPROVED','DISETUJUI','SELESAI'].includes(String(x.status_rkas).toUpperCase())?'success':'warning')}</td>
       <td>
-        ${_activeDinasStatus === 'DIAJUKAN' ? `
+        ${window._activeDinasStatus === 'DIAJUKAN' ? `
           <button class="btn btn-sm btn-primary" onclick="doReviewRkas('${esc(x.versi_rkas)}','APPROVED')">Setujui</button>
           <button class="btn btn-sm btn-light" onclick="doReviewRkas('${esc(x.versi_rkas)}','PERLU_PERBAIKAN')">Perbaiki</button>
           <button class="btn btn-sm btn-danger" onclick="doReviewRkas('${esc(x.versi_rkas)}','DITOLAK')">Tolak</button>
@@ -1056,6 +1043,7 @@ window.filterAndRenderDinasRkasTable = function(){
       </table>
     </div>`;
 };
+
 async function sekolahView(){
   const c=$('#mainContent');
   c.innerHTML=head('Daftar Sekolah','Data satuan pendidikan terdaftar')+`<div class="toolbar"><input id="searchSekolahInput" placeholder="🔍 Cari berdasarkan Nama Sekolah atau NPSN..." style="max-width:350px"></div><div class="panel" id="sekolahContent">${loading()}</div>`;
@@ -1077,7 +1065,6 @@ function renderSekolahTable(list){
 async function penugasanView() {
   const c = $('#mainContent');
 
-  // 1. KONDISI KHUSUS AKUN PENGAWAS (Hanya melihat daftar sekolah binaan)
   if (isPengawas()) {
     c.innerHTML = head('Sekolah Binaan Saya', 'Pilih sekolah binaan untuk langsung melakukan audit') + 
                   `<div class="toolbar"><input id="searchBinaanInput" placeholder="🔍 Cari Sekolah Binaan..." style="max-width:320px"></div>
@@ -1102,7 +1089,6 @@ async function penugasanView() {
     return;
   }
 
-  // 2. KONDISI KHUSUS AKUN DINAS (Manajemen penugasan lengkap dengan tombol distribusi)
   if (isDinas()) {
     c.innerHTML = head('Manajemen Penugasan Pengawas', 'Atur pengawas ke sekolah binaan') +  
       `<div class="panel">
@@ -1143,7 +1129,6 @@ async function penugasanView() {
     return;
   }
 
-  // 3. KONDISI UNTUK ROLE LAINNYA (Misal: Sekolah)
   {
     c.innerHTML = head('Informasi Penugasan', 'Daftar pengawas pembina sekolah Anda') + 
                   `<div class="panel" id="penugasanContent">${loading()}</div>`;
@@ -1161,7 +1146,6 @@ async function penugasanView() {
   }
 }
 
-// Fungsi untuk merender daftar kartu sekolah binaan khusus akun Pengawas
 function renderBinaanCards(list) {
   const area = $('#binaanArea');
   if (!area) return;
@@ -1211,9 +1195,6 @@ function renderPenugasanTable(list){
   $('#penugasanContent').innerHTML = `<div class="table-wrap"><table class="friendly-table"><thead><tr><th>Pengawas Pembina</th><th>Satuan Pendidikan & Kecamatan</th><th>Mulai</th><th>Selesai</th><th>Status</th></tr></thead><tbody>${rows||emptyRow(5)}</tbody></table></div>`;
 }
 
-// ============================================================================
-// FUNGSI PENGHUBUNG: DISTRIBUSI OTOMATIS PENGAWAS OLEH DINAS
-// ============================================================================
 window.triggerDistribusiPenugasanAdil = async function() {
   if (!confirm('Jalankan algoritma distribusi penugasan pengawas secara otomatis, adil, dan lintas kecamatan berdasarkan pagu RKAS?')) {
     return;
@@ -1245,7 +1226,6 @@ window.triggerDistribusiPenugasanAdil = async function() {
       alert(res.message || 'Distribusi penugasan adil berhasil dijalankan!');
     }
 
-    // Segarkan kembali tabel penugasan setelah berhasil
     if (typeof penugasanView === 'function') {
       setTimeout(() => { penugasanView(); }, 2000);
     }
