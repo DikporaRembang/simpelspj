@@ -773,19 +773,32 @@ async function renderSchoolRkasAndRealisasi(){
     `<div class="panel"><h3 class="section-title" style="margin-top:0">Pagu RKAS Aktif</h3><div class="toolbar">${isSchool()?'<button class="btn btn-primary" onclick="createDraftRkas()">Buat Draft RKAS</button>':''}</div><div class="table-wrap"><table class="friendly-table"><thead><tr><th>Kode Rekening</th><th>Uraian</th><th>Pagu</th><th>Status</th></tr></thead><tbody>${rows||emptyRow(4,'Belum ada RKAS aktif.')}</tbody></table></div></div><div class="panel"><h3 class="section-title" style="margin-top:0">Monitoring Realisasi Pagu</h3><div class="table-wrap"><table class="friendly-table"><thead><tr><th>Kode</th><th>Uraian</th><th>Pagu</th><th>Realisasi</th><th>Sisa</th><th>Status</th></tr></thead><tbody>${realRows||emptyRow(6,'Belum ada data realisasi.')}</tbody></table></div></div>`;
 }
 
+let _currentDinasRkasList = [];
+let _activeDinasStatus = 'DIAJUKAN';
+
 async function renderDinasRkasReview(){
   const c = $('#mainContent');
   c.innerHTML = head('Review & Persetujuan RKAS (Dinas)', 'Pusat verifikasi usulan anggaran sekolah') +
-    `<div class="toolbar" style="margin-bottom:16px;">
-       <button class="btn btn-sm btn-primary" id="btnTabDiajukan" onclick="loadDinasRkasTab('DIAJUKAN')">Menunggu Review</button>
-       <button class="btn btn-sm btn-light" id="btnTabApproved" onclick="loadDinasRkasTab('APPROVED')">Sudah Disetujui (Approved)</button>
+    `<div class="toolbar" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:16px;">
+       <div style="display:flex;gap:8px;">
+         <button class="btn btn-sm btn-primary" id="btnTabDiajukan" onclick="loadDinasRkasTab('DIAJUKAN')">Menunggu Review</button>
+         <button class="btn btn-sm btn-light" id="btnTabApproved" onclick="loadDinasRkasTab('APPROVED')">Sudah Disetujui (Approved)</button>
+       </div>
+       <div style="display:flex;gap:8px;flex-wrap:wrap;">
+         <input id="searchDinasRkas" placeholder="🔍 Cari NPSN, Kode, Uraian..." style="padding:10px 14px;border:1px solid var(--border);border-radius:10px;font-size:0.9rem;min-width:260px;background:#fff;" oninput="filterAndRenderDinasRkasTable()">
+         <select id="filterVersiRkas" style="padding:10px 14px;border:1px solid var(--border);border-radius:10px;font-size:0.9rem;background:#fff;" onchange="filterAndRenderDinasRkasTable()">
+           <option value="">-- Semua Versi --</option>
+         </select>
+       </div>
      </div>
+     <div id="dinasRkasStatArea" style="margin-bottom:16px;"></div>
      <div class="panel" id="dinasRkasPanel" style="margin-top:0;">${loading('Memuat data RKAS...')}</div>`;
   
   await loadDinasRkasTab('DIAJUKAN');
 }
 
 window.loadDinasRkasTab = async function(statusFilter){
+  _activeDinasStatus = statusFilter;
   const btnDiajukan = $('#btnTabDiajukan');
   const btnApproved = $('#btnTabApproved');
   
@@ -807,55 +820,111 @@ window.loadDinasRkasTab = async function(statusFilter){
     const res = await safeApi('getSemuaUsulanRKAS', {}, {data:[]});
     const list = res.data || [];
     
-    // Filter fleksibel mencakup berbagai variasi penulisan status di database
-    const filtered = list.filter(x => {
-      const st = String(x.status_rkas || '').toUpperCase();
-      if(statusFilter === 'APPROVED'){
-        return st === 'APPROVED' || st === 'DISETUJUI' || st === 'SELESAI';
-      } else {
-        return st === 'DIAJUKAN' || st === 'PENDING' || st === 'MENUNGGU';
-      }
-    });
+    // Simpan seluruh data ke variabel global
+    _currentDinasRkasList = list;
 
-    const rows = filtered.map(x=>`
-      <tr>
-        <td><b>${esc(x.npsn)}</b></td>
-        <td>${esc(x.versi_rkas)}</td>
-        <td>${esc(x.kode_rekening)}</td>
-        <td>${esc(x.uraian)}</td>
-        <td><b>${fmtRupiah(x.pagu)}</b></td>
-        <td>${badge(x.status_rkas, ['APPROVED','DISETUJUI','SELESAI'].includes(String(x.status_rkas).toUpperCase())?'success':'warning')}</td>
-        <td>
-          {statusFilter === 'DIAJUKAN' ? `
-            <button class="btn btn-sm btn-primary" onclick="doReviewRkas('${esc(x.versi_rkas)}','APPROVED')">Setujui</button>
-            <button class="btn btn-sm btn-light" onclick="doReviewRkas('${esc(x.versi_rkas)}','PERLU_PERBAIKAN')">Perbaiki</button>
-            <button class="btn btn-sm btn-danger" onclick="doReviewRkas('${esc(x.versi_rkas)}','DITOLAK')">Tolak</button>
-          ` : `<span class="muted" style="font-weight:600;color:var(--success)">Telah Disetujui</span>`}
-        </td>
-      </tr>`).join('');
+    // Isi pilihan dropdown versi secara otomatis
+    const versiSet = new Set();
+    list.forEach(x => { if(x.versi_rkas) versiSet.add(String(x.versi_rkas).toUpperCase()); });
+    const selectVersi = $('#filterVersiRkas');
+    if(selectVersi){
+      const currentVal = selectVersi.value;
+      let vOptions = '<option value="">-- Semua Versi --</option>';
+      versiSet.forEach(v => { vOptions += `<option value="${v}">${v}</option>`; });
+      selectVersi.innerHTML = vOptions;
+      selectVersi.value = currentVal;
+    }
 
-    panel.innerHTML = `
-      <div class="table-wrap">
-        <table class="friendly-table">
-          <thead>
-            <tr>
-              <th>NPSN</th>
-              <th>Versi</th>
-              <th>Kode</th>
-              <th>Uraian</th>
-              <th>Pagu</th>
-              <th>Status</th>
-              <th>Aksi Dinas</th>
-            </tr>
-          </thead>
-          <tbody>${rows || emptyRow(7, `Tidak ada data RKAS dengan status ${statusFilter}.`)}</tbody>
-        </table>
-      </div>`;
+    filterAndRenderDinasRkasTable();
   } catch(e) {
     panel.innerHTML = msg(errorText(e));
   }
 };
 
+window.filterAndRenderDinasRkasTable = function(){
+  const panel = $('#dinasRkasPanel');
+  const statArea = $('#dinasRkasStatArea');
+  const keyword = String($('#searchDinasRkas')?.value || '').toLowerCase();
+  const selectedVersi = String($('#filterVersiRkas')?.value || '').toUpperCase();
+
+  if(!panel) return;
+
+  // 1. Filter berdasarkan tab status (DIAJUKAN vs APPROVED)
+  let filtered = _currentDinasRkasList.filter(x => {
+    const st = String(x.status_rkas || '').toUpperCase();
+    if(_activeDinasStatus === 'APPROVED'){
+      return st === 'APPROVED' || st === 'DISETUJUI' || st === 'SELESAI';
+    } else {
+      return st === 'DIAJUKAN' || st === 'PENDING' || st === 'MENUNGGU';
+    }
+  });
+
+  // 2. Filter berdasarkan versi RKAS
+  if(selectedVersi){
+    filtered = filtered.filter(x => String(x.versi_rkas || '').toUpperCase() === selectedVersi);
+  }
+
+  // 3. Filter berdasarkan kotak pencarian teks
+  if(keyword){
+    filtered = filtered.filter(x => 
+      String(x.npsn || '').toLowerCase().includes(keyword) ||
+      String(x.kode_rekening || '').toLowerCase().includes(keyword) ||
+      String(x.uraian || '').toLowerCase().includes(keyword)
+    );
+  }
+
+  // Hitung Sub-Total Pagu secara dinamis
+  const subTotalPagu = filtered.reduce((sum, item) => sum + Number(item.pagu || 0), 0);
+
+  if(statArea){
+    statArea.innerHTML = `
+      <div style="display:flex;gap:16px;flex-wrap:wrap;">
+        <div class="stat" style="flex:1;min-width:200px;padding:16px;">
+          <small>Jumlah Item Rincian</small>
+          <strong style="font-size:1.4rem;">${fmtNum(filtered.length)} Baris</strong>
+        </div>
+        <div class="stat" style="flex:1;min-width:240px;padding:16px;background:linear-gradient(135deg,#f0fdf4,#e2f8ec);border-color:#bbf7d0;">
+          <small style="color:var(--success);">Sub-Total Pagu Sesuai Filter</small>
+          <strong style="font-size:1.5rem;color:var(--success);">${fmtRupiah(subTotalPagu)}</strong>
+        </div>
+      </div>`;
+  }
+
+  const rows = filtered.map(x=>`
+    <tr>
+      <td><b>${esc(x.npsn)}</b></td>
+      <td>${esc(x.versi_rkas)}</td>
+      <td>${esc(x.kode_rekening)}</td>
+      <td>${esc(x.uraian)}</td>
+      <td><b>${fmtRupiah(x.pagu)}</b></td>
+      <td>${badge(x.status_rkas, ['APPROVED','DISETUJUI','SELESAI'].includes(String(x.status_rkas).toUpperCase())?'success':'warning')}</td>
+      <td>
+        ${_activeDinasStatus === 'DIAJUKAN' ? `
+          <button class="btn btn-sm btn-primary" onclick="doReviewRkas('${esc(x.versi_rkas)}','APPROVED')">Setujui</button>
+          <button class="btn btn-sm btn-light" onclick="doReviewRkas('${esc(x.versi_rkas)}','PERLU_PERBAIKAN')">Perbaiki</button>
+          <button class="btn btn-sm btn-danger" onclick="doReviewRkas('${esc(x.versi_rkas)}','DITOLAK')">Tolak</button>
+        ` : `<span class="muted" style="font-weight:600;color:var(--success)">Telah Disetujui</span>`}
+      </td>
+    </tr>`).join('');
+
+  panel.innerHTML = `
+    <div class="table-wrap">
+      <table class="friendly-table">
+        <thead>
+          <tr>
+            <th>NPSN</th>
+            <th>Versi</th>
+            <th>Kode</th>
+            <th>Uraian</th>
+            <th>Pagu</th>
+            <th>Status</th>
+            <th>Aksi Dinas</th>
+          </tr>
+        </thead>
+        <tbody>${rows || emptyRow(7, `Tidak ada data RKAS yang cocok dengan filter atau kata kunci pencarian.`)}</tbody>
+      </table>
+    </div>`;
+};
 async function sekolahView(){
   const c=$('#mainContent');
   c.innerHTML=head('Daftar Sekolah','Data satuan pendidikan terdaftar')+`<div class="toolbar"><input id="searchSekolahInput" placeholder="🔍 Cari berdasarkan Nama Sekolah atau NPSN..." style="max-width:350px"></div><div class="panel" id="sekolahContent">${loading()}</div>`;
