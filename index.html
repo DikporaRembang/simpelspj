@@ -854,23 +854,29 @@ function renderBinaanCards(list) {
   if (!area) return;
   
   if (!list || list.length === 0) {
-    area.innerHTML = msg('Belum ada sekolah binaan yang ditugaskan kepada Anda.', 'ok');
+    area.innerHTML = msg('Belum ada sekolah binaan yang ditugaskan kepada Anda di sistem. Silakan hubungi Dinas.', 'warning');
     return;
   }
 
-  const cardsHtml = list.map(x => `
-    <div class="panel" style="margin-top:12px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;">
-      <div>
-        <h3 style="margin:0 0 4px; color:var(--primary); font-size:1.1rem;">${esc(x.nama_sekolah || 'Sekolah Binaan')}</h3>
-        <p class="muted" style="margin:0">NPSN: <b>${esc(x.npsn)}</b> | Kecamatan: ${esc(x.kecamatan || '-')}</p>
+  const cardsHtml = list.map(x => {
+    const npsnVal = esc(x.npsn || x.NPSN || '');
+    const namaSekolahVal = esc(x.nama_sekolah || x.nama || 'Sekolah Binaan');
+    const kecamatanVal = esc(x.kecamatan || '-');
+
+    return `
+      <div class="panel" style="margin-top:12px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;">
+        <div>
+          <h3 style="margin:0 0 4px; color:var(--primary); font-size:1.1rem;">${namaSekolahVal}</h3>
+          <p class="muted" style="margin:0">NPSN: <b>${npsnVal}</b> | Kecamatan: ${kecamatanVal}</p>
+        </div>
+        <div>
+          <button class="btn btn-sm btn-primary" onclick="pilihSekolahBinaan('${npsnVal}')">
+            Pilih Sekolah Ini
+          </button>
+        </div>
       </div>
-      <div>
-        <button class="btn btn-sm btn-primary" onclick="pilihSekolahBinaan('${esc(x.npsn)}')">
-          Pilih Sekolah Ini
-        </button>
-      </div>
-    </div>
-  `).join('');
+    `;
+  }).join('');
 
   area.innerHTML = cardsHtml;
 }
