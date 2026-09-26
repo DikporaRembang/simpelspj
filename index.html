@@ -527,7 +527,7 @@ async function startApp(){
 }
 
 function renderShell(){
-  const menus = ROLE_MENUS[role()] || ROLE_MENUS.SEKOLAH;
+ const menus = ROLE_MENUS[role()] || ROLE_MENUS.DINAS || ROLE_MENUS.SEKOLAH || [];
   
   // --- INI BAGIAN PERUBAHAN UNTUK KECAMATAN & ALAMAT ---
   const userObj = state.user || {};
