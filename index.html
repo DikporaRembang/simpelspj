@@ -543,10 +543,9 @@ async function homeView(){
 async function ensureMasters(){
   if(!state.masterSpj.length){ const r=await safeApi('getMasterSPJ',{},null); state.masterSpj=r?.data||[]; }
 }
-// Cache periode dengan fallback data statis yang langsung tampil
 let cachedPeriodeList = [
-  { id_periode: 'SEM-1-2026', nama_periode: 'Semester 1 (Januari - Juni 2026)' },
-  { id_periode: 'SEM-2-2026', nama_periode: 'Semester 2 (Juli - Desember 2026)' }
+  { id_periode: 'SEM-1-2026', nama_periode: 'Semester 1 (Januari - Juni 2026)', jenis: 'semester' },
+  { id_periode: 'SEM-2-2026', nama_periode: 'Semester 2 (Juli - Desember 2026)', jenis: 'semester' }
 ];
 
 async function ensurePeriodeMaster() {
@@ -558,23 +557,21 @@ async function ensurePeriodeMaster() {
   } catch (e) {}
 }
 
-async function periodeSelect(id = 'periodeSelect', required = true, mode = 'semester') {
+async function periodeSelect(id = 'periodeSelect', required = true, defaultMode = 'bulan') {
   await ensurePeriodeMaster();
   
-  let optionsHtml = '';
+  const userRole = role();
+  // Dinas dan Pengawas diberi kebebasan memilih mode (Bulanan/Semesteran) lewat tombol switcher
+  // Sekolah secara default fokus bulanan, tapi bisa melihat rekap semester jika diperlukan.
+  const allowToggle = (userRole === 'DINAS' || userRole === 'PENGAWAS' || userRole === 'SEKOLAH');
+  
+  let currentMode = sessionStorage.getItem('simpel_periode_mode_' + id) || defaultMode;
+
   const namaBulan = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
 
-  if (mode === 'bulan') {
-    let bulanList = cachedPeriodeList.filter(p => Number(p.bulan) >= 1 && Number(p.bulan) <= 12);
-    if (!bulanList.length) {
-      bulanList = namaBulan.map((nama, i) => ({
-        id_periode: `PER-2026-${String(i+1).padStart(2,'0')}`,
-        nama_periode: `${nama} 2026`
-      }));
-    }
-    optionsHtml = bulanList.map(p => `<option value="${esc(p.id_periode)}">${esc(p.nama_periode || p.id_periode)}</option>`).join('');
-  } else {
-    let semList = cachedPeriodeList.filter(p => String(p.id_periode).startsWith('SEM'));
+  let optionsHtml = '';
+  if (currentMode === 'semester') {
+    let semList = cachedPeriodeList.filter(p => String(p.id_periode).startsWith('SEM') || p.jenis === 'semester');
     if (!semList.length) {
       semList = [
         { id_periode: 'SEM-1-2026', nama_periode: 'Semester 1 (Januari - Juni 2026)' },
@@ -582,10 +579,42 @@ async function periodeSelect(id = 'periodeSelect', required = true, mode = 'seme
       ];
     }
     optionsHtml = semList.map(s => `<option value="${esc(s.id_periode)}">${esc(s.nama_periode || s.id_periode)}</option>`).join('');
+  } else {
+    let bulanList = cachedPeriodeList.filter(p => Number(p.bulan) >= 1 && Number(p.bulan) <= 12 || String(p.id_periode).includes('PER'));
+    if (!bulanList.length) {
+      bulanList = namaBulan.map((nama, i) => ({
+        id_periode: `PER-2026-${String(i+1).padStart(2,'0')}`,
+        nama_periode: `${nama} 2026`
+      }));
+    }
+    optionsHtml = bulanList.map(p => `<option value="${esc(p.id_periode)}">${esc(p.nama_periode || p.id_periode)}</option>`).join('');
   }
 
-  return `<select id="${id}" ${required ? 'required' : ''}><option value="">-- Pilih Periode (${mode === 'bulan' ? 'Bulanan' : 'Semesteran'}) --</option>${optionsHtml}</select>`;
+  let switcherHtml = '';
+  if (allowToggle) {
+    switcherHtml = `
+      <div style="display:flex; gap:6px; margin-bottom:6px; align-items:center;">
+        <span style="font-size:0.78rem; font-weight:700; color:var(--muted);">Tampilkan Mode:</span>
+        <button type="button" class="btn btn-sm ${currentMode==='bulan'?'btn-primary':'btn-light'}" style="padding:4px 10px; min-height:28px; font-size:0.75rem;" onclick="switchPeriodeMode('${id}','bulan')">Bulanan</button>
+        <button type="button" class="btn btn-sm ${currentMode==='semester'?'btn-primary':'btn-light'}" style="padding:4px 10px; min-height:28px; font-size:0.75rem;" onclick="switchPeriodeMode('${id}','semester')">Semesteran</button>
+      </div>`;
+  }
+
+  return `
+    <div>
+      ${switcherHtml}
+      <select id="${id}" ${required ? 'required' : ''}>
+        <option value="">-- Pilih Periode (${currentMode === 'bulan' ? 'Bulanan' : 'Semesteran'}) --</option>
+        ${optionsHtml}
+      </select>
+    </div>`;
 }
+
+window.switchPeriodeMode = function(elementId, mode) {
+  sessionStorage.setItem('simpel_periode_mode_' + elementId, mode);
+  // Refresh view saat ini agar dropdown memperbarui opsi pilihannya seketika
+  loadView(state.view);
+};
 
 async function dokumenBulananView(){
   // Panggil dengan mode 'semester' agar dropdown menampilkan pilihan SEM-1-2026 dan SEM-2-2026
