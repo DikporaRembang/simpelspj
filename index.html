@@ -1253,6 +1253,48 @@ window.runDbCheck=async function(){const r=$('#dbResult');r.innerHTML=loading();
 
 document.addEventListener('submit',e=>{if(e.target.id==='loginForm')doLogin(e);});
 window.addEventListener('DOMContentLoaded',restoreSession);
+
+async function muatRekapPaguView() {
+  const c = $('#mainContent');
+  c.innerHTML = head('Rekapitulasi Pagu RKAS', 'Informasi total pagu anggaran dana BOS berstatus Approved') +
+                `<div class="panel" id="paguContent">${loading('Memuat data pagu...')}</div>`;
+  try {
+    const res = await api('getRekapPaguRKAS');
+    const list = res.data || [];
+    
+    let totalKeseluruhan = list.reduce((sum, item) => sum + Number(item.total_pagu || 0), 0);
+
+    let rows = list.map(x => `
+      <tr>
+        <td><b>${esc(x.npsn)}</b></td>
+        <td>${esc(x.nama_sekolah)}</td>
+        <td>${esc(x.kecamatan)}</td>
+        <td><b>${fmtRupiah(x.total_pagu)}</b></td>
+      </tr>`).join('');
+
+    $('#paguContent').innerHTML = `
+      <div class="cards" style="margin-bottom:20px">
+        <div class="stat"><small>Jumlah Satuan Pendidikan</small><strong>${fmtNum(list.length)} Sekolah</strong></div>
+        <div class="stat"><small>Akumulasi Total Pagu</small><strong style="font-size:1.4rem; color:var(--primary-2);">${fmtRupiah(totalKeseluruhan)}</strong></div>
+      </div>
+      <div class="table-wrap">
+        <table class="friendly-table">
+          <thead>
+            <tr>
+              <th>NPSN</th>
+              <th>Nama Sekolah</th>
+              <th>Kecamatan</th>
+              <th>Total Pagu RKAS (Approved)</th>
+            </tr>
+          </thead>
+          <tbody>${rows || emptyRow(4, 'Tidak ada data pagu ditemukan.')}</tbody>
+        </table>
+      </div>`;
+  } catch(e) {
+    $('#paguContent').innerHTML = msg(errorText(e));
+  }
+}
+
 </script>
 </body>
 </html>
