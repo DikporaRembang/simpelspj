@@ -775,7 +775,7 @@ async function renderSchoolRkasAndRealisasi(){
       <td>${badge(x.status_rkas,'success')}</td>
       <td>
         ${isSchool() ? `
-          <button class="btn btn-sm btn-light" onclick="openEditRkasItem('${esc(x.id_rkas \vert{}\vert{} x.kode_rekening)}','${esc(x.uraian)}',${x.pagu},'${esc(x.kode_rekening)}')">✏️ Ubah</button>
+          <button class="btn btn-sm btn-light" onclick="openEditRkasItem('${esc(x.id_rkas \vert{}\vert{} x.kode_rekening)}', '${esc(x.uraian).replace(/'/g, "\\'")}', ${Number(x.pagu \vert{}\vert{} 0)}, '${esc(x.kode_rekening)}')">✏️ Ubah</button>
         ` : '-'}
       </td>
     </tr>`).join('');
@@ -900,7 +900,6 @@ window.openTambahItemRkasModal = function(){
     }
   };
 };
-
 async function renderDinasRkasReview(){
   const c = $('#mainContent');
   c.innerHTML = head('Review & Persetujuan RKAS (Dinas)', 'Pusat verifikasi usulan anggaran sekolah') +
