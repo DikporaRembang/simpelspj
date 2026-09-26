@@ -489,12 +489,48 @@ async function loadView(view){
 
 async function homeView(){
   const userFullLabel = formatUserLabel(state.user?.username || state.user?.npsn, state.user?.nama_pengguna);
+  
+  // Jika role adalah SEKOLAH, kita tarik data ringkasan dan status SPJ bulanan/semesteran secara otomatis
+  let progressHtml = '';
+  if(isSchool()){
+    const currentPeriod = state.selectedPeriode || 'SEM-1-2026'; // Default semester aktif
+    const summaryRes = await safeApi('ringkasanSPJBulanan', {idPeriode: currentPeriod}, null);
+    const ringkasan = summaryRes?.ringkasan || {};
+    const totalKomponen = 10;
+    const sudahUpload = (ringkasan.SUDAH_UPLOAD || 0) + (ringkasan.SELESAI_DINILAI || 0);
+    const persentase = Math.round((sudahUpload / totalKomponen) * 100);
+
+    progressHtml = `
+      <div class="panel" style="background:linear-gradient(135deg, #0A192F, #0F4C3A); color:#fff; margin-bottom:20px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;">
+          <div>
+            <span class="badge" style="background:var(--gold); color:#0A192F; font-weight:800;">PROGRESS PELAPORAN SPJ</span>
+            <h2 style="margin:8px 0 4px; color:#fff; font-size:1.6rem;">Semester Aktif: ${esc(currentPeriod)}</h2>
+            <p style="color:#cbd5e1; margin:0; font-size:0.95rem;">Kelengkapan dokumen pertanggungjawaban dana BOS satuan pendidikan.</p>
+          </div>
+          <div style="text-align:right;">
+            <strong style="font-size:2.4rem; color:var(--gold);">${persentase}%</strong>
+            <div style="font-size:0.85rem; color:#cbd5e1;">${sudahUpload} dari ${totalKomponen} Komponen Unggah</div>
+          </div>
+        </div>
+        <!-- Progress Bar Visual -->
+        <div style="background:rgba(255,255,255,0.2); border-radius:10px; height:12px; width:100%; margin-top:20px; overflow:hidden;">
+          <div style="background:var(--gold); width:${persentase}%; height:100%; transition:width 0.6s ease;"></div>
+        </div>
+        <div style="display:flex; gap:10px; margin-top:20px; flex-wrap:wrap;">
+          <button class="btn btn-primary" style="background:var(--gold); color:#0A192F;" onclick="loadView('dokumenBulanan')">📁 Lengkapi Berkas SPJ</button>
+          <button class="btn btn-light" style="background:rgba(255,255,255,0.1); color:#fff; border:1px solid rgba(255,255,255,0.2);" onclick="loadView('transaksi')">💳 Catat Transaksi BKU</button>
+        </div>
+      </div>`;
+  }
+
   $('#mainContent').innerHTML=head(`Beranda ${role()}`,'Pusat kendali dan manajemen tata kelola keuangan sekolah')+
+    progressHtml +
     `<div class="cards">
       <div class="stat"><small>Pengguna</small><strong style="font-size:1.1rem">${userFullLabel}</strong></div>
       <div class="stat"><small>Peran Sistem</small><strong>${esc(role())}</strong></div>
       <div class="stat"><small>Kabupaten</small><strong style="font-size:1.1rem">Rembang</strong></div>
-      <div class="stat"><small>Status Sesi</small><strong>Aman</strong></div>
+      <div class="stat"><small>Status Sesi</small><strong style="color:var(--success)">Aktif & Aman</strong></div>
     </div>
     <div class="panel">
       <h3 class="section-title" style="margin-top:0">Panduan Alur Kerja SIMPEL SPJ</h3>
