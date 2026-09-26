@@ -367,7 +367,7 @@ window.showRegisterView = function(e) {
       username: $('#regUsername').value.trim(),
       password: $('#regPassword').value,
       nip_pengawas: roleVal === 'PENGAWAS' ? $('#regNip').value.trim() : '',
-      nama_pengguna: roleVal === 'PENGAWAS' ? $('#regNamaSekolah').value.trim() : '' // Mengambil dari input nama
+      nama_pengguna: roleVal === 'PENGAWAS' ? $('#regNamaSekolah').value.trim() : ''
     };
     const msgBox = $('#regMsg');
     msgBox.innerHTML = '<p class="muted">Memproses pendaftaran akun...</p>';
@@ -382,7 +382,6 @@ window.showRegisterView = function(e) {
   };
 };
 
-// Fungsi untuk mengubah tampilan form berdasarkan Role yang dipilih
 window.toggleRegisterFields = function() {
   const roleVal = $('#regRole').value;
   const fieldNpsn = $('#fieldNpsnGroup');
@@ -490,10 +489,9 @@ async function loadView(view){
 async function homeView(){
   const userFullLabel = formatUserLabel(state.user?.username || state.user?.npsn, state.user?.nama_pengguna);
   
-  // Jika role adalah SEKOLAH, kita tarik data ringkasan dan status SPJ bulanan/semesteran secara otomatis
   let progressHtml = '';
   if(isSchool()){
-    const currentPeriod = state.selectedPeriode || 'SEM-1-2026'; // Default semester aktif
+    const currentPeriod = state.selectedPeriode || 'SEM-1-2026';
     const summaryRes = await safeApi('ringkasanSPJBulanan', {idPeriode: currentPeriod}, null);
     const ringkasan = summaryRes?.ringkasan || {};
     const totalKomponen = 10;
@@ -513,7 +511,6 @@ async function homeView(){
             <div style="font-size:0.85rem; color:#cbd5e1;">${sudahUpload} dari ${totalKomponen} Komponen Unggah</div>
           </div>
         </div>
-        <!-- Progress Bar Visual -->
         <div style="background:rgba(255,255,255,0.2); border-radius:10px; height:12px; width:100%; margin-top:20px; overflow:hidden;">
           <div style="background:var(--gold); width:${persentase}%; height:100%; transition:width 0.6s ease;"></div>
         </div>
@@ -789,7 +786,7 @@ async function penugasanView() {
       const binArea = $('#binaanArea');
       if(binArea) binArea.innerHTML = msg(errorText(e)); 
     }
-    return; // Hentikan eksekusi agar tidak turun ke bawah
+    return;
   }
 
   // 2. KONDISI KHUSUS AKUN DINAS (Manajemen penugasan lengkap dengan tombol distribusi)
@@ -878,11 +875,10 @@ function renderBinaanCards(list) {
   area.innerHTML = cardsHtml;
 }
 
-// Handler ketika pengawas memilih salah satu sekolah binaannya untuk diaudit/dikelola
 window.pilihSekolahBinaan = function(npsn) {
   state.selectedNpsn = npsn;
   alert(`Sekolah binaan dengan NPSN ${npsn} dipilih. Anda sekarang dapat melanjutkan ke menu Cross-check atau Asesmen.`);
-  loadView('crosscheck'); // Langsung mengarahkan ke halaman pemeriksaan/cross-check
+  loadView('crosscheck');
 };
 
 function renderPenugasanTable(list){
@@ -951,9 +947,6 @@ window.openPeringatanModal = function(targetId, targetName) {
 window.quickActionAsesmen = function(npsn) { state.selectedNpsn = npsn; loadView('asesmen'); };
 window.quickActionTemuan = function(npsn) { state.selectedNpsn = npsn; loadView('temuan'); };
 
-// ============================================================================
-// MODUL BARU: PESAN, FEEDBACK, & NOTIFIKASI OTOMATIS HILANG
-// ============================================================================
 async function pesanView(){
   const c = $('#mainContent');
   c.innerHTML = head('Pesan & Koordinasi', 'Kotak masuk komunikasi resmi dua arah (Dinas ⇄ Pengawas ⇄ Sekolah)') +
@@ -969,7 +962,6 @@ async function loadPesanData(){
   const area = $('#pesanContent'); if(!area) return;
   try {
     const res = await safeApi('getPesan', {}, { data: [] });
-    // Filter hanya menampilkan pesan yang statusnya BELUM selesai agar otomatis hilang jika sudah dieksekusi/dibalas
     const list = (res.data || []).filter(x => String(x.status_baca || x.status_pesan || 'BELUM').toUpperCase() !== 'SELESAI');
 
     const rows = list.map(x => `
@@ -1113,7 +1105,6 @@ window.editScore=async function(idAsesmen, idIndikator, current){
   try{await api('simpanDetailAsesmen',{data:{id_asesmen:idAsesmen,id_indikator:idIndikator,skor:n,catatan_pengawas:'',status_berlaku:'BERLAKU'}});await openAssessment();}catch(e){alert(errorText(e));}
 };
 
-// Helper universal untuk menampilkan identitas Sekolah lengkap dengan Kecamatan
 function formatSekolahLabel(npsn, namaSekolah = '', kecamatan = '') {
   if (!npsn) return '-';
   const cleanNpsn = esc(npsn);
@@ -1122,66 +1113,13 @@ function formatSekolahLabel(npsn, namaSekolah = '', kecamatan = '') {
   return `<b>${cleanNpsn}</b> — ${cleanNama} ${cleanKec ? `<small class="muted">(${cleanKec})</small>` : ''}`;
 }
 
-// Di dalam fungsi tampilan menu Dinas (misal: penugasanView)
-function penugasanView() {
-  $('#mainContent').innerHTML = head('Manajemen Penugasan Pengawas', 'Atur wilayah binaan pengawas sekolah') +
-    `<div class="panel">
-       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-         <h3>Daftar Penugasan Aktif</h3>
-         <button class="btn btn-primary" onclick="triggerDistribusiPenugasanAdil()">
-           ⚡ Distribusi Otomatis Adil & Lintas Kecamatan
-         </button>
-       </div>
-       
-       <!-- Kotak hasil statistik distribusi -->
-       <div id="distribusiResult" style="display:none; margin-bottom:16px;"></div>
-       
-       <div id="penugasanContent">
-         <!-- Tabel penugasan akan dimuat di sini -->
-       </div>
-     </div>`;
-     
-  // Panggil fungsi untuk memuat data tabel penugasan yang ada
-  if (typeof loadPenugasanList === 'function') {
-    loadPenugasanList();
-  }
-}
-
-// Helper universal untuk menampilkan identitas Pengawas
 function formatPengawasLabel(idPengawas, namaPengguna = '') {
   if (!idPengawas) return '-';
   return `<b>${esc(idPengawas)}</b> ${namaPengguna ? `<span style="color:var(--muted);font-size:0.88rem">(${esc(namaPengguna)})</span>` : ''}`;
 }
 
-// Fungsi untuk mengubah tampilan form berdasarkan Role yang dipilih
-window.toggleRegisterFields = function() {
-  const role = $('#regRole').value;
-  const fieldNpsn = $('#fieldNpsnGroup');
-  const fieldNip = $('#fieldNipGroup');
-  const labelNama = $('#labelNamaUser');
-  const labelUser = $('#labelUsername');
-  const inpUsername = $('#regUsername');
-
-  if(role === 'SEKOLAH') {
-    fieldNpsn.style.display = 'block';
-    fieldNip.style.display = 'none';
-    labelNama.textContent = 'Nama Satuan Pendidikan';
-    labelUser.textContent = 'Username (Otomatis NPSN)';
-    inpUsername.readOnly = true;
-    inpUsername.placeholder = 'Terisi otomatis dari NPSN';
-  } else {
-    fieldNpsn.style.display = 'none';
-    fieldNip.style.display = 'block';
-    labelNama.textContent = 'Nama Lengkap & Gelar Pengawas';
-    labelUser.textContent = 'Username Login Pengawas';
-    inpUsername.readOnly = false;
-    inpUsername.placeholder = 'Contoh: ahmad_pengawas';
-  }
-};
-
 window.autoFillSekolahByNpsn = async function(npsn) {
   if(!npsn || npsn.trim().length < 4) return;
-  
   const cleanNpsn = npsn.trim();
   const namaSekolahInput = $('#regNamaSekolah');
   const usernameInput = $('#regUsername');
@@ -1190,18 +1128,14 @@ window.autoFillSekolahByNpsn = async function(npsn) {
   if(usernameInput) usernameInput.value = cleanNpsn;
 
   try {
-    // Kita tembak langsung tanpa menyertakan state.token yang invalid di halaman login
     const response = await fetch(API_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action: 'getSekolah' }) // Tanpa token
+      body: JSON.stringify({ action: 'getSekolah' })
     });
-    
     const res = await response.json();
     const list = Array.isArray(res) ? res : (res.data || res.sekolah || []);
-    
     const found = list.find(s => String(s.npsn || s.NPSN || '').trim() === cleanNpsn);
-    
     if(found) {
       const namaVal = found.nama_sekolah || found.nama_satuan_pendidikan || found.nama || found.sekolah || '';
       if(namaSekolahInput) namaSekolahInput.value = namaVal;
