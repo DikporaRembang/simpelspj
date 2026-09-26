@@ -415,6 +415,9 @@ window.toggleRegisterFields = function() {
 
     if(labelUser) labelUser.textContent = 'Username (Otomatis NPSN)';
     if(inpUsername) {
+      inpUsername.readOnly = true;
+      inpUsername.style.background = '#f1f5f9';
+      inpUsername.style.cursor = 'not-allowed';
       inpUsername.value = $('#regNpsn')?.value.trim() || '';
     }
   } else {
@@ -428,74 +431,10 @@ window.toggleRegisterFields = function() {
 
     if(labelUser) labelUser.textContent = 'Username Login Pengawas (Sinkron NIP)';
     if(inpUsername) {
-      inpUsername.value = $('#regNip')?.value.trim() || '';
-    }
-  }
-};
-
-window.toggleRegisterFields = function() {
-  const roleVal = $('#regRole').value;
-  const fieldNpsn = $('#fieldNpsnGroup');
-  const fieldNip = $('#fieldNipGroup');
-  const fieldNamaPengawas = $('#fieldNamaPengawasGroup');
-  const fieldNamaGroup = $('#fieldNamaGroup');
-  const labelUser = $('#labelUsername');
-  const inpUsername = $('#regUsername');
-
-  if(roleVal === 'SEKOLAH') {
-    if(fieldNpsn) fieldNpsn.style.display = 'block';
-    if(fieldNip) fieldNip.style.display = 'none';
-    if(fieldNamaPengawas) fieldNamaPengawas.style.display = 'none';
-    if(fieldNamaGroup) fieldNamaGroup.style.display = 'block';
-    if(labelUser) labelUser.textContent = 'Username (Otomatis NPSN)';
-    if(inpUsername) {
-      inpUsername.readOnly = true;
-      inpUsername.style.background = '#f1f5f9';
-      inpUsername.style.cursor = 'not-allowed';
-      inpUsername.value = $('#regNpsn')?.value.trim() || '';
-    }
-  } else {
-    if(fieldNpsn) fieldNpsn.style.display = 'none';
-    if(fieldNamaGroup) fieldNamaGroup.style.display = 'none';
-    if(fieldNip) fieldNip.style.display = 'block';
-    if(fieldNamaPengawas) fieldNamaPengawas.style.display = 'block';
-    if(labelUser) labelUser.textContent = 'Username Login Pengawas (Sinkron NIP)';
-    if(inpUsername) {
       inpUsername.readOnly = true;
       inpUsername.style.background = '#f1f5f9';
       inpUsername.style.cursor = 'not-allowed';
       inpUsername.value = $('#regNip')?.value.trim() || '';
-    }
-  }
-};
-
-window.toggleRegisterFields = function() {
-  const roleVal = $('#regRole').value;
-  const fieldNpsn = $('#fieldNpsnGroup');
-  const fieldNip = $('#fieldNipGroup');
-  const labelNama = $('#labelNamaUser');
-  const labelUser = $('#labelUsername');
-  const inpUsername = $('#regUsername');
-
-  if(roleVal === 'SEKOLAH') {
-    if(fieldNpsn) fieldNpsn.style.display = 'block';
-    if(fieldNip) fieldNip.style.display = 'none';
-    if($('#fieldNamaGroup')) $('#fieldNamaGroup').style.display = 'block';
-    if(labelNama) labelNama.textContent = 'Nama Satuan Pendidikan';
-    if(labelUser) labelUser.textContent = 'Username (Otomatis NPSN)';
-    if(inpUsername) {
-      inpUsername.readOnly = true;
-      inpUsername.placeholder = 'Terisi otomatis dari NPSN';
-    }
-  } else {
-    if(fieldNpsn) fieldNpsn.style.display = 'none';
-    if($('#fieldNamaGroup')) $('#fieldNamaGroup').style.display = 'none';
-    if(fieldNip) fieldNip.style.display = 'block';
-    if(labelNama) labelNama.textContent = 'Nama Lengkap & Gelar Pengawas';
-    if(labelUser) labelUser.textContent = 'Username Login Pengawas';
-    if(inpUsername) {
-      inpUsername.readOnly = false;
-      inpUsername.placeholder = 'Contoh: ahmad_pengawas';
     }
   }
 };
