@@ -761,52 +761,16 @@ window.saveImportedTransactions=async function(){
 async function rkasReview(){ if(isDinas()) await renderDinasRkasReview(); else await renderSchoolRkasAndRealisasi(); }
 
 async function renderSchoolRkasAndRealisasi(){
-  const [r,h,real]=await Promise.all([
-    safeApi('rkasAktif',{}, {data:[]}),
-    safeApi('rkasHistory',{}, {data:[]}),
-    safeApi('realisasiRKAS',{}, {data:[]})
+  const [real, h] = await Promise.all([
+    safeApi('realisasiRKAS', {}, { data: [] }),
+    safeApi('rkasHistory', {}, { data: [] })
   ]);
 
-  const items = r.data || [];
-  const realList = real.data || [];
-
-  // Gabungkan data pagu aktif dengan data realisasi berdasarkan kode rekening / id
-  const combinedMap = new Map();
-  items.forEach(x => {
-    combinedMap.set(String(x.id_rkas || x.kode_rekening), {
-      ...x,
-      total_realisasi: 0,
-      sisa_pagu: Number(x.pagu || 0),
-      realisasi_status: 'NORMAL'
-    });
-  });
-
-  realList.forEach(rx => {
-    const key = String(rx.id_rkas || rx.kode_rekening);
-    if(combinedMap.has(key)){
-      const curr = combinedMap.get(key);
-      curr.total_realisasi = Number(rx.total_realisasi || 0);
-      curr.sisa_pagu = Number(rx.sisa_pagu || 0);
-      curr.realisasi_status = rx.status || 'NORMAL';
-    } else {
-      combinedMap.set(key, {
-        id_rkas: rx.id_rkas || rx.kode_rekening,
-        kode_rekening: rx.kode_rekening,
-        uraian: rx.uraian,
-        pagu: rx.pagu,
-        status_rkas: 'APPROVED',
-        total_realisasi: Number(rx.total_realisasi || 0),
-        sisa_pagu: Number(rx.sisa_pagu || 0),
-        realisasi_status: rx.status || 'NORMAL'
-      });
-    }
-  });
-
-  const mergedList = Array.from(combinedMap.values());
+  const mergedList = real.data || [];
   const totalPaguKeseluruhan = mergedList.reduce((sum, x) => sum + Number(x.pagu || 0), 0);
   const totalRealisasiKeseluruhan = mergedList.reduce((sum, x) => sum + Number(x.total_realisasi || 0), 0);
 
-  // Render baris tabel terpadu
+  // Render baris tabel tunggal terpadu
   const rows = mergedList.map((x, idx) => `
     <tr>
       <td style="text-align:center;color:var(--muted);font-weight:600">${idx + 1}</td>
@@ -814,8 +778,8 @@ async function renderSchoolRkasAndRealisasi(){
       <td><b>${esc(x.uraian)}</b></td>
       <td><b>${fmtRupiah(x.pagu)}</b></td>
       <td style="color:var(--success);font-weight:600">${fmtRupiah(x.total_realisasi)}</td>
-      <td style="color:${x.sisa_pagu < 0 ? 'var(--danger)' : 'var(--text)'};font-weight:600">${fmtRupiah(x.sisa_pagu)}</td>
-      <td>${badge(x.status_rkas, 'success')}</td>
+      <td style="color:${Number(x.sisa_pagu) < 0 ? 'var(--danger)' : 'var(--text)'};font-weight:600">${fmtRupiah(x.sisa_pagu)}</td>
+      <td>${badge(x.status_rkas || 'APPROVED', 'success')}</td>
       <td style="text-align:center">
         ${isSchool() ? `
           <div style="display:flex;gap:4px;justify-content:center;flex-wrap:wrap;">
@@ -853,7 +817,7 @@ async function renderSchoolRkasAndRealisasi(){
       </div>
     </div>
 
-    <!-- Panel Tabel Terpadu Pagu & Realisasi -->
+    <!-- Panel Tabel Tunggal Terpadu -->
     <div class="panel">
        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:16px;">
          <h3 class="section-title" style="margin:0">Tabel Monitoring RKAS & Realisasi Terpadu</h3>
@@ -881,7 +845,7 @@ async function renderSchoolRkasAndRealisasi(){
        </div>
     </div>`;
 
-  // Event listener untuk tombol Ubah Pagu
+  // Event listener tombol Ubah
   document.querySelectorAll('.btn-edit-rkas').forEach(btn => {
     btn.onclick = () => {
       openEditRkasItem(
@@ -893,7 +857,7 @@ async function renderSchoolRkasAndRealisasi(){
     };
   });
 
-  // Event listener untuk tombol Hapus Item RKAS
+  // Event listener tombol Hapus
   document.querySelectorAll('.btn-delete-rkas').forEach(btn => {
     btn.onclick = async () => {
       const idRkas = btn.dataset.id;
@@ -908,6 +872,16 @@ async function renderSchoolRkasAndRealisasi(){
     };
   });
 }
+
+// Fungsi pencarian instan
+window.filterRkasTable = function(keyword){
+  const q = keyword.toLowerCase();
+  const trs = document.querySelectorAll('#rkasTableBody tr');
+  trs.forEach(tr => {
+    const text = tr.innerText.toLowerCase();
+    tr.style.display = text.includes(q) ? '' : 'none';
+  });
+};
 
 // Fungsi pencarian instan pada tabel terpadu
 window.filterRkasTable = function(keyword){
