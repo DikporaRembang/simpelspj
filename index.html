@@ -1870,7 +1870,7 @@ async function renderMonitoringGlobalView() {
   
   c.innerHTML = head('Monitoring Global Pagu & SPJ', 'Pemantauan realisasi anggaran dan kelengkapan dokumen SPJ satuan pendidikan') +
     `<div class="toolbar">
-       <input id="searchGlobalMon" placeholder="🔍 Cari berdasarkan nama sekolah atau NPSN..." style="max-width:350px" oninput="filterGlobalMon(this.value)">
+       <input id="searchGlobalMon" placeholder="🔍 Cari berdasarkan nama sekolah, NPSN, atau kecamatan..." style="max-width:350px" oninput="filterGlobalMon(this.value)">
      </div>
      <div class="panel" id="globalMonContent">${loading('Memuat data monitoring global...')}</div>`;
      
@@ -1987,7 +1987,7 @@ window.resetPageAndFilter = function() {
   applyGlobalMonFilterAndSort();
 };
 
-// 3. Logika Gabungan Filter, Sorting, & Pagination
+// 3. Logika Gabungan Filter (Pencarian & Kecamatan), Sorting, & Pagination
 window.applyGlobalMonFilterAndSort = function() {
   const rawData = window._cachedGlobalMon || [];
   const searchInput = $('#searchGlobalMon');
@@ -2089,11 +2089,12 @@ function generateGlobalMonRows(list, offset = 0) {
     </tr>`).join('');
 }
 
+// 6. Integrasi Pencarian Teks ke Filter & Sort Gabungan
 window.filterGlobalMon = function(keyword) {
   resetPageAndFilter();
 };
 
-// Fungsi ekspor Excel untuk laporan monitoring global
+// 7. Fungsi ekspor Excel untuk laporan monitoring global
 window.exportGlobalMonExcel = function(){
   try {
     const tbl = document.getElementById('tableGlobalMon');
@@ -2106,32 +2107,6 @@ window.exportGlobalMonExcel = function(){
   } catch(e) {
     alert('Gagal mengunduh file Excel: ' + e.message);
   }
-};
-
-window.filterGlobalMon = function(keyword) {
-  const q = keyword.toLowerCase();
-  const filtered = (window._cachedGlobalMon || []).filter(x => 
-    String(x.npsn).toLowerCase().includes(q) || 
-    String(x.nama_sekolah).toLowerCase().includes(q) || 
-    String(x.kecamatan).toLowerCase().includes(q) ||
-    String(x.alamat_lengkap).toLowerCase().includes(q)
-  );
-  
-  const body = $('#globalMonBody');
-  if(!body) return;
-  body.innerHTML = filtered.map((x, idx) => `
-    <tr>
-      <td style="text-align:center">${idx + 1}</td>
-      <td><b>${esc(x.npsn)}</b></td>
-      <td>
-        <b>${esc(x.nama_sekolah)}</b><br>
-        <small class="muted">📍 ${esc(x.alamat_lengkap)} (Kec. ${esc(x.kecamatan)})</small>
-      </td>
-      <td><b>${fmtRupiah(x.total_pagu)}</b></td>
-      <td style="color:var(--success);font-weight:600">${fmtRupiah(x.total_realisasi)}</td>
-      <td style="text-align:center">${badge(x.jumlah_dokumen_spj > 0 ? `${x.jumlah_dokumen_spj} File` : 'Belum', x.jumlah_dokumen_spj > 0 ? 'success' : 'warning')}</td>
-      <td style="text-align:center">${badge(x.status_penilaian, x.status_penilaian === 'SELESAI_DINILAI' ? 'success' : 'info')}</td>
-    </tr>`).join('') || emptyRow(7, 'Pencarian tidak ditemukan.');
 };
 
 </script>
