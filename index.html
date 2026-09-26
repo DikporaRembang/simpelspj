@@ -832,24 +832,25 @@ window.openEditRkasItem = function(idRkas, uraianLama, paguLama, kodeLama){
   wrap.innerHTML = `
     <div style="position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:999;padding:16px">
       <div style="background:#fff;padding:28px;border-radius:24px;width:min(100%,480px);box-shadow:0 20px 40px rgba(0,0,0,.2)">
-        <h3 style="margin-top:0;color:var(--primary)">Ubah Rincian RKAS</h3>
+        <h3 style="margin-top:0;color:var(--primary)">Ubah Nilai Pagu RKAS</h3>
+        <p class="muted" style="font-size:0.85rem;margin-bottom:14px;">Kode rekening dan uraian belanja bersifat tetap. Anda hanya dapat memperbarui nominal pagu anggaran.</p>
         <form id="formEditRkas">
           <div class="field">
             <label>Kode Rekening</label>
-            <input id="editKode" value="${esc(kodeLama)}" required>
+            <input id="editKode" value="${esc(kodeLama)}" disabled style="background:#f1f5f9;color:var(--muted);cursor:not-allowed;">
           </div>
           <div class="field">
             <label>Uraian Belanja</label>
-            <textarea id="editUraian" rows="3" required>${esc(uraianLama)}</textarea>
+            <textarea id="editUraian" rows="3" disabled style="background:#f1f5f9;color:var(--muted);cursor:not-allowed;">${esc(uraianLama)}</textarea>
           </div>
           <div class="field">
             <label>Nilai Pagu (Rp)</label>
-            <input id="editPagu" type="number" min="0" step="1" value="${paguLama}" required>
+            <input id="editPagu" type="number" min="0" step="1" value="${paguLama}" required autofocus>
           </div>
           <div id="editRkasMsg"></div>
           <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px">
             <button type="button" class="btn btn-light" onclick="$('#editRkasModal').remove()">Batal</button>
-            <button class="btn btn-primary">Simpan Perubahan</button>
+            <button class="btn btn-primary">Simpan Perubahan Pagu</button>
           </div>
         </form>
       </div>
@@ -860,13 +861,13 @@ window.openEditRkasItem = function(idRkas, uraianLama, paguLama, kodeLama){
     e.preventDefault();
     const payload = {
       id_rkas: idRkas,
-      kode_rekening: $('#editKode').value.trim(),
-      uraian: $('#editUraian').value.trim(),
+      kode_rekening: kodeLama, // Dikunci tetap
+      uraian: uraianLama,      // Dikunci tetap
       pagu: Number($('#editPagu').value)
     };
     try {
       await api('updateItemRKAS', { data: payload });
-      alert('Perubahan rincian RKAS berhasil disimpan.');
+      alert('Nilai pagu RKAS berhasil diperbarui.');
       $('#editRkasModal').remove();
       await renderSchoolRkasAndRealisasi();
     } catch(err) {
