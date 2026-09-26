@@ -555,9 +555,7 @@ async function ensurePeriodeMaster() {
     if (res && res.data && res.data.length > 0) {
       cachedPeriodeList = res.data;
     }
-  } catch (e) {
-    // Gunakan fallback default jika gagal memuat dari server
-  }
+  } catch (e) {}
 }
 
 async function periodeSelect(id = 'periodeSelect', required = true, mode = 'semester') {
@@ -576,7 +574,6 @@ async function periodeSelect(id = 'periodeSelect', required = true, mode = 'seme
     }
     optionsHtml = bulanList.map(p => `<option value="${esc(p.id_periode)}">${esc(p.nama_periode || p.id_periode)}</option>`).join('');
   } else {
-    // Mode Semester (Default)
     let semList = cachedPeriodeList.filter(p => String(p.id_periode).startsWith('SEM'));
     if (!semList.length) {
       semList = [
