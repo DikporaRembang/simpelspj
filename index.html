@@ -527,9 +527,9 @@ async function startApp(){
 }
 
 function renderShell(){
- const menus = ROLE_MENUS[role()] || ROLE_MENUS.DINAS || ROLE_MENUS.SEKOLAH || [];
+  const menus = ROLE_MENUS[role()] || ROLE_MENUS.DINAS || ROLE_MENUS.SEKOLAH || [];
   
-  // --- INI BAGIAN PERUBAHAN UNTUK KECAMATAN & ALAMAT ---
+  // --- INI BAGIAN KECAMATAN & ALAMAT (TETAP AMAN & UTUH) ---
   const userObj = state.user || {};
   let schoolInfoText = '';
 
@@ -539,13 +539,12 @@ function renderShell(){
     const kecVal = userObj.kecamatan ? `Kec. ${userObj.kecamatan}` : '';
     const alamatVal = userObj.alamat_lengkap && userObj.alamat_lengkap !== '-' ? userObj.alamat_lengkap : '';
     
-    // Gabungkan kecamatan dan alamat jika ada
     let details = [kecVal, alamatVal].filter(Boolean).join(' — ');
     schoolInfoText = `<b>${esc(npsnVal)}</b> — ${esc(namaVal)}${details ? ` <small class="muted" style="font-size:0.75rem">(${esc(details)})</small>` : ''}`;
   } else {
     schoolInfoText = `<b>${esc(userObj.username || userObj.npsn || '')}</b> (${esc(userObj.nama_pengguna || role())})`;
   }
-  // -----------------------------------------------------
+  // ---------------------------------------------------------
 
   $('#app').innerHTML=`
     <main class="dashboard">
@@ -567,7 +566,8 @@ function renderShell(){
       <div class="layout">
         <aside class="sidebar" id="sidebar">
           <div class="nav-group">
-            ${menus.map(g=>`<div class="nav-section-title">${esc(g.category)}</div>${g.items.map(n=>`<button class="nav-btn" data-view="${esc(n.id)}">${esc(n.label)}</button>`).join('')}`).join('')}
+            <div class="nav-section-title">MENU UTAMA</div>
+            ${menus.map(n => `<button class="nav-btn" data-view="${esc(n.id)}">${esc(n.label)}</button>`).join('')}
           </div>
           <div class="sidebar-footer">
             <div class="sidebar-footer-item"><img src="logorembang.png" alt="Rembang"><div><span>DINDIKPORA REMBANG</span><small>Kab. Rembang</small></div></div>
@@ -578,9 +578,9 @@ function renderShell(){
       </div>
     </main>`;
     
-  $$('[data-view]').forEach(b=>b.onclick=()=>{loadView(b.dataset.view);$('#sidebar')?.classList.remove('open');});
-  $('#logoutBtn').onclick=logout; 
-  $('#menuBtn').onclick=()=>$('#sidebar')?.classList.toggle('open');
+  $$('[data-view]').forEach(b => b.onclick = () => { loadView(b.dataset.view);$('#sidebar')?.classList.remove('open'); });
+  $('#logoutBtn').onclick = logout; 
+  $('#menuBtn').onclick = () => $('#sidebar')?.classList.toggle('open');
 }
 
 async function loadView(view){
