@@ -198,26 +198,33 @@ const API_URL = 'https://script.google.com/macros/s/AKfycbyWvJXKr1QZ1zwbeJDoULTU
 
 const ROLE_MENUS = {
   DINAS: [
-    { id: 'dashboard', label: 'Dashboard Utama' },
+    { id: 'home', label: 'Dashboard Utama' },
+    { id: 'dinasMonitoring', label: 'Command Center Dinas' },
+    { id: 'monitoringGlobal', label: 'Monitoring Pagu & SPJ' },
     { id: 'sekolah', label: 'Data Satuan Pendidikan' },
     { id: 'penugasan', label: 'Penugasan Pengawas' },
-    { id: 'monitoringGlobal', label: 'Monitoring Pagu & SPJ' },
-    { id: 'rkasDinas', label: 'Verifikasi RKAS' },
-    { id: 'pesan', label: 'Pesan Koordinasi' }
+    { id: 'rkasReview', label: 'Review & Usulan RKAS' },
+    { id: 'crosscheck', label: 'Pemeriksaan SPJ' },
+    { id: 'temuan', label: 'Temuan SPJ' },
+    { id: 'pesan', label: 'Pusat Pesan & Teguran' },
+    { id: 'dbCheck', label: 'Validasi Database' }
   ],
   PENGAWAS: [
-    { id: 'dashboard', label: 'Dashboard Pengawas' },
-    { id: 'sekolahBinaan', label: 'Sekolah Binaan' },
+    { id: 'home', label: 'Beranda Pengawas' },
+    { id: 'penugasan', label: 'Sekolah Binaan' },
     { id: 'monitoringGlobal', label: 'Monitoring Sekolah Binaan' },
-    { id: 'asesmen', label: 'Asesmen & Penilaian' },
-    { id: 'pesan', label: 'Pesan Koordinasi' }
+    { id: 'crosscheck', label: 'Cross-check SPJ' },
+    { id: 'temuan', label: 'Temuan & Verifikasi' },
+    { id: 'asesmen', label: 'Asesmen SPJ' },
+    { id: 'pesan', label: 'Pesan & Feedback' }
   ],
   SEKOLAH: [
-    { id: 'home', label: 'Dashboard Sekolah' },
-    { id: 'dokumenBulanan', label: 'Dokumen SPJ Bulanan' },
+    { id: 'home', label: 'Beranda Utama' },
+    { id: 'rkasReview', label: 'RKAS & Realisasi' },
+    { id: 'transaksi', label: 'Transaksi SPJ' },
+    { id: 'dokumenBulanan', label: 'Dokumen SPJ Semesteran' },
     { id: 'statusSpj', label: 'Status SPJ' },
-    { id: 'transaksi', label: 'Transaksi Belanja' },
-    { id: 'pesan', label: 'Pesan Koordinasi' }
+    { id: 'pesan', label: 'Pesan & Koordinasi' }
   ]
 };
 
