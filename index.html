@@ -1819,6 +1819,80 @@ window.exportRkasExcel = function(){
   }
 };
 
+function renderGlobalMonTable(list) {
+  const area = $('#globalMonContent');
+  if(!area) return;
+
+  const totalPaguAll = list.reduce((sum, x) => sum + Number(x.total_pagu || 0), 0);
+  const totalRealisasiAll = list.reduce((sum, x) => sum + Number(x.total_realisasi || 0), 0);
+
+  const rows = list.map((x, idx) => `
+    <tr>
+      <td style="text-align:center">${idx + 1}</td>
+      <td><b>${esc(x.npsn)}</b></td>
+      <td>
+        <b>${esc(x.nama_sekolah)}</b><br>
+        <small class="muted">📍 ${esc(x.alamat_lengkap)} (Kec. ${esc(x.kecamatan)})</small>
+      </td>
+      <td><b>${fmtRupiah(x.total_pagu)}</b></td>
+      <td style="color:var(--success);font-weight:600">${fmtRupiah(x.total_realisasi)}</td>
+      <td style="text-align:center">${badge(x.jumlah_dokumen_spj > 0 ? `${x.jumlah_dokumen_spj} File` : 'Belum', x.jumlah_dokumen_spj > 0 ? 'success' : 'warning')}</td>
+      <td style="text-align:center">${badge(x.status_penilaian, x.status_penilaian === 'SELESAI_DINILAI' ? 'success' : 'info')}</td>
+    </tr>`).join('');
+
+  area.innerHTML = `
+    <div class="cards" style="margin-bottom:20px">
+      <div class="stat"><small>Jumlah Sekolah Terpantau</small><strong>${fmtNum(list.length)} Sekolah</strong></div>
+      <div class="stat"><small>Akumulasi Pagu</small><strong style="font-size:1.2rem">${fmtRupiah(totalPaguAll)}</strong></div>
+      <div class="stat"><small>Akumulasi Realisasi</small><strong style="font-size:1.2rem;color:var(--success)">${fmtRupiah(totalRealisasiAll)}</strong></div>
+    </div>
+    <div class="table-wrap">
+      <table class="friendly-table" id="tableGlobalMon">
+        <thead>
+          <tr>
+            <th style="width:40px;text-align:center">No</th>
+            <th>NPSN</th>
+            <th>Nama Sekolah, Alamat & Kecamatan</th>
+            <th>Total Pagu (Approved)</th>
+            <th>Realisasi Belanja</th>
+            <th style="text-align:center">Dokumen SPJ Sekolah</th>
+            <th style="text-align:center">Status Penilaian Pengawas</th>
+          </tr>
+        </thead>
+        <tbody id="globalMonBody">${rows || emptyRow(7, 'Tidak ada data monitoring ditemukan.')}</tbody>
+      </table>
+    </div>
+    <div style="margin-top:16px;display:flex;justify-content:flex-end;">
+      <button class="btn btn-success btn-sm" style="background:var(--success);color:#fff;" onclick="exportGlobalMonExcel()">📥 Unduh Laporan Monitoring (.xlsx)</button>
+    </div>`;
+}
+
+window.filterGlobalMon = function(keyword) {
+  const q = keyword.toLowerCase();
+  const filtered = (window._cachedGlobalMon || []).filter(x => 
+    String(x.npsn).toLowerCase().includes(q) || 
+    String(x.nama_sekolah).toLowerCase().includes(q) || 
+    String(x.kecamatan).toLowerCase().includes(q) ||
+    String(x.alamat_lengkap).toLowerCase().includes(q)
+  );
+  
+  const body = $('#globalMonBody');
+  if(!body) return;
+  body.innerHTML = filtered.map((x, idx) => `
+    <tr>
+      <td style="text-align:center">${idx + 1}</td>
+      <td><b>${esc(x.npsn)}</b></td>
+      <td>
+        <b>${esc(x.nama_sekolah)}</b><br>
+        <small class="muted">📍 ${esc(x.alamat_lengkap)} (Kec. ${esc(x.kecamatan)})</small>
+      </td>
+      <td><b>${fmtRupiah(x.total_pagu)}</b></td>
+      <td style="color:var(--success);font-weight:600">${fmtRupiah(x.total_realisasi)}</td>
+      <td style="text-align:center">${badge(x.jumlah_dokumen_spj > 0 ? `${x.jumlah_dokumen_spj} File` : 'Belum', x.jumlah_dokumen_spj > 0 ? 'success' : 'warning')}</td>
+      <td style="text-align:center">${badge(x.status_penilaian, x.status_penilaian === 'SELESAI_DINILAI' ? 'success' : 'info')}</td>
+    </tr>`).join('') || emptyRow(7, 'Pencarian tidak ditemukan.');
+};
+
 </script>
 </body>
 </html>
