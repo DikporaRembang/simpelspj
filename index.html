@@ -801,7 +801,6 @@ async function renderSchoolRkasAndRealisasi(){
        <div class="table-wrap"><table class="friendly-table"><thead><tr><th>Versi</th><th>NPSN</th><th>Status</th><th>Updated</th></tr></thead><tbody>${(h.data||[]).map(x=>`<tr><td>${esc(x.versi_rkas)}</td><td>${esc(x.npsn)}</td><td>${badge(x.status_rkas,'info')}</td><td>${esc(x.updated_at)}</td></tr>`).join('')||emptyRow(4)}</tbody></table></div>
      </div>`;
 }
-
 window.openEditRkasItem = function(idRkas, uraianLama, paguLama, kodeLama){
   const wrap = document.createElement('div');
   wrap.id = 'editRkasModal';
