@@ -543,13 +543,20 @@ async function homeView(){
 async function ensureMasters(){
   if(!state.masterSpj.length){ const r=await safeApi('getMasterSPJ',{},null); state.masterSpj=r?.data||[]; }
 }
-// Cache untuk menyimpan data periode dari server agar tidak bolak-balik request
-let cachedPeriodeList = [];
+// Cache periode dengan fallback data statis yang langsung tampil
+let cachedPeriodeList = [
+  { id_periode: 'SEM-1-2026', nama_periode: 'Semester 1 (Januari - Juni 2026)' },
+  { id_periode: 'SEM-2-2026', nama_periode: 'Semester 2 (Juli - Desember 2026)' }
+];
 
 async function ensurePeriodeMaster() {
-  if (!cachedPeriodeList.length) {
+  try {
     const res = await safeApi('getPeriodeSPJ', {}, null);
-    cachedPeriodeList = res?.data || [];
+    if (res && res.data && res.data.length > 0) {
+      cachedPeriodeList = res.data;
+    }
+  } catch (e) {
+    // Gunakan fallback default jika gagal memuat dari server
   }
 }
 
@@ -557,15 +564,9 @@ async function periodeSelect(id = 'periodeSelect', required = true, mode = 'seme
   await ensurePeriodeMaster();
   
   let optionsHtml = '';
-  const semesters = [
-    { id_periode: 'SEM-1-2026', nama_periode: 'Semester 1 (Januari - Juni 2026)' },
-    { id_periode: 'SEM-2-2026', nama_periode: 'Semester 2 (Juli - Desember 2026)' }
-  ];
-
   const namaBulan = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
 
   if (mode === 'bulan') {
-    // Ambil dari server jika ada, jika tidak gunakan fallback bulan standar
     let bulanList = cachedPeriodeList.filter(p => Number(p.bulan) >= 1 && Number(p.bulan) <= 12);
     if (!bulanList.length) {
       bulanList = namaBulan.map((nama, i) => ({
@@ -575,10 +576,13 @@ async function periodeSelect(id = 'periodeSelect', required = true, mode = 'seme
     }
     optionsHtml = bulanList.map(p => `<option value="${esc(p.id_periode)}">${esc(p.nama_periode || p.id_periode)}</option>`).join('');
   } else {
-    // Mode Semester (Default untuk Dokumen SPJ & Asesmen)
+    // Mode Semester (Default)
     let semList = cachedPeriodeList.filter(p => String(p.id_periode).startsWith('SEM'));
     if (!semList.length) {
-      semList = semesters;
+      semList = [
+        { id_periode: 'SEM-1-2026', nama_periode: 'Semester 1 (Januari - Juni 2026)' },
+        { id_periode: 'SEM-2-2026', nama_periode: 'Semester 2 (Juli - Desember 2026)' }
+      ];
     }
     optionsHtml = semList.map(s => `<option value="${esc(s.id_periode)}">${esc(s.nama_periode || s.id_periode)}</option>`).join('');
   }
