@@ -1554,16 +1554,22 @@ window.editScore=async function(idAsesmen, idIndikator, current){
   try{await api('simpanDetailAsesmen',{data:{id_asesmen:idAsesmen,id_indikator:idIndikator,skor:n,catatan_pengawas:'',status_berlaku:'BERLAKU'}});await openAssessment();}catch(e){alert(errorText(e));}
 };
 
-// Helper identitas sekolah dengan Kecamatan & Alamat Lengkap
+// Helper identitas sekolah yang rapi untuk topbar maupun kartu
 function formatSekolahLabel(npsn, namaSekolah = '', kecamatan = '', alamat = ''){
-  if(!npsn) return '-';
-  const cleanNpsn = esc(npsn);
+  const cleanNpsn = esc(npsn || state.user?.npsn || '');
   const cleanNama = esc(namaSekolah || state.user?.nama_sekolah || 'Satuan Pendidikan');
-  const cleanKec = esc(kecamatan || state.user?.kecamatan ? `Kec. ${kecamatan || state.user?.kecamatan}` : '');
-  const cleanAlamat = esc(alamat || state.user?.alamat_lengkap ? `${alamat || state.user?.alamat_lengkap}` : '');
+  const cleanKec = esc(kecamatan || state.user?.kecamatan || '');
+  const cleanAlamat = esc(alamat || state.user?.alamat_lengkap || '');
   
-  let detailInfo = [cleanKec, cleanAlamat].filter(Boolean).join(' — ');
-  return `<b>${cleanNpsn}</b> — ${cleanNama} ${detailInfo ? `<small class="muted" style="display:block;font-size:0.75rem">📍 ${detailInfo}</small>` : ''}`;
+  // Gabungkan wilayah dan alamat secara rapi
+  let details = [];
+  if(cleanKec) details.push(`Kec. ${cleanKec}`);
+  if(cleanAlamat && cleanAlamat !== '-') details.push(cleanAlamat);
+  const detailStr = details.length > 0 ? ` — ${details.join(', ')}` : '';
+
+  return `<span style="text-align:right;display:inline-block;line-height:1.3;">
+    <b>${cleanNpsn}</b> (${cleanNama})${detailStr ? `<br><small class="muted" style="font-size:0.75rem;">📍 ${detailStr}</small>` : ''}
+  </span>`;
 }
 
 function formatPengawasLabel(idPengawas, namaPengguna = '') {
