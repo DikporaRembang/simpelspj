@@ -2006,24 +2006,25 @@ window.applyGlobalMonFilterAndSort = function() {
     return matchText && matchKec;
   });
 
-  // B. Sorting Data (Disempurnakan agar konversi angka pasti akurat)
+  // B. Sorting Data (Disempurnakan dengan pembersihan format angka)
   result.sort((a, b) => {
     if (sortMode === 'nama_asc') {
       return (a.nama_sekolah || '').localeCompare(b.nama_sekolah || '');
     } else if (sortMode === 'pagu_desc') {
-      const valA = Number(a.total_pagu) || 0;
-      const valB = Number(b.total_pagu) || 0;
+      const valA = typeof num === 'function' ? num(a.total_pagu) : (Number(a.total_pagu) || 0);
+      const valB = typeof num === 'function' ? num(b.total_pagu) : (Number(b.total_pagu) || 0);
       return valB - valA; // Tertinggi ke terendah
     } else if (sortMode === 'realisasi_desc') {
-      const valA = Number(a.total_realisasi) || 0;
-      const valB = Number(b.total_realisasi) || 0;
+      const valA = typeof num === 'function' ? num(a.total_realisasi) : (Number(a.total_realisasi) || 0);
+      const valB = typeof num === 'function' ? num(b.total_realisasi) : (Number(b.total_realisasi) || 0);
       return valB - valA; // Tertinggi ke terendah
     } else if (sortMode === 'npsn_asc') {
       return String(a.npsn).localeCompare(String(b.npsn));
     }
     return 0;
   });
-  // C. Pagination Logic
+
+  // C. Pagination Logic (Diperbaiki agar opsi 'all' merender seluruh data dengan benar)
   const totalData = result.length;
   let paginatedResult = result;
   let totalPages = 1;
@@ -2036,6 +2037,8 @@ window.applyGlobalMonFilterAndSort = function() {
 
     const startIdx = (window._monState.currentPage - 1) * limit;
     paginatedResult = result.slice(startIdx, startIdx + limit);
+  } else {
+    window._monState.currentPage = 1;
   }
 
   // D. Render Baris Tabel
@@ -2052,7 +2055,7 @@ window.applyGlobalMonFilterAndSort = function() {
   if(pagInfo && pageSizeVal !== 'all') {
     pagInfo.innerText = `Halaman ${window._monState.currentPage} dari ${totalPages}`;
   } else if(pagInfo) {
-    pagInfo.innerText = '';
+    pagInfo.innerText = 'Menampilkan seluruh data';
   }
 
   // E. Render Tombol Navigasi Halaman
