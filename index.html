@@ -776,31 +776,38 @@ async function renderSchoolRkasAndRealisasi(){
 async function renderDinasRkasReview(){
   const c = $('#mainContent');
   c.innerHTML = head('Review & Persetujuan RKAS (Dinas)', 'Pusat verifikasi usulan anggaran sekolah') +
-    `<div class="toolbar">
-       <button class="btn btn-sm btn-primary" onclick="loadDinasRkasTab('DIAJUKAN')">Menunggu Review</button>
-       <button class="btn btn-sm btn-light" onclick="loadDinasRkasTab('APPROVED')">Sudah Disetujui (Approved)</button>
+    `<div class="toolbar" style="margin-bottom:16px;">
+       <button class="btn btn-sm btn-primary" id="btnTabDiajukan" onclick="loadDinasRkasTab('DIAJUKAN')">Menunggu Review</button>
+       <button class="btn btn-sm btn-light" id="btnTabApproved" onclick="loadDinasRkasTab('APPROVED')">Sudah Disetujui (Approved)</button>
      </div>
-     <div class="panel" id="dinasRkasPanel">${loading('Memuat data RKAS...')}</div>`;
+     <div class="panel" id="dinasRkasPanel" style="margin-top:0;">${loading('Memuat data RKAS...')}</div>`;
   
   await loadDinasRkasTab('DIAJUKAN');
 }
 
 window.loadDinasRkasTab = async function(statusFilter){
-  // Ubah status tombol aktif
-  $$('.toolbar button').forEach(b => {
-    b.className = b.textContent.includes(statusFilter === 'APPROVED' ? 'Disetujui' : 'Menunggu') ? 'btn btn-sm btn-primary' : 'btn btn-sm btn-light';
-  });
+  const btnDiajukan = $('#btnTabDiajukan');
+  const btnApproved = $('#btnTabApproved');
+  
+  if(btnDiajukan && btnApproved){
+    if(statusFilter === 'DIAJUKAN'){
+      btnDiajukan.className = 'btn btn-sm btn-primary';
+      btnApproved.className = 'btn btn-sm btn-light';
+    } else {
+      btnDiajukan.className = 'btn btn-sm btn-light';
+      btnApproved.className = 'btn btn-sm btn-primary';
+    }
+  }
 
   const panel = $('#dinasRkasPanel');
   if(!panel) return;
   panel.innerHTML = loading();
 
   try {
-    // Memanggil API usulan atau master RKAS dinas
     const res = await safeApi('getSemuaUsulanRKAS', {}, {data:[]});
     const list = res.data || [];
     
-    // Filter berdasarkan status yang dipilih (DIAJUKAN atau APPROVED)
+    // Filter data sesuai status yang dipilih
     const filtered = list.filter(x => String(x.status_rkas || '').toUpperCase() === statusFilter);
 
     const rows = filtered.map(x=>`
@@ -816,7 +823,7 @@ window.loadDinasRkasTab = async function(statusFilter){
             <button class="btn btn-sm btn-primary" onclick="doReviewRkas('${esc(x.versi_rkas)}','APPROVED')">Setujui</button>
             <button class="btn btn-sm btn-light" onclick="doReviewRkas('${esc(x.versi_rkas)}','PERLU_PERBAIKAN')">Perbaiki</button>
             <button class="btn btn-sm btn-danger" onclick="doReviewRkas('${esc(x.versi_rkas)}','DITOLAK')">Tolak</button>
-          ` : `<span class="muted">Telah Disetujui</span>`}
+          ` : `<span class="muted" style="font-weight:600;color:var(--success)">Telah Disetujui</span>`}
         </td>
       </tr>`).join('');
 
