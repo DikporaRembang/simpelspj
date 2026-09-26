@@ -331,16 +331,21 @@ window.showRegisterView = function(e) {
         <input id="regNamaSekolah" required placeholder="Contoh: SD Negeri 1 Rembang">
       </div>
 
-      <!-- BAGIAN NIP PENGAWAS YANG DISINKRONKAN DENGAN USERNAME -->
+      <!-- KOTAK KHUSUS PENGAWAS: NIP & NAMA LENGKAP -->
       <div class="field" id="fieldNipGroup" style="display:none">
         <label>NIP / ID Pengawas</label>
-        <input id="regNip" placeholder="Contoh: 196611061986081001" oninput="$('#regUsername').value = this.value">
+        <input id="regNip" placeholder="Contoh: 196611061986081001" oninput="syncPengawasUsername(this.value)">
         <small class="muted" style="font-size:0.75rem;">Username login akan terisi otomatis dari NIP/ID yang diketik.</small>
+      </div>
+
+      <div class="field" id="fieldNamaPengawasGroup" style="display:none">
+        <label>Nama Lengkap & Gelar Pengawas</label>
+        <input id="regNamaPengawas" placeholder="Contoh: Drs. Ahmad, M.Pd.">
       </div>
 
       <div class="field">
         <label id="labelUsername">Username</label>
-        <input id="regUsername" required placeholder="Username untuk login">
+        <input id="regUsername" required placeholder="Username untuk login" readonly style="background:#f1f5f9; cursor:not-allowed;">
       </div>
 
       <div class="field">
@@ -367,7 +372,7 @@ window.showRegisterView = function(e) {
       username: $('#regUsername').value.trim(),
       password: $('#regPassword').value,
       nip_pengawas: roleVal === 'PENGAWAS' ? $('#regNip').value.trim() : '',
-      nama_pengguna: roleVal === 'PENGAWAS' ? $('#regNamaSekolah').value.trim() : ''
+      nama_pengguna: roleVal === 'PENGAWAS' ? $('#regNamaPengawas').value.trim() : $('#regNamaSekolah').value.trim()
     };
     const msgBox = $('#regMsg');
     msgBox.innerHTML = '<p class="muted">Memproses pendaftaran akun...</p>';
@@ -380,6 +385,49 @@ window.showRegisterView = function(e) {
       msgBox.innerHTML = msg(errorText(err));
     }
   };
+};
+
+window.syncPengawasUsername = function(val) {
+  const usernameField = $('#regUsername');
+  if(usernameField) {
+    usernameField.value = val.trim();
+  }
+};
+
+window.toggleRegisterFields = function() {
+  const roleVal = $('#regRole').value;
+  const fieldNpsn = $('#fieldNpsnGroup');
+  const fieldNip = $('#fieldNipGroup');
+  const fieldNamaPengawas = $('#fieldNamaPengawasGroup');
+  const fieldNamaGroup = $('#fieldNamaGroup');
+  const labelUser = $('#labelUsername');
+  const inpUsername = $('#regUsername');
+
+  if(roleVal === 'SEKOLAH') {
+    if(fieldNpsn) fieldNpsn.style.display = 'block';
+    if(fieldNip) fieldNip.style.display = 'none';
+    if(fieldNamaPengawas) fieldNamaPengawas.style.display = 'none';
+    if(fieldNamaGroup) fieldNamaGroup.style.display = 'block';
+    if(labelUser) labelUser.textContent = 'Username (Otomatis NPSN)';
+    if(inpUsername) {
+      inpUsername.readOnly = true;
+      inpUsername.style.background = '#f1f5f9';
+      inpUsername.style.cursor = 'not-allowed';
+      inpUsername.value = $('#regNpsn')?.value.trim() || '';
+    }
+  } else {
+    if(fieldNpsn) fieldNpsn.style.display = 'none';
+    if(fieldNamaGroup) fieldNamaGroup.style.display = 'none';
+    if(fieldNip) fieldNip.style.display = 'block';
+    if(fieldNamaPengawas) fieldNamaPengawas.style.display = 'block';
+    if(labelUser) labelUser.textContent = 'Username Login Pengawas (Sinkron NIP)';
+    if(inpUsername) {
+      inpUsername.readOnly = true;
+      inpUsername.style.background = '#f1f5f9';
+      inpUsername.style.cursor = 'not-allowed';
+      inpUsername.value = $('#regNip')?.value.trim() || '';
+    }
+  }
 };
 
 window.toggleRegisterFields = function() {
