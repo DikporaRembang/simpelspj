@@ -543,68 +543,67 @@ async function homeView(){
 async function ensureMasters(){
   if(!state.masterSpj.length){ const r=await safeApi('getMasterSPJ',{},null); state.masterSpj=r?.data||[]; }
 }
-async function periodeSelect(id='periodeSelect', required=true, mode='semester') {
-  await ensureMasters();
+// Cache untuk menyimpan data periode dari server agar tidak bolak-balik request
+let cachedPeriodeList = [];
+
+async function ensurePeriodeMaster() {
+  if (!cachedPeriodeList.length) {
+    const res = await safeApi('getPeriodeSPJ', {}, null);
+    cachedPeriodeList = res?.data || [];
+  }
+}
+
+async function periodeSelect(id = 'periodeSelect', required = true, mode = 'semester') {
+  await ensurePeriodeMaster();
   
   let optionsHtml = '';
-  
+  const semesters = [
+    { id_periode: 'SEM-1-2026', nama_periode: 'Semester 1 (Januari - Juni 2026)' },
+    { id_periode: 'SEM-2-2026', nama_periode: 'Semester 2 (Juli - Desember 2026)' }
+  ];
+
+  const namaBulan = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+
   if (mode === 'bulan') {
-    const namaBulan = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
-    let periods = state.periode || [];
-    
-    if (!periods.length) {
-      periods = namaBulan.map((nama, i) => ({
+    // Ambil dari server jika ada, jika tidak gunakan fallback bulan standar
+    let bulanList = cachedPeriodeList.filter(p => Number(p.bulan) >= 1 && Number(p.bulan) <= 12);
+    if (!bulanList.length) {
+      bulanList = namaBulan.map((nama, i) => ({
         id_periode: `PER-2026-${String(i+1).padStart(2,'0')}`,
         nama_periode: `${nama} 2026`
       }));
     }
-    
-    optionsHtml = periods.map(p => `<option value="${esc(p.id_periode)}">${esc(p.nama_periode || p.id_periode)}</option>`).join('');
+    optionsHtml = bulanList.map(p => `<option value="${esc(p.id_periode)}">${esc(p.nama_periode || p.id_periode)}</option>`).join('');
   } else {
-    // Mode Semester (Default)
-    const semesters = [
-      { id_periode: 'SEM-1-2026', nama_periode: 'Semester 1 (Januari - Juni 2026)' },
-      { id_periode: 'SEM-2-2026', nama_periode: 'Semester 2 (Juli - Desember 2026)' }
-    ];
-    optionsHtml = semesters.map(s => `<option value="${esc(s.id_periode)}">${esc(s.nama_periode)}</option>`).join('');
+    // Mode Semester (Default untuk Dokumen SPJ & Asesmen)
+    let semList = cachedPeriodeList.filter(p => String(p.id_periode).startsWith('SEM'));
+    if (!semList.length) {
+      semList = semesters;
+    }
+    optionsHtml = semList.map(s => `<option value="${esc(s.id_periode)}">${esc(s.nama_periode || s.id_periode)}</option>`).join('');
   }
 
-  return `<select id="${id}" ${required ? 'required' : ''}><option value="">-- Pilih Periode SPJ --</option>${optionsHtml}</select>`;
-}
-async function dokumenBulananView(){
-  const periods=await periodeSelect();
-  $('#mainContent').innerHTML=head('Dokumen SPJ Semesteran','Kelola 10 komponen laporan dan status N/A pajak')+
-    `<div class="panel"><div class="form-grid"><div class="field"><label>Periode Semester</label>${periods}</div></div><div id="dokumenArea" style="margin-top:18px">${msg('Pilih periode untuk menampilkan dokumen.','ok')}</div></div>`;
-  $('#periodeSelect').value=state.selectedPeriode;
-  $('#periodeSelect').onchange=()=>{state.selectedPeriode=$('#periodeSelect').value;renderDokumenTable();};
-  if(state.selectedPeriode) await renderDokumenTable();
+  return `<select id="${id}" ${required ? 'required' : ''}><option value="">-- Pilih Periode (${mode === 'bulan' ? 'Bulanan' : 'Semesteran'}) --</option>${optionsHtml}</select>`;
 }
 
-async function renderDokumenTable(){
-  const area=$('#dokumenArea'); if(!area)return;
-  const periode=$('#periodeSelect').value; if(!periode){area.innerHTML=msg('Pilih periode terlebih dahulu.','ok');return;}
-  area.innerHTML=loading();
-  const [docsRes,statusRes,components]=await Promise.all([
-    api('getDokumenSPJ',{idPeriode:periode}),
-    safeApi('statusSPJBulanan',{idPeriode:periode},null),
-    componentList()
-  ]);
-  const docs=docsRes.data||[]; const statuses=statusRes?.data||[];
-  const rows=components.map(c=>{
-    const d=docs.filter(x=>String(x.id_spj)===String(c.id)).sort((a,b)=>Number(b.versi||0)-Number(a.versi||0))[0];
-    const st=statuses.find(x=>String(x.id_spj)===String(c.id));
-    const status=st?.status||d?.status||'BELUM_UPLOAD';
-    let action='';
-    if(status==='N/A') action=badge('N/A (Tidak Ada Transaksi Pajak)','warning');
-    else if(d?.file_url) action=`<a class="btn btn-sm btn-secondary" href="${esc(d.file_url)}" target="_blank" rel="noopener">Lihat File</a> <button class="btn btn-sm btn-light" onclick="openUpload('${esc(c.id)}','${esc(c.nama)}')">Ganti</button>`;
-    else action=`<button class="btn btn-sm btn-primary" onclick="openUpload('${esc(c.id)}','${esc(c.nama)}')">Unggah</button>`;
-    
-    if(['SPJ-04','SPJ-08','SPJ-09'].includes(String(c.id))) action+=` <button class="btn btn-sm btn-light" onclick="openNaModal('${esc(c.id)}','${esc(c.nama)}')">Set N/A</button>`;
-    
-    const type=status==='SUDAH_UPLOAD'||status==='SELESAI_DINILAI'?'success':status==='N/A'||status==='PERLU_PERBAIKAN'?'warning':'danger';
-    return `<tr><td><b>${esc(c.nama)}</b></td><td>${badge(status,type)}</td><td>${action}</td></tr>`;
-  }).join('');
-  area.innerHTML=`<div class="table-wrap"><table class="friendly-table"><thead><tr><th>Komponen Berkas</th><th>Status</th><th>Aksi</th></tr></thead><tbody>${rows||emptyRow(3)}</tbody></table></div>`;
+async function dokumenBulananView(){
+  // Panggil dengan mode 'semester' agar dropdown menampilkan pilihan SEM-1-2026 dan SEM-2-2026
+  const periods = await periodeSelect('periodeSelect', true, 'semester');
+  
+  $('#mainContent').innerHTML = head('Dokumen SPJ Semesteran', 'Kelola 10 komponen laporan dan status N/A pajak') +
+    `<div class="panel">
+       <div class="form-grid">
+         <div class="field"><label>Periode Semester</label>${periods}</div>
+       </div>
+       <div id="dokumenArea" style="margin-top:18px">${msg('Pilih periode untuk menampilkan dokumen.', 'ok')}</div>
+     </div>`;
+     
+  $('#periodeSelect').value = state.selectedPeriode;
+  $('#periodeSelect').onchange = () => {
+    state.selectedPeriode = $('#periodeSelect').value;
+    renderDokumenTable();
+  };
+  if(state.selectedPeriode) await renderDokumenTable();
 }
 
 window.openNaModal = function(idSpj, namaSpj) {
