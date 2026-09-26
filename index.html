@@ -941,6 +941,54 @@ function renderPenugasanTable(list){
   $('#penugasanContent').innerHTML = `<div class="table-wrap"><table class="friendly-table"><thead><tr><th>Pengawas Pembina</th><th>Satuan Pendidikan & Kecamatan</th><th>Mulai</th><th>Selesai</th><th>Status</th></tr></thead><tbody>${rows||emptyRow(5)}</tbody></table></div>`;
 }
 
+// ============================================================================
+// FUNGSI PENGHUBUNG: DISTRIBUSI OTOMATIS PENGAWAS OLEH DINAS
+// ============================================================================
+window.triggerDistribusiPenugasanAdil = async function() {
+  if (!confirm('Jalankan algoritma distribusi penugasan pengawas secara otomatis, adil, dan lintas kecamatan berdasarkan pagu RKAS?')) {
+    return;
+  }
+
+  const resultBox = $('#distribusiResult');
+  if (resultBox) {
+    resultBox.style.display = 'block';
+    resultBox.innerHTML = loading('Menjalankan algoritma distribusi adil lintas kecamatan...');
+  }
+
+  try {
+    const res = await api('generatePenugasanAdil');
+    
+    if (resultBox) {
+      let statistikHtml = `<div style="background:#f0fdf4; border:1px solid #bbf7d0; padding:16px; border-radius:12px; color:var(--success);">
+        <strong>${esc(res.message || 'Distribusi berhasil dijalankan!')}</strong><br><br>
+        <div style="font-size:0.9rem; color:var(--text);"><b>Statistik Beban Pengawas:</b><ul>`;
+      
+      const stats = res.statistik_beban || {};
+      for (const pid in stats) {
+        const item = stats[pid];
+        statistikHtml += `<li>Pengawas (ID: <b>${esc(pid)}</b>): Menangani <b>${item.jumlah_sekolah} sekolah</b> | Total Pagu Binaan: <b>Rp ${Number(item.total_beban || 0).toLocaleString('id-ID')}</b></li>`;
+      }
+      statistikHtml += `</ul></div></div>`;
+      
+      resultBox.innerHTML = statistikHtml;
+    } else {
+      alert(res.message || 'Distribusi penugasan adil berhasil dijalankan!');
+    }
+
+    // Segarkan kembali tabel penugasan setelah berhasil
+    if (typeof penugasanView === 'function') {
+      setTimeout(() => { penugasanView(); }, 2000);
+    }
+
+  } catch (err) {
+    if (resultBox) {
+      resultBox.innerHTML = msg(errorText(err));
+    } else {
+      alert('Gagal: ' + errorText(err));
+    }
+  }
+};
+
 window.openTambahPenugasanModal = function() {
   const wrap = document.createElement('div'); wrap.id = 'penugasanModal';
   wrap.innerHTML = `<div style="position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:999;padding:16px"><div style="background:#fff;padding:28px;border-radius:24px;width:min(100%,480px);box-shadow:0 20px 40px rgba(0,0,0,.2)"><h3 style="margin-top:0;color:var(--primary)">Tambah Penugasan Pengawas</h3><form id="formPenugasanBaru"><div class="field"><label>ID Pengawas</label><input id="penugasanPengawasId" required placeholder="pengawas01"></div><div class="field"><label>NPSN Sekolah</label><input id="penugasanNpsn" required placeholder="20301234"></div><div class="form-grid"><div class="field"><label>Mulai</label><input id="penugasanMulai" type="date" required></div><div class="field"><label>Selesai</label><input id="penugasanSelesai" type="date" required></div></div><div id="penugasanMsg"></div><div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px"><button type="button" class="btn btn-light" onclick="$('#penugasanModal').remove()">Batal</button><button class="btn btn-primary">Simpan</button></div></form></div></div>`;
