@@ -543,20 +543,34 @@ async function homeView(){
 async function ensureMasters(){
   if(!state.masterSpj.length){ const r=await safeApi('getMasterSPJ',{},null); state.masterSpj=r?.data||[]; }
 }
-async function periodeSelect(id='periodeSelect',required=true){
+async function periodeSelect(id='periodeSelect', required=true, mode='semester') {
   await ensureMasters();
-  const semesters = [
-    { id_periode: 'SEM-1-2026', nama_periode: 'Semester 1 (Januari - Juni 2026)' },
-    { id_periode: 'SEM-2-2026', nama_periode: 'Semester 2 (Juli - Desember 2026)' }
-  ];
-  return `<select id="${id}" ${required?'required':''}><option value="">-- Pilih Semester SPJ --</option>${semesters.map(s => `<option value="${esc(s.id_periode)}">${esc(s.nama_periode)}</option>`).join('')}</select>`;
-}
-async function componentList(){
-  await ensureMasters();
-  const active=state.masterSpj.filter(x=>String(x.status_aktif).toUpperCase()!=='NONAKTIF').sort((a,b)=>Number(a.urutan||0)-Number(b.urutan||0));
-  return active.length?active.map(x=>({id:x.id_spj,nama:x.nama_spj})):COMPONENT_FALLBACK;
-}
+  
+  let optionsHtml = '';
+  
+  if (mode === 'bulan') {
+    const namaBulan = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+    let periods = state.periode || [];
+    
+    if (!periods.length) {
+      periods = namaBulan.map((nama, i) => ({
+        id_periode: `PER-2026-${String(i+1).padStart(2,'0')}`,
+        nama_periode: `${nama} 2026`
+      }));
+    }
+    
+    optionsHtml = periods.map(p => `<option value="${esc(p.id_periode)}">${esc(p.nama_periode || p.id_periode)}</option>`).join('');
+  } else {
+    // Mode Semester (Default)
+    const semesters = [
+      { id_periode: 'SEM-1-2026', nama_periode: 'Semester 1 (Januari - Juni 2026)' },
+      { id_periode: 'SEM-2-2026', nama_periode: 'Semester 2 (Juli - Desember 2026)' }
+    ];
+    optionsHtml = semesters.map(s => `<option value="${esc(s.id_periode)}">${esc(s.nama_periode)}</option>`).join('');
+  }
 
+  return `<select id="${id}" ${required ? 'required' : ''}><option value="">-- Pilih Periode SPJ --</option>${optionsHtml}</select>`;
+}
 async function dokumenBulananView(){
   const periods=await periodeSelect();
   $('#mainContent').innerHTML=head('Dokumen SPJ Semesteran','Kelola 10 komponen laporan dan status N/A pajak')+
