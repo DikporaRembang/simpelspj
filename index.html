@@ -1884,6 +1884,53 @@ async function renderMonitoringGlobalView() {
   }
 }
 
+// Fungsi untuk merender struktur tabel dan baris data monitoring global
+window.renderGlobalMonTable = function(dataList) {
+  const container = $('#globalMonContent');
+  if(!container) return;
+  
+  if(!dataList || dataList.length === 0) {
+    container.innerHTML = msg('Belum ada data monitoring yang tersedia.');
+    return;
+  }
+
+  container.innerHTML = `
+    <div class="toolbar" style="justify-content:space-between; margin-bottom:12px;">
+      <span class="muted">Menampilkan <b>${dataList.length}</b> satuan pendidikan</span>
+      <button class="btn btn-light btn-sm" onclick="exportGlobalMonExcel()">📥 Unduh Excel</button>
+    </div>
+    <div class="table-wrap">
+      <table class="friendly-table" id="tableGlobalMon">
+        <thead>
+          <tr>
+            <th style="text-align:center; width:50px;">No</th>
+            <th>NPSN</th>
+            <th>Nama Sekolah & Alamat</th>
+            <th>Total Pagu (RKAS)</th>
+            <th>Total Realisasi</th>
+            <th style="text-align:center;">Dokumen SPJ</th>
+            <th style="text-align:center;">Status Penilaian</th>
+          </tr>
+        </thead>
+        <tbody id="globalMonBody">
+          ${dataList.map((x, idx) => `
+            <tr>
+              <td style="text-align:center">${idx + 1}</td>
+              <td><b>${esc(x.npsn)}</b></td>
+              <td>
+                <b>${esc(x.nama_sekolah)}</b><br>
+                <small class="muted">📍 ${esc(x.alamat_lengkap)} (Kec.${esc(x.kecamatan)})</small>
+              </td>
+              <td><b>${fmtRupiah(x.total_pagu)}</b></td>
+              <td style="color:var(--success);font-weight:600">${fmtRupiah(x.total_realisasi)}</td>
+              <td style="text-align:center">${badge(x.jumlah_dokumen_spj > 0 ? `${x.jumlah_dokumen_spj} File` : 'Belum', x.jumlah_dokumen_spj > 0 ? 'success' : 'warning')}</td>
+              <td style="text-align:center">${badge(x.status_penilaian, x.status_penilaian === 'SELESAI_DINILAI' ? 'success' : 'info')}</td>
+            </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>`;
+};
+
 // Fungsi ekspor Excel untuk laporan monitoring global
 window.exportGlobalMonExcel = function(){
   try {
