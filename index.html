@@ -764,22 +764,37 @@ function renderSekolahTable(list){
   $('#sekolahContent').innerHTML=`<div class="table-wrap"><table class="friendly-table"><thead><tr><th>NPSN</th><th>Sekolah</th><th>Kecamatan</th><th>Alamat</th></tr></thead><tbody>${rows||emptyRow(4)}</tbody></table></div>`;
 }
 
-async function penugasanView(){
-  if(isPengawas()){
-    const c = $('#mainContent');
-    c.innerHTML = head('Sekolah Binaan Saya', 'Pilih sekolah binaan untuk langsung melakukan audit') + `<div class="toolbar"><input id="searchBinaanInput" placeholder="🔍 Cari Sekolah Binaan..." style="max-width:320px"></div><div id="binaanArea" style="margin-top:16px">${loading()}</div>`;
+async function penugasanView() {
+  const c = $('#mainContent');
+
+  // 1. KONDISI KHUSUS AKUN PENGAWAS (Hanya melihat daftar sekolah binaan)
+  if (isPengawas()) {
+    c.innerHTML = head('Sekolah Binaan Saya', 'Pilih sekolah binaan untuk langsung melakukan audit') + 
+                  `<div class="toolbar"><input id="searchBinaanInput" placeholder="🔍 Cari Sekolah Binaan..." style="max-width:320px"></div>
+                   <div id="binaanArea" style="margin-top:16px">${loading()}</div>`;
     try {
-      const res = await api('getPenugasanPengawas'); const list = res.data || [];
-      window._cachedBinaan = list; renderBinaanCards(list);
-      $('#searchBinaanInput').oninput = e => {
-        const q = e.target.value.toLowerCase();
-        renderBinaanCards(window._cachedBinaan.filter(x => String(x.npsn).toLowerCase().includes(q) || String(x.nama_sekolah||'').toLowerCase().includes(q)));
-      };
-    } catch(e) { $('#binaanArea').innerHTML = msg(errorText(e)); }
-  } else if(isDinas()) {
-    const c = $('#mainContent');
-    // PASTIKAN STRUKTUR HTML INI LENGKAP SUPAYA TABEL MUNCUL
-    c.innerHTML = head('Manajemen Penugasan Pengawas', 'Atur pengawas ke sekolah binaan') + 
+      const res = await api('getPenugasanPengawas'); 
+      const list = res.data || [];
+      window._cachedBinaan = list; 
+      renderBinaanCards(list);
+      
+      const searchInput = $('#searchBinaanInput');
+      if(searchInput) {
+        searchInput.oninput = e => {
+          const q = e.target.value.toLowerCase();
+          renderBinaanCards(window._cachedBinaan.filter(x => String(x.npsn).toLowerCase().includes(q) || String(x.nama_sekolah||'').toLowerCase().includes(q)));
+        };
+      }
+    } catch(e) { 
+      const binArea = $('#binaanArea');
+      if(binArea) binArea.innerHTML = msg(errorText(e)); 
+    }
+    return; // Hentikan eksekusi agar tidak turun ke bawah
+  }
+
+  // 2. KONDISI KHUSUS AKUN DINAS (Manajemen penugasan lengkap dengan tombol distribusi)
+  if (isDinas()) {
+    c.innerHTML = head('Manajemen Penugasan Pengawas', 'Atur pengawas ke sekolah binaan') +  
       `<div class="panel">
          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap:wrap; gap:12px;">
            <h3 style="margin:0">Daftar Penugasan Aktif</h3>
@@ -788,7 +803,6 @@ async function penugasanView(){
            </button>
          </div>
          
-         <!-- Kotak hasil statistik distribusi -->
          <div id="distribusiResult" style="display:none; margin-bottom:16px;"></div>
          
          <div class="toolbar" style="margin-top:12px">
@@ -796,26 +810,44 @@ async function penugasanView(){
            <input id="searchPenugasanInput" placeholder="🔍 Cari NPSN atau Pengawas..." style="max-width:320px">
          </div>
          
-         <!-- INI ELEMEN PENTING YANG SEBELUMNYA HILANG -->
          <div id="penugasanContent">${loading()}</div>
        </div>`;
        
     try {
-      const res = await api('getPenugasanPengawas'); const list = res.data || [];
-      window._cachedPenugasan = list; renderPenugasanTable(list);
-      $('#searchPenugasanInput').oninput = e => {
-        const q = e.target.value.toLowerCase();
-        renderPenugasanTable(window._cachedPenugasan.filter(x => String(x.npsn).toLowerCase().includes(q) || String(x.id_pengawas||'').toLowerCase().includes(q) || String(x.nama_pengawas||'').toLowerCase().includes(q)));
-      };
-    } catch(e) { $('#penugasanContent').innerHTML = msg(errorText(e)); }
-  } else {
-    const c = $('#mainContent');
-    c.innerHTML = head('Informasi Penugasan', 'Daftar pengawas pembina sekolah Anda') + `<div class="panel" id="penugasanContent">${loading()}</div>`;
+      const res = await api('getPenugasanPengawas'); 
+      const list = res.data || [];
+      window._cachedPenugasan = list; 
+      renderPenugasanTable(list);
+      
+      const searchP = $('#searchPenugasanInput');
+      if(searchP) {
+        searchP.oninput = e => {
+          const q = e.target.value.toLowerCase();
+          renderPenugasanTable(window._cachedPenugasan.filter(x => String(x.npsn).toLowerCase().includes(q) || String(x.id_pengawas||'').toLowerCase().includes(q) || String(x.nama_pengawas||'').toLowerCase().includes(q)));
+        };
+      }
+    } catch(e) { 
+      const pContent = $('#penugasanContent');
+      if(pContent) pContent.innerHTML = msg(errorText(e)); 
+    }
+    return;
+  }
+
+  // 3. KONDISI UNTUK ROLE LAINNYA (Misal: Sekolah)
+  {
+    c.innerHTML = head('Informasi Penugasan', 'Daftar pengawas pembina sekolah Anda') + 
+                  `<div class="panel" id="penugasanContent">${loading()}</div>`;
     try {
       const r = await api('getPenugasanPengawas');
-      const rows = (r.data||[]).map(x=>`<tr><td>${formatUserLabel(x.id_pengawas, x.nama_pengawas)}</td><td>${esc(x.npsn)}</td><td>${esc(x.tanggal_mulai||'-')}</td><td>${badge(x.status,'info')}</td></tr>`).join('');
-      $('#penugasanContent').innerHTML = `<div class="table-wrap"><table class="friendly-table"><thead><tr><th>Pengawas Pembina</th><th>NPSN</th><th>Mulai</th><th>Status</th></tr></thead><tbody>${rows||emptyRow(4)}</tbody></table></div>`;
-    } catch(e) { $('#penugasanContent').innerHTML = msg(errorText(e)); }
+      const rows = (r.data||[]).map(x=>`<tr><td>${formatUserLabel ? formatUserLabel(x.id_pengawas, x.nama_pengawas) : (x.nama_pengawas || x.id_pengawas)}</td><td>${esc(x.npsn)}</td><td>${esc(x.tanggal_mulai||'-')}</td><td>${badge(x.status,'info')}</td></tr>`).join('');
+      const pContent = $('#penugasanContent');
+      if(pContent) {
+        pContent.innerHTML = `<div class="table-wrap"><table class="friendly-table"><thead><tr><th>Pengawas Pembina</th><th>NPSN</th><th>Mulai</th><th>Status</th></tr></thead><tbody>${rows||emptyRow(4)}</tbody></table></div>`;
+      }
+    } catch(e) { 
+      const pContent = $('#penugasanContent');
+      if(pContent) pContent.innerHTML = msg(errorText(e)); 
+    }
   }
 }
 
