@@ -211,6 +211,7 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
   color:#fff;box-shadow:inset 3px 0 0 var(--gold)
 }
 .nav-btn:hover{background:rgba(255,255,255,.09);color:#fff;transform:translateX(2px)}
+.workflow-note{font-size:.72rem;color:#d9e3e9;background:rgba(255,255,255,.06);padding:9px 11px;border-radius:10px;margin-top:12px;line-height:1.4}
 .sidebar-footer{padding-top:15px;border-top:1px solid rgba(255,255,255,.1);display:flex;flex-direction:column;gap:10px}
 .sidebar-footer-item{display:flex;align-items:center;gap:9px}
 .sidebar-footer-item img{width:32px;height:32px;object-fit:contain;background:#fff;border-radius:7px;padding:2px}
@@ -386,32 +387,30 @@ const API_URL = 'https://script.google.com/macros/s/AKfycbyWvJXKr1QZ1zwbeJDoULTU
 
 const ROLE_MENUS = {
   DINAS: [
-    { id: 'home', label: 'Dashboard Utama' },
-    { id: 'dinasMonitoring', label: 'Command Center Dinas' },
-    { id: 'monitoringGlobal', label: 'Monitoring Pagu & SPJ' },
-    { id: 'sekolah', label: 'Data Satuan Pendidikan' },
-    { id: 'penugasan', label: 'Penugasan Pengawas' },
-    { id: 'rkasReview', label: 'Review & Usulan RKAS' },
-    { id: 'crosscheck', label: 'Pemeriksaan SPJ' },
+    { id: 'home', label: 'Beranda' },
+    { id: 'dinasMonitoring', label: 'Monitoring SPJ' },
+    { id: 'monitoringGlobal', label: 'Rekap Monitoring' },
+    { id: 'sekolah', label: 'Data Sekolah' },
+    { id: 'penugasan', label: 'Data Pengawas' },
+    { id: 'rkasReview', label: 'Referensi RKAS' },
     { id: 'temuan', label: 'Temuan SPJ' },
-    { id: 'pesan', label: 'Pusat Pesan & Teguran' },
+    { id: 'pesan', label: 'Pesan & Koordinasi' },
     { id: 'dbCheck', label: 'Validasi Database' }
   ],
   PENGAWAS: [
-    { id: 'home', label: 'Beranda Pengawas' },
+    { id: 'home', label: 'Beranda' },
     { id: 'penugasan', label: 'Sekolah Binaan' },
-    { id: 'monitoringGlobal', label: 'Monitoring Sekolah Binaan' },
-    { id: 'crosscheck', label: 'Cross-check SPJ' },
+    { id: 'pemeriksaanSPJ', label: 'Pemeriksaan SPJ' },
+    { id: 'crosscheck', label: 'Cross-check' },
     { id: 'temuan', label: 'Temuan & Verifikasi' },
-    { id: 'asesmen', label: 'Asesmen SPJ' },
+    { id: 'asesmen', label: 'Penilaian SPJ' },
     { id: 'pesan', label: 'Pesan & Feedback' }
   ],
   SEKOLAH: [
-    { id: 'home', label: 'Beranda Utama' },
-    { id: 'rkasReview', label: 'RKAS & Realisasi' },
-    { id: 'transaksi', label: 'Transaksi SPJ' },
-    { id: 'dokumenBulanan', label: 'Dokumen SPJ Semesteran' },
-    { id: 'statusSpj', label: 'Status SPJ' },
+    { id: 'home', label: 'Beranda' },
+    { id: 'dokumenBulanan', label: 'SPJ Saya' },
+    { id: 'statusSpj', label: 'Status Pemeriksaan' },
+    { id: 'rkasReview', label: 'Referensi RKAS' },
     { id: 'pesan', label: 'Pesan & Koordinasi' }
   ]
 };
@@ -764,6 +763,7 @@ function renderShell(){
           <div class="nav-group">
             <div class="nav-section-title">MENU UTAMA</div>
             ${menus.map(n => `<button class="nav-btn" data-view="${esc(n.id)}">${esc(n.label)}</button>`).join('')}
+            <div class="workflow-note">SPJ dinilai berdasarkan paket dokumen bulanan. RKAS/ARKAS menjadi acuan.</div>
           </div>
           <div class="sidebar-footer">
             <div class="sidebar-footer-item"><img src="logorembang.png" alt="Rembang"><div><span>DINDIKPORA REMBANG</span><small>Kab. Rembang</small></div></div>
@@ -796,17 +796,70 @@ async function loadView(view){
       dinasMonitoring: dinasMonitoringView, 
       rkasReview: rkasReview, 
       crosscheck: crosscheckView, 
+      pemeriksaanSPJ: pemeriksaanSPJView,
       temuan: temuanView, 
       asesmen: asesmenView, 
       dbCheck: dbCheckView, 
       pesan: pesanView,
-      monitoringGlobal: renderMonitoringGlobalView // <--- DITAMBAHKAN DI SINI
+      monitoringGlobal: renderMonitoringGlobalView,
+      profil: profilView
     }; 
     if(!map[view]) throw new Error('Modul belum tersedia: ' + view); 
     await map[view](); 
   } catch(e) {
     c.innerHTML = msg(errorText(e));
   } 
+}
+
+async function pemeriksaanSPJView(){
+  const c=$('#mainContent');
+  const periods=await periodeSelect('periodeSelect', true, 'bulan');
+  let schoolOptions='';
+  if(isPengawas()){
+    const r=await safeApi('getPenugasanPengawas',{}, {data:[]});
+    const rows=r.data||[];
+    schoolOptions=`<div class="field"><label>Sekolah Binaan</label><select id="npsnSelect"><option value="">-- Pilih Sekolah --</option>${rows.map(x=>`<option value="${esc(x.npsn)}" ${state.selectedNpsn===x.npsn?'selected':''}>${esc(x.npsn)} - ${esc(x.nama_sekolah||x.npsn)}</option>`).join('')}</select></div>`;
+  }
+  c.innerHTML=head('Pemeriksaan SPJ','Mulai dari kelengkapan dokumen, lalu lanjutkan ke cross-check dan temuan')+
+    `<div class="panel"><div class="form-grid"><div class="field"><label>Bulan SPJ</label>${periods}</div>${schoolOptions}</div>
+      <div class="toolbar"><button class="btn btn-primary" id="btnOpenInspection">Buka SPJ</button></div></div>
+      <div id="inspectionArea"></div>`;
+  $('#periodeSelect').value=state.selectedPeriode;
+  $('#btnOpenInspection').onclick=renderInspectionSPJ;
+  if(state.selectedPeriode && state.selectedNpsn) await renderInspectionSPJ();
+}
+
+async function renderInspectionSPJ(){
+  const p=$('#periodeSelect')?.value;
+  const n=isSchool()?ownNpsn():$('#npsnSelect')?.value;
+  const area=$('#inspectionArea');
+  if(!p||!n){if(area)area.innerHTML=msg('Pilih bulan SPJ dan sekolah binaan.');return;}
+  state.selectedPeriode=p;state.selectedNpsn=n;
+  area.innerHTML=loading('Memuat status dokumen...');
+  try{
+    // Endpoint ini memang menerima idPeriode + npsn dan mengembalikan status tiap komponen.
+    const r=await api('statusSPJBulanan',{idPeriode:p,npsn:n});
+    const rows=r.data||[];
+    const uploaded=rows.filter(x=>['SUDAH_UPLOAD','SELESAI_DINILAI','N/A'].includes(String(x.status).toUpperCase())).length;
+    const required=rows.filter(x=>String(x.status).toUpperCase()!=='N/A').length;
+    const done=rows.filter(x=>['SUDAH_UPLOAD','SELESAI_DINILAI'].includes(String(x.status).toUpperCase())).length;
+    const pct=required?Math.round(done/required*100):100;
+    area.innerHTML=`<div class="panel"><div class="panel-head" style="display:flex;justify-content:space-between;gap:15px;align-items:center;flex-wrap:wrap"><div><h3>Status Dokumen</h3><div class="muted">${uploaded} komponen memiliki status tercatat.</div></div><strong style="font-size:1.5rem;color:var(--emerald)">${pct}%</strong></div>
+      <div style="height:9px;background:#e8efec;border-radius:99px;overflow:hidden;margin-bottom:12px"><div style="width:${pct}%;height:100%;background:var(--emerald)"></div></div>
+      <div class="table-wrap"><table class="friendly-table"><thead><tr><th>Komponen SPJ</th><th>Status</th><th>Dokumen</th></tr></thead><tbody>
+      ${rows.map(x=>{const d=x.dokumen||{};return `<tr><td><b>${esc(x.nama_spj||x.id_spj)}</b></td><td>${badge(x.status, x.status==='BELUM_UPLOAD'?'warning':x.status==='N/A'?'warning':x.status==='PERLU_PERBAIKAN'?'danger':'success')}</td><td>${d.file_url?`<button class="btn btn-sm btn-light" onclick="window.open('${esc(d.file_url)}','_blank')">Buka PDF</button>`:'-'}</td></tr>`}).join('')||emptyRow(3)}</tbody></table></div>
+      <div class="toolbar" style="margin-top:16px"><button class="btn btn-primary" onclick="loadView('crosscheck')">Jalankan Cross-check</button><button class="btn btn-secondary" onclick="loadView('temuan')">Lihat Temuan</button><button class="btn btn-light" onclick="loadView('asesmen')">Lanjut Penilaian</button></div></div>`;
+  }catch(e){area.innerHTML=msg(errorText(e));}
+}
+
+function profilView(){
+  const u=state.user||{};
+  $('#mainContent').innerHTML=head('Profil','Informasi akun dan satuan pendidikan')+
+    `<div class="panel"><div class="form-grid">
+      <div><div class="muted">Nama pengguna</div><strong>${esc(u.nama_pengguna||'-')}</strong></div>
+      <div><div class="muted">Peran</div><strong>${esc(u.role||'-')}</strong></div>
+      <div><div class="muted">NPSN / Username</div><strong>${esc(u.npsn||u.username||'-')}</strong></div>
+    </div></div>`;
 }
 
 function setActive(view){ 
@@ -816,10 +869,16 @@ function setActive(view){
   
   let progressHtml = '';
   if(isSchool()){
-    const currentPeriod = state.selectedPeriode || 'SEM-1-2026';
-    const summaryRes = await safeApi('ringkasanSPJBulanan', {idPeriode: currentPeriod}, null);
+    await ensureMasters();
+    await ensurePeriodeMaster();
+    if(!state.selectedPeriode){
+      const monthly = cachedPeriodeList.filter(p => Number(p.bulan) >= 1 && Number(p.bulan) <= 12);
+      state.selectedPeriode = monthly[0]?.id_periode || cachedPeriodeList[0]?.id_periode || '';
+    }
+    const currentPeriod = state.selectedPeriode;
+    const summaryRes = currentPeriod ? await safeApi('ringkasanSPJBulanan', {idPeriode: currentPeriod}, null) : null;
     const ringkasan = summaryRes?.ringkasan || {};
-    const totalKomponen = 10;
+    const totalKomponen = Array.isArray(state.masterSpj) && state.masterSpj.length ? state.masterSpj.filter(x => String(x.status_aktif||'').toUpperCase() === 'AKTIF').length : 10;
     const sudahUpload = (ringkasan.SUDAH_UPLOAD || 0) + (ringkasan.SELESAI_DINILAI || 0);
     const persentase = Math.round((sudahUpload / totalKomponen) * 100);
 
@@ -841,7 +900,7 @@ function setActive(view){
         </div>
         <div style="display:flex; gap:10px; margin-top:20px; flex-wrap:wrap;">
           <button class="btn btn-primary" style="background:var(--gold); color:#0A192F;" onclick="loadView('dokumenBulanan')">📁 Lengkapi Berkas SPJ</button>
-          <button class="btn btn-light" style="background:rgba(255,255,255,0.1); color:#fff; border:1px solid rgba(255,255,255,0.2);" onclick="loadView('transaksi')">💳 Catat Transaksi BKU</button>
+          <button class="btn btn-light" style="background:rgba(255,255,255,0.1); color:#fff; border:1px solid rgba(255,255,255,0.2);" onclick="loadView('statusSpj')">✓ Lihat Status Pemeriksaan</button>
         </div>
       </div>`;
   }
@@ -939,12 +998,12 @@ window.switchPeriodeMode = function(elementId, mode) {
 };
 
 async function dokumenBulananView(){
-  const periods = await periodeSelect('periodeSelect', true, 'semester');
+  const periods = await periodeSelect('periodeSelect', true, 'bulan');
   
-  $('#mainContent').innerHTML = head('Dokumen SPJ Semesteran', 'Kelola 10 komponen laporan dan status N/A pajak') +
+  $('#mainContent').innerHTML = head('SPJ Saya', 'Kelola dokumen SPJ berdasarkan bulan') +
     `<div class="panel">
        <div class="form-grid">
-         <div class="field"><label>Periode Semester</label>${periods}</div>
+         <div class="field"><label>Bulan SPJ</label>${periods}</div>
        </div>
        <div id="dokumenArea" style="margin-top:18px">${msg('Pilih periode untuk menampilkan dokumen.', 'ok')}</div>
      </div>`;
@@ -1001,8 +1060,8 @@ window.openUpload = function(idSpj, namaSpj) {
 
 async function statusSpjView(){
   const periods=await periodeSelect();
-  $('#mainContent').innerHTML=head('Status SPJ Semesteran','Ringkasan kelengkapan dan status pemeriksaan')+
-    `<div class="panel"><div class="form-grid"><div class="field"><label>Periode Semester</label>${periods}</div></div><div id="statusArea" style="margin-top:18px">${msg('Pilih periode.','ok')}</div></div>`;
+  $('#mainContent').innerHTML=head('Status Pemeriksaan','Ringkasan SPJ per bulan')+
+    `<div class="panel"><div class="form-grid"><div class="field"><label>Bulan SPJ</label>${periods}</div></div><div id="statusArea" style="margin-top:18px">${msg('Pilih periode.','ok')}</div></div>`;
   $('#periodeSelect').value=state.selectedPeriode;
   $('#periodeSelect').onchange=()=>{state.selectedPeriode=$('#periodeSelect').value;renderStatus();};
   if(state.selectedPeriode)await renderStatus();
@@ -1020,8 +1079,8 @@ async function renderStatus(){
 
 async function transaksiView(){
   const periods=await periodeSelect();
-  $('#mainContent').innerHTML=head('Transaksi SPJ','Pencatatan BKU dan sinkronisasi anggaran')+
-    `<div class="panel"><div class="form-grid"><div class="field"><label>Periode Semester</label>${periods}</div></div><div id="trxArea" style="margin-top:18px"></div></div>`;
+  $('#mainContent').innerHTML=head('Transaksi SPJ','Pencatatan transaksi sebagai data pendukung pemeriksaan SPJ')+
+    `<div class="panel"><div class="form-grid"><div class="field"><label>Bulan SPJ</label>${periods}</div></div><div id="trxArea" style="margin-top:18px"></div></div>`;
   $('#periodeSelect').value=state.selectedPeriode;
   $('#periodeSelect').onchange=()=>{state.selectedPeriode=$('#periodeSelect').value;renderTransaksi();};
   if(state.selectedPeriode)await renderTransaksi();else $('#trxArea').innerHTML=msg('Pilih periode untuk mulai.','ok');
@@ -1855,7 +1914,7 @@ async function crosscheckView(){
     const r=await safeApi('getSekolah',{}, {data:[]});
     schoolOptions=`<div class="field"><label>Pilih Sekolah Target</label><select id="npsnSelect"><option value="">-- Pilih --</option>${(r.data||[]).map(x=>`<option value="${esc(x.npsn)}" ${state.selectedNpsn===x.npsn?'selected':''}>${esc(x.npsn)} -${esc(x.nama_sekolah)}</option>`).join('')}</select></div>`;
   }
-  $('#mainContent').innerHTML=head('Pemeriksaan SPJ','Jalankan cross-check sistem otomatis')+`<div class="panel"><div class="form-grid"><div class="field"><label>Periode Semester</label>${periods}</div>${schoolOptions}</div><div class="toolbar"><button class="btn btn-primary" onclick="runCrossCheck()">Jalankan Cross-check</button></div><div id="crossResult"></div></div>`;
+  $('#mainContent').innerHTML=head('Cross-check SPJ','Jalankan pemeriksaan otomatis antar dokumen')+`<div class="panel"><div class="form-grid"><div class="field"><label>Bulan SPJ</label>${periods}</div>${schoolOptions}</div><div class="toolbar"><button class="btn btn-primary" onclick="runCrossCheck()">Jalankan Cross-check</button></div><div id="crossResult"></div></div>`;
   $('#periodeSelect').value=state.selectedPeriode;
 }
 window.runCrossCheck=async function(){
@@ -1870,7 +1929,7 @@ async function temuanView(){
     const r=await safeApi('getSekolah',{}, {data:[]});
     schoolOptions=`<div class="field"><label>Pilih Sekolah Target</label><select id="npsnSelect"><option value="">-- Pilih --</option>${(r.data||[]).map(x=>`<option value="${esc(x.npsn)}" ${state.selectedNpsn===x.npsn?'selected':''}>${esc(x.npsn)} -${esc(x.nama_sekolah)}</option>`).join('')}</select></div>`;
   }
-  $('#mainContent').innerHTML=head('Temuan & Verifikasi','Kelola catatan hasil temuan audit')+`<div class="panel"><div class="form-grid"><div class="field"><label>Periode Semester</label>${periods}</div>${schoolOptions}</div><div class="toolbar"><button class="btn btn-primary" onclick="loadFindings()">Tampilkan Temuan</button></div><div id="findingArea">${msg('Pilih periode dan sekolah.','ok')}</div></div>`;
+  $('#mainContent').innerHTML=head('Temuan & Verifikasi','Tindak lanjuti hasil pemeriksaan SPJ bulanan')+`<div class="panel"><div class="form-grid"><div class="field"><label>Bulan SPJ</label>${periods}</div>${schoolOptions}</div><div class="toolbar"><button class="btn btn-primary" onclick="loadFindings()">Tampilkan Temuan</button></div><div id="findingArea">${msg('Pilih periode dan sekolah.','ok')}</div></div>`;
   $('#periodeSelect').value=state.selectedPeriode;
   if(state.selectedNpsn && $('#npsnSelect')) loadFindings();
 }
@@ -1890,7 +1949,7 @@ async function asesmenView(){
     const r=await safeApi('getSekolah',{}, {data:[]});
     schoolOptions=`<div class="field"><label>Pilih Sekolah</label><select id="npsnSelect"><option value="">-- Pilih --</option>${(r.data||[]).map(x=>`<option value="${esc(x.npsn)}" ${state.selectedNpsn===x.npsn?'selected':''}>${esc(x.npsn)} -${esc(x.nama_sekolah)}</option>`).join('')}</select></div>`;
   }
-  $('#mainContent').innerHTML=head('Asesmen SPJ','Lembar penilaian kualitas')+`<div class="panel"><div class="form-grid"><div class="field"><label>Periode Semester</label>${periods}</div>${schoolOptions}</div><div class="toolbar"><button class="btn btn-primary" onclick="openAssessment()">Buka Asesmen</button></div><div id="assessmentArea"></div></div>`;
+  $('#mainContent').innerHTML=head('Penilaian SPJ','Lembar penilaian kualitas SPJ bulanan')+`<div class="panel"><div class="form-grid"><div class="field"><label>Bulan SPJ</label>${periods}</div>${schoolOptions}</div><div class="toolbar"><button class="btn btn-primary" onclick="openAssessment()">Buka Asesmen</button></div><div id="assessmentArea"></div></div>`;
   $('#periodeSelect').value=state.selectedPeriode;
   if(state.selectedNpsn && $('#npsnSelect')) openAssessment();
 }
