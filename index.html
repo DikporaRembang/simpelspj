@@ -768,101 +768,115 @@ async function renderSchoolRkasAndRealisasi(){
   ]);
 
   const items = r.data || [];
-  const totalPaguKeseluruhan = items.reduce((sum, x) => sum + Number(x.pagu || 0), 0);
+  const realList = real.data || [];
 
-  // Render baris tabel ringkas
-  const rows = items.map((x, idx) => `
+  // Gabungkan data pagu aktif dengan data realisasi berdasarkan kode rekening / id
+  const combinedMap = new Map();
+  items.forEach(x => {
+    combinedMap.set(String(x.id_rkas || x.kode_rekening), {
+      ...x,
+      total_realisasi: 0,
+      sisa_pagu: Number(x.pagu || 0),
+      realisasi_status: 'NORMAL'
+    });
+  });
+
+  realList.forEach(rx => {
+    const key = String(rx.id_rkas || rx.kode_rekening);
+    if(combinedMap.has(key)){
+      const curr = combinedMap.get(key);
+      curr.total_realisasi = Number(rx.total_realisasi || 0);
+      curr.sisa_pagu = Number(rx.sisa_pagu || 0);
+      curr.realisasi_status = rx.status || 'NORMAL';
+    } else {
+      combinedMap.set(key, {
+        id_rkas: rx.id_rkas || rx.kode_rekening,
+        kode_rekening: rx.kode_rekening,
+        uraian: rx.uraian,
+        pagu: rx.pagu,
+        status_rkas: 'APPROVED',
+        total_realisasi: Number(rx.total_realisasi || 0),
+        sisa_pagu: Number(rx.sisa_pagu || 0),
+        realisasi_status: rx.status || 'NORMAL'
+      });
+    }
+  });
+
+  const mergedList = Array.from(combinedMap.values());
+  const totalPaguKeseluruhan = mergedList.reduce((sum, x) => sum + Number(x.pagu || 0), 0);
+  const totalRealisasiKeseluruhan = mergedList.reduce((sum, x) => sum + Number(x.total_realisasi || 0), 0);
+
+  // Render baris tabel terpadu
+  const rows = mergedList.map((x, idx) => `
     <tr>
       <td style="text-align:center;color:var(--muted);font-weight:600">${idx + 1}</td>
       <td><code>${esc(x.kode_rekening)}</code></td>
       <td><b>${esc(x.uraian)}</b></td>
       <td><b>${fmtRupiah(x.pagu)}</b></td>
+      <td style="color:var(--success);font-weight:600">${fmtRupiah(x.total_realisasi)}</td>
+      <td style="color:${x.sisa_pagu < 0 ? 'var(--danger)' : 'var(--text)'};font-weight:600">${fmtRupiah(x.sisa_pagu)}</td>
       <td>${badge(x.status_rkas, 'success')}</td>
       <td style="text-align:center">
         ${isSchool() ? `
-          <button class="btn btn-sm btn-light btn-edit-rkas" 
-            data-id="${esc(x.id_rkas || x.kode_rekening)}" 
-            data-uraian="${esc(x.uraian)}" 
-            data-pagu="${Number(x.pagu || 0)}" 
-            data-kode="${esc(x.kode_rekening)}">✏️ Ubah Pagu</button>
+          <div style="display:flex;gap:4px;justify-content:center;flex-wrap:wrap;">
+            <button class="btn btn-sm btn-light btn-edit-rkas" 
+              data-id="${esc(x.id_rkas || x.kode_rekening)}" 
+              data-uraian="${esc(x.uraian)}" 
+              data-pagu="${Number(x.pagu || 0)}" 
+              data-kode="${esc(x.kode_rekening)}">✏️ Ubah</button>
+            <button class="btn btn-sm btn-danger btn-delete-rkas" 
+              data-id="${esc(x.id_rkas || x.kode_rekening)}">🗑️ Hapus</button>
+          </div>
         ` : '-'}
       </td>
     </tr>`).join('');
 
-  const realRows = (real.data || []).map(x => `
-    <tr>
-      <td><code>${esc(x.kode_rekening)}</code></td>
-      <td>${esc(x.uraian)}</td>
-      <td>${fmtRupiah(x.pagu)}</td>
-      <td>${fmtRupiah(x.total_realisasi)}</td>
-      <td>${fmtRupiah(x.sisa_pagu)}</td>
-      <td>${badge(x.status, x.status === 'NORMAL' ? 'success' : 'warning')}</td>
-    </tr>`).join('');
-
-  $('#mainContent').innerHTML = head('RKAS & Realisasi Anggaran', 'Pengelolaan anggaran aktif dan pemantauan realisasi pagu sekolah') +
+  $('#mainContent').innerHTML = head('RKAS & Realisasi Anggaran', 'Pengelolaan pagu aktif, pemantauan realisasi, dan penyesuaian usulan rincian') +
     `
-    <!-- Ringkasan Statistik Kartu -->
+    <!-- Ringkasan Statistik Terpadu -->
     <div class="cards" style="margin-bottom:20px;">
       <div class="stat">
-        <small>Total Pagu Disetujui</small>
-        <strong style="color:var(--success);font-size:1.4rem;">${fmtRupiah(totalPaguKeseluruhan)}</strong>
+        <small>Total Pagu Anggaran</small>
+        <strong style="color:var(--primary);font-size:1.3rem;">${fmtRupiah(totalPaguKeseluruhan)}</strong>
+      </div>
+      <div class="stat">
+        <small>Total Realisasi Belanja</small>
+        <strong style="color:var(--success);font-size:1.3rem;">${fmtRupiah(totalRealisasiKeseluruhan)}</strong>
+      </div>
+      <div class="stat">
+        <small>Sisa Saldo Pagu</small>
+        <strong style="color:var(--primary-2);font-size:1.3rem;">${fmtRupiah(totalPaguKeseluruhan - totalRealisasiKeseluruhan)}</strong>
       </div>
       <div class="stat">
         <small>Jumlah Item Belanja</small>
-        <strong>${fmtNum(items.length)} Item</strong>
-      </div>
-      <div class="stat">
-        <small>Status Anggaran</small>
-        <strong style="font-size:1.1rem;color:var(--primary-2);">Aktif (Approved)</strong>
-      </div>
-      <div class="stat">
-        <small>Wilayah</small>
-        <strong style="font-size:1.1rem;">Rembang</strong>
+        <strong>${fmtNum(mergedList.length)} Item</strong>
       </div>
     </div>
 
-    <!-- Panel Pagu RKAS Aktif -->
+    <!-- Panel Tabel Terpadu Pagu & Realisasi -->
     <div class="panel">
        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:16px;">
-         <h3 class="section-title" style="margin:0">Daftar Pagu RKAS Aktif</h3>
+         <h3 class="section-title" style="margin:0">Tabel Monitoring RKAS & Realisasi Terpadu</h3>
          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
            <input id="searchRkasList" placeholder="🔍 Cari uraian atau kode..." style="padding:8px 12px;border:1px solid var(--border);border-radius:10px;font-size:0.88rem;width:240px;background:#fff;" oninput="filterRkasTable(this.value)">
            ${isSchool() ? '<button class="btn btn-primary btn-sm" onclick="openTambahItemRkasModal()">+ Tambah Usulan Item Baru</button>' : ''}
          </div>
        </div>
-       <div class="table-wrap" style="max-height:500px;overflow-y:auto;">
+       <div class="table-wrap" style="max-height:550px;overflow-y:auto;">
          <table class="friendly-table" style="font-size:0.9rem;">
            <thead style="position:sticky;top:0;z-index:2;background:#f1f5f9;">
              <tr>
-               <th style="width:50px;text-align:center">No</th>
+               <th style="width:40px;text-align:center">No</th>
                <th>Kode Rekening</th>
                <th>Uraian Belanja</th>
-               <th>Nilai Pagu</th>
-               <th>Status</th>
-               <th style="text-align:center">Aksi</th>
-             </tr>
-           </thead>
-           <tbody id="rkasTableBody">${rows || emptyRow(6, 'Belum ada RKAS aktif.')}</tbody>
-         </table>
-       </div>
-    </div>
-
-    <!-- Panel Monitoring Realisasi -->
-    <div class="panel">
-       <h3 class="section-title" style="margin-top:0">Monitoring Realisasi Pagu RKAS</h3>
-       <div class="table-wrap">
-         <table class="friendly-table" style="font-size:0.9rem;">
-           <thead>
-             <tr>
-               <th>Kode</th>
-               <th>Uraian</th>
-               <th>Pagu</th>
+               <th>Pagu Anggaran</th>
                <th>Realisasi</th>
                <th>Sisa Pagu</th>
                <th>Status</th>
+               <th style="text-align:center">Aksi Sekolah</th>
              </tr>
            </thead>
-           <tbody>${realRows || emptyRow(6, 'Belum ada data realisasi.')}</tbody>
+           <tbody id="rkasTableBody">${rows || emptyRow(8, 'Belum ada data RKAS aktif.')}</tbody>
          </table>
        </div>
     </div>`;
@@ -878,7 +892,32 @@ async function renderSchoolRkasAndRealisasi(){
       );
     };
   });
+
+  // Event listener untuk tombol Hapus Item RKAS
+  document.querySelectorAll('.btn-delete-rkas').forEach(btn => {
+    btn.onclick = async () => {
+      const idRkas = btn.dataset.id;
+      if(!confirm('Apakah Anda yakin ingin menghapus item/usulan RKAS ini?')) return;
+      try {
+        await api('hapusDetailRKAS', { idRkas: idRkas });
+        alert('Item RKAS berhasil dihapus.');
+        await renderSchoolRkasAndRealisasi();
+      } catch(err) {
+        alert(errorText(err));
+      }
+    };
+  });
 }
+
+// Fungsi pencarian instan pada tabel terpadu
+window.filterRkasTable = function(keyword){
+  const q = keyword.toLowerCase();
+  const trs = document.querySelectorAll('#rkasTableBody tr');
+  trs.forEach(tr => {
+    const text = tr.innerText.toLowerCase();
+    tr.style.display = text.includes(q) ? '' : 'none';
+  });
+};
 
 // Fungsi bantu pencarian instan pada tabel RKAS agar kian praktis
 window.filterRkasTable = function(keyword){
