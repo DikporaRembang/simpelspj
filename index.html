@@ -582,10 +582,38 @@ function renderShell(){
 }
 
 async function loadView(view){
-  state.view=view; setActive(view);
-  const c=$('#mainContent'); if(!c)return;   c.innerHTML=loading('Memuat modul...');   try{     const map={       home: homeView, dokumenBulanan: dokumenBulananView, statusSpj: statusSpjView,       transaksi: transaksiView, sekolah: sekolahView, penugasan: penugasanView,       dinasMonitoring: dinasMonitoringView, rkasReview: rkasReview, crosscheck: crosscheckView,       temuan: temuanView, asesmen: asesmenView, dbCheck: dbCheckView, pesan: pesanView     };     if(!map[view]) throw new Error('Modul belum tersedia: '+view);     await map[view]();   }catch(e){c.innerHTML=msg(errorText(e));} } function setActive(view){ $$('[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===view)); }
+  state.view = view; 
+  setActive(view);
+  const c = $('#mainContent'); 
+  if(!c) return; 
+  c.innerHTML = loading('Memuat modul...'); 
+  try{ 
+    const map = { 
+      home: homeView, 
+      dokumenBulanan: dokumenBulananView, 
+      statusSpj: statusSpjView, 
+      transaksi: transaksiView, 
+      sekolah: sekolahView, 
+      penugasan: penugasanView, 
+      dinasMonitoring: dinasMonitoringView, 
+      rkasReview: rkasReview, 
+      crosscheck: crosscheckView, 
+      temuan: temuanView, 
+      asesmen: asesmenView, 
+      dbCheck: dbCheckView, 
+      pesan: pesanView,
+      monitoringGlobal: renderMonitoringGlobalView // <--- DITAMBAHKAN DI SINI
+    }; 
+    if(!map[view]) throw new Error('Modul belum tersedia: ' + view); 
+    await map[view](); 
+  } catch(e) {
+    c.innerHTML = msg(errorText(e));
+  } 
+}
 
-async function homeView(){
+function setActive(view){ 
+  $$('[data-view]').forEach(b => b.classList.toggle('active', b.dataset.view === view)); 
+}async function homeView(){
   const userFullLabel = formatUserLabel(state.user?.username || state.user?.npsn, state.user?.nama_pengguna);
   
   let progressHtml = '';
