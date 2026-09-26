@@ -511,7 +511,11 @@ async function logout(){
 
 async function startApp(){
   document.body.style.background='var(--bg)';
-  renderShell(); await loadView('home');
+  renderShell(); 
+  await loadView('home');
+
+  // Tambahkan baris ini di sini:
+  await updateUnreadMessageBadge();
 }
 
 function renderShell(){
@@ -1502,6 +1506,9 @@ async function loadPesanData(){
     const res = await safeApi('getPesan', {}, { data: [] });
     const list = (res.data || []).filter(x => String(x.status_baca || x.status_pesan || 'BELUM').toUpperCase() !== 'SELESAI');
 
+    // 👉 SISIPKAN DI SINI: Memperbarui badge notifikasi secara real-time
+    updateUnreadMessageBadge();
+
     const rows = list.map(x => `
       <tr>
         <td><b>${esc(x.tanggal || 'Hari ini')}</b></td>
@@ -1582,6 +1589,28 @@ window.tutupNotifikasiPesan = async function(idPesan) {
     await loadPesanData();
   } catch(err) { alert(errorText(err)); }
 };
+
+async function updateUnreadMessageBadge() {
+  try {
+    const res = await safeApi('getJumlahPesanBelum', {}, { count: 0 });
+    const count = res.count || 0;
+    const pesanBtn = document.querySelector('[data-view="pesan"]');
+    if (!pesanBtn) return;
+
+    const existingBadge = pesanBtn.querySelector('.pesan-badge');
+    if (existingBadge) existingBadge.remove();
+
+    if (count > 0) {
+      const badgeSpan = document.createElement('span');
+      badgeSpan.className = 'pesan-badge';
+      badgeSpan.style.cssText = 'background:var(--danger); color:#fff; font-size:0.75rem; font-weight:800; padding:2px 8px; border-radius:10px; margin-left:auto;';
+      badgeSpan.textContent = count;
+      pesanBtn.appendChild(badgeSpan);
+    }
+  } catch (e) {
+    console.warn('Gagal memuat jumlah pesan:', e);
+  }
+}
 
 async function crosscheckView(){
   const periods=await periodeSelect(); let schoolOptions='';
