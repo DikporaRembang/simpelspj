@@ -1039,7 +1039,7 @@ function setActive(view){
     await ensurePeriodeMaster();
     const currentPeriod = state.selectedPeriode || (cachedPeriodeList.find(p => Number(p.bulan) === new Date().getMonth()+1)?.id_periode) || cachedPeriodeList[0]?.id_periode || '';
     state.selectedPeriode = currentPeriod;
-    const summaryRes = currentPeriod ? await safeApi('ringkasanSPJBulanan', {idPeriode: currentPeriod}, null) : null;
+    const summaryRes = currentPeriod ? await safeApi('getRingkasanSPJ', {idPeriode: currentPeriod}, null) : null;
     const ringkasan = summaryRes?.ringkasan || {};
     const totalKomponen = Number(ringkasan.total || ringkasan.TOTAL || state.masterSpj.length || 0);
     const sudah = Number(ringkasan.SUDAH_UPLOAD || 0) + Number(ringkasan.SELESAI_DINILAI || 0);
@@ -1058,14 +1058,14 @@ function setActive(view){
         </div>
         <div style="background:rgba(255,255,255,.2);border-radius:10px;height:10px;width:100%;margin-top:18px;overflow:hidden;"><div style="background:var(--gold);width:${persen}%;height:100%;"></div></div>
         <div style="display:flex;gap:9px;margin-top:18px;flex-wrap:wrap;">
-          <button class="btn btn-primary" style="background:var(--gold);color:#0A192F;" onclick="loadView('dokumenBulanan')">📁 Kelola SPJ Bulan Ini</button>
+          <button class="btn btn-primary" style="background:var(--gold);color:#0A192F;" onclick="loadView('dokumenBulanan')">📁 Kelola SPJ Periode Ini</button>
           <button class="btn btn-light" style="background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.25);" onclick="loadView('statusSpj')">🔎 Lihat Status</button>
         </div>
       </div>
       <div class="cards">
         <div class="stat"><small>Dokumen tersedia</small><strong>${fmtNum(sudah)}</strong></div>
         <div class="stat"><small>Perlu diperbaiki</small><strong>-</strong></div>
-        <div class="stat"><small>Periode</small><strong style="font-size:1rem">Bulanan</strong></div>
+        <div class="stat"><small>Frekuensi</small><strong style="font-size:1rem">Sesuai pengaturan DINAS</strong></div>
         <div class="stat"><small>Status akun</small><strong style="color:var(--success)">Aktif</strong></div>
       </div>
       <div class="panel">
@@ -1081,21 +1081,21 @@ function setActive(view){
       <div class="panel" style="background:linear-gradient(135deg,#0A192F,#174B43);color:#fff;">
         <span class="badge" style="background:var(--gold);color:#0A192F;font-weight:800;">PENGAWAS</span>
         <h2 style="margin:10px 0 5px;color:#fff;">Pemeriksaan SPJ Sekolah Binaan</h2>
-        <p style="color:#dbe5e0;margin:0;">Pilih sekolah dan bulan, lalu periksa dokumen dalam satu alur.</p>
+        <p style="color:#dbe5e0;margin:0;">Pilih sekolah dan periode, lalu periksa dokumen dalam satu alur.</p>
         <div style="display:flex;gap:9px;flex-wrap:wrap;margin-top:18px;">
           <button class="btn btn-primary" style="background:var(--gold);color:#0A192F;" onclick="loadView('penugasan')">🏫 Pilih Sekolah Binaan</button>
           <button class="btn btn-light" style="background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.25);" onclick="loadView('crosscheck')">🔎 Mulai Pemeriksaan</button>
         </div>
       </div>
       <div class="cards">
-        <div class="stat"><small>Fokus kerja</small><strong style="font-size:1rem">SPJ Bulanan</strong></div>
+        <div class="stat"><small>Fokus kerja</small><strong style="font-size:1rem">SPJ sesuai periode</strong></div>
         <div class="stat"><small>Dokumen</small><strong>Periksa</strong></div>
         <div class="stat"><small>Temuan</small><strong>Tindak lanjut</strong></div>
         <div class="stat"><small>Penilaian</small><strong>Finalisasi</strong></div>
       </div>
       <div class="panel"><h3 class="section-title" style="margin-top:0">Alur pemeriksaan</h3><div class="form-grid">
         <div><b>1. Pilih sekolah</b><p class="muted">Gunakan daftar sekolah binaan yang menjadi tanggung jawab Anda.</p></div>
-        <div><b>2. Pilih bulan</b><p class="muted">Pemeriksaan dilakukan per bulan agar mudah ditelusuri.</p></div>
+        <div><b>2. Pilih periode</b><p class="muted">Pemeriksaan dilakukan per bulan agar mudah ditelusuri.</p></div>
         <div><b>3. Periksa & beri catatan</b><p class="muted">Sistem membantu menemukan ketidaksesuaian antar dokumen.</p></div>
         <div><b>4. Nilai & finalisasi</b><p class="muted">Nilai akhir dihitung sistem dari indikator yang telah diperiksa.</p></div>
       </div></div>`;
@@ -1111,7 +1111,7 @@ function setActive(view){
         </div>
       </div>
       <div class="cards">
-        <div class="stat"><small>Monitoring</small><strong>SPJ Bulanan</strong></div>
+        <div class="stat"><small>Monitoring</small><strong>SPJ sesuai periode</strong></div>
         <div class="stat"><small>Satuan pendidikan</small><strong>Data Sekolah</strong></div>
         <div class="stat"><small>Pengawas</small><strong>Penugasan</strong></div>
         <div class="stat"><small>Tindak lanjut</small><strong>Temuan</strong></div>
@@ -1140,46 +1140,31 @@ async function ensurePeriodeMaster() {
 }
 
 async function periodeSelect(id = 'periodeSelect', required = true, defaultMode = 'bulan') {
-  await ensurePeriodeMaster();
-  
-  const userRole = role();
-  const allowToggle = (userRole === 'DINAS' || userRole === 'PENGAWAS' || userRole === 'SEKOLAH');
-  
-  let currentMode = sessionStorage.getItem('simpel_periode_mode_' + id) || defaultMode;
-
-  const namaBulan = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
-
-  let optionsHtml = '';
-  if (currentMode === 'semester') {
-    let semList = cachedPeriodeList.filter(p => String(p.id_periode).startsWith('SEM') || p.jenis === 'semester');
-    optionsHtml = semList.map(s => `<option value="${esc(s.id_periode)}">${esc(s.nama_periode || s.id_periode)}</option>`).join('');
-  } else {
-    let bulanList = cachedPeriodeList.filter(p => Number(p.bulan) >= 1 && Number(p.bulan) <= 12 || String(p.id_periode).includes('PER'));
-    optionsHtml = bulanList.map(p => `<option value="${esc(p.id_periode)}">${esc(p.nama_periode || p.id_periode)}</option>`).join('');
-  }
-
-  let switcherHtml = '';
-  if (allowToggle) {
-    switcherHtml = `
-      <div style="display:flex; gap:6px; margin-bottom:6px; align-items:center;">
-        <span style="font-size:0.78rem; font-weight:700; color:var(--muted);">Mode SPJ:</span>
-        <button type="button" class="btn btn-sm ${currentMode==='bulan'?'btn-primary':'btn-light'}" style="padding:4px 10px; min-height:28px; font-size:0.75rem;" onclick="switchPeriodeMode('${id}','bulan')">Bulanan</button>
-        <button type="button" class="btn btn-sm ${currentMode==='semester'?'btn-primary':'btn-light'}" style="padding:4px 10px; min-height:28px; font-size:0.75rem;" onclick="switchPeriodeMode('${id}','semester')">Semesteran</button>
-      </div>`;
-  }
-
+  const res = await safeApi('getPeriodeSPJ', {}, {data:[],frekuensi:'',tahun:new Date().getFullYear()});
+  cachedPeriodeList = Array.isArray(res?.data) ? res.data : [];
+  const configuredFrequency = String(res?.frekuensi || '').toUpperCase();
+  const configuredYear = Number(res?.tahun || new Date().getFullYear());
+  const periods = cachedPeriodeList.filter(p =>
+    Number(p.tahun) === configuredYear &&
+    (!configuredFrequency || String(p.frekuensi || '').toUpperCase() === configuredFrequency)
+  );
+  const label = configuredFrequency === 'BULANAN' ? 'Bulanan' : configuredFrequency === 'TRIWULANAN' ? 'Triwulanan' : configuredFrequency === 'SEMESTERAN' ? 'Semesteran' : 'Belum dikonfigurasi';
+  const optionsHtml = periods.map(p => `<option value="${esc(p.id_periode)}">${esc(p.nama_periode || p.id_periode)}</option>`).join('');
   return `
     <div>
-      ${switcherHtml}
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
+        <span class="badge badge-info">Frekuensi: ${esc(label)}</span>
+        ${configuredYear ? `<span class="muted">Tahun ${esc(configuredYear)}</span>` : ''}
+      </div>
       <select id="${id}" ${required ? 'required' : ''}>
-        <option value="">-- Pilih Periode (${currentMode === 'bulan' ? 'Bulanan' : 'Semesteran'}) --</option>
-        ${optionsHtml || '<option value="" disabled>Periode belum dikonfigurasi oleh Dinas</option>'}
+        <option value="">-- Pilih Periode --</option>
+        ${optionsHtml || '<option value="" disabled>DINAS belum menentukan frekuensi penilaian</option>'}
       </select>
     </div>`;
 }
 
 window.switchPeriodeMode = function(elementId, mode) {
-  sessionStorage.setItem('simpel_periode_mode_' + elementId, mode);
+  // Dipertahankan untuk kompatibilitas lama; mode sekarang ditentukan DINAS secara global.
   state.selectedPeriode = '';
   loadView(state.view);
 };
@@ -1421,7 +1406,7 @@ async function renderStatus(){
   const p=$('#periodeSelect').value, area=$('#statusArea'); if(!p)return;
   area.innerHTML=loading();
   try{
-    const [s,r]=await Promise.all([api('statusSPJBulanan',{idPeriode:p}),safeApi('ringkasanSPJBulanan',{idPeriode:p},null)]);
+    const [s,r]=await Promise.all([api('getStatusSPJ',{idPeriode:p}),safeApi('getRingkasanSPJ',{idPeriode:p},null)]);
     const rows=(s.data||[]).map(x=>`<tr><td>${esc(x.nama_spj||x.id_spj)}</td><td>${badge(x.status,x.status==='SELESAI_DINILAI'?'success':x.status==='N/A'?'warning':'info')}</td></tr>`).join('');
     area.innerHTML=`<div class="cards"><div class="stat"><small>Total Komponen</small><strong>${fmtNum(s.data?.length||0)}</strong></div><div class="stat"><small>Status Umum</small><strong style="font-size:1.1rem">${esc(r?.status_umum||'-')}</strong></div></div><div class="table-wrap"><table class="friendly-table"><thead><tr><th>Komponen</th><th>Status</th></tr></thead><tbody>${rows||emptyRow(2)}</tbody></table></div>`;
   }catch(e){area.innerHTML=msg(errorText(e));}
@@ -1615,7 +1600,7 @@ window.parseExcelBku=async function(){
       `<div class="cards" style="margin:12px 0"><div class="stat"><small>NPSN</small><strong style="font-size:1rem">${esc(meta.npsn||'Tidak terbaca')}</strong></div><div class="stat"><small>Sekolah</small><strong style="font-size:1rem">${esc(meta.nama||'-')}</strong></div><div class="stat"><small>Periode</small><strong style="font-size:1rem">${esc(months.join(', '))}</strong></div><div class="stat"><small>PDF</small><strong style="font-size:1rem">${pdf?'Dipilih':'Belum dipilih'}</strong></div></div>`+
       `<div class="panel" style="margin:12px 0"><b>Validasi:</b> ${fmtNum(data.length)} transaksi • ${fmtNum(withCode)} memiliki kode rekening • ${fmtNum(tax)} transaksi terkait pajak • ${fmtNum(excluded)} baris non-transaksi dilewati.</div>`+
       `<div class="table-wrap"><table class="friendly-table"><thead><tr><th>Tanggal</th><th>Kegiatan</th><th>Kode Rekening</th><th>No. Bukti</th><th>Uraian</th><th>Nilai</th></tr></thead><tbody>${data.slice(0,80).map(x=>`<tr><td>${esc(x.tanggal_transaksi)}</td><td>${esc(x.kode_kegiatan)}</td><td><code>${esc(x.kode_rekening||'-')}</code></td><td>${esc(x.nomor_bukti||'-')}</td><td>${esc(x.uraian_transaksi)}</td><td><b>${fmtRupiah(x.nilai_transaksi)}</b></td></tr>`).join('')}</tbody></table></div>`+
-      `<div class="muted" style="margin-top:8px">Menampilkan maksimal 80 baris preview. Simpan akan memetakan transaksi ke periode bulanan, mencari RKAS berdasarkan NPSN + kode rekening, mendeteksi duplikasi, dan menyimpan PDF sebagai bukti.</div>`+
+      `<div class="muted" style="margin-top:8px">Menampilkan maksimal 80 baris preview. Simpan akan memetakan transaksi ke periode penilaian yang dipilih DINAS (Bulanan/Triwulanan/Semesteran) berdasarkan tanggal transaksi, mencari RKAS berdasarkan NPSN + kode rekening, mendeteksi duplikasi, dan menyimpan satu PDF BKU sebagai dokumen sumber yang direferensikan pada periode terkait.</div>`+
       `<button class="btn btn-primary" style="margin-top:12px" onclick="saveImportedTransactions()">Simpan BKU ke Sistem</button>`;
   }catch(err){out.innerHTML=msg(errorText(err),'error');state.bkuImport=null;state.importedTransactions=[];}
   finally{btn.disabled=false;btn.textContent='Baca & Validasi BKU';}
@@ -1635,7 +1620,7 @@ window.saveImportedTransactions=async function(){
     const r=await api('importBkuBundle',{data:{npsn:imp.meta?.npsn||'',source_name:imp.fileName,transactions:state.importedTransactions,pdf_name:imp.pdfFile?.name||'',pdf_mime:imp.pdfFile?.type||'application/pdf',pdf_base64:pdfBase64}});
     const periodText=(r.periods||[]).map(x=>x.nama_periode).join(', ');
     out.innerHTML=msg(`Impor BKU selesai. ${fmtNum(r.total_inserted||0)} transaksi baru, ${fmtNum(r.total_skipped_duplicate||0)} duplikat dilewati.`,'ok')+
-      `<div class="panel" style="margin-top:12px"><b>${esc(r.nama_sekolah||'Sekolah')}</b> • NPSN ${esc(r.npsn||'-')}<br>Periode: ${esc(periodText||'-')}<br>RKAS cocok: ${fmtNum(r.rkas_matched||0)} • RKAS belum cocok: ${fmtNum(r.rkas_unmatched||0)}<br>PDF: ${r.pdf?.uploaded?'tersimpan dan ditautkan ke periode':'tidak diunggah'}</div>`+
+      `<div class="panel" style="margin-top:12px"><b>${esc(r.nama_sekolah||'Sekolah')}</b> • NPSN ${esc(r.npsn||'-')}<br>Periode: ${esc(periodText||'-')}<br>RKAS cocok: ${fmtNum(r.rkas_matched||0)} • RKAS belum cocok: ${fmtNum(r.rkas_unmatched||0)}<br>PDF: ${r.pdf?.uploaded?'tersimpan sebagai satu dokumen sumber dan direferensikan ke periode terkait':'tidak diunggah'}</div>`+
       `${(r.warnings||[]).length?msg(`Peringatan: ${esc((r.warnings||[]).join(' | '))}`,'warning'):''}`+
       `<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px"><button class="btn btn-light" onclick="$('#excelModal').remove()">Tutup</button><button class="btn btn-primary" onclick="renderTransaksi(1);$('#excelModal').remove()">Lihat Transaksi</button></div>`;
     state.bkuImport=null;state.importedTransactions=[];
@@ -2477,7 +2462,7 @@ async function crosscheckView(){
 window.runCrossCheck=async function(){
   const p=$('#periodeSelect').value,n=isSchool()?ownNpsn():$('#npsnSelect')?.value;if(!p||!n){alert('Periode & sekolah wajib dipilih.');return;}
   state.selectedPeriode=p;state.selectedNpsn=n;const out=$('#crossResult');out.innerHTML=loading();
-  try{const r=await api('jalankanCrossCheckSPJBulanan',{idPeriode:p,npsn:n});out.innerHTML=msg(`Cross-check selesai. ${r.jumlah_baru||r.count||0} temuan baru.`,'ok');}catch(e){out.innerHTML=msg(errorText(e));}
+  try{const r=await api('jalankanCrossCheckSPJ',{idPeriode:p,npsn:n});out.innerHTML=msg(`Cross-check selesai. ${r.jumlah_baru||r.count||0} temuan baru.`,'ok');}catch(e){out.innerHTML=msg(errorText(e));}
 };
 
 async function temuanView(){
@@ -2503,19 +2488,46 @@ window.verifyFinding=async function(id){
 
 async function masterSpjView(){
   if(!isDinas()){ $('#mainContent').innerHTML=msg('Modul ini hanya dapat digunakan oleh DINAS.'); return; }
-  const [spjRes, indRes, perRes] = await Promise.all([
+  const [cfg, spjRes, indRes, perRes] = await Promise.all([
+    api('getFrekuensiPenilaianSPJ').catch(()=>({frekuensi:'',tahun:new Date().getFullYear()})),
     api('getMasterSPJ'), api('getMasterIndikator'), api('getPeriodeSPJ')
   ]);
   const spj=spjRes.data||[], inds=indRes.data||[], pers=perRes.data||[];
-  const spjRows=spj.map(x=>`<tr><td>${esc(x.kode_spj)}</td><td>${esc(x.nama_spj)}</td><td>${esc(x.urutan)}</td><td>${badge(x.status_aktif,x.status_aktif==='AKTIF'?'success':'warning')}</td><td><button class="btn btn-sm btn-light" onclick="editMasterSpj(${JSON.stringify(x).replace(/</g,'\\u003c')})">Edit</button></td></tr>`).join('');
-  const indRows=inds.map(x=>`<tr><td>${esc(x.kode_indikator)}</td><td>${esc(x.nama_indikator)}</td><td>${esc(spj.find(s=>String(s.id_spj)===String(x.id_spj))?.nama_spj||x.id_spj)}</td><td>${esc(x.bobot)}</td><td>${badge(x.status_aktif,x.status_aktif==='AKTIF'?'success':'warning')}</td><td><button class="btn btn-sm btn-light" onclick="editMasterIndikator(${JSON.stringify(x).replace(/</g,'\\u003c')})">Edit</button></td></tr>`).join('');
-  const perRows=pers.map(x=>`<tr><td>${esc(x.nama_periode)}</td><td>${esc(x.tahun)}</td><td>${esc(x.bulan||'Semester')}</td><td>${esc(x.tanggal_mulai||'-')}</td><td>${esc(x.tanggal_selesai||'-')}</td><td>${badge(x.status,x.status==='AKTIF'?'success':'warning')}</td><td><button class="btn btn-sm btn-light" onclick="editPeriodeSpj(${JSON.stringify(x).replace(/</g,'\\u003c')})">Edit</button></td></tr>`).join('');
-  $('#mainContent').innerHTML=head('Master SPJ & Periode','Konfigurasi resmi yang menjadi dasar dokumen dan penilaian SPJ')+
-    `<div class="panel"><div class="toolbar"><button class="btn btn-primary" onclick="openMasterSpjForm()">+ Master SPJ</button><button class="btn btn-primary" onclick="openMasterIndikatorForm()">+ Indikator</button><button class="btn btn-primary" onclick="openPeriodeSpjForm()">+ Periode</button></div></div>`+
-    `<div class="panel"><h3 class="section-title" style="margin-top:0">Master SPJ (${spj.length})</h3><div class="table-wrap"><table class="friendly-table"><thead><tr><th>Kode</th><th>Nama</th><th>Urutan</th><th>Status</th><th>Aksi</th></tr></thead><tbody>${spjRows||emptyRow(5)}</tbody></table></div></div>`+
-    `<div class="panel"><h3 class="section-title" style="margin-top:0">Master Indikator (${inds.length})</h3><div class="table-wrap"><table class="friendly-table"><thead><tr><th>Kode</th><th>Indikator</th><th>Komponen SPJ</th><th>Bobot</th><th>Status</th><th>Aksi</th></tr></thead><tbody>${indRows||emptyRow(6)}</tbody></table></div></div>`+
-    `<div class="panel"><h3 class="section-title" style="margin-top:0">Periode SPJ (${pers.length})</h3><div class="table-wrap"><table class="friendly-table"><thead><tr><th>Nama</th><th>Tahun</th><th>Bulan</th><th>Mulai</th><th>Selesai</th><th>Status</th><th>Aksi</th></tr></thead><tbody>${perRows||emptyRow(7)}</tbody></table></div></div>`;
+  const freq=String(cfg.frekuensi||perRes.frekuensi||'').toUpperCase();
+  const year=Number(cfg.tahun||perRes.tahun||new Date().getFullYear());
+  const freqLabel=freq==='BULANAN'?'Bulanan':freq==='TRIWULANAN'?'Triwulanan':freq==='SEMESTERAN'?'Semesteran':'Belum dipilih';
+  const activePeriods=pers.filter(x=>Number(x.tahun)===year && String(x.frekuensi||'').toUpperCase()===freq);
+  const spjRows=spj.map(x=>`<tr><td>${esc(x.kode_spj)}</td><td>${esc(x.nama_spj)}</td><td>${esc(x.urutan)}</td><td>${badge(x.status_aktif,x.status_aktif==='AKTIF'?'success':'warning')}</td></tr>`).join('');
+  const indRows=inds.map(x=>`<tr><td>${esc(x.kode_indikator)}</td><td>${esc(x.nama_indikator)}</td><td>${esc(spj.find(s=>String(s.id_spj)===String(x.id_spj))?.nama_spj||x.id_spj)}</td><td>${esc(x.bobot)}</td><td>${badge(x.status_aktif,x.status_aktif==='AKTIF'?'success':'warning')}</td></tr>`).join('');
+  const perRows=activePeriods.map(x=>`<tr><td>${esc(x.nama_periode)}</td><td>${esc(x.tahun)}</td><td>${esc(x.frekuensi||freqLabel)}</td><td>${esc(x.tanggal_mulai||'-')}</td><td>${esc(x.tanggal_selesai||'-')}</td><td>${badge(x.status,x.status==='AKTIF'?'success':'warning')}</td></tr>`).join('');
+  $('#mainContent').innerHTML=head('Pengaturan Penilaian SPJ','DINAS cukup menentukan frekuensi penilaian. Periode dibuat otomatis oleh sistem.')+
+    `<div class="panel" style="border-top:4px solid var(--primary)">
+      <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap">
+        <div><h3 style="margin:0">Frekuensi Penilaian</h3><div class="muted" style="margin-top:5px">Pilih sekali untuk tahun penilaian. Sistem otomatis membuat periode dan menggunakannya untuk seluruh sekolah.</div></div>
+        <span class="badge badge-${freq?'success':'warning'}">${esc(freqLabel)} • ${esc(year)}</span>
+      </div>
+      <div class="form-grid" style="margin-top:16px">
+        <div class="field"><label>Tahun Penilaian</label><input id="cfgTahunPenilaian" type="number" min="2020" max="2100" value="${esc(year)}"></div>
+        <div class="field"><label>Frekuensi</label><select id="cfgFrekuensiPenilaian">
+          <option value="BULANAN" ${freq==='BULANAN'?'selected':''}>Bulanan</option>
+          <option value="TRIWULANAN" ${freq==='TRIWULANAN'?'selected':''}>Triwulanan</option>
+          <option value="SEMESTERAN" ${freq==='SEMESTERAN'?'selected':''}>Semesteran</option>
+        </select></div>
+      </div>
+      <div class="toolbar"><button class="btn btn-primary" id="btnSimpanFrekuensi">✓ Terapkan Frekuensi</button></div>
+      <div id="freqConfigMsg"></div>
+    </div>`+
+    `<div class="panel"><h3 class="section-title" style="margin-top:0">Periode Otomatis (${activePeriods.length})</h3><div class="muted" style="margin-bottom:10px">Sistem membuat ${freq==='BULANAN'?'12 periode bulanan':freq==='TRIWULANAN'?'4 periode triwulanan':freq==='SEMESTERAN'?'2 periode semesteran':'periode sesuai pilihan'} tanpa input tanggal manual.</div><div class="table-wrap"><table class="friendly-table"><thead><tr><th>Nama</th><th>Tahun</th><th>Frekuensi</th><th>Mulai</th><th>Selesai</th><th>Status</th></tr></thead><tbody>${perRows||emptyRow(6)}</tbody></table></div></div>`+
+    `<div class="panel"><h3 class="section-title" style="margin-top:0">Standar Pemeriksaan Otomatis</h3><p class="muted">Indikator dan rule pemeriksaan dijalankan oleh Risk Engine. DINAS tidak perlu membuat indikator atau rule satu per satu.</p><div class="table-wrap"><table class="friendly-table"><thead><tr><th>Kode</th><th>Indikator</th><th>Komponen</th><th>Bobot</th><th>Status</th></tr></thead><tbody>${indRows||emptyRow(5)}</tbody></table></div></div>`+
+    `<div class="panel"><h3 class="section-title" style="margin-top:0">Master SPJ Sistem</h3><div class="table-wrap"><table class="friendly-table"><thead><tr><th>Kode</th><th>Nama</th><th>Urutan</th><th>Status</th></tr></thead><tbody>${spjRows||emptyRow(4)}</tbody></table></div></div>`;
+  $('#btnSimpanFrekuensi').onclick=async()=>{
+    const tahun=$('#cfgTahunPenilaian').value, frekuensi=$('#cfgFrekuensiPenilaian').value;
+    const out=$('#freqConfigMsg'); out.innerHTML=loading('Membuat periode otomatis...');
+    try { const r=await api('simpanFrekuensiPenilaianSPJ',{data:{tahun,frekuensi}}); toast(`Frekuensi ${frekuensi.toLowerCase()} berhasil diterapkan untuk ${tahun}.`,'ok',3500); await masterSpjView(); }
+    catch(e){ out.innerHTML=msg(errorText(e),'error'); }
+  };
 }
+
 function openMasterModal(title,body,onSubmit){
   const wrap=document.createElement('div'); wrap.id='masterConfigModal';
   wrap.innerHTML=`<div style="position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:1000;padding:16px"><div style="background:#fff;padding:24px;border-radius:20px;width:min(100%,620px);max-height:90vh;overflow:auto"><h3 style="margin-top:0">${title}</h3><form id="masterConfigForm">${body}<div id="masterConfigMsg"></div><div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px"><button type="button" class="btn btn-light" onclick="$('#masterConfigModal')?.remove()">Batal</button><button class="btn btn-primary">Simpan</button></div></form></div></div>`;
