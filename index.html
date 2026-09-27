@@ -1370,28 +1370,26 @@ async function transaksiView(){
   if(state.selectedPeriode)await renderTransaksi();else $('#trxArea').innerHTML=msg('Pilih periode untuk mulai.','ok');
 }
 
-async function renderTransaksi(){
+async function renderTransaksi(page=1){
   const p=$('#periodeSelect').value, area=$('#trxArea');if(!p)return;
-  area.innerHTML=loading();
-  const r=await api('getTransaksiSPJ',{idPeriode:p}); const rows=r.data||[];
-  let groupedRows='';
-  let groupCount=0;
-  if(isSchool()){
-    const groups = groupBelanjaClient(rows, 'nilai_transaksi');
-    groupCount=groups.length;
-    groupedRows = groups.flatMap(g => [kelompokHeaderHtml(g,'Subtotal SPJ'), ...g.items.map(x=>`<tr><td>${esc(x.tanggal_transaksi)}</td><td><code>${esc(x.kode_rekening)}</code></td><td>${esc(x.uraian_transaksi)}</td><td>${esc(x.nomor_bukti)}</td><td><b>${fmtRupiah(x.nilai_transaksi)}</b></td><td>${badge(x.status_crosscheck||'PERLU_VERIFIKASI','info')}</td></tr>`)]).join('');
-  } else {
-    const schools = groupBelanjaBySekolahClient(rows, 'nilai_transaksi');
-    groupedRows = schools.map(sc=>{
-      const groups=groupBelanjaClient(sc.items,'nilai_transaksi'); groupCount += groups.length;
-      return [sekolahHeaderHtml(sc,'Total SPJ'), ...groups.flatMap(g=>[kelompokHeaderHtml(g,'Subtotal SPJ'), ...g.items.map(x=>`<tr><td>${esc(x.tanggal_transaksi)}</td><td><b>${esc(x.npsn)}</b></td><td><code>${esc(x.kode_rekening)}</code></td><td>${esc(x.uraian_transaksi)}</td><td>${esc(x.nomor_bukti)}</td><td><b>${fmtRupiah(x.nilai_transaksi)}</b></td><td>${badge(x.status_crosscheck||'PERLU_VERIFIKASI','info')}</td></tr>`)] )].join('');
-    }).join('');
-  }
-  const totalSPJ = rows.reduce((sum,x)=>sum+Number(x.nilai_transaksi||0),0);
-  const canEdit = isSchool();
-  area.innerHTML=`${canEdit?`<div class="toolbar"><button class="btn btn-primary" onclick="openTransactionForm()">+ Tambah Transaksi</button><button class="btn btn-light" onclick="openExcelImport()">Impor Excel BKU</button></div>`:''}<div class="panel" style="margin:12px 0;background:rgba(23,75,67,.05)"><b>Total SPJ: ${fmtRupiah(totalSPJ)}</b><span class="muted" style="margin-left:10px">${fmtNum(rows.length)} transaksi • ${fmtNum(groupCount)} kelompok • ${isDinas()?'seluruh sekolah':isPengawas()?'seluruh sekolah binaan':''}</span></div><div class="table-wrap"><table class="friendly-table"><thead><tr>${isSchool()?'<th>Tanggal</th><th>Kode Rekening</th>':'<th>Tanggal</th><th>NPSN</th><th>Kode Rekening</th>'}<th>Uraian</th><th>No. Bukti</th><th>Nilai</th><th>Status</th></tr></thead><tbody>${groupedRows||emptyRow(isSchool()?6:7)}</tbody></table></div>`;
+  area.innerHTML=loading(page===1?'Memuat transaksi SPJ...':'Memuat halaman transaksi...');
+  try{
+    const r=await api('getTransaksiSPJPaged',{idPeriode:p,page,limit:50});
+    const rows=r.data||[];
+    let groupedRows='', groupCount=0;
+    if(isSchool()){
+      const groups=groupBelanjaClient(rows,'nilai_transaksi');
+      groupCount=groups.length;
+      groupedRows=groups.flatMap(g=>[kelompokHeaderHtml(g,'Subtotal SPJ'),...g.items.map(x=>`<tr><td>${esc(x.tanggal_transaksi)}</td><td><code>${esc(x.kode_rekening)}</code></td><td>${esc(x.uraian_transaksi)}</td><td>${esc(x.nomor_bukti)}</td><td><b>${fmtRupiah(x.nilai_transaksi)}</b></td><td>${badge(x.status_crosscheck||'PERLU_VERIFIKASI','info')}</td></tr>`)]).join('');
+    }else{
+      const schools=groupBelanjaBySekolahClient(rows,'nilai_transaksi');
+      groupedRows=schools.map(sc=>{const groups=groupBelanjaClient(sc.items,'nilai_transaksi');groupCount+=groups.length;return [sekolahHeaderHtml(sc,'Total halaman'),...groups.flatMap(g=>[kelompokHeaderHtml(g,'Subtotal SPJ'),...g.items.map(x=>`<tr><td>${esc(x.tanggal_transaksi)}</td><td><b>${esc(x.npsn)}</b></td><td><code>${esc(x.kode_rekening)}</code></td><td>${esc(x.uraian_transaksi)}</td><td>${esc(x.nomor_bukti)}</td><td><b>${fmtRupiah(x.nilai_transaksi)}</b></td><td>${badge(x.status_crosscheck||'PERLU_VERIFIKASI','info')}</td></tr>`)] )].join('')}).join('');
+    }
+    const pager=`<div class="toolbar" style="justify-content:space-between;align-items:center;margin-top:14px;gap:8px;flex-wrap:wrap;"><span class="muted">Menampilkan ${r.total?((r.page-1)*r.limit+1):0}–${Math.min(r.page*r.limit,r.total)} dari ${fmtNum(r.total)} transaksi</span><div style="display:flex;gap:6px;align-items:center;"><button class="btn btn-sm btn-light" ${r.page<=1?'disabled':''} onclick="renderTransaksi(${r.page-1})">‹ Sebelumnya</button><span class="muted">Halaman ${r.page} / ${r.totalPages}</span><button class="btn btn-sm btn-light" ${r.page>=r.totalPages?'disabled':''} onclick="renderTransaksi(${r.page+1})">Berikutnya ›</button></div></div>`;
+    const canEdit=isSchool();
+    area.innerHTML=`${canEdit?`<div class="toolbar"><button class="btn btn-primary" onclick="openTransactionForm()">+ Tambah Transaksi</button><button class="btn btn-light" onclick="openExcelImport()">Impor Excel BKU</button></div>`:''}<div class="panel" style="margin:12px 0;background:rgba(23,75,67,.05)"><b>Total SPJ Periode: ${fmtRupiah(r.totalNilai||0)}</b><span class="muted" style="margin-left:10px">${fmtNum(r.total)} transaksi • ${fmtNum(groupCount)} kelompok • ditampilkan 50 per halaman</span></div><div class="table-wrap"><table class="friendly-table"><thead><tr>${isSchool()?'<th>Tanggal</th><th>Kode Rekening</th>':'<th>Tanggal</th><th>NPSN</th><th>Kode Rekening</th>'}<th>Uraian</th><th>No. Bukti</th><th>Nilai</th><th>Status</th></tr></thead><tbody>${groupedRows||emptyRow(isSchool()?6:7)}</tbody></table></div>${pager}`;
+  }catch(err){area.innerHTML=msg(errorText(err));}
 }
-
 
 window.openTransactionForm=function(){
   const p=$('#periodeSelect').value;if(!p)return;
@@ -1445,20 +1443,29 @@ window.saveImportedTransactions=async function(){
 async function rkasReview(){ if(isDinas()) await renderDinasRkasReview(); else if(isPengawas()) await renderPengawasRkasAndRealisasi(); else await renderSchoolRkasAndRealisasi(); }
 
 async function renderPengawasRkasAndRealisasi(){
-  const r = await safeApi('realisasiRKAS', {}, {data:[], sekolah:[]});
-  const list = r.data || [];
-  const schools = groupBelanjaBySekolahClient(list, 'pagu');
-  const totalPagu = list.reduce((a,x)=>a+Number(x.pagu||0),0);
-  const totalReal = list.reduce((a,x)=>a+Number(x.total_realisasi||0),0);
-  const rows = schools.map(sc=>{
-    const groups=groupBelanjaClient(sc.items,'pagu');
-    let no=0;
-    return [sekolahHeaderHtml(sc,'Total Pagu'), ...groups.flatMap(g=>[kelompokHeaderHtml(g,'Subtotal Pagu'), ...g.items.map(x=>`<tr><td>${++no}</td><td><code>${esc(x.kode_rekening)}</code></td><td>${esc(x.uraian)}</td><td><b>${fmtRupiah(x.pagu)}</b></td><td>${fmtRupiah(x.total_realisasi)}</td><td>${fmtRupiah(x.sisa_pagu)}</td><td>${badge(x.status_rkas||'APPROVED','success')}</td></tr>`)] )].join('');
-  }).join('');
-  $('#mainContent').innerHTML=head('RKAS & Realisasi Sekolah Binaan','Pengawas melihat seluruh sekolah yang sedang menjadi binaan berdasarkan penugasan aktif; data bersifat baca saja.')+
-    `<div class="cards" style="margin-bottom:20px;"><div class="stat"><small>Total Pagu Sekolah Binaan</small><strong>${fmtRupiah(totalPagu)}</strong></div><div class="stat"><small>Total Realisasi SPJ</small><strong style="color:var(--success)">${fmtRupiah(totalReal)}</strong></div><div class="stat"><small>Sisa Pagu</small><strong>${fmtRupiah(totalPagu-totalReal)}</strong></div><div class="stat"><small>Jumlah Sekolah</small><strong>${fmtNum(schools.length)}</strong></div></div>`+
-    `<div class="panel"><div class="table-wrap"><table class="friendly-table"><thead><tr><th>No</th><th>Kode</th><th>Uraian</th><th>Pagu</th><th>Realisasi</th><th>Sisa</th><th>Status</th></tr></thead><tbody>${rows||emptyRow(7,'Belum ada RKAS APPROVED pada sekolah binaan.')}</tbody></table></div></div>`;
+  $('#mainContent').innerHTML=head('RKAS & Realisasi Sekolah Binaan','Ringkasan sekolah dimuat lebih dahulu. Detail RKAS hanya diambil saat sekolah dibuka.')+`<div id="pengawasRkasArea">${loading('Memuat ringkasan sekolah binaan...')}</div>`;
+  try{
+    const r=await api('getRekapPaguRKAS');
+    const list=r.data||[];
+    const totalPagu=list.reduce((a,x)=>a+Number(x.total_pagu||0),0);
+    $('#pengawasRkasArea').innerHTML=`<div class="cards" style="margin-bottom:20px;"><div class="stat"><small>Jumlah Sekolah Binaan</small><strong>${fmtNum(list.length)}</strong></div><div class="stat"><small>Total Pagu RKAS</small><strong>${fmtRupiah(totalPagu)}</strong></div></div><div class="panel"><div class="muted" style="margin-bottom:12px;">Pilih sekolah untuk memuat rincian RKAS. Data detail tidak dikirim sebelum diperlukan.</div><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;">${list.map(x=>`<div class="panel" style="margin:0;border:1px solid var(--border);"><div style="font-weight:850;color:var(--primary);">🏫 ${esc(x.nama_sekolah||'-')}</div><div class="muted" style="margin:4px 0 10px;">NPSN <b>${esc(x.npsn)}</b> • Kecamatan ${esc(x.kecamatan||'-')}</div><div style="font-weight:800;margin-bottom:10px;">Pagu: ${fmtRupiah(x.total_pagu||0)}</div><button class="btn btn-sm btn-primary" onclick="openPengawasRkasDetail('${esc(x.npsn)}')">Lihat RKAS</button></div>`).join('')||msg('Belum ada sekolah binaan.','ok')}</div></div>`;
+  }catch(e){$('#pengawasRkasArea').innerHTML=msg(errorText(e));}
 }
+
+window.openPengawasRkasDetail=async function(npsn,page=1){
+  const area=$('#pengawasRkasArea'); if(!area)return;
+  area.innerHTML=loading('Memuat rincian RKAS sekolah...');
+  try{
+    const r=await api('getRealisasiRKASPaged',{npsn,page,limit:50});
+    const rows=r.data||[];
+    const groups=groupBelanjaClient(rows,'pagu');
+    let no=(r.page-1)*r.limit;
+    const detail=groups.flatMap(g=>[kelompokHeaderHtml(g,'Subtotal Pagu'),...g.items.map(x=>`<tr><td>${++no}</td><td><code>${esc(x.kode_rekening)}</code></td><td>${esc(x.uraian)}</td><td><b>${fmtRupiah(x.pagu)}</b></td><td>${fmtRupiah(x.total_realisasi)}</td><td>${fmtRupiah(x.sisa_pagu)}</td><td>${badge(x.status_rkas||'APPROVED','success')}</td></tr>`)]).join('');
+    const first=rows[0]||{};
+    const pager=`<div class="toolbar" style="justify-content:space-between;align-items:center;margin-top:14px;"><button class="btn btn-sm btn-light" onclick="renderPengawasRkasAndRealisasi()">← Kembali ke sekolah</button><div style="display:flex;gap:6px;align-items:center;"><button class="btn btn-sm btn-light" ${r.page<=1?'disabled':''} onclick="openPengawasRkasDetail('${esc(npsn)}',${r.page-1})">‹</button><span class="muted">Halaman ${r.page}/${r.totalPages} • ${fmtNum(r.total)} item</span><button class="btn btn-sm btn-light" ${r.page>=r.totalPages?'disabled':''} onclick="openPengawasRkasDetail('${esc(npsn)}',${r.page+1})">›</button></div></div>`;
+    area.innerHTML=`<div class="panel" style="margin-bottom:14px;"><b>🏫 ${esc(first.nama_sekolah||npsn)}</b><div class="muted">NPSN ${esc(npsn)} • Kecamatan ${esc(first.kecamatan||'-')}</div><div style="margin-top:8px;display:flex;gap:18px;flex-wrap:wrap;"><span>Total Pagu: <b>${fmtRupiah(r.totalPagu||0)}</b></span><span>Realisasi: <b>${fmtRupiah(r.totalRealisasi||0)}</b></span><span>Sisa: <b>${fmtRupiah(r.totalSisa||0)}</b></span></div></div><div class="table-wrap"><table class="friendly-table"><thead><tr><th>No</th><th>Kode</th><th>Uraian</th><th>Pagu</th><th>Realisasi</th><th>Sisa</th><th>Status</th></tr></thead><tbody>${detail||emptyRow(7,'Belum ada RKAS APPROVED.')}</tbody></table></div>${pager}`;
+  }catch(e){area.innerHTML=msg(errorText(e));}
+};
 
 async function renderSchoolRkasAndRealisasi(){
   const [real, h] = await Promise.all([
