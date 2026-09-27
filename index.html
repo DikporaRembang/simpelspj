@@ -1681,6 +1681,19 @@ window.filterAndRenderDinasRkasTable = function(){
     </div>`;
 };
 
+window.doReviewRkas = async function(versiRkas, keputusan) {
+  if (!versiRkas || !keputusan) return;
+  const label = keputusan === 'APPROVED' ? 'menyetujui' : (keputusan === 'DITOLAK' ? 'menolak' : 'meminta perbaikan');
+  if (!confirm(`Yakin ${label} RKAS versi ${versiRkas}?`)) return;
+  try {
+    await api('reviewRKAS', { versiRkas, keputusan });
+    alert('Keputusan review RKAS berhasil disimpan.');
+    await dinasRkasView();
+  } catch (err) {
+    alert(errorText(err));
+  }
+};
+
 async function sekolahView(){
   const c=$('#mainContent');
   c.innerHTML=head('Daftar Sekolah','Data satuan pendidikan terdaftar')+`<div class="toolbar"><input id="searchSekolahInput" placeholder="🔍 Cari berdasarkan Nama Sekolah atau NPSN..." style="max-width:350px"></div><div class="panel" id="sekolahContent">${loading()}</div>`;
@@ -2018,7 +2031,7 @@ window.openBalasPesanModal = function(idPesan, pengirimAsal) {
     const isi = $('#balasIsi').value.trim(); if(!isi) return;
     try {
       await api('kirimPesan', { data: { tujuan: pengirimAsal, subjek: 'Re: Balasan Pesan', isi_pesan: isi, kategori: 'BALASAN', pengirim: state.user?.username || ownNpsn() } });
-      if(idPesan) { await api('updateStatusPesan', { id_pesan: idPesan, status_pesan: 'SELESAI' }); }
+      if(idPesan) { await api('updateStatusPesan', { id_pesan: idPesan, status_baca: 'SELESAI' }); }
       alert('Balasan terkirim dan notifikasi telah diselesaikan.'); $('#balasModal').remove(); await loadPesanData();
     } catch(err) { $('#balasMsg').innerHTML = msg(errorText(err)); }
   };
@@ -2027,7 +2040,7 @@ window.openBalasPesanModal = function(idPesan, pengirimAsal) {
 window.tutupNotifikasiPesan = async function(idPesan) {
   if(!idPesan || !confirm('Tandai pesan ini sudah selesai dan hilangkan dari daftar notifikasi aktif?')) return;
   try {
-    await api('updateStatusPesan', { id_pesan: idPesan, status_pesan: 'SELESAI' });
+    await api('updateStatusPesan', { id_pesan: idPesan, status_baca: 'SELESAI' });
     await loadPesanData();
   } catch(err) { alert(errorText(err)); }
 };
