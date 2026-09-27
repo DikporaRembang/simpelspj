@@ -181,6 +181,10 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
 .message{padding:13px 15px;border-radius:12px;margin:14px 0;font-size:.9rem;line-height:1.5}
 .message.error{background:#FFF4F2;color:var(--danger);border:1px solid #F5C6C2}
 .message.ok{background:#F0FAF4;color:var(--success);border:1px solid #BFE5CB}
+.toast-host{position:fixed;right:18px;bottom:18px;z-index:10050;display:flex;flex-direction:column;gap:9px;pointer-events:none;max-width:min(92vw,390px)}
+.toast{background:#102A43;color:#fff;padding:12px 15px;border-radius:12px;box-shadow:0 14px 34px rgba(16,42,67,.22);font-size:.88rem;line-height:1.45;opacity:0;transform:translateY(8px);animation:toastIn .2s ease forwards}
+.toast.ok{background:#087F5B}.toast.error{background:#B42318}.toast.warning{background:#A16207}
+@keyframes toastIn{to{opacity:1;transform:translateY(0)}}
 
 /* ================= DASHBOARD SHELL ================= */
 .dashboard{min-height:100vh}
@@ -452,6 +456,12 @@ function formatUserLabel(username, namaPengguna){
 }
 
 function errorText(err){ return err?.message || String(err || 'Terjadi kesalahan.'); }
+function toast(text,type='ok',duration=3200){
+  let host=$('#toastHost');
+  if(!host){ host=document.createElement('div');host.id='toastHost';host.className='toast-host';document.body.appendChild(host); }
+  const el=document.createElement('div');el.className=`toast ${type}`;el.textContent=String(text||'');host.appendChild(el);
+  setTimeout(()=>{el.style.opacity='0';el.style.transform='translateY(8px)';setTimeout(()=>el.remove(),220)},duration);
+}
 function loading(text='Memuat data...'){ return `<div class="loading-container"><img src="bidangsd.png" class="loading-logo" alt="Loading"><div class="loading-text">${esc(text)}</div></div>`; }
 function head(title,desc=''){ return `<div class="page-head"><div><h1>${esc(title)}</h1>${desc?`<div class="muted">${esc(desc)}</div>`:''}</div></div>`; }
 function emptyRow(cols,text='Tidak ada data.'){ return `<tr><td colspan="${cols}" class="muted" style="text-align:center;padding:25px">${esc(text)}</td></tr>`; }
@@ -815,14 +825,14 @@ function setActive(view){
   if(isSchool()){
     await ensureMasters();
     await ensurePeriodeMaster();
-    const currentPeriod = state.selectedPeriode || (cachedPeriodeList.find(p => Number(p.bulan) === new Date().getMonth()+1)?.id_periode) || cachedPeriodeList[0]?.id_periode || 'PER-2026-01';
+    const currentPeriod = state.selectedPeriode || (cachedPeriodeList.find(p => Number(p.bulan) === new Date().getMonth()+1)?.id_periode) || cachedPeriodeList[0]?.id_periode || '';
     state.selectedPeriode = currentPeriod;
-    const summaryRes = await safeApi('ringkasanSPJBulanan', {idPeriode: currentPeriod}, null);
+    const summaryRes = currentPeriod ? await safeApi('ringkasanSPJBulanan', {idPeriode: currentPeriod}, null) : null;
     const ringkasan = summaryRes?.ringkasan || {};
-    const totalKomponen = Number(ringkasan.total || ringkasan.TOTAL || state.masterSpj.length || 10) || 10;
+    const totalKomponen = Number(ringkasan.total || ringkasan.TOTAL || state.masterSpj.length || 0);
     const sudah = Number(ringkasan.SUDAH_UPLOAD || 0) + Number(ringkasan.SELESAI_DINILAI || 0);
-    const persen = Math.min(100, Math.round((sudah / totalKomponen) * 100));
-    const namaPeriode = cachedPeriodeList.find(p => String(p.id_periode) === String(currentPeriod))?.nama_periode || currentPeriod;
+    const persen = totalKomponen > 0 ? Math.min(100, Math.round((sudah / totalKomponen) * 100)) : 0;
+    const namaPeriode = cachedPeriodeList.find(p => String(p.id_periode) === String(currentPeriod))?.nama_periode || currentPeriod || 'Periode belum dikonfigurasi';
 
     content = `
       <div class="panel" style="background:linear-gradient(135deg,#0A192F,#0F4C3A);color:#fff;margin-bottom:16px;">
@@ -909,18 +919,12 @@ function setActive(view){
 async function ensureMasters(){
   if(!state.masterSpj.length){ const r=await safeApi('getMasterSPJ',{},null); state.masterSpj=r?.data||[]; }
 }
-let cachedPeriodeList = [
-  { id_periode: 'SEM-1-2026', nama_periode: 'Semester 1 (Januari - Juni 2026)', jenis: 'semester' },
-  { id_periode: 'SEM-2-2026', nama_periode: 'Semester 2 (Juli - Desember 2026)', jenis: 'semester' }
-];
+let cachedPeriodeList = [];
 
 async function ensurePeriodeMaster() {
-  try {
-    const res = await safeApi('getPeriodeSPJ', {}, null);
-    if (res && res.data && res.data.length > 0) {
-      cachedPeriodeList = res.data;
-    }
-  } catch (e) {}
+  const res = await safeApi('getPeriodeSPJ', {}, null);
+  cachedPeriodeList = Array.isArray(res?.data) ? res.data : [];
+  return cachedPeriodeList;
 }
 
 async function periodeSelect(id = 'periodeSelect', required = true, defaultMode = 'bulan') {
@@ -936,21 +940,9 @@ async function periodeSelect(id = 'periodeSelect', required = true, defaultMode 
   let optionsHtml = '';
   if (currentMode === 'semester') {
     let semList = cachedPeriodeList.filter(p => String(p.id_periode).startsWith('SEM') || p.jenis === 'semester');
-    if (!semList.length) {
-      semList = [
-        { id_periode: 'SEM-1-2026', nama_periode: 'Semester 1 (Januari - Juni 2026)' },
-        { id_periode: 'SEM-2-2026', nama_periode: 'Semester 2 (Juli - Desember 2026)' }
-      ];
-    }
     optionsHtml = semList.map(s => `<option value="${esc(s.id_periode)}">${esc(s.nama_periode || s.id_periode)}</option>`).join('');
   } else {
     let bulanList = cachedPeriodeList.filter(p => Number(p.bulan) >= 1 && Number(p.bulan) <= 12 || String(p.id_periode).includes('PER'));
-    if (!bulanList.length) {
-      bulanList = namaBulan.map((nama, i) => ({
-        id_periode: `PER-2026-${String(i+1).padStart(2,'0')}`,
-        nama_periode: `${nama} 2026`
-      }));
-    }
     optionsHtml = bulanList.map(p => `<option value="${esc(p.id_periode)}">${esc(p.nama_periode || p.id_periode)}</option>`).join('');
   }
 
@@ -969,7 +961,7 @@ async function periodeSelect(id = 'periodeSelect', required = true, defaultMode 
       ${switcherHtml}
       <select id="${id}" ${required ? 'required' : ''}>
         <option value="">-- Pilih Periode (${currentMode === 'bulan' ? 'Bulanan' : 'Semesteran'}) --</option>
-        ${optionsHtml}
+        ${optionsHtml || '<option value="" disabled>Periode belum dikonfigurasi oleh Dinas</option>'}
       </select>
     </div>`;
 }
@@ -1090,7 +1082,7 @@ async function renderDokumenTable(){
 window.openImportPaketSPJ = function(){
   const periode = $('#periodeSelect')?.value || state.selectedPeriode;
   if(!periode){
-    alert('Pilih periode SPJ terlebih dahulu.');
+    toast('Pilih periode SPJ terlebih dahulu.','warning');
     return;
   }
   const wrap=document.createElement('div');
@@ -1182,7 +1174,7 @@ window.openNaModal = function(idSpj, namaSpj) {
 
 window.openUpload = function(idSpj, namaSpj) {
   const periode = $('#periodeSelect')?.value || state.selectedPeriode;
-  if (!periode) { alert('Pilih periode SPJ terlebih dahulu.'); return; }
+  if (!periode) { toast('Pilih periode SPJ terlebih dahulu.','warning'); return; }
   const wrap = document.createElement('div');
   wrap.id = 'modalUploadOverlay';
   wrap.innerHTML = `<div style="position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:999;padding:16px"><div style="background:#fff;padding:28px;border-radius:24px;width:min(100%,480px);box-shadow:0 20px 40px rgba(0,0,0,.2)"><h3 style="margin-top:0;color:var(--primary)">Unggah Berkas PDF</h3><p class="muted" style="margin-bottom:14px">${esc(namaSpj)}</p><form id="uploadLocalForm"><div class="field"><label>Pilih File PDF</label><input id="localFile" type="file" accept=".pdf" required style="padding:10px"></div><div id="uploadMsg" style="margin:10px 0"></div><div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px"><button type="button" class="btn btn-light" onclick="$('#modalUploadOverlay').remove()">Batal</button><button class="btn btn-primary" id="uploadBtn">Unggah Sekarang</button></div></form></div></div>`;
@@ -1285,7 +1277,7 @@ window.saveImportedTransactions=async function(){
   const p=$('#periodeSelect').value;if(!state.importedTransactions.length)return;
   if(!confirm(`Simpan ${state.importedTransactions.length} transaksi ke server?`))return;
   let ok=0,fail=0;for(const x of state.importedTransactions){try{await api('simpanTransaksiSPJ',{data:{...x,id_periode:p}});ok++;}catch(e){fail++;}}
-  alert(`Selesai. Berhasil: ${ok}. Gagal: ${fail}.`);$('#excelModal')?.remove();await renderTransaksi();
+  toast(`Selesai. Berhasil: ${ok}. Gagal: ${fail}.`, fail ? 'warning' : 'ok');$('#excelModal')?.remove();await renderTransaksi();
 };
 
 async function rkasReview(){ if(isDinas()) await renderDinasRkasReview(); else await renderSchoolRkasAndRealisasi(); }
@@ -1399,7 +1391,7 @@ async function renderSchoolRkasAndRealisasi(){
       if(!confirm('Apakah Anda yakin ingin menghapus item/usulan RKAS ini?')) return;
       try {
         await api('hapusDetailRKAS', { idRkas: idRkas });
-        alert('Item RKAS berhasil dihapus.');
+        toast('Item RKAS berhasil dihapus.','ok');
         await renderSchoolRkasAndRealisasi();
       } catch(err) {
         alert(errorText(err));
@@ -1479,7 +1471,7 @@ window.openEditRkasItem = function(idRkas, uraianLama, paguLama, kodeLama){
     };
     try {
       await api('updateItemRKAS', { data: payload });
-      alert('Nilai pagu RKAS berhasil diperbarui.');
+      toast('Nilai pagu RKAS berhasil diperbarui.','ok');
       $('#editRkasModal').remove();
       await renderSchoolRkasAndRealisasi();
     } catch(err) {
@@ -1529,7 +1521,7 @@ window.openTambahItemRkasModal = function(){
     };
     try {
       await api('tambahUsulanItemRKAS', { data: payload });
-      alert('Usulan item RKAS baru berhasil diajukan ke Dinas untuk diverifikasi.');
+      toast('Usulan item RKAS baru berhasil diajukan ke Dinas untuk diverifikasi.','ok');
       $('#tambahItemModal').remove();
       await renderSchoolRkasAndRealisasi();
     } catch(err) {
@@ -1687,7 +1679,7 @@ window.doReviewRkas = async function(versiRkas, keputusan) {
   if (!confirm(`Yakin ${label} RKAS versi ${versiRkas}?`)) return;
   try {
     await api('reviewRKAS', { versiRkas, keputusan });
-    alert('Keputusan review RKAS berhasil disimpan.');
+    toast('Keputusan review RKAS berhasil disimpan.','ok');
     await dinasRkasView();
   } catch (err) {
     alert(errorText(err));
@@ -1897,7 +1889,7 @@ window.openTambahPenugasanModal = function() {
     e.preventDefault();
     try {
       await api('simpanPenugasanPengawas', { data: { id_pengawas: $('#penugasanPengawasId').value.trim(), npsn: $('#penugasanNpsn').value.trim(), tanggal_mulai: $('#penugasanMulai').value, tanggal_selesai: $('#penugasanSelesai').value, status: 'AKTIF' } });
-      alert('Berhasil disimpan.'); $('#penugasanModal').remove(); await penugasanView();
+      toast('Berhasil disimpan.','ok'); $('#penugasanModal').remove(); await penugasanView();
     } catch(err) { $('#penugasanMsg').innerHTML = msg(errorText(err)); }
   };
 };
@@ -1936,7 +1928,7 @@ window.openPeringatanModal = function(targetId, targetName) {
     e.preventDefault();
     try {
       await api('kirimPesan', { data: { tujuan: targetId, subjek: $('#warnSubject').value.trim(), isi_pesan: $('#warnContent').value.trim(), kategori: 'TEGURAN', pengirim: state.user?.username || 'DINAS' } });
-      alert('Pesan berhasil dikirim.'); $('#warningModal').remove();
+      toast('Pesan berhasil dikirim.','ok'); $('#warningModal').remove();
     } catch(err) { $('#warnMsg').innerHTML = msg(errorText(err)); }
   };
 };
@@ -2016,7 +2008,7 @@ window.openKirimPesanModal = async function() {
     e.preventDefault();
     try {
       await api('kirimPesan', { data: { tujuan: $('#pesanTujuan').value, subjek: $('#pesanSubjek').value.trim(), isi_pesan: $('#pesanIsi').value.trim(), kategori: isSchool()?'FEEDBACK':'INFORMASI', pengirim: state.user?.username || ownNpsn() } });
-      alert('Pesan berhasil dikirim!'); $('#pesanModal').remove(); await loadPesanData();
+      toast('Pesan berhasil dikirim!','ok'); $('#pesanModal').remove(); await loadPesanData();
     } catch(err) { $('#pesanModalMsg').innerHTML = msg(errorText(err)); }
   };
 };
@@ -2032,7 +2024,7 @@ window.openBalasPesanModal = function(idPesan, pengirimAsal) {
     try {
       await api('kirimPesan', { data: { tujuan: pengirimAsal, subjek: 'Re: Balasan Pesan', isi_pesan: isi, kategori: 'BALASAN', pengirim: state.user?.username || ownNpsn() } });
       if(idPesan) { await api('updateStatusPesan', { id_pesan: idPesan, status_baca: 'SELESAI' }); }
-      alert('Balasan terkirim dan notifikasi telah diselesaikan.'); $('#balasModal').remove(); await loadPesanData();
+      toast('Balasan terkirim dan notifikasi telah diselesaikan.','ok'); $('#balasModal').remove(); await loadPesanData();
     } catch(err) { $('#balasMsg').innerHTML = msg(errorText(err)); }
   };
 };
