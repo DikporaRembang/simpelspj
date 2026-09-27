@@ -425,6 +425,8 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
 <script>
 'use strict';
 
+const V10_VERSION = 'V10-DRIVE-GITHUB';
+
 const API_URL = 'https://script.google.com/macros/s/AKfycbyWvJXKr1QZ1zwbeJDoULTUihycj1771SsDlGFy8jnuF4i3DsEbHXlcJU48VDAg17fqDA/exec';
 
 const ROLE_MENUS = {
@@ -476,6 +478,9 @@ const ROLE_MENUS = {
     { group: 'DOKUMEN', items: [
       { id: 'tutorialV5', label: '📖 Tutorial SIMPEL SPJ' },
       { id: 'arsipPenilaianV5', label: '🖨️ Arsip Penilaian' }
+    ]},
+    { group: 'AKUN', items: [
+      { id: 'ubahPassword', label: '🔐 Ubah Password' }
     ]}
   ],
   SEKOLAH: [
@@ -497,6 +502,9 @@ const ROLE_MENUS = {
     { group: 'DOKUMEN', items: [
       { id: 'tutorialV5', label: '📖 Tutorial SIMPEL SPJ' },
       { id: 'arsipPenilaianV5', label: '🖨️ Arsip Penilaian' }
+    ]},
+    { group: 'AKUN', items: [
+      { id: 'ubahPassword', label: '🔐 Ubah Password' }
     ]}
   ]
 };
@@ -1024,7 +1032,8 @@ async function loadView(view){
       monitoringGlobal: renderMonitoringGlobalView,
       tutorialV5: tutorialV5View,
       arsipPenilaianV5: arsipPenilaianV5View,
-      pdfInteraktif: pdfInteraktifView
+      pdfInteraktif: pdfInteraktifView,
+      ubahPassword: ubahPasswordView
     }; 
     if(!map[view]) throw new Error('Modul belum tersedia: ' + view); 
     await map[view](); 
@@ -1056,7 +1065,7 @@ function setActive(view){
       <div class="panel" style="background:linear-gradient(135deg,#0A192F,#0F4C3A);color:#fff;margin-bottom:16px;">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;">
           <div>
-            <span class="badge" style="background:var(--gold);color:#0A192F;font-weight:800;">SPJ BULANAN</span>
+            <span class="badge" style="background:var(--gold);color:#0A192F;font-weight:800;">SPJ SESUAI PERIODE</span>
             <h2 style="margin:8px 0 4px;color:#fff;font-size:1.45rem;">${esc(namaPeriode)}</h2>
             <p style="color:#dbe5e0;margin:0;">Kelola dokumen pertanggungjawaban sekolah dengan langkah sederhana.</p>
           </div>
@@ -1101,7 +1110,7 @@ function setActive(view){
       </div>
       <div class="panel"><h3 class="section-title" style="margin-top:0">Alur pemeriksaan</h3><div class="form-grid">
         <div><b>1. Pilih sekolah</b><p class="muted">Gunakan daftar sekolah binaan yang menjadi tanggung jawab Anda.</p></div>
-        <div><b>2. Pilih periode</b><p class="muted">Pemeriksaan dilakukan per bulan agar mudah ditelusuri.</p></div>
+        <div><b>2. Pilih periode</b><p class="muted">Pemeriksaan dilakukan sesuai periode yang ditetapkan DINAS agar mudah ditelusuri.</p></div>
         <div><b>3. Periksa & beri catatan</b><p class="muted">Sistem membantu menemukan ketidaksesuaian antar dokumen.</p></div>
         <div><b>4. Nilai & finalisasi</b><p class="muted">Nilai akhir dihitung sistem dari indikator yang telah diperiksa.</p></div>
       </div></div>`;
@@ -2578,6 +2587,28 @@ function drivePreviewUrl(url){
   if(/docs\.google\.com/i.test(u)) return u;
   return u;
 }
+
+async function ubahPasswordView(){
+  if(!isSchool() && !isPengawas()){ $('#mainContent').innerHTML=msg('Menu ubah password ini tersedia untuk SEKOLAH dan PENGAWAS.','warning'); return; }
+  $('#mainContent').innerHTML=head('Ubah Password','Anda tetap menggunakan mekanisme login yang sama. Perubahan password hanya dilakukan jika Anda menginginkannya.')+
+  `<div class="panel" style="max-width:620px">
+    <div class="message ok"><b>Catatan:</b> username, sesi, dan cara login tidak berubah. Setelah password berhasil diubah, gunakan password baru pada login berikutnya.</div>
+    <div class="field" style="margin-top:14px"><label>Password Lama</label><div class="password-wrapper"><input id="oldPasswordV10" type="password" autocomplete="current-password" placeholder="Masukkan password lama"><button type="button" class="toggle-password-btn" onclick="togglePassword('oldPasswordV10',this)">👁</button></div></div>
+    <div class="field" style="margin-top:12px"><label>Password Baru</label><div class="password-wrapper"><input id="newPasswordV10" type="password" autocomplete="new-password" placeholder="Minimal 6 karakter"><button type="button" class="toggle-password-btn" onclick="togglePassword('newPasswordV10',this)">👁</button></div></div>
+    <div class="field" style="margin-top:12px"><label>Konfirmasi Password Baru</label><div class="password-wrapper"><input id="confirmPasswordV10" type="password" autocomplete="new-password" placeholder="Ulangi password baru"><button type="button" class="toggle-password-btn" onclick="togglePassword('confirmPasswordV10',this)">👁</button></div></div>
+    <div class="toolbar" style="margin-top:16px"><button class="btn btn-primary" onclick="submitPasswordChangeV10()">🔐 Simpan Password Baru</button></div>
+  </div>`;
+}
+window.submitPasswordChangeV10=async function(){
+  const oldPw=$('#oldPasswordV10')?.value||'', newPw=$('#newPasswordV10')?.value||'', conf=$('#confirmPasswordV10')?.value||'';
+  if(!oldPw||!newPw||!conf){toast('Semua password wajib diisi.','warning');return;}
+  if(newPw!==conf){toast('Konfirmasi password baru tidak sama.','warning');return;}
+  if(newPw.length<6){toast('Password baru minimal 6 karakter.','warning');return;}
+  if(!confirm('Ubah password akun ini sekarang?'))return;
+  try{ await api('ubahPasswordSendiri',{passwordLama:oldPw,passwordBaru:newPw,konfirmasiPassword:conf}); toast('Password berhasil diubah. Gunakan password baru pada login berikutnya.','ok',5000); $('#oldPasswordV10').value=''; $('#newPasswordV10').value=''; $('#confirmPasswordV10').value=''; }
+  catch(e){toast(errorText(e),'error',5000);}
+};
+
 function pdfPageUrl(url,page){
   const base=drivePreviewUrl(url); const p=parseInt(page,10);
   return base + (p>0 ? `#page=${p}` : '');
@@ -2608,7 +2639,7 @@ window.openPdfInteractive=async function(){
       safeApi('getTransaksiSPJ',{idPeriode:p,npsn:n},{data:[]}),
       safeApi('getTemuanSPJ',{idPeriode:p,npsn:n},{data:[]}),
       isPengawas()?safeApi('buatAtauAmbilAsesmen',{idPeriode:p,npsn:n},{}):Promise.resolve({}),
-      safeApi('getPaketPenilaianSPJ',{idPeriode:p,npsn:n},{data:{}})
+      safeApi('getPdfEvidenceFeed',{idPeriode:p,npsn:n},{data:{}})
     ]);
     const docs=docRes.data||[]; const tx=(trxRes.data||[]); const findings=(findRes.data||[]);
     const packet=packetRes.data||{};
@@ -2642,7 +2673,8 @@ function renderPdfInteractive(x){
         <div class="cards" style="grid-template-columns:1fr 1fr"><div class="stat"><small>Status</small><strong>${esc(a.status_asesmen||'DRAFT')}</strong></div><div class="stat"><small>Nilai akhir</small><strong>${esc(a.nilai_akhir??'-')}</strong></div></div>
         ${isPengawas()?`<div class="message ok" style="margin-top:12px"><b>Mode pemeriksaan.</b> Pilih halaman bukti, lalu beri keputusan. Nomor halaman disimpan pada rincian asesmen.</div>`:`<div class="message ok" style="margin-top:12px"><b>Mode baca hasil.</b> Hasil penilaian ditampilkan di samping PDF agar sekolah dapat melihat bukti dan nilainya bersamaan.</div>`}
         <div style="margin-top:14px"><label>Halaman PDF</label><div style="display:flex;gap:8px;margin-top:5px"><input id="interactivePage" type="number" min="1" value="1" style="width:100px"><button class="btn btn-light" onclick="goInteractivePage()">Buka Halaman</button></div></div>
-        <div class="panel" style="margin-top:14px;background:#fafafa"><b>Temuan periode</b><div style="margin-top:8px;max-height:180px;overflow:auto">${findings.length?findings.map(f=>`<div style="padding:9px;border-bottom:1px solid #eee"><b>${esc(f.kode_temuan||'-')}</b> ${badge(f.level_temuan||'INFO','warning')}<div class="muted">${esc(f.catatan_sistem||'-')}</div><div style="margin-top:4px">Verifikasi: <b>${esc(f.hasil_verifikasi||'BELUM')}</b></div>${isPengawas()?`<div class="toolbar" style="margin-top:6px"><button class="btn btn-sm btn-primary" onclick="verifyFindingDirect('${esc(f.id_temuan)}','TERBUKTI')">✓ TERBUKTI</button><button class="btn btn-sm btn-light" onclick="verifyFindingDirect('${esc(f.id_temuan)}','TIDAK_TERBUKTI')">Tidak Terbukti</button></div>`:''}</div>`).join(''):'<div class="muted">Belum ada temuan.</div>'}</div></div>
+        <div class="panel" style="margin-top:10px;background:#f7faf9"><b>Bukti pada halaman ini</b><div id="pageEvidenceSummary" class="muted" style="margin-top:7px">Pilih halaman untuk melihat keterkaitan temuan/indikator.</div></div>
+        <div class="panel" style="margin-top:14px;background:#fafafa"><b>Temuan periode</b><div style="margin-top:8px;max-height:180px;overflow:auto">${findings.length?findings.map(f=>`<div style="padding:9px;border-bottom:1px solid #eee"><b>${esc(f.kode_temuan||'-')}</b> ${badge(f.level_temuan||'INFO','warning')}<div class="muted">${esc(f.catatan_sistem||'-')}</div><div style="margin-top:4px">Verifikasi: <b>${esc(f.hasil_verifikasi||'BELUM')}</b></div>${isPengawas()?`<div class="toolbar" style="margin-top:6px"><button class="btn btn-sm btn-primary" onclick="verifyFindingDirect('${esc(f.id_temuan)}','TERBUKTI')">✓ TERBUKTI</button><button class="btn btn-sm btn-light" onclick="verifyFindingDirect('${esc(f.id_temuan)}','TIDAK_TERBUKTI')">Tidak Terbukti</button><button class="btn btn-sm btn-light" onclick="markFindingEvidenceV10('${esc(f.id_temuan)}')">📌 Tandai Halaman</button></div>`:`<div class="toolbar" style="margin-top:6px"><button class="btn btn-sm btn-light" onclick="jumpFindingPageV10('${esc(f.id_temuan)}')">📄 Lihat Bukti</button></div>`}</div>`).join(''):'<div class="muted">Belum ada temuan.</div>'}</div></div>
         ${isPengawas()?`<div class="panel" style="margin-top:14px"><b>Penilaian indikator</b><div class="muted" style="margin-top:4px">Gunakan tombol koreksi untuk menetapkan skor pada bukti yang sedang dibaca.</div><div id="interactiveIndicators" style="margin-top:10px">Memuat indikator...</div></div>`:''}
         ${`<div class="panel" style="margin-top:14px"><b>Transaksi & status pemeriksaan</b><div class="table-wrap" style="margin-top:8px"><table class="friendly-table"><thead><tr><th>Tanggal</th><th>Bukti</th><th>Kode</th><th>Uraian</th><th>Nilai</th><th>Status</th><th></th></tr></thead><tbody>${txRows||emptyRow(7)}</tbody></table></div></div>`}
       </aside>
@@ -2653,13 +2685,40 @@ function renderPdfInteractive(x){
 }
 
 window.changeInteractivePdf=function(){const u=$('#interactiveDocSelect')?.value||''; const p=$('#interactivePage')?.value||1; const fr=$('#interactivePdfFrame'); if(fr)fr.src=pdfPageUrl(u,p);};
-window.goInteractivePage=function(){const u=$('#interactiveDocSelect')?.value||''; const p=$('#interactivePage')?.value||1; const fr=$('#interactivePdfFrame'); if(fr)fr.src=pdfPageUrl(u,p);};
+window.goInteractivePage=function(){const u=$('#interactiveDocSelect')?.value||''; const p=$('#interactivePage')?.value||1; const fr=$('#interactivePdfFrame'); if(fr)fr.src=pdfPageUrl(u,p); const c=window.__pdfInteractiveContext||{}; const hits=(c.details||[]).filter(d=>String(d.halaman_bukti)===String(p)); const box=$('#pageEvidenceSummary'); if(box) box.innerHTML=hits.length?hits.map(d=>`<div style="padding:5px 0"><b>${esc(d.id_temuan||'Indikator')}</b> • ${esc(d.id_indikator||'-')} • Skor ${esc(d.skor??d.hasil_otomatis??'-')}/4</div>`).join(''):'Tidak ada bukti penilaian yang ditautkan pada halaman ini.';};
 window.jumpPdfPageFromTx=function(idTx){
   const c=window.__pdfInteractiveContext; const t=(c?.tx||[]).find(x=>String(x.id_transaksi)===String(idTx));
   const fs=(c?.findings||[]).filter(x=>String(x.id_transaksi)===String(idTx));
   const d=(c?.details||[]).find(x=>fs.some(f=>String(f.id_temuan)===String(x.id_temuan)));
   const page=d?.halaman_bukti||1; $('#interactivePage').value=page; goInteractivePage();
 };
+
+window.jumpFindingPageV10=function(idTemuan){
+  const c=window.__pdfInteractiveContext||{};
+  const d=(c.details||[]).find(x=>String(x.id_temuan)===String(idTemuan) && x.halaman_bukti);
+  if(!d){toast('Halaman bukti untuk temuan ini belum ditetapkan.','warning');return;}
+  $('#interactivePage').value=d.halaman_bukti; goInteractivePage();
+};
+window.markFindingEvidenceV10=async function(idTemuan){
+  const c=window.__pdfInteractiveContext||{}; const f=(c.findings||[]).find(x=>String(x.id_temuan)===String(idTemuan));
+  if(!f){toast('Temuan tidak ditemukan.','error');return;}
+  const a=c.assessment||{}; if(!a.id_asesmen){toast('Asesmen belum tersedia.','warning');return;}
+  const p=prompt('Nomor halaman PDF untuk temuan '+(f.kode_temuan||idTemuan)+':',$('#interactivePage')?.value||'1');
+  if(p===null)return;
+  if(!/^\d+$/.test(p)||Number(p)<1){toast('Nomor halaman tidak valid.','warning');return;}
+  const indicators=window.__pdfInteractiveIndicators||[];
+  let ind=indicators[0];
+  const options=indicators.map(x=>`${x.kode_indikator} — ${x.nama_indikator}`).join('\n');
+  const chosen=prompt('Pilih kode indikator yang menjadi tempat bukti ini:\n\n'+options,ind?ind.kode_indikator:'');
+  if(chosen===null)return;
+  ind=indicators.find(x=>String(x.kode_indikator).toUpperCase()===String(chosen).toUpperCase() || String(x.id_indikator)===String(chosen));
+  if(!ind){toast('Kode indikator tidak ditemukan.','warning');return;}
+  try{
+    await api('simpanBuktiTemuanSPJ',{data:{id_asesmen:a.id_asesmen,id_temuan:idTemuan,id_indikator:ind.id_indikator,halaman_bukti:p}});
+    $('#interactivePage').value=p; goInteractivePage(); toast('Halaman bukti berhasil ditautkan ke temuan.','ok'); await openPdfInteractive();
+  }catch(e){toast(errorText(e),'error',5000);}
+};
+
 window.verifyFindingDirect=async function(id,hasil){
   const catatan=prompt(hasil==='TERBUKTI'?'Catatan verifikasi (opsional):':'Alasan dinyatakan tidak terbukti (disarankan):','');
   if(catatan===null)return;
@@ -2674,11 +2733,11 @@ window.loadInteractiveIndicators=async function(){
     const details=c.details||[];
     box.innerHTML=list.map(d=>{
       const dt=details.find(x=>String(x.id_indikator)===String(d.id_indikator)); const page=dt?.halaman_bukti||'';
-      return `<div style="padding:10px 0;border-bottom:1px solid #eee"><div style="display:flex;justify-content:space-between;gap:8px"><b>${esc(d.kode_indikator)}</b><strong>${Number(d.skor).toFixed(2)}/4</strong></div><div class="muted">${esc(d.nama_indikator)} • Risiko ${Number(d.risiko||0).toFixed(1)}/100 • Bukti halaman ${esc(page||'-')}</div>${String(c.assessment.status_asesmen||'').toUpperCase()!=='SELESAI'?`<button class="btn btn-sm btn-light" style="margin-top:7px" onclick="interactiveEditScore('${esc(c.assessment.id_asesmen)}','${esc(d.id_indikator)}','${esc(d.skor)}','${esc(d.skor_otomatis)}','${esc(page)}')">Koreksi / Tandai Halaman</button>`:''}</div>`;
+      return `<div style="padding:10px 0;border-bottom:1px solid #eee"><div style="display:flex;justify-content:space-between;gap:8px"><b>${esc(d.kode_indikator)}</b><strong>${Number(d.skor).toFixed(2)}/4</strong></div><div class="muted">${esc(d.nama_indikator)} • Risiko ${Number(d.risiko||0).toFixed(1)}/100 • Bukti halaman ${esc(page||'-')}</div>${String(c.assessment.status_asesmen||'').toUpperCase()!=='SELESAI'?`<button class="btn btn-sm btn-light" style="margin-top:7px" onclick="interactiveEditScore('${esc(c.assessment.id_asesmen)}','${esc(d.id_indikator)}','${esc(d.skor)}','${esc(d.skor_otomatis)}','${esc(page)}','${esc(dt?.id_temuan||'')}')">Koreksi / Tandai Halaman</button>`:''}</div>`;
     }).join('')||'<div class="muted">Belum ada indikator.</div>';
   }catch(e){box.innerHTML=msg(errorText(e));}
 };
-window.interactiveEditScore=async function(idAsesmen,idIndikator,current,automatic,page){
+window.interactiveEditScore=async function(idAsesmen,idIndikator,current,automatic,page,idTemuan){
   const p=prompt('Nomor halaman PDF yang menjadi bukti indikator ini:',page||($('#interactivePage')?.value||'1')); if(p===null)return;
   if(p && (!/^\d+$/.test(p)||Number(p)<1)){toast('Nomor halaman tidak valid.','warning');return;}
   let score=prompt(`Skor indikator 0–4. Skor otomatis: ${automatic}`,current);
@@ -2686,7 +2745,7 @@ window.interactiveEditScore=async function(idAsesmen,idIndikator,current,automat
   if(score!==''&&(!Number.isFinite(score)||score<0||score>4)){toast('Skor harus 0 sampai 4.','warning');return;}
   let note=''; if(score!==''&&Math.abs(Number(score)-Number(automatic))>.001){note=prompt('Alasan koreksi manual:','');if(note===null||!note.trim()){toast('Koreksi manual wajib memiliki alasan.','warning');return;}}
   try{
-    await api('simpanDetailAsesmen',{data:{id_asesmen:idAsesmen,id_indikator:idIndikator,skor:score,catatan_pengawas:note,status_berlaku:'BERLAKU',halaman_bukti:p}});
+    await api('simpanDetailAsesmen',{data:{id_asesmen:idAsesmen,id_indikator:idIndikator,skor:score,catatan_pengawas:note,status_berlaku:'BERLAKU',halaman_bukti:p,id_temuan:idTemuan||''}});
     $('#interactivePage').value=p; goInteractivePage(); toast('Penilaian dan halaman bukti tersimpan.','ok'); await openPdfInteractive();
   }catch(e){toast(errorText(e),'error',4500);}
 };
@@ -3260,26 +3319,24 @@ function _v5DocCards(docs){
 }
 async function tutorialV5View(){
   const c=$('#mainContent');
-  c.innerHTML=head('Tutorial SIMPEL SPJ','Panduan penggunaan yang dapat dibaca langsung dari feed aplikasi')+
+  const githubUrl='https://github.com/DikporaRembang/simpelspj/blob/main/tutorial_simpelspj.pdf';
+  const rawUrl='https://raw.githubusercontent.com/DikporaRembang/simpelspj/main/tutorial_simpelspj.pdf';
+  window._v5TutorialUrl=githubUrl;
+  c.innerHTML=head('Tutorial SIMPEL SPJ','Panduan resmi aplikasi dari repositori GitHub')+
     `<div class="panel" style="border-left:4px solid var(--gold);">
       <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap">
         <div><h2 style="margin:0">📖 tutorial_simpelspj.pdf</h2><div class="muted">Tutorial resmi aplikasi — DINAS, PENGAWAS, dan SEKOLAH.</div></div>
-        <button class="btn btn-primary" onclick="window.open(window._v5TutorialUrl||'#','_blank')">Buka di Tab Baru</button>
+        <button class="btn btn-primary" onclick="window.open(window._v5TutorialUrl,'_blank')">Buka di GitHub</button>
       </div>
-      <div id="v5TutorialFeed" style="margin-top:14px">${loading('Memuat tutorial...')}</div>
+      <div id="v5TutorialFeed" style="margin-top:14px">
+        <div class="panel" style="padding:0;overflow:hidden">
+          <iframe title="Tutorial SIMPEL SPJ" src="${rawUrl}" style="width:100%;height:76vh;border:0;background:#f5f7f9"></iframe>
+        </div>
+        <div class="muted" style="margin-top:8px">Sumber tutorial: GitHub resmi SIMPEL SPJ. File tidak disimpan di Google Drive aplikasi.</div>
+      </div>
     </div>`;
-  try{
-    const r=await api('getTutorialSimpelSpj',{});
-    const d=r.data||{};
-    window._v5TutorialUrl=d.preview_url||d.file_url||'';
-    const area=$('#v5TutorialFeed');
-    if(!area)return;
-    if(!d.available){area.innerHTML=msg('Dokumen tutorial_simpelspj.pdf belum ditemukan di Google Drive aplikasi.','warning');return;}
-    const pdfSrc=d.inline_data_url||d.preview_url||d.file_url||'';
-    area.innerHTML=`<div class="panel" style="padding:0;overflow:hidden"><iframe title="Tutorial SIMPEL SPJ" src="${esc(pdfSrc)}" style="width:100%;height:76vh;border:0;background:#f5f7f9"></iframe>
-      <div class="muted" style="padding:8px 12px">Nama dokumen: <b>tutorial_simpelspj.pdf</b> • Tutorial dibaca langsung di feed aplikasi. File asli tetap berada di penyimpanan aplikasi.</div></div>`;
-  }catch(e){$('#v5TutorialFeed').innerHTML=msg(errorText(e),'error');}
 }
+
 async function arsipPenilaianV5View(){
   const c=$('#mainContent');
   c.innerHTML=head('Arsip Penilaian SPJ','Cetak bahan penilaian lengkap per sekolah dan periode')+
