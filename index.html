@@ -2965,3 +2965,78 @@ window.exportGlobalMonExcel = function(){
 </script>
 </body>
 </html>
+
+<script>
+/* ============================================================================
+ * UI PENGESAHAN ELEKTRONIK — V3
+ * Menempel pada modul Penilaian yang sudah ada agar alur utama tidak berubah.
+ * ========================================================================== */
+async function renderPengesahanPanel(idAsesmen){
+  const host=document.getElementById('assessmentSigningArea'); if(!host)return;
+  host.innerHTML=loading('Memeriksa status pengesahan...');
+  try{
+    const r=await api('getPengesahanPenilaian',{idAsesmen});
+    const d=r.data||{};
+    const approval=d.persetujuan_sekolah;
+    const signature=d.pengesahan_pengawas;
+    const appeal=d.keberatan_terakhir;
+    const signed=!!signature;
+    const approved=!!approval;
+    let action='';
+    if(signed){
+      const vr=await api('verifikasiPengesahanPenilaian',{idAsesmen});
+      action=`<div class="message ${vr.valid?'ok':'error'}" style="margin-top:12px">
+        <b>${vr.valid?'🔒 PENILAIAN DISAHKAN':'⚠ PENGESAHAN PERLU DIVERIFIKASI'}</b><br>
+        Penandatangan: ${esc(signature.ditandatangani_oleh||'-')}<br>
+        Waktu: ${esc(signature.ditandatangani_at||signature.tanggal||'-')}<br>
+        Hash integritas: <code style="word-break:break-all">${esc(signature.integrity_hash||'-')}</code>
+      </div>`;
+    }else if(isPengawas() && approved && String(d.status_asesmen).toUpperCase()==='SELESAI'){
+      action=`<div class="toolbar" style="margin-top:12px"><button class="btn btn-primary" onclick="tandaTanganiPenilaian('${esc(idAsesmen)}')">🔏 Tanda Tangani & Sah-kan Penilaian</button></div>`;
+    }else if(isSchool() && !approved && String(d.status_asesmen).toUpperCase()==='SELESAI'){
+      action=`<div class="toolbar" style="margin-top:12px"><button class="btn btn-primary" onclick="setujuiPenilaian('${esc(idAsesmen)}')">✓ Saya Setuju dengan Penilaian</button></div>`;
+    }else if(approved && !signed){
+      action=`<div class="message info" style="margin-top:12px">Persetujuan sekolah sudah tercatat. Menunggu pengesahan elektronik pengawas.</div>`;
+    }
+    host.innerHTML=`
+      <div class="panel" style="margin-top:14px;border-left:4px solid var(--primary);">
+        <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap">
+          <div><h3 style="margin:0">🔐 Pengesahan Penilaian</h3><div class="muted">Tahap terakhir setelah penilaian dan proses keberatan selesai.</div></div>
+          <span class="badge badge-${signed?'success':approved?'info':'warning'}">${signed?'DISAHKAN':approved?'MENUNGGU PENGAWAS':'MENUNGGU PERSETUJUAN SEKOLAH'}</span>
+        </div>
+        ${approved?`<div class="message ok" style="margin-top:12px">✓ Persetujuan sekolah tercatat oleh <b>${esc(approval.disetujui_oleh||'-')}</b> pada ${esc(approval.disetujui_at||approval.tanggal||'-')}.</div>`:''}
+        ${appeal && ['DIAJUKAN','DIKAJI_ULANG'].includes(String(appeal.status_keberatan||'').toUpperCase())?`<div class="message warning" style="margin-top:12px">Keberatan masih dalam proses. Pengesahan ditahan sampai kaji ulang selesai.</div>`:''}
+        ${action}
+      </div>`;
+  }catch(e){host.innerHTML=msg(errorText(e));}
+}
+
+window.setujuiPenilaian=async function(idAsesmen){
+  if(!confirm('Anda menyetujui hasil penilaian ini. Setelah disetujui, pengawas dapat melakukan pengesahan elektronik. Lanjutkan?'))return;
+  try{
+    await api('setujuiPenilaianSekolah',{idAsesmen});
+    toast('Persetujuan sekolah berhasil dicatat.','ok',4500);
+    await openAssessment();
+  }catch(e){toast(errorText(e),'error',5000);}
+};
+
+window.tandaTanganiPenilaian=async function(idAsesmen){
+  if(!confirm('Tanda tangani dan sahkan hasil penilaian ini? Pastikan hasil kaji ulang dan persetujuan sekolah sudah benar.'))return;
+  try{
+    const r=await api('tandaTanganiPenilaianPengawas',{idAsesmen});
+    toast(r.message||'Penilaian berhasil disahkan.','ok',5000);
+    await openAssessment();
+  }catch(e){toast(errorText(e),'error',5000);}
+};
+
+const _renderAssessmentBeforeSigning = renderAssessment;
+renderAssessment = function(a, indicators){
+  _renderAssessmentBeforeSigning(a, indicators);
+  const area=document.getElementById('assessmentArea');
+  if(!area)return;
+  const old=document.getElementById('assessmentSigningArea');
+  if(old)old.remove();
+  const host=document.createElement('div'); host.id='assessmentSigningArea'; area.appendChild(host);
+  renderPengesahanPanel(a.id_asesmen);
+};
+</script>
