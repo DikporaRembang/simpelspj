@@ -523,39 +523,76 @@ function groupBelanjaClient(list, amountField, contextFields=[]) {
   const map = new Map();
   (list || []).forEach(x => {
     const ctx = contextFields.map(k => String(x[k] ?? '')).join('|');
-    const key = [ctx, String(x.kode_kelompok_belanja || 'LAINNYA')].join('||');
+    const groupCode = String(x.kode_kelompok_belanja || x.kode_rekening || 'LAINNYA').trim();
+    const groupName = String(x.nama_kelompok_belanja || 'Belanja Belum Terpetakan').trim();
+    const key = [ctx, groupCode, groupName].join('||');
     if (!map.has(key)) map.set(key, {
       context: contextFields.reduce((o,k)=>{o[k]=x[k]??'';return o;},{}),
-      kode_kelompok_belanja: x.kode_kelompok_belanja || 'LAINNYA',
-      nama_kelompok_belanja: x.nama_kelompok_belanja || 'Belanja Belum Terpetakan',
+      kode_kelompok_belanja: groupCode,
+      nama_kelompok_belanja: groupName,
       items: [], subtotal: 0
     });
     const g = map.get(key);
     g.items.push(x);
     g.subtotal += Number(x[amountField] || 0);
   });
-  return Array.from(map.values()).sort((a,b)=>{
+  const groups = Array.from(map.values()).sort((a,b)=>{
     const ca = contextFields.map(k=>String(a.context[k]||'')).join('|');
     const cb = contextFields.map(k=>String(b.context[k]||'')).join('|');
-    return ca.localeCompare(cb) || String(a.kode_kelompok_belanja).localeCompare(String(b.kode_kelompok_belanja));
+    return ca.localeCompare(cb) || String(a.kode_kelompok_belanja).localeCompare(String(b.kode_kelompok_belanja), undefined, {numeric:true});
   });
+  groups.forEach(g => {
+    g.items.sort((a,b) =>
+      String(a.kode_rekening || '').localeCompare(String(b.kode_rekening || ''), undefined, {numeric:true}) ||
+      String(a.uraian || a.uraian_transaksi || '').localeCompare(String(b.uraian || b.uraian_transaksi || ''))
+    );
+  });
+  return groups;
 }
 
 function kelompokHeaderHtml(g, amountLabel='Subtotal') {
   return `<tr><td colspan="20" style="padding:12px 14px;background:rgba(23,75,67,.08);border-top:2px solid var(--primary);font-weight:800;color:var(--primary);"><div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;"><span>📁 ${esc(g.kode_kelompok_belanja)} — ${esc(g.nama_kelompok_belanja)}</span><span>${esc(amountLabel)}: <b>${fmtRupiah(g.subtotal)}</b></span></div></td></tr>`;
 }
 
+function normalizeNpsnClient(v){
+  const s = String(v ?? '').trim();
+  if(!s) return '';
+  return /^\d+\.0+$/.test(s) ? s.replace(/\.0+$/, '') : s;
+}
 function groupBelanjaBySekolahClient(list, amountField){
   const map = new Map();
   (list || []).forEach(x => {
-    const npsn = String(x.npsn || 'TANPA_NPSN');
-    if(!map.has(npsn)) map.set(npsn, {npsn, nama_sekolah:x.nama_sekolah || npsn, kecamatan:x.kecamatan || '', items:[], total:0});
-    const g = map.get(npsn); g.items.push(x); g.total += Number(x[amountField] || 0);
+    const npsn = normalizeNpsnClient(x.npsn);
+    const key = npsn || 'TANPA_NPSN';
+    if(!map.has(key)) map.set(key, {
+      npsn: npsn || '-',
+      nama_sekolah: String(x.nama_sekolah || '').trim(),
+      kecamatan: String(x.kecamatan || '').trim(),
+      alamat_lengkap: String(x.alamat_lengkap || '').trim(),
+      items: [],
+      total: 0
+    });
+    const g = map.get(key);
+    // Jika baris berikutnya membawa identitas sekolah yang lebih lengkap,
+    // gunakan nilai tersebut.
+    if(!g.nama_sekolah && x.nama_sekolah) g.nama_sekolah = String(x.nama_sekolah).trim();
+    if(!g.kecamatan && x.kecamatan) g.kecamatan = String(x.kecamatan).trim();
+    if(!g.alamat_lengkap && x.alamat_lengkap) g.alamat_lengkap = String(x.alamat_lengkap).trim();
+    g.items.push(x);
+    g.total += Number(x[amountField] || 0);
   });
-  return Array.from(map.values()).sort((a,b)=>String(a.npsn).localeCompare(String(b.npsn)));
+
+  return Array.from(map.values()).sort((a,b)=>{
+    const an = normalizeNpsnClient(a.npsn);
+    const bn = normalizeNpsnClient(b.npsn);
+    if(!an && bn) return 1;
+    if(an && !bn) return -1;
+    if(/^\d+$/.test(an) && /^\d+$/.test(bn)) return Number(an) - Number(bn);
+    return an.localeCompare(bn);
+  });
 }
 function sekolahHeaderHtml(g, amountLabel='Total Sekolah'){
-  return `<tr><td colspan="20" style="padding:14px;background:linear-gradient(90deg,rgba(23,75,67,.14),rgba(23,75,67,.04));border-top:3px solid var(--primary);font-weight:850;color:var(--primary);"><div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;"><span>🏫 ${esc(g.npsn)} — ${esc(g.nama_sekolah)}</span><span>${esc(amountLabel)}: <b>${fmtRupiah(g.total)}</b></span></div></td></tr>`;
+  return `<tr><td colspan="20" style="padding:14px;background:linear-gradient(90deg,rgba(23,75,67,.14),rgba(23,75,67,.04));border-top:3px solid var(--primary);font-weight:850;color:var(--primary);"><div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;"><span>🏫 NPSN ${esc(g.npsn || '-')} — ${esc(g.nama_sekolah || 'Sekolah tidak ditemukan di master sekolah')}<small style="display:block;font-weight:500;color:var(--muted);margin-top:3px;">${esc(g.kecamatan || 'Kecamatan tidak tersedia')} • ${esc(g.alamat_lengkap || 'Alamat tidak tersedia')}</small></span><span>${esc(amountLabel)}: <b>${fmtRupiah(g.total)}</b></span></div></td></tr>`;
 }
 
 const msg = (text,type='error') => `<div class="message ${type}">${esc(text)}</div>`;
@@ -1448,7 +1485,7 @@ async function renderPengawasRkasAndRealisasi(){
     const r=await api('getRekapPaguRKAS');
     const list=r.data||[];
     const totalPagu=list.reduce((a,x)=>a+Number(x.total_pagu||0),0);
-    $('#pengawasRkasArea').innerHTML=`<div class="cards" style="margin-bottom:20px;"><div class="stat"><small>Jumlah Sekolah Binaan</small><strong>${fmtNum(list.length)}</strong></div><div class="stat"><small>Total Pagu RKAS</small><strong>${fmtRupiah(totalPagu)}</strong></div></div><div class="panel"><div class="muted" style="margin-bottom:12px;">Pilih sekolah untuk memuat rincian RKAS. Data detail tidak dikirim sebelum diperlukan.</div><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;">${list.map(x=>`<div class="panel" style="margin:0;border:1px solid var(--border);"><div style="font-weight:850;color:var(--primary);">🏫 ${esc(x.nama_sekolah||'-')}</div><div class="muted" style="margin:4px 0 10px;">NPSN <b>${esc(x.npsn)}</b> • Kecamatan ${esc(x.kecamatan||'-')}</div><div style="font-weight:800;margin-bottom:10px;">Pagu: ${fmtRupiah(x.total_pagu||0)}</div><button class="btn btn-sm btn-primary" onclick="openPengawasRkasDetail('${esc(x.npsn)}')">Lihat RKAS</button></div>`).join('')||msg('Belum ada sekolah binaan.','ok')}</div></div>`;
+    $('#pengawasRkasArea').innerHTML=`<div class="cards" style="margin-bottom:20px;"><div class="stat"><small>Jumlah Sekolah Binaan</small><strong>${fmtNum(list.length)}</strong></div><div class="stat"><small>Total Pagu RKAS</small><strong>${fmtRupiah(totalPagu)}</strong></div></div><div class="panel"><div class="muted" style="margin-bottom:12px;">Pilih sekolah untuk memuat rincian RKAS. Data detail tidak dikirim sebelum diperlukan.</div><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;">${list.map(x=>`<div class="panel" style="margin:0;border:1px solid var(--border);"><div style="font-weight:850;color:var(--primary);">🏫 ${esc(x.nama_sekolah||'-')}</div><div class="muted" style="margin:4px 0 4px;">NPSN <b>${esc(x.npsn)}</b> • Kecamatan ${esc(x.kecamatan||'-')}</div><div class="muted" style="margin:0 0 10px;">${esc(x.alamat_lengkap||'-')}</div><div style="font-weight:800;margin-bottom:10px;">Pagu: ${fmtRupiah(x.total_pagu||0)}</div><button class="btn btn-sm btn-primary" onclick="openPengawasRkasDetail('${esc(x.npsn)}')">Lihat RKAS</button></div>`).join('')||msg('Belum ada sekolah binaan.','ok')}</div></div>`;
   }catch(e){$('#pengawasRkasArea').innerHTML=msg(errorText(e));}
 }
 
@@ -1463,7 +1500,7 @@ window.openPengawasRkasDetail=async function(npsn,page=1){
     const detail=groups.flatMap(g=>[kelompokHeaderHtml(g,'Subtotal Pagu'),...g.items.map(x=>`<tr><td>${++no}</td><td><code>${esc(x.kode_rekening)}</code></td><td>${esc(x.uraian)}</td><td><b>${fmtRupiah(x.pagu)}</b></td><td>${fmtRupiah(x.total_realisasi)}</td><td>${fmtRupiah(x.sisa_pagu)}</td><td>${badge(x.status_rkas||'APPROVED','success')}</td></tr>`)]).join('');
     const first=rows[0]||{};
     const pager=`<div class="toolbar" style="justify-content:space-between;align-items:center;margin-top:14px;"><button class="btn btn-sm btn-light" onclick="renderPengawasRkasAndRealisasi()">← Kembali ke sekolah</button><div style="display:flex;gap:6px;align-items:center;"><button class="btn btn-sm btn-light" ${r.page<=1?'disabled':''} onclick="openPengawasRkasDetail('${esc(npsn)}',${r.page-1})">‹</button><span class="muted">Halaman ${r.page}/${r.totalPages} • ${fmtNum(r.total)} item</span><button class="btn btn-sm btn-light" ${r.page>=r.totalPages?'disabled':''} onclick="openPengawasRkasDetail('${esc(npsn)}',${r.page+1})">›</button></div></div>`;
-    area.innerHTML=`<div class="panel" style="margin-bottom:14px;"><b>🏫 ${esc(first.nama_sekolah||npsn)}</b><div class="muted">NPSN ${esc(npsn)} • Kecamatan ${esc(first.kecamatan||'-')}</div><div style="margin-top:8px;display:flex;gap:18px;flex-wrap:wrap;"><span>Total Pagu: <b>${fmtRupiah(r.totalPagu||0)}</b></span><span>Realisasi: <b>${fmtRupiah(r.totalRealisasi||0)}</b></span><span>Sisa: <b>${fmtRupiah(r.totalSisa||0)}</b></span></div></div><div class="table-wrap"><table class="friendly-table"><thead><tr><th>No</th><th>Kode</th><th>Uraian</th><th>Pagu</th><th>Realisasi</th><th>Sisa</th><th>Status</th></tr></thead><tbody>${detail||emptyRow(7,'Belum ada RKAS APPROVED.')}</tbody></table></div>${pager}`;
+    area.innerHTML=`<div class="panel" style="margin-bottom:14px;"><b>🏫 ${esc(first.nama_sekolah||npsn)}</b><div class="muted">NPSN ${esc(npsn)} • Kecamatan ${esc(first.kecamatan||'-')}</div><div class="muted" style="margin-top:3px;">${esc(first.alamat_lengkap||'-')}</div><div style="margin-top:8px;display:flex;gap:18px;flex-wrap:wrap;"><span>Total Pagu: <b>${fmtRupiah(r.totalPagu||0)}</b></span><span>Realisasi: <b>${fmtRupiah(r.totalRealisasi||0)}</b></span><span>Sisa: <b>${fmtRupiah(r.totalSisa||0)}</b></span></div></div><div class="table-wrap"><table class="friendly-table"><thead><tr><th>No</th><th>Kode</th><th>Uraian</th><th>Pagu</th><th>Realisasi</th><th>Sisa</th><th>Status</th></tr></thead><tbody>${detail||emptyRow(7,'Belum ada RKAS APPROVED.')}</tbody></table></div>${pager}`;
   }catch(e){area.innerHTML=msg(errorText(e));}
 };
 
