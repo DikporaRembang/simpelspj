@@ -379,6 +379,22 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
     transition-duration:.01ms!important;scroll-behavior:auto!important
   }
 }
+
+.nav-group{display:flex;flex-direction:column;gap:4px}
+.nav-group-toggle{
+  width:100%;text-align:left;border:0;background:rgba(255,255,255,.045);color:#dbe5ec;
+  padding:10px 12px;border-radius:11px;font-weight:750;display:flex;align-items:center;
+  justify-content:space-between;gap:8px;font-size:.78rem;letter-spacing:.06em;text-transform:uppercase;
+  transition:.18s;margin-top:5px
+}
+.nav-group-toggle:hover{background:rgba(255,255,255,.09);color:#fff}
+.nav-group-toggle .nav-chevron{font-size:.8rem;transition:transform .18s}
+.nav-group.open .nav-chevron{transform:rotate(90deg)}
+.nav-submenu{display:none;flex-direction:column;gap:3px;padding:3px 0 5px 8px}
+.nav-group.open .nav-submenu{display:flex}
+.nav-submenu .nav-btn{min-height:41px;padding:10px 12px;font-size:.84rem}
+.nav-home{margin-bottom:4px}
+
 </style>
 </head>
 <body>
@@ -391,29 +407,53 @@ const API_URL = 'https://script.google.com/macros/s/AKfycbyWvJXKr1QZ1zwbeJDoULTU
 const ROLE_MENUS = {
   DINAS: [
     { id: 'home', label: 'Beranda' },
-    { id: 'monitoringGlobal', label: 'Monitoring SPJ' },
-    { id: 'sekolah', label: 'Data Sekolah' },
-    { id: 'penugasan', label: 'Pengawas' },
-    { id: 'temuan', label: 'Temuan SPJ' },
-    { id: 'pesan', label: 'Pesan & Koordinasi' },
-    { id: 'rkasReview', label: 'Referensi RKAS' },
-    { id: 'masterSpj', label: 'Master SPJ & Periode' },
-    { id: 'dbCheck', label: 'Validasi Database' }
+    { group: 'PERSIAPAN', items: [
+      { id: 'masterSpj', label: 'Master SPJ & Periode' },
+      { id: 'sekolah', label: 'Data Sekolah' },
+      { id: 'penugasan', label: 'Penugasan Pengawas' }
+    ]},
+    { group: 'ANGGARAN', items: [
+      { id: 'rkasReview', label: 'Referensi RKAS' }
+    ]},
+    { group: 'MONITORING & PENILAIAN', items: [
+      { id: 'monitoringGlobal', label: 'Monitoring SPJ' },
+      { id: 'temuan', label: 'Temuan SPJ' }
+    ]},
+    { group: 'KOMUNIKASI', items: [
+      { id: 'pesan', label: 'Pesan & Koordinasi' }
+    ]},
+    { group: 'SISTEM', items: [
+      { id: 'dbCheck', label: 'Validasi Database' }
+    ]}
   ],
   PENGAWAS: [
     { id: 'home', label: 'Beranda' },
-    { id: 'penugasan', label: 'Sekolah Binaan' },
-    { id: 'crosscheck', label: 'Pemeriksaan SPJ' },
-    { id: 'temuan', label: 'Temuan SPJ' },
-    { id: 'asesmen', label: 'Penilaian SPJ' },
-    { id: 'pesan', label: 'Pesan & Koordinasi' }
+    { group: 'PENUGASAN', items: [
+      { id: 'penugasan', label: 'Sekolah Binaan' }
+    ]},
+    { group: 'PEMERIKSAAN', items: [
+      { id: 'crosscheck', label: 'Pemeriksaan SPJ' },
+      { id: 'temuan', label: 'Temuan SPJ' }
+    ]},
+    { group: 'PENILAIAN', items: [
+      { id: 'asesmen', label: 'Penilaian SPJ' }
+    ]},
+    { group: 'KOMUNIKASI', items: [
+      { id: 'pesan', label: 'Pesan & Koordinasi' }
+    ]}
   ],
   SEKOLAH: [
     { id: 'home', label: 'Beranda' },
-    { id: 'dokumenBulanan', label: 'SPJ Saya' },
-    { id: 'statusSpj', label: 'Status Pemeriksaan' },
-    { id: 'rkasReview', label: 'Referensi RKAS' },
-    { id: 'pesan', label: 'Pesan & Koordinasi' }
+    { group: 'PELAKSANAAN SPJ', items: [
+      { id: 'dokumenBulanan', label: 'SPJ Saya' },
+      { id: 'statusSpj', label: 'Status Pemeriksaan' }
+    ]},
+    { group: 'REFERENSI', items: [
+      { id: 'rkasReview', label: 'Referensi RKAS' }
+    ]},
+    { group: 'KOMUNIKASI', items: [
+      { id: 'pesan', label: 'Pesan & Koordinasi' }
+    ]}
   ]
 };
 
@@ -770,7 +810,17 @@ function renderShell(){
         <aside class="sidebar" id="sidebar">
           <div class="nav-group">
             <div class="nav-section-title">MENU UTAMA</div>
-            ${menus.map(n => `<button class="nav-btn" data-view="${esc(n.id)}">${esc(n.label)}</button>`).join('')}
+            ${menus.map((n,idx) => n.group
+              ? `<div class="nav-group nav-collapsible" data-nav-group="${esc(n.group)}">
+                   <button type="button" class="nav-group-toggle" data-group-toggle="${esc(n.group)}" aria-expanded="false">
+                     <span>${esc(n.group)}</span><span class="nav-chevron">›</span>
+                   </button>
+                   <div class="nav-submenu">
+                     ${n.items.map(item => `<button class="nav-btn" data-view="${esc(item.id)}">${esc(item.label)}</button>`).join('')}
+                   </div>
+                 </div>`
+              : `<button class="nav-btn nav-home" data-view="${esc(n.id)}">${esc(n.label)}</button>`
+            ).join('')}
           </div>
           <div class="sidebar-footer">
             <div class="sidebar-footer-item"><img src="logorembang.png" alt="Rembang"><div><span>DINDIKPORA REMBANG</span><small>Kab. Rembang</small></div></div>
@@ -781,7 +831,21 @@ function renderShell(){
       </div>
     </main>`;
     
-  $$('[data-view]').forEach(b => b.onclick = () => { loadView(b.dataset.view);$('#sidebar')?.classList.remove('open'); });
+  $$('[data-group-toggle]').forEach(b => b.onclick = () => {
+    const group = b.closest('[data-nav-group]');
+    if(!group) return;
+    const wasOpen = group.classList.contains('open');
+    $$('[data-nav-group]').forEach(g => g.classList.remove('open'));
+    $$('[data-group-toggle]').forEach(x => x.setAttribute('aria-expanded','false'));
+    if(!wasOpen){
+      group.classList.add('open');
+      b.setAttribute('aria-expanded','true');
+    }
+  });
+  $$('[data-view]').forEach(b => b.onclick = () => {
+    loadView(b.dataset.view);
+    $('#sidebar')?.classList.remove('open');
+  });
   $('#logoutBtn').onclick = logout; 
   $('#menuBtn').onclick = () => $('#sidebar')?.classList.toggle('open');
 }
