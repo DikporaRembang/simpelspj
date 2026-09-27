@@ -395,6 +395,21 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
 .nav-submenu .nav-btn{min-height:41px;padding:10px 12px;font-size:.84rem}
 .nav-home{margin-bottom:4px}
 
+
+.tutorial-feed{margin:0 0 18px;padding:15px 17px;border:1px solid #dfe9e4;border-left:4px solid var(--gold);border-radius:15px;background:linear-gradient(135deg,#fffdf7,#f7fbf9);box-shadow:0 7px 20px rgba(16,42,67,.045)}
+.tutorial-feed .tutorial-label{font-size:.68rem;font-weight:850;letter-spacing:.08em;text-transform:uppercase;color:#9a7625;margin-bottom:5px}
+.tutorial-feed h3{margin:0 0 5px;font-size:.98rem;color:var(--navy)}
+.tutorial-feed p{margin:0;color:#516271;font-size:.84rem;line-height:1.55}
+.tutorial-feed .tutorial-flow{margin-top:9px;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.tutorial-step{padding:5px 8px;border-radius:999px;background:#edf7f2;color:var(--emerald-2);font-size:.69rem;font-weight:800}
+.tutorial-arrow{color:#9aa8b2;font-size:.72rem}
+.assessment-guide{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:15px}
+.assessment-guide-card{padding:12px 13px;border:1px solid var(--border);border-radius:13px;background:#fff}
+.assessment-guide-card strong{display:block;font-size:.78rem;color:var(--navy);margin-bottom:4px}
+.assessment-guide-card span{font-size:.74rem;color:var(--muted);line-height:1.4}
+.score-auto{font-weight:850;color:var(--emerald-2)}
+.score-manual{font-weight:850;color:var(--warning)}
+@media(max-width:700px){.assessment-guide{grid-template-columns:1fr}.tutorial-feed{padding:13px 14px}}
 </style>
 </head>
 <body>
@@ -457,6 +472,22 @@ const ROLE_MENUS = {
   ]
 };
 
+
+const SUBMENU_TUTORIALS = {
+  masterSpj: {title:'Master SPJ & Periode',text:'Dinas menetapkan komponen SPJ, indikator pemeriksaan, dan periode aktif. Ini menjadi fondasi agar seluruh sekolah dinilai dengan standar yang sama.',flow:['Master SPJ','Indikator','Periode','Penilaian']},
+  sekolah: {title:'Data Sekolah',text:'Memastikan identitas satuan pendidikan dan NPSN benar sebelum dokumen, temuan, dan nilai dikaitkan ke sekolah yang diperiksa.',flow:['Identitas sekolah','Dokumen','Pemeriksaan','Nilai']},
+  penugasan: {title:'Penugasan Pengawas',text:'Menentukan pengawas yang berwenang memeriksa sekolah. Penugasan menjadi penghubung antara sekolah, periode, pemeriksaan, dan asesmen.',flow:['Sekolah','Pengawas','Periode','Asesmen']},
+  rkasReview: {title:'Referensi RKAS',text:'RKAS menjadi acuan kesesuaian penggunaan dana. Pemeriksaan SPJ membandingkan realisasi dan bukti dengan perencanaan yang telah ditetapkan.',flow:['RKAS','Transaksi','Bukti','Temuan']},
+  monitoringGlobal: {title:'Monitoring SPJ',text:'Dinas melihat kondisi pelaksanaan dan pemeriksaan secara agregat. Monitoring membantu menentukan bagian yang perlu ditindaklanjuti, bukan menggantikan pemeriksaan detail.',flow:['Status','Temuan','Tindak lanjut','Rekap']},
+  temuan: {title:'Temuan SPJ',text:'Temuan adalah hasil pemeriksaan berbasis bukti. Hanya temuan yang telah diverifikasi TERBUKTI yang memengaruhi skor otomatis.',flow:['Bukti','Temuan','Verifikasi','Skor']},
+  crosscheck: {title:'Pemeriksaan SPJ',text:'Pengawas memeriksa dokumen dan transaksi secara silang. Hasil pemeriksaan menjadi dasar terbentuknya temuan dan skor otomatis indikator.',flow:['Dokumen','Cross-check','Temuan','Indikator']},
+  asesmen: {title:'Penilaian SPJ',text:'Nilai tidak dimasukkan sembarang. Sistem menghitung skor indikator dari temuan terverifikasi, menerapkan bobot indikator, lalu menghitung nilai kualitas dan nilai akhir.',flow:['Temuan terbukti','Skor indikator','Bobot','Nilai akhir']},
+  dokumenBulanan: {title:'SPJ Saya',text:'Sekolah mengunggah dan mengelola bukti pertanggungjawaban sesuai periode. Bukti inilah yang menjadi bahan pemeriksaan pengawas.',flow:['Periode','Dokumen','Pemeriksaan','Temuan']},
+  statusSpj: {title:'Status Pemeriksaan',text:'Sekolah dapat melihat posisi dokumen dalam alur pemeriksaan dan mengetahui apakah perlu melengkapi atau memperbaiki bukti.',flow:['Upload','Diperiksa','Temuan','Tindak lanjut']},
+  pesan: {title:'Pesan & Koordinasi',text:'Digunakan untuk komunikasi resmi ketika ada kekurangan bukti, klarifikasi temuan, atau tindak lanjut hasil pemeriksaan.',flow:['Temuan','Klarifikasi','Perbaikan','Verifikasi']},
+  dbCheck: {title:'Validasi Database',text:'Memastikan struktur data pendukung aplikasi tetap sesuai sebelum proses operasional dan penilaian dijalankan.',flow:['Struktur','Data','Proses','Penilaian']}
+};
+
 const COMPONENT_FALLBACK = [
   ['SPJ-01','Buku Kas Umum (BKU)'],['SPJ-02','Buku Pembantu Bank'],['SPJ-03','Buku Pembantu Kas Tunai'],
   ['SPJ-04','Buku Pembantu Pajak'],['SPJ-05','Rekening Koran Bank'],['SPJ-06','Invoice / Nota / Kuitansi'],
@@ -504,7 +535,11 @@ function toast(text,type='ok',duration=3200){
   setTimeout(()=>{el.style.opacity='0';el.style.transform='translateY(8px)';setTimeout(()=>el.remove(),220)},duration);
 }
 function loading(text='Memuat data...'){ return `<div class="loading-container"><img src="bidangsd.png" class="loading-logo" alt="Loading"><div class="loading-text">${esc(text)}</div></div>`; }
-function head(title,desc=''){ return `<div class="page-head"><div><h1>${esc(title)}</h1>${desc?`<div class="muted">${esc(desc)}</div>`:''}</div></div>`; }
+function head(title,desc=''){
+  const info = SUBMENU_TUTORIALS[state.view];
+  const tutorial = info ? `<div class="tutorial-feed"><div class="tutorial-label">Tutorial singkat • Hubungan dengan alur SPJ BOS SD</div><h3>${esc(info.title)}</h3><p>${esc(info.text)}</p><div class="tutorial-flow">${info.flow.map((x,i)=>`${i?'<span class="tutorial-arrow">→</span>':''}<span class="tutorial-step">${esc(x)}</span>`).join('')}</div></div>` : '';
+  return `${tutorial}<div class="page-head"><div><h1>${esc(title)}</h1>${desc?`<div class="muted">${esc(desc)}</div>`:''}</div></div>`;
+}
 function emptyRow(cols,text='Tidak ada data.'){ return `<tr><td colspan="${cols}" class="muted" style="text-align:center;padding:25px">${esc(text)}</td></tr>`; }
 
 async function api(action, payload={}){
@@ -2199,19 +2234,82 @@ async function asesmenView(){
   if(state.selectedNpsn && $('#npsnSelect')) openAssessment();
 }
 window.openAssessment=async function(){
-  const p=$('#periodeSelect').value,n=isSchool()?ownNpsn():$('#npsnSelect')?.value;if(!p||!n){alert('Wajib pilih periode & sekolah.');return;}
-  state.selectedPeriode=p;state.selectedNpsn=n;const a=$('#assessmentArea');a.innerHTML=loading();
-  try{const r=await api('buatAtauAmbilAsesmen',{idPeriode:p,npsn:n});const indRes=await safeApi('hitungIndikatorDariTemuan',{idPeriode:p,npsn:n},{data:[]});renderAssessment(r,indRes.data||[]);;}catch(e){a.innerHTML=msg(errorText(e));}
+  const p=$('#periodeSelect').value,n=isSchool()?ownNpsn():$('#npsnSelect')?.value;
+  if(!p||!n){toast('Pilih periode dan sekolah terlebih dahulu.','warning');return;}
+  state.selectedPeriode=p;state.selectedNpsn=n;
+  const a=$('#assessmentArea');a.innerHTML=loading('Menyiapkan penilaian...');
+  try{
+    const r=await api('buatAtauAmbilAsesmen',{idPeriode:p,npsn:n});
+    const asesmen=r.data||r.asesmen||r;
+    const indRes=await safeApi('hitungIndikatorDariTemuan',{idPeriode:p,npsn:n,idAsesmen:asesmen.id_asesmen},{data:[]});
+    renderAssessment(asesmen,indRes.data||[]);
+  }catch(e){a.innerHTML=msg(errorText(e));}
 };
-function renderAssessment(r, indicators){
-  const a=r.data||r.asesmen||r;
-  const rows=indicators.map(d=>`<tr><td>${esc(d.kode_indikator)}</td><td>${esc(d.nama_indikator)}</td><td>${esc(d.bobot)}</td><td><b>${esc(d.skor)}</b></td><td>${isPengawas()?`<button class="btn btn-sm btn-primary" onclick="editScore('${esc(a.id_asesmen)}','${esc(d.id_indikator)}',${d.skor})">Edit</button>`:'-'}</td></tr>`).join('');
-  $('#assessmentArea').innerHTML=`<div class="cards"><div class="stat"><small>Status</small><strong style="font-size:1.1rem">${esc(a.status_asesmen||'-')}</strong></div><div class="stat"><small>Nilai</small><strong>${a.nilai_kualitas??'-'}</strong></div><div class="stat"><small>Kompleksitas</small><strong>${a.indeks_kompleksitas??'-'}</strong></div><div class="stat"><small>Nilai Akhir</small><strong>${a.nilai_akhir??'-'}</strong></div></div><div class="table-wrap"><table class="friendly-table"><thead><tr><th>Kode</th><th>Indikator</th><th>Bobot</th><th>Skor</th><th>Aksi</th></tr></thead><tbody>${rows||emptyRow(5)}</tbody></table></div>${isPengawas()&&String(a.status_asesmen||'').toUpperCase()!=='SELESAI'?`<div class="toolbar" style="margin-top:14px"><button class="btn btn-primary" onclick="finalizeAssessment('${esc(a.id_asesmen)}')">✓ Finalisasi Asesmen</button></div>`:''}`;
+
+function renderAssessment(a, indicators){
+  const totalWeight=indicators.reduce((s,x)=>s+Math.max(0,Number(x.bobot)||0),0);
+  const weighted=totalWeight>0
+    ? indicators.reduce((s,x)=>s+(Number(x.skor)||0)*Math.max(0,Number(x.bobot)||0),0)/totalWeight
+    : (indicators.length?indicators.reduce((s,x)=>s+(Number(x.skor)||0),0)/indicators.length:0);
+  const preview=Number((weighted*25).toFixed(2));
+  const done=indicators.filter(x=>String(x.sumber_penilaian||'').toUpperCase()==='KOREKSI_MANUAL').length;
+  const rows=indicators.map(d=>{
+    const manual=String(d.sumber_penilaian||'').toUpperCase()==='KOREKSI_MANUAL';
+    const findings=Number(d.jumlah_temuan||0);
+    return `<tr>
+      <td><b>${esc(d.kode_indikator)}</b><br><small class="muted">${esc(d.nama_indikator)}</small></td>
+      <td>${esc(d.bobot||0)}</td>
+      <td><span class="${manual?'score-manual':'score-auto'}">${Number(d.skor).toFixed(2)}</span><br><small class="muted">otomatis ${Number(d.skor_otomatis).toFixed(2)}</small></td>
+      <td>${findings?`<span class="badge badge-warning">${findings} temuan</span>`:'<span class="badge badge-success">Tidak ada</span>'}</td>
+      <td>${isPengawas()&&String(a.status_asesmen||'').toUpperCase()!=='SELESAI'?`<button class="btn btn-sm btn-light" onclick="editScore('${esc(a.id_asesmen)}','${esc(d.id_indikator)}','${d.skor}','${d.skor_otomatis}')">${manual?'Koreksi':'Koreksi manual'}</button>`:'-'}</td>
+    </tr>`;
+  }).join('');
+
+  $('#assessmentArea').innerHTML=`
+    <div class="assessment-guide">
+      <div class="assessment-guide-card"><strong>1. Sistem membaca temuan</strong><span>Hanya temuan berstatus TERBUKTI yang menjadi dasar penalti otomatis.</span></div>
+      <div class="assessment-guide-card"><strong>2. Sistem menghitung indikator</strong><span>Skor dasar 4 dikurangi penalti sesuai tingkat temuan.</span></div>
+      <div class="assessment-guide-card"><strong>3. Sistem menerapkan bobot</strong><span>Nilai kualitas dihitung dari skor indikator berbobot, bukan rata-rata buta.</span></div>
+    </div>
+    <div class="cards">
+      <div class="stat"><small>Status</small><strong style="font-size:1.05rem">${esc(a.status_asesmen||'-')}</strong></div>
+      <div class="stat"><small>Nilai kualitas sementara</small><strong>${a.nilai_kualitas??preview}</strong></div>
+      <div class="stat"><small>Indikator</small><strong>${indicators.length}</strong></div>
+      <div class="stat"><small>Koreksi manual</small><strong>${done}</strong></div>
+    </div>
+    <div class="panel" style="margin-top:14px;padding:16px">
+      <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap">
+        <div><b>Nilai kualitas</b><div class="muted">Pratinjau berdasarkan indikator aktif dan bobotnya.</div></div>
+        <strong style="font-size:1.5rem;color:var(--emerald-2)">${Number(a.nilai_kualitas??preview).toFixed(2)}</strong>
+      </div>
+    </div>
+    <div class="table-wrap"><table class="friendly-table"><thead><tr><th>Indikator</th><th>Bobot</th><th>Skor</th><th>Temuan terbukti</th><th>Aksi</th></tr></thead><tbody>${rows||emptyRow(5)}</tbody></table></div>
+    ${isPengawas()&&String(a.status_asesmen||'').toUpperCase()!=='SELESAI'?`<div class="toolbar" style="margin-top:14px"><button class="btn btn-primary" onclick="finalizeAssessment('${esc(a.id_asesmen)}')">✓ Finalisasi Penilaian</button></div>`:''}
+    ${String(a.status_asesmen||'').toUpperCase()==='SELESAI'?`<div class="message ok" style="margin-top:14px">Penilaian sudah difinalisasi. Nilai akhir: <b>${esc(a.nilai_akhir??'-')}</b>.</div>`:''}
+  `;
 }
-window.finalizeAssessment=async function(idAsesmen){if(!confirm('Finalisasi asesmen ini? Setelah finalisasi, nilai tidak dapat diedit lagi.'))return;try{const r=await api('finalisasiAsesmen',{idAsesmen});alert(`Asesmen selesai. Nilai akhir: ${r.nilai_akhir}`);await openAssessment();}catch(e){alert(errorText(e));}};
-window.editScore=async function(idAsesmen, idIndikator, current){
-  const v=prompt('Masukkan skor (0-4):',current??4);if(v===null)return;const n=Number(v);if(n<0||n>4)return;
-  try{await api('simpanDetailAsesmen',{data:{id_asesmen:idAsesmen,id_indikator:idIndikator,skor:n,catatan_pengawas:'',status_berlaku:'BERLAKU'}});await openAssessment();}catch(e){alert(errorText(e));}
+
+window.finalizeAssessment=async function(idAsesmen){
+  if(!confirm('Finalisasi penilaian ini? Setelah finalisasi, nilai tidak dapat diedit lagi.'))return;
+  try{const r=await api('finalisasiAsesmen',{idAsesmen});toast(`Penilaian selesai. Nilai akhir: ${r.nilai_akhir}`,'ok',4500);await openAssessment();}
+  catch(e){toast(errorText(e),'error',4500);}
+};
+
+window.editScore=async function(idAsesmen,idIndikator,current,automatic){
+  const raw=prompt(`Skor indikator (0–4).\nSkor otomatis: ${automatic}\nKosongkan untuk kembali ke skor otomatis.`,current??automatic);
+  if(raw===null)return;
+  let score=raw.trim()===''?'':Number(raw);
+  if(score!=='' && (!Number.isFinite(score)||score<0||score>4)){toast('Skor harus antara 0 sampai 4.','warning');return;}
+  let note='';
+  if(score!=='' && Math.abs(Number(score)-Number(automatic))>0.001){
+    note=prompt('Jelaskan alasan koreksi manual:','');
+    if(note===null||!note.trim()){toast('Koreksi manual wajib memiliki alasan.','warning');return;}
+  }
+  try{
+    await api('simpanDetailAsesmen',{data:{id_asesmen:idAsesmen,id_indikator:idIndikator,skor:score,catatan_pengawas:note,status_berlaku:'BERLAKU'}});
+    toast(score===''?'Indikator dikembalikan ke skor otomatis.':'Koreksi indikator tersimpan.','ok');
+    await openAssessment();
+  }catch(e){toast(errorText(e),'error',4500);}
 };
 
 // Helper identitas sekolah yang rapi untuk topbar maupun kartu
