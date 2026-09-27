@@ -3028,8 +3028,9 @@ async function tutorialV5View(){
     const area=$('#v5TutorialFeed');
     if(!area)return;
     if(!d.available){area.innerHTML=msg('Dokumen tutorial_simpelspj.pdf belum ditemukan di Google Drive aplikasi.','warning');return;}
-    area.innerHTML=`<div class="panel" style="padding:0;overflow:hidden"><iframe title="Tutorial SIMPEL SPJ" src="${esc(d.preview_url)}" style="width:100%;height:76vh;border:0;background:#f5f7f9"></iframe></div>
-      <div class="muted" style="margin-top:8px">Nama dokumen: <b>tutorial_simpelspj.pdf</b> • Feed ini hanya menampilkan dokumen; file asli tetap berada di penyimpanan aplikasi.</div>`;
+    const pdfSrc=d.inline_data_url||d.preview_url||d.file_url||'';
+    area.innerHTML=`<div class="panel" style="padding:0;overflow:hidden"><iframe title="Tutorial SIMPEL SPJ" src="${esc(pdfSrc)}" style="width:100%;height:76vh;border:0;background:#f5f7f9"></iframe>
+      <div class="muted" style="padding:8px 12px">Nama dokumen: <b>tutorial_simpelspj.pdf</b> • Tutorial dibaca langsung di feed aplikasi. File asli tetap berada di penyimpanan aplikasi.</div></div>`;
   }catch(e){$('#v5TutorialFeed').innerHTML=msg(errorText(e),'error');}
 }
 async function arsipPenilaianV5View(){
@@ -3075,7 +3076,7 @@ async function loadV5Archive(){
           <p>Persetujuan sekolah: <b>${appr?'TERCATAT':'BELUM TERCATAT'}</b></p>
           ${appr?`<p>Disetujui oleh: <b>${esc(appr.disetujui_oleh||'-')}</b><br>Waktu: ${esc(appr.disetujui_at||'-')}</p>`:''}
           <p>Pengesahan pengawas: <b>${sig?'DISAHKAN':'BELUM DISAHKAN'}</b></p>
-          ${sig?`<p>Penandatangan: <b>${esc(sig.ditandatangani_oleh||'-')}</b><br>Waktu: ${esc(sig.ditandatangani_at||'-')}<br>Hash integritas: <code style="word-break:break-all">${esc(sig.integrity_hash||'-')}</code></p>`:''}
+          ${sig?`<p>Penandatangan: <b>${esc(sig.ditandatangani_oleh||'-')}</b><br>Waktu: ${esc(sig.ditandatangani_at||'-')}<br>Kode pengesahan: <b>${esc(sig.kode_pengesahan||'-')}</b><br>Hash integritas: <code style="word-break:break-all">${esc(sig.integrity_hash||'-')}</code></p><div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap"><img alt="QR Verifikasi Pengesahan" src="https://quickchart.io/qr?size=180&text=${encodeURIComponent(sig.verification_url||'')}" style="width:150px;height:150px;border:1px solid #ddd;padding:5px;background:#fff"><div><b>QR Verifikasi</b><br><span class="muted">Pindai QR untuk membuka halaman verifikasi pengesahan.</span><br><a href="${esc(sig.verification_url||'#')}" target="_blank">Buka verifikasi</a></div></div>`:''}
         </div>
         <div class="panel"><h3>H. DAFTAR BERKAS ASLI</h3><p class="muted">Berkas PDF asli tetap menjadi bukti utama. Daftar di bawah menunjukkan seluruh dokumen yang terhubung pada periode penilaian dan dapat dibuka dari aplikasi.</p>${_v5DocCards(d.dokumen)}</div>
       </div>
@@ -3121,7 +3122,9 @@ async function renderPengesahanPanel(idAsesmen){
         <b>${vr.valid?'🔒 PENILAIAN DISAHKAN':'⚠ PENGESAHAN PERLU DIVERIFIKASI'}</b><br>
         Penandatangan: ${esc(signature.ditandatangani_oleh||'-')}<br>
         Waktu: ${esc(signature.ditandatangani_at||signature.tanggal||'-')}<br>
+        Kode pengesahan: <b>${esc(signature.kode_pengesahan||'-')}</b><br>
         Hash integritas: <code style="word-break:break-all">${esc(signature.integrity_hash||'-')}</code>
+        ${signature.verification_url?`<div style="display:flex;gap:14px;align-items:center;margin-top:12px;flex-wrap:wrap"><img alt="QR Verifikasi" src="https://quickchart.io/qr?size=180&text=${encodeURIComponent(signature.verification_url)}" style="width:140px;height:140px;border:1px solid #ddd;padding:4px;background:#fff"><div><b>QR Verifikasi</b><br><a target="_blank" href="${esc(signature.verification_url)}">Buka halaman verifikasi</a></div></div>`:''}
       </div>`;
     }else if(isPengawas() && approved && String(d.status_asesmen).toUpperCase()==='SELESAI'){
       action=`<div class="toolbar" style="margin-top:12px"><button class="btn btn-primary" onclick="tandaTanganiPenilaian('${esc(idAsesmen)}')">🔏 Tanda Tangani & Sah-kan Penilaian</button></div>`;
