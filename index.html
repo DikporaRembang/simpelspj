@@ -461,7 +461,8 @@ const ROLE_MENUS = {
       { id: 'temuan', label: 'Temuan SPJ' }
     ]},
     { group: 'PENILAIAN', items: [
-      { id: 'asesmen', label: 'Penilaian SPJ' }
+      { id: 'asesmen', label: 'Penilaian SPJ' },
+      { id: 'keberatan', label: 'Keberatan Penilaian' }
     ]},
     { group: 'KOMUNIKASI', items: [
       { id: 'pesan', label: 'Pesan & Koordinasi' }
@@ -472,6 +473,9 @@ const ROLE_MENUS = {
     { group: 'PELAKSANAAN SPJ', items: [
       { id: 'dokumenBulanan', label: 'SPJ Saya' },
       { id: 'statusSpj', label: 'Status Pemeriksaan' }
+    ]},
+    { group: 'PENILAIAN', items: [
+      { id: 'keberatan', label: 'Keberatan Penilaian' }
     ]},
     { group: 'REFERENSI', items: [
       { id: 'rkasReview', label: 'Referensi RKAS' }
@@ -992,6 +996,7 @@ async function loadView(view){
       crosscheck: crosscheckView, 
       temuan: temuanView, 
       asesmen: asesmenView, 
+      keberatan: keberatanView,
       dbCheck: dbCheckView, 
       pesan: pesanView,
       monitoringGlobal: renderMonitoringGlobalView // <--- DITAMBAHKAN DI SINI
@@ -2111,7 +2116,7 @@ function renderPenugasanTable(list){
     <td>${esc(x.tanggal_selesai || '-')}</td>
     <td>${badge(x.status || 'AKTIF', 'success')}</td>
   </tr>`).join('');
-  $('#penugasanContent').innerHTML = `<div class="table-wrap"><table class="friendly-table"><thead><tr><th>Pengawas Pembina</th><th>Satuan Pendidikan & Kecamatan</th><th>Mulai</th><th>Selesai</th><th>Status</th></tr></thead><tbody>${rows||emptyRow(5)}</tbody></table></div>`;
+  $('#penugasanContent').innerHTML = `<div class="table-wrap"><table class="friendly-table"><thead><tr><th>Pengawas Pembina</th><th>Satuan Pendidikan & Kecamatan</th><th>Mulai</th><th>Selesai</th><th>Status</th></tr></thead><tbody>${rows||emptyRow(6)}</tbody></table></div>`;
 }
 
 window.triggerDistribusiPenugasanAdil = async function() {
@@ -2417,9 +2422,82 @@ window.openAssessment=async function(){
   try{
     const r=await api('buatAtauAmbilAsesmen',{idPeriode:p,npsn:n});
     const asesmen=r.data||r.asesmen||r;
+    if(state.reopenAssessmentId && state.reopenAssessmentId===asesmen.id_asesmen){ state.reopenAssessmentId=null; }
     const indRes=await safeApi('hitungIndikatorDariTemuan',{idPeriode:p,npsn:n,idAsesmen:asesmen.id_asesmen},{data:[]});
     renderAssessment(asesmen,indRes.data||[]);
   }catch(e){a.innerHTML=msg(errorText(e));}
+};
+
+
+async function keberatanView(){
+  const areaId='appealArea';
+  $('#mainContent').innerHTML=head(isSchool()?'Keberatan Penilaian':'Keberatan & Kaji Ulang','Sekolah dapat menyampaikan keberatan; pengawas dapat mengkaji ulang penilaian berdasarkan alasan dan bukti.');
+  $('#mainContent').insertAdjacentHTML('beforeend',`<div id="${areaId}">${loading('Memuat keberatan...')}</div>`);
+  await renderKeberatanList();
+}
+
+async function renderKeberatanList(){
+  const area=$('#appealArea'); if(!area)return;
+  try{
+    const r=await api('getKeberatanPenilaian',{}), rows=r.data||[];
+    if(!rows.length){
+      area.innerHTML=msg(isSchool()?'Belum ada penilaian selesai yang dapat diajukan keberatan.':'Belum ada pengajuan keberatan dari sekolah.','ok');
+      return;
+    }
+    const cards=rows.map(x=>{
+      const status=String(x.status_keberatan||'DIAJUKAN').toUpperCase();
+      if(isSchool() && x.can_appeal){
+        return `<div class="panel" style="margin-bottom:12px;border-left:4px solid var(--emerald-2);">
+          <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center;">
+            <div><b>Penilaian selesai</b><div class="muted">Asesmen ${esc(x.id_asesmen||'-')} • Periode ${esc(x.id_periode||'-')}</div></div>
+            <span class="badge badge-success">SIAP DIAJUKAN</span>
+          </div>
+          <div style="margin-top:10px">Nilai akhir: <b>${esc(x.nilai_akhir??'-')}</b></div>
+          <div class="toolbar" style="margin-top:12px"><button class="btn btn-primary" onclick="ajukanKeberatan('${esc(x.id_asesmen)}')">✉ Ajukan Keberatan</button></div>
+        </div>`;
+      }
+      const badgeClass=status==='SELESAI'?'success':status==='DIKAJI_ULANG'?'info':'warning';
+      return `<div class="panel" style="margin-bottom:12px;border-left:4px solid var(--gold);">
+        <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center;">
+          <div><b>${esc(x.nama_sekolah||x.npsn||'Sekolah')}</b><div class="muted">NPSN ${esc(x.npsn||'-')} • Periode ${esc(x.id_periode||'-')}</div></div>
+          <span class="badge badge-${badgeClass}">${esc(status.replaceAll('_',' '))}</span>
+        </div>
+        <div style="margin-top:12px;padding:12px;background:#f7f9fb;border-radius:10px;"><b>Alasan keberatan</b><div style="margin-top:5px;white-space:pre-wrap;line-height:1.55;">${esc(x.alasan||'-')}</div></div>
+        <div class="muted" style="margin-top:9px;">Nilai saat ini: <b>${esc(x.nilai_akhir??'-')}</b></div>
+        ${isPengawas()&&status==='DIAJUKAN'?`<div class="toolbar" style="margin-top:12px"><button class="btn btn-primary" onclick="mulaiKajiUlang('${esc(x.id_pesan)}')">🔎 Mulai Kaji Ulang</button></div>`:''}
+        ${isPengawas()&&status==='DIKAJI_ULANG'?`<div class="toolbar" style="margin-top:12px"><button class="btn btn-primary" onclick="bukaPenilaianUntukKajiUlang('${esc(x.id_asesmen)}')">✎ Buka Penilaian</button><button class="btn btn-light" onclick="selesaikanKajiUlang('${esc(x.id_pesan)}')">Selesaikan Kaji Ulang</button></div>`:''}
+        ${status==='SELESAI'?`<div class="message ok" style="margin-top:12px"><b>Hasil kaji ulang:</b> ${esc(x.keputusan||'DITINJAU')}<br>${esc(x.tanggapan_pengawas||'')}</div>`:''}
+      </div>`;
+    }).join('');
+    area.innerHTML=cards;
+  }catch(e){area.innerHTML=msg(errorText(e));}
+}
+
+window.ajukanKeberatan=async function(idAsesmen){
+  const alasan=prompt('Tuliskan alasan keberatan dan bagian penilaian yang menurut sekolah perlu dikaji ulang:','');
+  if(alasan===null||!alasan.trim())return;
+  if(alasan.trim().length<10){toast('Alasan keberatan perlu dijelaskan dengan cukup jelas.','warning');return;}
+  try{await api('ajukanKeberatanPenilaian',{data:{id_asesmen:idAsesmen,alasan:alasan.trim()}});toast('Keberatan berhasil diajukan kepada pengawas.','ok',4000);await renderKeberatanList();}
+  catch(e){toast(errorText(e),'error',4500);}
+};
+
+window.mulaiKajiUlang=async function(idPesan){
+  if(!confirm('Buka kembali penilaian ini untuk dikaji ulang? Nilai final akan kembali ke tahap pemeriksaan dan dapat diperiksa/dikoreksi oleh pengawas.'))return;
+  try{await api('mulaiKajiUlangKeberatan',{idPesan});toast('Penilaian dibuka untuk kaji ulang.','ok');await renderKeberatanList();}
+  catch(e){toast(errorText(e),'error',4500);}
+};
+
+window.bukaPenilaianUntukKajiUlang=async function(idAsesmen){
+  state.reopenAssessmentId=idAsesmen; await loadView('asesmen');
+};
+
+window.selesaikanKajiUlang=async function(idPesan){
+  const keputusan=prompt('Keputusan kaji ulang (misalnya DITERIMA, DITOLAK, atau DIPERBAIKI):','DITINJAU');
+  if(keputusan===null||!keputusan.trim())return;
+  const tanggapan=prompt('Tulis tanggapan pengawas kepada sekolah:','');
+  if(tanggapan===null||!tanggapan.trim())return;
+  try{const r=await api('selesaikanKajiUlangKeberatan',{data:{id_pesan:idPesan,keputusan:keputusan.trim(),tanggapan_pengawas:tanggapan.trim()}});toast(`Kaji ulang selesai. Nilai akhir: ${r.nilai_akhir??'-'}`,'ok',5000);await renderKeberatanList();}
+  catch(e){toast(errorText(e),'error',5000);}
 };
 
 function renderAssessment(a, indicators){
@@ -2434,7 +2512,8 @@ function renderAssessment(a, indicators){
     const findings=Number(d.jumlah_temuan||0);
     return `<tr>
       <td><b>${esc(d.kode_indikator)}</b><br><small class="muted">${esc(d.nama_indikator)}</small></td>
-      <td>${esc(d.bobot||0)}</td>
+      <td>${Number(d.risiko||0).toFixed(2)}/100</td>
+      <td>${Number(d.bobot||0).toFixed(2)}%</td>
       <td><span class="${manual?'score-manual':'score-auto'}">${Number(d.skor).toFixed(2)}</span><br><small class="muted">otomatis ${Number(d.skor_otomatis).toFixed(2)}</small></td>
       <td>${findings?`<span class="badge badge-warning">${findings} temuan</span>`:'<span class="badge badge-success">Tidak ada</span>'}</td>
       <td>${isPengawas()&&String(a.status_asesmen||'').toUpperCase()!=='SELESAI'?`<button class="btn btn-sm btn-light" onclick="editScore('${esc(a.id_asesmen)}','${esc(d.id_indikator)}','${d.skor}','${d.skor_otomatis}')">${manual?'Koreksi':'Koreksi manual'}</button>`:'-'}</td>
@@ -2442,10 +2521,11 @@ function renderAssessment(a, indicators){
   }).join('');
 
   $('#assessmentArea').innerHTML=`
+    ${String(a.status_asesmen||'').toUpperCase()==='KAJI_ULANG'?`<div class="message warning" style="margin-bottom:14px"><b>Mode Kaji Ulang.</b> Sekolah mengajukan keberatan atas penilaian ini. Silakan periksa kembali bukti, temuan, dan skor sebelum memfinalisasi ulang.</div>`:''}
     <div class="assessment-guide">
       <div class="assessment-guide-card"><strong>1. Sistem membaca temuan</strong><span>Hanya temuan berstatus TERBUKTI yang menjadi dasar penalti otomatis.</span></div>
-      <div class="assessment-guide-card"><strong>2. Sistem menghitung indikator</strong><span>Skor dasar 4 dikurangi penalti sesuai tingkat temuan.</span></div>
-      <div class="assessment-guide-card"><strong>3. Sistem menerapkan bobot</strong><span>Nilai kualitas dihitung dari skor indikator berbobot, bukan rata-rata buta.</span></div>
+      <div class="assessment-guide-card"><strong>2. Risk Engine membentuk indikator</strong><span>Indikator dipilih otomatis berdasarkan pola risiko SPJ, bukan daftar bobot statis.</span></div>
+      <div class="assessment-guide-card"><strong>3. Bobot dinamis</strong><span>Bobot setiap indikator dihitung dari profil risiko sekolah dan totalnya dinormalisasi menjadi 100%.</span></div>
     </div>
     <div class="cards">
       <div class="stat"><small>Status</small><strong style="font-size:1.05rem">${esc(a.status_asesmen||'-')}</strong></div>
@@ -2453,15 +2533,15 @@ function renderAssessment(a, indicators){
       <div class="stat"><small>Indikator</small><strong>${indicators.length}</strong></div>
       <div class="stat"><small>Koreksi manual</small><strong>${done}</strong></div>
     </div>
-    <div class="panel" style="margin-top:14px;padding:16px">
+    <div class="message ok" style="margin-top:14px">Penilaian menggunakan Risk Engine otomatis. Risiko sistem menentukan bobot dinamis; hanya temuan <b>TERBUKTI</b> yang mengurangi skor indikator.</div><div class="panel" style="margin-top:14px;padding:16px">
       <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap">
         <div><b>Nilai kualitas</b><div class="muted">Pratinjau berdasarkan indikator aktif dan bobotnya.</div></div>
         <strong style="font-size:1.5rem;color:var(--emerald-2)">${Number(a.nilai_kualitas??preview).toFixed(2)}</strong>
       </div>
     </div>
-    <div class="table-wrap"><table class="friendly-table"><thead><tr><th>Indikator</th><th>Bobot</th><th>Skor</th><th>Temuan terbukti</th><th>Aksi</th></tr></thead><tbody>${rows||emptyRow(5)}</tbody></table></div>
+    <div class="table-wrap"><table class="friendly-table"><thead><tr><th>Indikator</th><th>Risiko</th><th>Bobot Dinamis</th><th>Skor</th><th>Temuan terbukti</th><th>Aksi</th></tr></thead><tbody>${rows||emptyRow(6)}</tbody></table></div>
     ${isPengawas()&&String(a.status_asesmen||'').toUpperCase()!=='SELESAI'?`<div class="toolbar" style="margin-top:14px"><button class="btn btn-primary" onclick="finalizeAssessment('${esc(a.id_asesmen)}')">✓ Finalisasi Penilaian</button></div>`:''}
-    ${String(a.status_asesmen||'').toUpperCase()==='SELESAI'?`<div class="message ok" style="margin-top:14px">Penilaian sudah difinalisasi. Nilai akhir: <b>${esc(a.nilai_akhir??'-')}</b>.</div>`:''}
+    ${String(a.status_asesmen||'').toUpperCase()==='SELESAI'?`<div class="message ok" style="margin-top:14px">Penilaian sudah difinalisasi. Nilai akhir: <b>${esc(a.nilai_akhir??'-')}</b>.</div>${isSchool()?`<div class="toolbar" style="margin-top:12px"><button class="btn btn-primary" onclick="ajukanKeberatan('${esc(a.id_asesmen)}')">✉ Ajukan Keberatan Penilaian</button></div>`:''}`:''}
   `;
 }
 
