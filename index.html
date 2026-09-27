@@ -443,8 +443,10 @@ const ROLE_MENUS = {
     { group: 'KOMUNIKASI', items: [
       { id: 'pesan', label: 'Pesan & Koordinasi' }
     ]},
-    { group: 'SISTEM', items: [
-      { id: 'dbCheck', label: 'Validasi Database' }
+     { group: 'SISTEM', items: [
+      { id: 'dbCheck', label: 'Validasi Database' },
+      { id: 'tutorialV5', label: '📖 Tutorial SIMPEL SPJ' },
+      { id: 'arsipPenilaianV5', label: '🖨️ Arsip Penilaian' }
     ]}
   ],
   PENGAWAS: [
@@ -466,6 +468,10 @@ const ROLE_MENUS = {
     ]},
     { group: 'KOMUNIKASI', items: [
       { id: 'pesan', label: 'Pesan & Koordinasi' }
+    ]},
+    { group: 'DOKUMEN', items: [
+      { id: 'tutorialV5', label: '📖 Tutorial SIMPEL SPJ' },
+      { id: 'arsipPenilaianV5', label: '🖨️ Arsip Penilaian' }
     ]}
   ],
   SEKOLAH: [
@@ -482,6 +488,10 @@ const ROLE_MENUS = {
     ]},
     { group: 'KOMUNIKASI', items: [
       { id: 'pesan', label: 'Pesan & Koordinasi' }
+    ]},
+    { group: 'DOKUMEN', items: [
+      { id: 'tutorialV5', label: '📖 Tutorial SIMPEL SPJ' },
+      { id: 'arsipPenilaianV5', label: '🖨️ Arsip Penilaian' }
     ]}
   ]
 };
@@ -500,6 +510,12 @@ const SUBMENU_TUTORIALS = {
   statusSpj: {title:'Status Pemeriksaan',text:'Sekolah dapat melihat posisi dokumen dalam alur pemeriksaan dan mengetahui apakah perlu melengkapi atau memperbaiki bukti.',flow:['Upload','Diperiksa','Temuan','Tindak lanjut']},
   pesan: {title:'Pesan & Koordinasi',text:'Digunakan untuk komunikasi resmi ketika ada kekurangan bukti, klarifikasi temuan, atau tindak lanjut hasil pemeriksaan.',flow:['Temuan','Klarifikasi','Perbaikan','Verifikasi']},
   dbCheck: {title:'Validasi Database',text:'Memastikan struktur data pendukung aplikasi tetap sesuai sebelum proses operasional dan penilaian dijalankan.',flow:['Struktur','Data','Proses','Penilaian']}
+};
+
+
+const V5_SUBMENU_TUTORIALS = {
+  tutorialV5:{title:'Tutorial SIMPEL SPJ',text:'Buka tutorial lengkap langsung di dalam aplikasi. Dokumen menggunakan nama tutorial_simpelspj.pdf.',flow:['Buka Tutorial','Pilih Bagian','Ikuti Langkah','Kembali ke Aplikasi']},
+  arsipPenilaianV5:{title:'Arsip Penilaian',text:'Membuka paket arsip penilaian sekolah: identitas, RKAS, transaksi, dokumen/bukti, temuan, indikator, keberatan, persetujuan, dan pengesahan.',flow:['Pilih Sekolah','Pilih Periode','Buka Arsip','Cetak / PDF']}
 };
 
 const COMPONENT_FALLBACK = [
@@ -999,7 +1015,9 @@ async function loadView(view){
       keberatan: keberatanView,
       dbCheck: dbCheckView, 
       pesan: pesanView,
-      monitoringGlobal: renderMonitoringGlobalView // <--- DITAMBAHKAN DI SINI
+      monitoringGlobal: renderMonitoringGlobalView,
+      tutorialV5: tutorialV5View,
+      arsipPenilaianV5: arsipPenilaianV5View
     }; 
     if(!map[view]) throw new Error('Modul belum tersedia: ' + view); 
     await map[view](); 
@@ -2963,6 +2981,120 @@ window.exportGlobalMonExcel = function(){
 };
 
 </script>
+
+<script>
+/* ============================================================================
+ * SIMPEL SPJ V5 — TUTORIAL FEED + PAKET ARSIP PENILAIAN
+ * Penyempurnaan V4; tidak mengubah tabel/database.
+ * ========================================================================== */
+function _v5Field(o, keys, fallback=''){
+  for(const k of keys){ if(o && o[k] !== undefined && o[k] !== null && String(o[k]).trim()!=='') return o[k]; }
+  return fallback;
+}
+function _v5RowsTable(rows, title, opts={}){
+  rows = Array.isArray(rows)?rows:[];
+  const hidden = new Set(opts.hidden||[]);
+  if(!rows.length) return `<div class="panel"><h3>${esc(title)}</h3><div class="muted">Tidak ada data.</div></div>`;
+  const keys = Array.from(new Set(rows.flatMap(r=>Object.keys(r||{})))).filter(k=>!hidden.has(k) && !String(k).startsWith('_'));
+  const head = keys.map(k=>`<th>${esc(k.replaceAll('_',' ').toUpperCase())}</th>`).join('');
+  const body = rows.map(r=>`<tr>${keys.map(k=>`<td>${esc(r?.[k] ?? '')}</td>`).join('')}</tr>`).join('');
+  return `<div class="panel v5-print-block"><h3>${esc(title)} <span class="muted">(${rows.length})</span></h3><div class="table-wrap"><table class="friendly-table"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div></div>`;
+}
+function _v5DocCards(docs){
+  docs=(docs||[]).filter(Boolean);
+  if(!docs.length) return `<div class="muted">Belum ada dokumen/bukti yang terhubung.</div>`;
+  return `<div class="school-index-grid">${docs.map(d=>{
+    const url=_v5Field(d,['file_url','url_dokumen','url'],'');
+    const name=_v5Field(d,['nama_file','file_name'],'Dokumen SPJ');
+    const type=_v5Field(d,['nama_spj','jenis_dokumen','tipe_dokumen'],'Dokumen');
+    const tx=_v5Field(d,['id_transaksi','nomor_bukti'],'');
+    return `<div class="panel" style="margin:0"><div class="badge badge-info">${esc(type)}</div><h3 style="margin:8px 0">${esc(name)}</h3>${tx?`<div class="muted">Transaksi/Bukti: ${esc(tx)}</div>`:''}${url?`<div class="toolbar" style="margin-top:10px"><a class="btn btn-primary" target="_blank" rel="noopener" href="${esc(url)}">📄 Buka PDF</a><button class="btn btn-light" onclick="window.open('${esc(url)}','_blank')">👁️ Lihat</button></div>`:'<div class="muted">Tautan file belum tersedia.</div>'}</div>`;
+  }).join('')}</div>`;
+}
+async function tutorialV5View(){
+  const c=$('#mainContent');
+  c.innerHTML=head('Tutorial SIMPEL SPJ','Panduan penggunaan yang dapat dibaca langsung dari feed aplikasi')+
+    `<div class="panel" style="border-left:4px solid var(--gold);">
+      <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap">
+        <div><h2 style="margin:0">📖 tutorial_simpelspj.pdf</h2><div class="muted">Tutorial resmi aplikasi — DINAS, PENGAWAS, dan SEKOLAH.</div></div>
+        <button class="btn btn-primary" onclick="window.open(window._v5TutorialUrl||'#','_blank')">Buka di Tab Baru</button>
+      </div>
+      <div id="v5TutorialFeed" style="margin-top:14px">${loading('Memuat tutorial...')}</div>
+    </div>`;
+  try{
+    const r=await api('getTutorialSimpelSpj',{});
+    const d=r.data||{};
+    window._v5TutorialUrl=d.preview_url||d.file_url||'';
+    const area=$('#v5TutorialFeed');
+    if(!area)return;
+    if(!d.available){area.innerHTML=msg('Dokumen tutorial_simpelspj.pdf belum ditemukan di Google Drive aplikasi.','warning');return;}
+    area.innerHTML=`<div class="panel" style="padding:0;overflow:hidden"><iframe title="Tutorial SIMPEL SPJ" src="${esc(d.preview_url)}" style="width:100%;height:76vh;border:0;background:#f5f7f9"></iframe></div>
+      <div class="muted" style="margin-top:8px">Nama dokumen: <b>tutorial_simpelspj.pdf</b> • Feed ini hanya menampilkan dokumen; file asli tetap berada di penyimpanan aplikasi.</div>`;
+  }catch(e){$('#v5TutorialFeed').innerHTML=msg(errorText(e),'error');}
+}
+async function arsipPenilaianV5View(){
+  const c=$('#mainContent');
+  c.innerHTML=head('Arsip Penilaian SPJ','Cetak bahan penilaian lengkap per sekolah dan periode')+
+    `<div class="panel">
+      <div class="toolbar"><input id="v5ArchiveNpsn" placeholder="NPSN sekolah" value="${esc(state.selectedNpsn||state.user?.npsn||'')}"><select id="v5ArchivePeriode"><option value="">Pilih periode</option></select><button class="btn btn-primary" id="v5LoadArchive">📂 Buka Arsip</button></div>
+      <div id="v5ArchiveArea">${msg('Pilih NPSN dan periode untuk membuka paket penilaian.','info')}</div>
+    </div>`;
+  try{
+    await ensurePeriodeMaster();
+    const sel=$('#v5ArchivePeriode');
+    (cachedPeriodeList||[]).forEach(p=>{const o=document.createElement('option');o.value=p.id_periode;o.textContent=p.nama_periode||p.id_periode;sel.appendChild(o);});
+    if(state.selectedPeriode)sel.value=state.selectedPeriode;
+    if(isSchool()){$('#v5ArchiveNpsn').value=state.user?.npsn||'';$('#v5ArchiveNpsn').disabled=true;}
+    $('#v5LoadArchive').onclick=loadV5Archive;
+  }catch(e){$('#v5ArchiveArea').innerHTML=msg(errorText(e),'error');}
+}
+async function loadV5Archive(){
+  const npsn=$('#v5ArchiveNpsn')?.value.trim(), p=$('#v5ArchivePeriode')?.value;
+  if(!npsn||!p){toast('NPSN dan periode wajib dipilih.','error');return;}
+  const area=$('#v5ArchiveArea');area.innerHTML=loading('Menyusun paket penilaian...');
+  try{
+    const r=await api('getPaketPenilaianSPJ',{npsn,idPeriode:p}), d=r.data||{};
+    window._v5ArchiveData=d;
+    const a=d.asesmen||{}, sig=d.pengesahan_pengawas||{}, appr=d.persetujuan_sekolah||{};
+    area.innerHTML=`
+      <div id="v5PrintableArchive" class="v5-print-sheet">
+        <div class="panel" style="border-top:5px solid var(--primary)">
+          <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap">
+            <div><div class="badge badge-info">PAKET ARSIP PENILAIAN SPJ</div><h2 style="margin:8px 0">${esc(d.sekolah?.nama_sekolah||npsn)}</h2><div class="muted">NPSN ${esc(d.sekolah?.npsn||npsn)} • ${esc(d.sekolah?.kecamatan||'-')} • ${esc(d.sekolah?.alamat_lengkap||'-')}</div></div>
+            <div style="text-align:right"><div class="muted">Periode</div><strong>${esc(p)}</strong><div style="font-size:1.7rem;font-weight:900;color:var(--primary);margin-top:8px">${esc(a.nilai_akhir??'-')}</div><div class="muted">Nilai akhir</div></div>
+          </div>
+        </div>
+        <div class="panel"><h3>Ringkasan Status</h3><div class="assessment-guide"><div class="assessment-guide-card"><strong>Penilaian</strong><span>${esc(a.status_asesmen||'-')}</span></div><div class="assessment-guide-card"><strong>Persetujuan Sekolah</strong><span>${appr?'DISETUJUI':'BELUM'}</span></div><div class="assessment-guide-card"><strong>Pengesahan Pengawas</strong><span>${sig?'DISAHKAN':'BELUM'}</span></div></div></div>
+        ${_v5RowsTable(d.rkas,'A. RKAS / Anggaran',{hidden:['_row']})}
+        ${_v5RowsTable(d.transaksi,'B. TRANSAKSI SPJ',{hidden:['_row']})}
+        <div class="panel"><h3>C. DOKUMEN / BUKTI TRANSAKSI</h3>${_v5DocCards(d.dokumen)}</div>
+        ${_v5RowsTable(d.temuan,'D. TEMUAN & VERIFIKASI',{hidden:['_row']})}
+        ${_v5RowsTable(d.detail_asesmen,'E. DETAIL INDIKATOR PENILAIAN',{hidden:['_row']})}
+        ${_v5RowsTable(d.riwayat_keberatan,'F. RIWAYAT KEBERATAN / KAJI ULANG',{hidden:['_row']})}
+        <div class="panel"><h3>G. PERSETUJUAN & PENGESAHAN</h3>
+          <p>Persetujuan sekolah: <b>${appr?'TERCATAT':'BELUM TERCATAT'}</b></p>
+          ${appr?`<p>Disetujui oleh: <b>${esc(appr.disetujui_oleh||'-')}</b><br>Waktu: ${esc(appr.disetujui_at||'-')}</p>`:''}
+          <p>Pengesahan pengawas: <b>${sig?'DISAHKAN':'BELUM DISAHKAN'}</b></p>
+          ${sig?`<p>Penandatangan: <b>${esc(sig.ditandatangani_oleh||'-')}</b><br>Waktu: ${esc(sig.ditandatangani_at||'-')}<br>Hash integritas: <code style="word-break:break-all">${esc(sig.integrity_hash||'-')}</code></p>`:''}
+        </div>
+        <div class="panel"><h3>H. DAFTAR BERKAS ASLI</h3><p class="muted">Berkas PDF asli tetap menjadi bukti utama. Daftar di bawah menunjukkan seluruh dokumen yang terhubung pada periode penilaian dan dapat dibuka dari aplikasi.</p>${_v5DocCards(d.dokumen)}</div>
+      </div>
+      <div class="toolbar" style="margin-top:14px"><button class="btn btn-primary" onclick="printV5Archive()">🖨️ Cetak / Simpan sebagai PDF</button><button class="btn btn-light" onclick="window.print()">🖨️ Cetak Halaman</button></div>`;
+  }catch(e){area.innerHTML=msg(errorText(e),'error');}
+}
+function printV5Archive(){
+  const d=window._v5ArchiveData;if(!d){toast('Buka arsip terlebih dahulu.','error');return;}
+  const npsn=d.sekolah?.npsn||'', p=d.id_periode||'';
+  const body=$('#v5PrintableArchive')?.innerHTML||'';
+  const w=window.open('','_blank','noopener');
+  if(!w){toast('Popup diblokir browser. Izinkan popup untuk mencetak.','error');return;}
+  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Paket Penilaian SPJ - ${esc(npsn)} - ${esc(p)}</title><style>
+  @page{size:A4;margin:12mm}body{font-family:Arial,sans-serif;color:#17212b;font-size:10px}h2{font-size:18px}h3{font-size:13px;border-bottom:1px solid #ddd;padding-bottom:5px}.panel{border:1px solid #ddd;border-radius:8px;padding:10px;margin:0 0 10px;break-inside:avoid}.muted{color:#667085}.assessment-guide{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.assessment-guide-card{border:1px solid #ddd;padding:8px}.table-wrap{overflow:visible}table{width:100%;border-collapse:collapse;font-size:8px}th,td{border:1px solid #ccc;padding:4px;vertical-align:top}th{background:#f1f3f5}.school-index-grid{display:block}.school-index-grid .panel{display:inline-block;width:46%;vertical-align:top;margin-right:1%}a{color:#173f5f}.badge{display:inline-block;padding:3px 7px;border:1px solid #ccc;border-radius:10px;font-size:8px}</style></head><body>${body}<script>window.onload=()=>setTimeout(()=>window.print(),350)<\/script></body></html>`);
+  w.document.close();
+}
+window.loadV5Archive=loadV5Archive;
+</script>
+
 </body>
 </html>
 
