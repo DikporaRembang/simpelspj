@@ -415,6 +415,8 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
 .school-index-card{transition:transform .12s ease,box-shadow .12s ease}
 .school-index-card:hover{transform:translateY(-1px);box-shadow:0 6px 18px rgba(0,0,0,.07)}
 @media(max-width:700px){.school-index-grid{grid-template-columns:1fr}}
+
+.pdf-interactive-grid{border:1px solid #e5e7eb;border-radius:16px;overflow:hidden}.pdf-interactive-grid aside{background:#fff}.pdf-interactive-grid .panel{border:1px solid #e5e7eb}.pdf-interactive-grid table{font-size:.86rem}@media(max-width:900px){.pdf-interactive-grid{grid-template-columns:1fr!important}.pdf-interactive-grid iframe{height:58vh!important}.pdf-interactive-grid aside{max-height:none!important}.pdf-interactive-grid .table-wrap{overflow-x:auto}}
 </style>
 </head>
 <body>
@@ -464,6 +466,7 @@ const ROLE_MENUS = {
     ]},
     { group: 'PENILAIAN', items: [
       { id: 'asesmen', label: 'Penilaian SPJ' },
+      { id: 'pdfInteraktif', label: '📄 Pemeriksaan PDF Interaktif' },
       { id: 'keberatan', label: 'Keberatan Penilaian' }
     ]},
     { group: 'KOMUNIKASI', items: [
@@ -481,6 +484,7 @@ const ROLE_MENUS = {
       { id: 'statusSpj', label: 'Status Pemeriksaan' }
     ]},
     { group: 'PENILAIAN', items: [
+      { id: 'pdfInteraktif', label: '📄 Dokumen & Nilai Interaktif' },
       { id: 'keberatan', label: 'Keberatan Penilaian' }
     ]},
     { group: 'REFERENSI', items: [
@@ -1018,7 +1022,8 @@ async function loadView(view){
       pesan: pesanView,
       monitoringGlobal: renderMonitoringGlobalView,
       tutorialV5: tutorialV5View,
-      arsipPenilaianV5: arsipPenilaianV5View
+      arsipPenilaianV5: arsipPenilaianV5View,
+      pdfInteraktif: pdfInteraktifView
     }; 
     if(!map[view]) throw new Error('Modul belum tersedia: ' + view); 
     await map[view](); 
@@ -2565,6 +2570,127 @@ window.openAssessment=async function(){
 };
 
 
+function drivePreviewUrl(url){
+  const u=String(url||'');
+  const m=u.match(/drive\.google\.com\/file\/d\/([^/]+)/i);
+  if(m) return `https://drive.google.com/file/d/${m[1]}/preview`;
+  if(/docs\.google\.com/i.test(u)) return u;
+  return u;
+}
+function pdfPageUrl(url,page){
+  const base=drivePreviewUrl(url); const p=parseInt(page,10);
+  return base + (p>0 ? `#page=${p}` : '');
+}
+
+async function pdfInteraktifView(){
+  const periods=await periodeSelect('pdfInteractivePeriod', true, 'bulan');
+  let schoolOptions='';
+  if(isPengawas()||isDinas()){
+    const r=await safeApi('getSekolah',{}, {data:[]});
+    schoolOptions=`<div class="field"><label>Pilih Sekolah</label><select id="pdfInteractiveNpsn"><option value="">-- Pilih --</option>${(r.data||[]).map(x=>`<option value="${esc(x.npsn)}" ${state.selectedNpsn===x.npsn?'selected':''}>${esc(x.npsn)} - ${esc(x.nama_sekolah)}</option>`).join('')}</select></div>`;
+  }
+  $('#mainContent').innerHTML=head(isPengawas()?'Pemeriksaan PDF Interaktif':'Dokumen & Nilai SPJ','Baca bukti dan lihat penilaian pada konteks dokumen yang sama.')+
+    `<div class="panel"><div class="form-grid"><div class="field"><label>Periode</label>${periods}</div>${schoolOptions}</div><div class="toolbar"><button class="btn btn-primary" onclick="openPdfInteractive()">📄 Buka Dokumen & Penilaian</button></div><div id="pdfInteractiveArea">${msg('Pilih periode dan sekolah untuk membuka feed dokumen.','ok')}</div></div>`;
+  $('#pdfInteractivePeriod').value=state.selectedPeriode||'';
+  if(state.selectedNpsn && $('#pdfInteractiveNpsn')) $('#pdfInteractiveNpsn').value=state.selectedNpsn;
+}
+
+window.openPdfInteractive=async function(){
+  const p=$('#pdfInteractivePeriod')?.value||'';
+  const n=isSchool()?ownNpsn():($('#pdfInteractiveNpsn')?.value||state.selectedNpsn||'');
+  if(!p||!n){toast('Pilih periode dan sekolah terlebih dahulu.','warning');return;}
+  state.selectedPeriode=p; state.selectedNpsn=n;
+  const area=$('#pdfInteractiveArea'); if(!area)return; area.innerHTML=loading('Memuat PDF, transaksi, temuan, dan penilaian...');
+  try{
+    const [docRes, trxRes, findRes, assessRes, packetRes]=await Promise.all([
+      api('getDokumenSPJ',{idPeriode:p,npsn:n}),
+      safeApi('getTransaksiSPJ',{idPeriode:p,npsn:n},{data:[]}),
+      safeApi('getTemuanSPJ',{idPeriode:p,npsn:n},{data:[]}),
+      isPengawas()?safeApi('buatAtauAmbilAsesmen',{idPeriode:p,npsn:n},{}):Promise.resolve({}),
+      safeApi('getPaketPenilaianSPJ',{idPeriode:p,npsn:n},{data:{}})
+    ]);
+    const docs=docRes.data||[]; const tx=(trxRes.data||[]); const findings=(findRes.data||[]);
+    const packet=packetRes.data||{};
+    const a=isPengawas()?(assessRes.data||assessRes.asesmen||assessRes||{}):(packet.asesmen||{});
+    const detail=(packet.detail_asesmen||[]);
+    renderPdfInteractive({p,n,docs,tx,findings,assessment:a,details:detail});
+  }catch(e){area.innerHTML=msg(errorText(e));}
+};
+
+function renderPdfInteractive(x){
+  const area=$('#pdfInteractiveArea');
+  const docs=x.docs||[]; const tx=x.tx||[]; const findings=x.findings||[]; const a=x.assessment||{}; const details=x.details||[];
+  if(!docs.length){area.innerHTML=msg('Belum ada PDF/bukti yang diunggah untuk periode ini.','warning');return;}
+  const activeDoc=docs[0];
+  const pageByIndicator={}; details.forEach(d=>{pageByIndicator[String(d.id_indikator)]=d.halaman_bukti||'';});
+  const findingsByTx={}; findings.forEach(f=>{const k=String(f.id_transaksi||''); if(k){(findingsByTx[k] ||= []).push(f);}});
+  const docOptions=docs.map((d,i)=>`<option value="${esc(d.file_url||'')}" data-id="${esc(d.id_dokumen||'')}">${esc(d.nama_file||'Dokumen '+(i+1))}${d.id_spj?' • '+esc(d.id_spj):''}</option>`).join('');
+  const txRows=tx.slice(0,250).map(t=>{
+    const fs=findingsByTx[String(t.id_transaksi)]||[];
+    return `<tr><td>${esc(t.tanggal_transaksi||'-')}</td><td><b>${esc(t.nomor_bukti||'-')}</b></td><td>${esc(t.kode_rekening||'-')}</td><td>${esc(t.uraian_transaksi||'-')}</td><td>${Number(t.nilai_transaksi||0).toLocaleString('id-ID')}</td><td>${fs.length?fs.map(f=>`<span class="badge badge-warning" style="display:inline-block;margin:2px">${esc(f.kode_temuan||'TEMUAN')} • ${esc(f.hasil_verifikasi||'BELUM')}</span>`).join(''):'<span class="badge badge-success">OK</span>'}</td><td><button class="btn btn-sm btn-light" onclick="jumpPdfPageFromTx('${esc(t.id_transaksi||'')}')">Lihat</button></td></tr>`;
+  }).join('');
+  const indRes=window.__pdfInteractiveIndicators||[];
+  area.innerHTML=`<div class="panel" style="padding:0;overflow:hidden">
+    <div style="padding:14px 16px;border-bottom:1px solid #e5e7eb;display:flex;gap:12px;justify-content:space-between;align-items:center;flex-wrap:wrap">
+      <div><b>Dokumen sumber</b><div class="muted">${esc(x.n)} • ${esc(x.p)}</div></div>
+      <select id="interactiveDocSelect" style="min-width:280px" onchange="changeInteractivePdf()">${docOptions}</select>
+    </div>
+    <div class="pdf-interactive-grid" style="display:grid;grid-template-columns:minmax(0,1.65fr) minmax(320px,.9fr);min-height:72vh">
+      <div style="background:#eef1f3;min-width:0"><iframe id="interactivePdfFrame" title="Dokumen SPJ" src="${esc(pdfPageUrl(activeDoc.file_url,1))}" style="width:100%;height:72vh;border:0;background:#fff"></iframe></div>
+      <aside style="padding:16px;overflow:auto;max-height:72vh">
+        <div class="cards" style="grid-template-columns:1fr 1fr"><div class="stat"><small>Status</small><strong>${esc(a.status_asesmen||'DRAFT')}</strong></div><div class="stat"><small>Nilai akhir</small><strong>${esc(a.nilai_akhir??'-')}</strong></div></div>
+        ${isPengawas()?`<div class="message ok" style="margin-top:12px"><b>Mode pemeriksaan.</b> Pilih halaman bukti, lalu beri keputusan. Nomor halaman disimpan pada rincian asesmen.</div>`:`<div class="message ok" style="margin-top:12px"><b>Mode baca hasil.</b> Hasil penilaian ditampilkan di samping PDF agar sekolah dapat melihat bukti dan nilainya bersamaan.</div>`}
+        <div style="margin-top:14px"><label>Halaman PDF</label><div style="display:flex;gap:8px;margin-top:5px"><input id="interactivePage" type="number" min="1" value="1" style="width:100px"><button class="btn btn-light" onclick="goInteractivePage()">Buka Halaman</button></div></div>
+        <div class="panel" style="margin-top:14px;background:#fafafa"><b>Temuan periode</b><div style="margin-top:8px;max-height:180px;overflow:auto">${findings.length?findings.map(f=>`<div style="padding:9px;border-bottom:1px solid #eee"><b>${esc(f.kode_temuan||'-')}</b> ${badge(f.level_temuan||'INFO','warning')}<div class="muted">${esc(f.catatan_sistem||'-')}</div><div style="margin-top:4px">Verifikasi: <b>${esc(f.hasil_verifikasi||'BELUM')}</b></div>${isPengawas()?`<div class="toolbar" style="margin-top:6px"><button class="btn btn-sm btn-primary" onclick="verifyFindingDirect('${esc(f.id_temuan)}','TERBUKTI')">✓ TERBUKTI</button><button class="btn btn-sm btn-light" onclick="verifyFindingDirect('${esc(f.id_temuan)}','TIDAK_TERBUKTI')">Tidak Terbukti</button></div>`:''}</div>`).join(''):'<div class="muted">Belum ada temuan.</div>'}</div></div>
+        ${isPengawas()?`<div class="panel" style="margin-top:14px"><b>Penilaian indikator</b><div class="muted" style="margin-top:4px">Gunakan tombol koreksi untuk menetapkan skor pada bukti yang sedang dibaca.</div><div id="interactiveIndicators" style="margin-top:10px">Memuat indikator...</div></div>`:''}
+        ${`<div class="panel" style="margin-top:14px"><b>Transaksi & status pemeriksaan</b><div class="table-wrap" style="margin-top:8px"><table class="friendly-table"><thead><tr><th>Tanggal</th><th>Bukti</th><th>Kode</th><th>Uraian</th><th>Nilai</th><th>Status</th><th></th></tr></thead><tbody>${txRows||emptyRow(7)}</tbody></table></div></div>`}
+      </aside>
+    </div>
+  </div>`;
+  window.__pdfInteractiveContext=x;
+  loadInteractiveIndicators();
+}
+
+window.changeInteractivePdf=function(){const u=$('#interactiveDocSelect')?.value||''; const p=$('#interactivePage')?.value||1; const fr=$('#interactivePdfFrame'); if(fr)fr.src=pdfPageUrl(u,p);};
+window.goInteractivePage=function(){const u=$('#interactiveDocSelect')?.value||''; const p=$('#interactivePage')?.value||1; const fr=$('#interactivePdfFrame'); if(fr)fr.src=pdfPageUrl(u,p);};
+window.jumpPdfPageFromTx=function(idTx){
+  const c=window.__pdfInteractiveContext; const t=(c?.tx||[]).find(x=>String(x.id_transaksi)===String(idTx));
+  const fs=(c?.findings||[]).filter(x=>String(x.id_transaksi)===String(idTx));
+  const d=(c?.details||[]).find(x=>fs.some(f=>String(f.id_temuan)===String(x.id_temuan)));
+  const page=d?.halaman_bukti||1; $('#interactivePage').value=page; goInteractivePage();
+};
+window.verifyFindingDirect=async function(id,hasil){
+  const catatan=prompt(hasil==='TERBUKTI'?'Catatan verifikasi (opsional):':'Alasan dinyatakan tidak terbukti (disarankan):','');
+  if(catatan===null)return;
+  try{await api('verifikasiTemuanSPJ',{idTemuan:id,hasilVerifikasi:hasil,catatan:catatan.trim()});toast('Verifikasi temuan tersimpan.','ok');await openPdfInteractive();}
+  catch(e){toast(errorText(e),'error',4500);}
+};
+window.loadInteractiveIndicators=async function(){
+  const c=window.__pdfInteractiveContext; if(!c||!isPengawas())return;
+  const box=$('#interactiveIndicators'); if(!box)return;
+  try{
+    const r=await api('hitungIndikatorDariTemuan',{idPeriode:c.p,npsn:c.n,idAsesmen:c.assessment.id_asesmen}); const list=r.data||[];
+    const details=c.details||[];
+    box.innerHTML=list.map(d=>{
+      const dt=details.find(x=>String(x.id_indikator)===String(d.id_indikator)); const page=dt?.halaman_bukti||'';
+      return `<div style="padding:10px 0;border-bottom:1px solid #eee"><div style="display:flex;justify-content:space-between;gap:8px"><b>${esc(d.kode_indikator)}</b><strong>${Number(d.skor).toFixed(2)}/4</strong></div><div class="muted">${esc(d.nama_indikator)} • Risiko ${Number(d.risiko||0).toFixed(1)}/100 • Bukti halaman ${esc(page||'-')}</div>${String(c.assessment.status_asesmen||'').toUpperCase()!=='SELESAI'?`<button class="btn btn-sm btn-light" style="margin-top:7px" onclick="interactiveEditScore('${esc(c.assessment.id_asesmen)}','${esc(d.id_indikator)}','${esc(d.skor)}','${esc(d.skor_otomatis)}','${esc(page)}')">Koreksi / Tandai Halaman</button>`:''}</div>`;
+    }).join('')||'<div class="muted">Belum ada indikator.</div>';
+  }catch(e){box.innerHTML=msg(errorText(e));}
+};
+window.interactiveEditScore=async function(idAsesmen,idIndikator,current,automatic,page){
+  const p=prompt('Nomor halaman PDF yang menjadi bukti indikator ini:',page||($('#interactivePage')?.value||'1')); if(p===null)return;
+  if(p && (!/^\d+$/.test(p)||Number(p)<1)){toast('Nomor halaman tidak valid.','warning');return;}
+  let score=prompt(`Skor indikator 0–4. Skor otomatis: ${automatic}`,current);
+  if(score===null)return; score=score.trim()===''?'':Number(score);
+  if(score!==''&&(!Number.isFinite(score)||score<0||score>4)){toast('Skor harus 0 sampai 4.','warning');return;}
+  let note=''; if(score!==''&&Math.abs(Number(score)-Number(automatic))>.001){note=prompt('Alasan koreksi manual:','');if(note===null||!note.trim()){toast('Koreksi manual wajib memiliki alasan.','warning');return;}}
+  try{
+    await api('simpanDetailAsesmen',{data:{id_asesmen:idAsesmen,id_indikator:idIndikator,skor:score,catatan_pengawas:note,status_berlaku:'BERLAKU',halaman_bukti:p}});
+    $('#interactivePage').value=p; goInteractivePage(); toast('Penilaian dan halaman bukti tersimpan.','ok'); await openPdfInteractive();
+  }catch(e){toast(errorText(e),'error',4500);}
+};
+
+
 async function keberatanView(){
   const areaId='appealArea';
   $('#mainContent').innerHTML=head(isSchool()?'Keberatan Penilaian':'Keberatan & Kaji Ulang','Sekolah dapat menyampaikan keberatan; pengawas dapat mengkaji ulang penilaian berdasarkan alasan dan bukti.');
@@ -2637,6 +2763,7 @@ window.selesaikanKajiUlang=async function(idPesan){
 };
 
 function renderAssessment(a, indicators){
+  const interactiveBtn=`<button class="btn btn-light" onclick="loadView('pdfInteraktif')">📄 Buka PDF & Penilaian Interaktif</button>`;
   const totalWeight=indicators.reduce((s,x)=>s+Math.max(0,Number(x.bobot)||0),0);
   const weighted=totalWeight>0
     ? indicators.reduce((s,x)=>s+(Number(x.skor)||0)*Math.max(0,Number(x.bobot)||0),0)/totalWeight
@@ -2657,6 +2784,7 @@ function renderAssessment(a, indicators){
   }).join('');
 
   $('#assessmentArea').innerHTML=`
+    <div class="toolbar" style="margin-bottom:12px">${interactiveBtn}</div>
     ${String(a.status_asesmen||'').toUpperCase()==='KAJI_ULANG'?`<div class="message warning" style="margin-bottom:14px"><b>Mode Kaji Ulang.</b> Sekolah mengajukan keberatan atas penilaian ini. Silakan periksa kembali bukti, temuan, dan skor sebelum memfinalisasi ulang.</div>`:''}
     <div class="assessment-guide">
       <div class="assessment-guide-card"><strong>1. Sistem membaca temuan</strong><span>Hanya temuan berstatus TERBUKTI yang menjadi dasar penalti otomatis.</span></div>
