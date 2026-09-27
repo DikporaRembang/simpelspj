@@ -532,6 +532,7 @@ const state = {
   selectedNpsn: '',
   masterSpj: [],
   importedTransactions: [],
+  bkuImport: null,
   captchaAns: 0
 };
 
@@ -1502,38 +1503,143 @@ window.openTransactionForm=function(){
 };
 
 window.openExcelImport=function(){
-  const area=document.createElement('div');area.id='excelModal';area.innerHTML=`<div style="position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:999;padding:16px"><div style="background:#fff;padding:28px;border-radius:24px;width:min(100%,900px);max-height:90vh;overflow:auto"><h3 style="margin-top:0;color:var(--primary)">Impor BKU Excel</h3><div class="field"><label>File Excel (.xlsx / .xls)</label><input id="excelFile" type="file" accept=".xlsx,.xls"></div><div id="excelPreview"></div><div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px"><button class="btn btn-light" onclick="$('#excelModal').remove()">Tutup</button><button class="btn btn-primary" onclick="parseExcelBku()">Baca File</button></div></div></div>`;document.body.appendChild(area);
+  const area=document.createElement('div');area.id='excelModal';
+  area.innerHTML=`<div style="position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:999;padding:16px">
+    <div style="background:#fff;padding:28px;border-radius:24px;width:min(100%,980px);max-height:92vh;overflow:auto">
+      <h3 style="margin-top:0;color:var(--primary)">Impor BKU — Excel + PDF</h3>
+      <div class="muted" style="margin-bottom:14px">Excel menjadi sumber transaksi terstruktur. PDF disimpan sebagai bukti BKU dan dihubungkan ke periode yang memiliki transaksi.</div>
+      <div class="form-grid">
+        <div class="field"><label>Excel BKU (.xlsx / .xls) <b style="color:#b33">*</b></label><input id="excelFile" type="file" accept=".xlsx,.xls"></div>
+        <div class="field"><label>PDF BKU (opsional tetapi disarankan)</label><input id="bkuPdfFile" type="file" accept="application/pdf,.pdf"></div>
+      </div>
+      <div id="excelPreview" style="margin-top:14px"></div>
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px">
+        <button class="btn btn-light" onclick="$('#excelModal').remove()">Tutup</button>
+        <button class="btn btn-primary" id="bkuReadBtn" onclick="parseExcelBku()">Baca & Validasi BKU</button>
+      </div>
+    </div></div>`;
+  document.body.appendChild(area);
 };
 
-window.parseExcelBku=function(){
-  const f=$('#excelFile').files[0], out=$('#excelPreview');if(!f){out.innerHTML=msg('Pilih file Excel.');return;}
-  if(typeof XLSX==='undefined'){out.innerHTML=msg('Library Excel belum tersedia.');return;}
-  const r=new FileReader();r.onload=e=>{try{const wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'}), ws=wb.Sheets[wb.SheetNames[0]], rows=XLSX.utils.sheet_to_json(ws,{header:1});
-    const data=[];
-    rows.slice(16).forEach(row=>{
-      const tanggal=row[0], kodeKegi=row[3], kodeReken=row[5], bukti=row[7], uraian=row[9], penerimaan=Number(row[13])||0, pengeluaran=Number(row[16])||0;
-      if(String(tanggal)>='1'&&String(tanggal)<='8'&&!String(tanggal).includes('-')) return;
-      const hasPenerimaan = penerimaan > 0;
-      const hasPengeluaranOrCode = (pengeluaran > 0 || (kodeKegi && kodeReken));
-      if(!hasPenerimaan && !hasPengeluaranOrCode) return;
+function _bkuNormLabelClient(v){
+  return String(v??'').replace(/\s+/g,' ').trim().toUpperCase().replace(/[.:]/g,'');
+}
+function _bkuNumberClient(v){
+  if(typeof v==='number' && Number.isFinite(v)) return v;
+  let s=String(v??'').trim();if(!s)return 0;
+  s=s.replace(/\s/g,'').replace(/Rp/ig,'');
+  if(s.includes('.') && s.includes(',')) s=s.replace(/\./g,'').replace(',','.');
+  else if(/^[-+]?\d{1,3}(\.\d{3})+$/.test(s)) s=s.replace(/\./g,'');
+  else s=s.replace(/[^0-9,.-]/g,'').replace(',','.');
+  const n=Number(s);return Number.isFinite(n)?n:0;
+}
+function _bkuDateClient(v){
+  if(v instanceof Date && !isNaN(v)) return `${v.getFullYear()}-${String(v.getMonth()+1).padStart(2,'0')}-${String(v.getDate()).padStart(2,'0')}`;
+  if(typeof v==='number' && Number.isFinite(v)){
+    const d=new Date(Date.UTC(1899,11,30)+v*86400000);
+    if(!isNaN(d)) return `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}-${String(d.getUTCDate()).padStart(2,'0')}`;
+  }
+  const s=String(v??'').trim();
+  let m=s.match(/^(\d{2})[-\/]?(\d{2})[-\/]?(\d{4})$/);if(m)return `${m[3]}-${m[2]}-${m[1]}`;
+  m=s.match(/^(\d{4})[-\/]?(\d{2})[-\/]?(\d{2})$/);if(m)return `${m[1]}-${m[2]}-${m[3]}`;
+  return '';
+}
+function _bkuFindHeaderClient(rows){
+  for(let r=0;r<Math.min(rows.length,40);r++){
+    const cells=(rows[r]||[]).map(_bkuNormLabelClient);
+    const hasDate=cells.includes('TANGGAL'), hasRek=cells.includes('KODE REKENING'), hasUraian=cells.includes('URAIAN'), hasKeluar=cells.includes('PENGELUARAN');
+    if(hasDate&&hasRek&&hasUraian&&hasKeluar){
+      // Ekspor BKU ARKAS memakai merge cell pada header. Pada data,
+      // NO. BUKTI dan URAIAN berada satu kolom di kanan label header.
+      const date=cells.indexOf('TANGGAL'), kegiatan=cells.indexOf('KODE KEGIATAN'), rekening=cells.indexOf('KODE REKENING');
+      const buktiHead=cells.indexOf('NO BUKTI'), uraianHead=cells.indexOf('URAIAN');
+      const bukti=buktiHead+1 < (rows[r+1]||[]).length ? buktiHead+1 : buktiHead;
+      const uraian=uraianHead+1 < (rows[r+1]||[]).length ? uraianHead+1 : uraianHead;
+      return {row:r,date,kodeKegiatan:kegiatan,kodeRekening:rekening,bukti,uraian,penerimaan:cells.indexOf('PENERIMAAN'),pengeluaran:cells.indexOf('PENGELUARAN'),saldo:cells.indexOf('SALDO')};
+    }
+  }
+  return null;
+}
+function _bkuMetaClient(rows){
+  let npsn='',nama='',tahun='';
+  for(let r=0;r<Math.min(rows.length,18);r++){
+    const row=rows[r]||[];
+    for(let c=0;c<row.length;c++){
+      const label=_bkuNormLabelClient(row[c]);
+      if(label==='NPSN' && !npsn) for(let j=c+1;j<Math.min(row.length,c+6);j++){if(String(row[j]??'').trim()){npsn=String(row[j]).replace(/^:/,'').trim();break;}}
+      if(label==='NAMA SEKOLAH' && !nama) for(let j=c+1;j<Math.min(row.length,c+6);j++){if(String(row[j]??'').trim()){nama=String(row[j]).replace(/^:/,'').trim();break;}}
+      const txt=String(row[c]??'');const m=txt.match(/TAHUN\s*[:]?\s*(20\d{2})/i);if(m)tahun=m[1];
+    }
+  }
+  return {npsn,nama,tahun};
+}
+
+window.parseExcelBku=async function(){
+  const f=$('#excelFile')?.files?.[0],out=$('#excelPreview'),btn=$('#bkuReadBtn');
+  if(!f){out.innerHTML=msg('Pilih file Excel BKU.');return;}
+  if(typeof XLSX==='undefined'){out.innerHTML=msg('Library Excel belum tersedia.','warning');return;}
+  btn.disabled=true;btn.textContent='Membaca BKU...';out.innerHTML=loading('Menganalisis struktur BKU...');
+  try{
+    const buffer=await f.arrayBuffer();
+    const wb=XLSX.read(new Uint8Array(buffer),{type:'array',cellDates:true});
+    const ws=wb.Sheets[wb.SheetNames[0]];
+    const rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:true,defval:''});
+    const h=_bkuFindHeaderClient(rows);if(!h)throw new Error('Header BKU tidak ditemukan. Pastikan file merupakan ekspor Buku Kas Umum dari ARKAS.');
+    const meta=_bkuMetaClient(rows);
+    const data=[];let excluded=0;
+    for(let i=h.row+1;i<rows.length;i++){
+      const row=rows[i]||[];
+      const tanggal=_bkuDateClient(row[h.date]);if(!tanggal){excluded++;continue;}
+      const uraian=String(row[h.uraian]??'').trim();
+      const penerimaan=_bkuNumberClient(row[h.penerimaan]);
+      const pengeluaran=_bkuNumberClient(row[h.pengeluaran]);
+      const kode=String(row[h.kodeRekening]??'').trim();
+      const bukti=String(row[h.bukti]??'').trim();
+      const kodeKegiatan=String(row[h.kodeKegiatan]??'').trim();
+      if(/^Saldo (Bank|Tunai) Bulan/i.test(uraian)){excluded++;continue;}
+      const nilai=Math.max(Math.abs(penerimaan),Math.abs(pengeluaran));
+      if(!(nilai>0)){excluded++;continue;}
       data.push({
-        tanggal:String(tanggal).trim(),
-        kode_rekening:kodeReken?String(kodeReken).trim():'-',
-        nomor_bukti:String(bukti||'-').trim(),
-        uraian_transaksi:String(uraian||(hasPenerimaan?'Penerimaan Dana / Kas Masuk BKU':'Transaksi BKU')).trim(),
-        nilai_transaksi:pengeluaran||penerimaan
+        tanggal_transaksi:tanggal,kode_kegiatan:kodeKegiatan,kode_rekening:kode,
+        nomor_bukti:bukti,uraian_transaksi:uraian||'Transaksi BKU',
+        penerimaan,pengeluaran,nilai_transaksi:nilai,saldo:_bkuNumberClient(row[h.saldo])
       });
-    });
-    state.importedTransactions=data;
-    out.innerHTML=msg(`Berhasil membaca ${data.length} transaksi valid.`,'ok')+`<div class="table-wrap"><table class="friendly-table"><thead><tr><th>Tanggal</th><th>Kode Rekening</th><th>No Bukti</th><th>Uraian</th><th>Nilai</th></tr></thead><tbody>${data.slice(0,50).map(x=>`<tr><td>${esc(x.tanggal)}</td><td>${esc(x.kode_rekening)}</td><td>${esc(x.nomor_bukti)}</td><td>${esc(x.uraian_transaksi)}</td><td>${fmtRupiah(x.nilai_transaksi)}</td></tr>`).join('')}</tbody></table></div><button class="btn btn-primary" style="margin-top:12px" onclick="saveImportedTransactions()">Simpan Transaksi</button>`;
-  }catch(err){out.innerHTML=msg(errorText(err));}};r.readAsArrayBuffer(f);
+    }
+    if(!data.length)throw new Error('Tidak ditemukan transaksi bernilai lebih dari nol pada BKU.');
+    const pdf=$('#bkuPdfFile')?.files?.[0]||null;
+    state.importedTransactions=data;state.bkuImport={fileName:f.name,meta,pdfFile:pdf};
+    const months=[...new Set(data.map(x=>x.tanggal_transaksi.slice(0,7)))].sort();
+    const withCode=data.filter(x=>x.kode_rekening).length;
+    const tax=data.filter(x=>/\b(PPh|PPN|PAJAK|SETOR PPh|SETOR PPN)\b/i.test(x.uraian_transaksi)).length;
+    out.innerHTML=msg(`BKU valid. ${fmtNum(data.length)} transaksi siap diimpor.`,'ok')+
+      `<div class="cards" style="margin:12px 0"><div class="stat"><small>NPSN</small><strong style="font-size:1rem">${esc(meta.npsn||'Tidak terbaca')}</strong></div><div class="stat"><small>Sekolah</small><strong style="font-size:1rem">${esc(meta.nama||'-')}</strong></div><div class="stat"><small>Periode</small><strong style="font-size:1rem">${esc(months.join(', '))}</strong></div><div class="stat"><small>PDF</small><strong style="font-size:1rem">${pdf?'Dipilih':'Belum dipilih'}</strong></div></div>`+
+      `<div class="panel" style="margin:12px 0"><b>Validasi:</b> ${fmtNum(data.length)} transaksi • ${fmtNum(withCode)} memiliki kode rekening • ${fmtNum(tax)} transaksi terkait pajak • ${fmtNum(excluded)} baris non-transaksi dilewati.</div>`+
+      `<div class="table-wrap"><table class="friendly-table"><thead><tr><th>Tanggal</th><th>Kegiatan</th><th>Kode Rekening</th><th>No. Bukti</th><th>Uraian</th><th>Nilai</th></tr></thead><tbody>${data.slice(0,80).map(x=>`<tr><td>${esc(x.tanggal_transaksi)}</td><td>${esc(x.kode_kegiatan)}</td><td><code>${esc(x.kode_rekening||'-')}</code></td><td>${esc(x.nomor_bukti||'-')}</td><td>${esc(x.uraian_transaksi)}</td><td><b>${fmtRupiah(x.nilai_transaksi)}</b></td></tr>`).join('')}</tbody></table></div>`+
+      `<div class="muted" style="margin-top:8px">Menampilkan maksimal 80 baris preview. Simpan akan memetakan transaksi ke periode bulanan, mencari RKAS berdasarkan NPSN + kode rekening, mendeteksi duplikasi, dan menyimpan PDF sebagai bukti.</div>`+
+      `<button class="btn btn-primary" style="margin-top:12px" onclick="saveImportedTransactions()">Simpan BKU ke Sistem</button>`;
+  }catch(err){out.innerHTML=msg(errorText(err),'error');state.bkuImport=null;state.importedTransactions=[];}
+  finally{btn.disabled=false;btn.textContent='Baca & Validasi BKU';}
 };
 
 window.saveImportedTransactions=async function(){
-  const p=$('#periodeSelect').value;if(!state.importedTransactions.length)return;
-  if(!confirm(`Simpan ${state.importedTransactions.length} transaksi ke server?`))return;
-  let ok=0,fail=0;for(const x of state.importedTransactions){try{await api('simpanTransaksiSPJ',{data:{...x,id_periode:p}});ok++;}catch(e){fail++;}}
-  toast(`Selesai. Berhasil: ${ok}. Gagal: ${fail}.`, fail ? 'warning' : 'ok');$('#excelModal')?.remove();await renderTransaksi();
+  const imp=state.bkuImport;if(!imp||!state.importedTransactions.length){toast('Baca file BKU terlebih dahulu.','warning');return;}
+  const btn=$('#bkuReadBtn');if(btn){btn.disabled=true;btn.textContent='Mengimpor...';}
+  const out=$('#excelPreview');out.innerHTML=loading('Menyimpan transaksi BKU dan PDF...');
+  try{
+    let pdfBase64='';
+    if(imp.pdfFile){
+      const buf=await imp.pdfFile.arrayBuffer();
+      const bytes=new Uint8Array(buf);let binary='';const chunk=0x8000;for(let i=0;i<bytes.length;i+=chunk)binary+=String.fromCharCode(...bytes.subarray(i,i+chunk));
+      pdfBase64=btoa(binary);
+    }
+    const r=await api('importBkuBundle',{data:{npsn:imp.meta?.npsn||'',source_name:imp.fileName,transactions:state.importedTransactions,pdf_name:imp.pdfFile?.name||'',pdf_mime:imp.pdfFile?.type||'application/pdf',pdf_base64:pdfBase64}});
+    const periodText=(r.periods||[]).map(x=>x.nama_periode).join(', ');
+    out.innerHTML=msg(`Impor BKU selesai. ${fmtNum(r.total_inserted||0)} transaksi baru, ${fmtNum(r.total_skipped_duplicate||0)} duplikat dilewati.`,'ok')+
+      `<div class="panel" style="margin-top:12px"><b>${esc(r.nama_sekolah||'Sekolah')}</b> • NPSN ${esc(r.npsn||'-')}<br>Periode: ${esc(periodText||'-')}<br>RKAS cocok: ${fmtNum(r.rkas_matched||0)} • RKAS belum cocok: ${fmtNum(r.rkas_unmatched||0)}<br>PDF: ${r.pdf?.uploaded?'tersimpan dan ditautkan ke periode':'tidak diunggah'}</div>`+
+      `${(r.warnings||[]).length?msg(`Peringatan: ${esc((r.warnings||[]).join(' | '))}`,'warning'):''}`+
+      `<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px"><button class="btn btn-light" onclick="$('#excelModal').remove()">Tutup</button><button class="btn btn-primary" onclick="renderTransaksi(1);$('#excelModal').remove()">Lihat Transaksi</button></div>`;
+    state.bkuImport=null;state.importedTransactions=[];
+  }catch(err){out.innerHTML=msg(errorText(err),'error');if(btn){btn.disabled=false;btn.textContent='Simpan BKU ke Sistem';}}
 };
 
 async function rkasReview(){ if(isDinas()) await renderDinasRkasReview(); else if(isPengawas()) await renderPengawasRkasAndRealisasi(); else await renderSchoolRkasAndRealisasi(); }
@@ -3012,26 +3118,26 @@ function _v5DocCards(docs){
   }).join('')}</div>`;
 }
 async function tutorialV5View(){
-  const c=document.getElementById('mainContent');
-  if(!c) return;
-  const pagesUrl='https://dikporarembang.github.io/simpelspj/tutorial_simpelspj.pdf';
-  window._v5TutorialUrl=pagesUrl;
+  const c=$('#mainContent');
   c.innerHTML=head('Tutorial SIMPEL SPJ','Panduan penggunaan yang dapat dibaca langsung dari feed aplikasi')+
     `<div class="panel" style="border-left:4px solid var(--gold);">
       <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap">
         <div><h2 style="margin:0">📖 tutorial_simpelspj.pdf</h2><div class="muted">Tutorial resmi aplikasi — DINAS, PENGAWAS, dan SEKOLAH.</div></div>
-        <a class="btn btn-primary" href="${pagesUrl}" target="_blank" rel="noopener">Buka di Tab Baru</a>
+        <button class="btn btn-primary" onclick="window.open(window._v5TutorialUrl||'#','_blank')">Buka di Tab Baru</button>
       </div>
       <div id="v5TutorialFeed" style="margin-top:14px">${loading('Memuat tutorial...')}</div>
     </div>`;
-
-  const area=document.getElementById('v5TutorialFeed');
-  if(!area) return;
-  area.innerHTML=`<div class="panel" style="padding:0;overflow:hidden">
-    <iframe title="Tutorial SIMPEL SPJ" src="${pagesUrl}" style="display:block;width:100%;height:76vh;min-height:520px;border:0;background:#f5f7f9" loading="lazy"></iframe>
-    <div class="muted" style="padding:9px 12px">Nama dokumen: <b>tutorial_simpelspj.pdf</b> • Sumber: GitHub Pages aplikasi.</div>
-  </div>
-  <div class="muted" style="margin-top:8px">Jika browser tidak menampilkan PDF di dalam feed, gunakan tombol <b>Buka di Tab Baru</b>; browser akan membuka PDF dengan penampil PDF bawaan.</div>`;
+  try{
+    const r=await api('getTutorialSimpelSpj',{});
+    const d=r.data||{};
+    window._v5TutorialUrl=d.preview_url||d.file_url||'';
+    const area=$('#v5TutorialFeed');
+    if(!area)return;
+    if(!d.available){area.innerHTML=msg('Dokumen tutorial_simpelspj.pdf belum ditemukan di Google Drive aplikasi.','warning');return;}
+    const pdfSrc=d.inline_data_url||d.preview_url||d.file_url||'';
+    area.innerHTML=`<div class="panel" style="padding:0;overflow:hidden"><iframe title="Tutorial SIMPEL SPJ" src="${esc(pdfSrc)}" style="width:100%;height:76vh;border:0;background:#f5f7f9"></iframe>
+      <div class="muted" style="padding:8px 12px">Nama dokumen: <b>tutorial_simpelspj.pdf</b> • Tutorial dibaca langsung di feed aplikasi. File asli tetap berada di penyimpanan aplikasi.</div></div>`;
+  }catch(e){$('#v5TutorialFeed').innerHTML=msg(errorText(e),'error');}
 }
 async function arsipPenilaianV5View(){
   const c=$('#mainContent');
