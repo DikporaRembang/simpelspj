@@ -428,7 +428,8 @@ const ROLE_MENUS = {
       { id: 'penugasan', label: 'Penugasan Pengawas' }
     ]},
     { group: 'ANGGARAN', items: [
-      { id: 'rkasReview', label: 'Referensi RKAS' }
+      { id: 'rkasReview', label: 'Referensi RKAS' },
+      { id: 'transaksi', label: 'Realisasi SPJ' }
     ]},
     { group: 'MONITORING & PENILAIAN', items: [
       { id: 'monitoringGlobal', label: 'Monitoring SPJ' },
@@ -445,6 +446,10 @@ const ROLE_MENUS = {
     { id: 'home', label: 'Beranda' },
     { group: 'PENUGASAN', items: [
       { id: 'penugasan', label: 'Sekolah Binaan' }
+    ]},
+    { group: 'ANGGARAN & REALISASI', items: [
+      { id: 'rkasReview', label: 'RKAS & Realisasi' },
+      { id: 'transaksi', label: 'Realisasi SPJ' }
     ]},
     { group: 'PEMERIKSAAN', items: [
       { id: 'crosscheck', label: 'Pemeriksaan SPJ' },
@@ -513,6 +518,46 @@ const fmtRupiah = v => {
   return Number.isFinite(n) ? new Intl.NumberFormat('id-ID',{style:'currency',currency:'IDR',maximumFractionDigits:0}).format(n) : '-';
 };
 const fmtNum = v => Number.isFinite(Number(v)) ? new Intl.NumberFormat('id-ID').format(Number(v)) : '-';
+
+function groupBelanjaClient(list, amountField, contextFields=[]) {
+  const map = new Map();
+  (list || []).forEach(x => {
+    const ctx = contextFields.map(k => String(x[k] ?? '')).join('|');
+    const key = [ctx, String(x.kode_kelompok_belanja || 'LAINNYA')].join('||');
+    if (!map.has(key)) map.set(key, {
+      context: contextFields.reduce((o,k)=>{o[k]=x[k]??'';return o;},{}),
+      kode_kelompok_belanja: x.kode_kelompok_belanja || 'LAINNYA',
+      nama_kelompok_belanja: x.nama_kelompok_belanja || 'Belanja Belum Terpetakan',
+      items: [], subtotal: 0
+    });
+    const g = map.get(key);
+    g.items.push(x);
+    g.subtotal += Number(x[amountField] || 0);
+  });
+  return Array.from(map.values()).sort((a,b)=>{
+    const ca = contextFields.map(k=>String(a.context[k]||'')).join('|');
+    const cb = contextFields.map(k=>String(b.context[k]||'')).join('|');
+    return ca.localeCompare(cb) || String(a.kode_kelompok_belanja).localeCompare(String(b.kode_kelompok_belanja));
+  });
+}
+
+function kelompokHeaderHtml(g, amountLabel='Subtotal') {
+  return `<tr><td colspan="20" style="padding:12px 14px;background:rgba(23,75,67,.08);border-top:2px solid var(--primary);font-weight:800;color:var(--primary);"><div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;"><span>📁 ${esc(g.kode_kelompok_belanja)} — ${esc(g.nama_kelompok_belanja)}</span><span>${esc(amountLabel)}: <b>${fmtRupiah(g.subtotal)}</b></span></div></td></tr>`;
+}
+
+function groupBelanjaBySekolahClient(list, amountField){
+  const map = new Map();
+  (list || []).forEach(x => {
+    const npsn = String(x.npsn || 'TANPA_NPSN');
+    if(!map.has(npsn)) map.set(npsn, {npsn, nama_sekolah:x.nama_sekolah || npsn, kecamatan:x.kecamatan || '', items:[], total:0});
+    const g = map.get(npsn); g.items.push(x); g.total += Number(x[amountField] || 0);
+  });
+  return Array.from(map.values()).sort((a,b)=>String(a.npsn).localeCompare(String(b.npsn)));
+}
+function sekolahHeaderHtml(g, amountLabel='Total Sekolah'){
+  return `<tr><td colspan="20" style="padding:14px;background:linear-gradient(90deg,rgba(23,75,67,.14),rgba(23,75,67,.04));border-top:3px solid var(--primary);font-weight:850;color:var(--primary);"><div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;"><span>🏫 ${esc(g.npsn)} — ${esc(g.nama_sekolah)}</span><span>${esc(amountLabel)}: <b>${fmtRupiah(g.total)}</b></span></div></td></tr>`;
+}
+
 const msg = (text,type='error') => `<div class="message ${type}">${esc(text)}</div>`;
 const badge = (text,type='info') => `<span class="badge badge-${type}">${esc(text || '-')}</span>`;
 const role = () => String(state.user?.role || '').toUpperCase();
@@ -1329,8 +1374,24 @@ async function renderTransaksi(){
   const p=$('#periodeSelect').value, area=$('#trxArea');if(!p)return;
   area.innerHTML=loading();
   const r=await api('getTransaksiSPJ',{idPeriode:p}); const rows=r.data||[];
-  area.innerHTML=`<div class="toolbar"><button class="btn btn-primary" onclick="openTransactionForm()">+ Tambah Transaksi</button><button class="btn btn-light" onclick="openExcelImport()">Impor Excel BKU</button></div><div class="table-wrap"><table class="friendly-table"><thead><tr><th>Tanggal</th><th>Kode Rekening</th><th>Uraian</th><th>No. Bukti</th><th>Nilai</th><th>Status</th></tr></thead><tbody>${rows.map(x=>`<tr><td>${esc(x.tanggal_transaksi)}</td><td>${esc(x.kode_rekening)}</td><td>${esc(x.uraian_transaksi)}</td><td>${esc(x.nomor_bukti)}</td><td>${fmtRupiah(x.nilai_transaksi)}</td><td>${badge(x.status_crosscheck||'PERLU_VERIFIKASI','info')}</td></tr>`).join('')||emptyRow(6)}</tbody></table></div>`;
+  let groupedRows='';
+  let groupCount=0;
+  if(isSchool()){
+    const groups = groupBelanjaClient(rows, 'nilai_transaksi');
+    groupCount=groups.length;
+    groupedRows = groups.flatMap(g => [kelompokHeaderHtml(g,'Subtotal SPJ'), ...g.items.map(x=>`<tr><td>${esc(x.tanggal_transaksi)}</td><td><code>${esc(x.kode_rekening)}</code></td><td>${esc(x.uraian_transaksi)}</td><td>${esc(x.nomor_bukti)}</td><td><b>${fmtRupiah(x.nilai_transaksi)}</b></td><td>${badge(x.status_crosscheck||'PERLU_VERIFIKASI','info')}</td></tr>`)]).join('');
+  } else {
+    const schools = groupBelanjaBySekolahClient(rows, 'nilai_transaksi');
+    groupedRows = schools.map(sc=>{
+      const groups=groupBelanjaClient(sc.items,'nilai_transaksi'); groupCount += groups.length;
+      return [sekolahHeaderHtml(sc,'Total SPJ'), ...groups.flatMap(g=>[kelompokHeaderHtml(g,'Subtotal SPJ'), ...g.items.map(x=>`<tr><td>${esc(x.tanggal_transaksi)}</td><td><b>${esc(x.npsn)}</b></td><td><code>${esc(x.kode_rekening)}</code></td><td>${esc(x.uraian_transaksi)}</td><td>${esc(x.nomor_bukti)}</td><td><b>${fmtRupiah(x.nilai_transaksi)}</b></td><td>${badge(x.status_crosscheck||'PERLU_VERIFIKASI','info')}</td></tr>`)] )].join('');
+    }).join('');
+  }
+  const totalSPJ = rows.reduce((sum,x)=>sum+Number(x.nilai_transaksi||0),0);
+  const canEdit = isSchool();
+  area.innerHTML=`${canEdit?`<div class="toolbar"><button class="btn btn-primary" onclick="openTransactionForm()">+ Tambah Transaksi</button><button class="btn btn-light" onclick="openExcelImport()">Impor Excel BKU</button></div>`:''}<div class="panel" style="margin:12px 0;background:rgba(23,75,67,.05)"><b>Total SPJ: ${fmtRupiah(totalSPJ)}</b><span class="muted" style="margin-left:10px">${fmtNum(rows.length)} transaksi • ${fmtNum(groupCount)} kelompok • ${isDinas()?'seluruh sekolah':isPengawas()?'seluruh sekolah binaan':''}</span></div><div class="table-wrap"><table class="friendly-table"><thead><tr>${isSchool()?'<th>Tanggal</th><th>Kode Rekening</th>':'<th>Tanggal</th><th>NPSN</th><th>Kode Rekening</th>'}<th>Uraian</th><th>No. Bukti</th><th>Nilai</th><th>Status</th></tr></thead><tbody>${groupedRows||emptyRow(isSchool()?6:7)}</tbody></table></div>`;
 }
+
 
 window.openTransactionForm=function(){
   const p=$('#periodeSelect').value;if(!p)return;
@@ -1381,7 +1442,23 @@ window.saveImportedTransactions=async function(){
   toast(`Selesai. Berhasil: ${ok}. Gagal: ${fail}.`, fail ? 'warning' : 'ok');$('#excelModal')?.remove();await renderTransaksi();
 };
 
-async function rkasReview(){ if(isDinas()) await renderDinasRkasReview(); else await renderSchoolRkasAndRealisasi(); }
+async function rkasReview(){ if(isDinas()) await renderDinasRkasReview(); else if(isPengawas()) await renderPengawasRkasAndRealisasi(); else await renderSchoolRkasAndRealisasi(); }
+
+async function renderPengawasRkasAndRealisasi(){
+  const r = await safeApi('realisasiRKAS', {}, {data:[], sekolah:[]});
+  const list = r.data || [];
+  const schools = groupBelanjaBySekolahClient(list, 'pagu');
+  const totalPagu = list.reduce((a,x)=>a+Number(x.pagu||0),0);
+  const totalReal = list.reduce((a,x)=>a+Number(x.total_realisasi||0),0);
+  const rows = schools.map(sc=>{
+    const groups=groupBelanjaClient(sc.items,'pagu');
+    let no=0;
+    return [sekolahHeaderHtml(sc,'Total Pagu'), ...groups.flatMap(g=>[kelompokHeaderHtml(g,'Subtotal Pagu'), ...g.items.map(x=>`<tr><td>${++no}</td><td><code>${esc(x.kode_rekening)}</code></td><td>${esc(x.uraian)}</td><td><b>${fmtRupiah(x.pagu)}</b></td><td>${fmtRupiah(x.total_realisasi)}</td><td>${fmtRupiah(x.sisa_pagu)}</td><td>${badge(x.status_rkas||'APPROVED','success')}</td></tr>`)] )].join('');
+  }).join('');
+  $('#mainContent').innerHTML=head('RKAS & Realisasi Sekolah Binaan','Pengawas melihat seluruh sekolah yang sedang menjadi binaan berdasarkan penugasan aktif; data bersifat baca saja.')+
+    `<div class="cards" style="margin-bottom:20px;"><div class="stat"><small>Total Pagu Sekolah Binaan</small><strong>${fmtRupiah(totalPagu)}</strong></div><div class="stat"><small>Total Realisasi SPJ</small><strong style="color:var(--success)">${fmtRupiah(totalReal)}</strong></div><div class="stat"><small>Sisa Pagu</small><strong>${fmtRupiah(totalPagu-totalReal)}</strong></div><div class="stat"><small>Jumlah Sekolah</small><strong>${fmtNum(schools.length)}</strong></div></div>`+
+    `<div class="panel"><div class="table-wrap"><table class="friendly-table"><thead><tr><th>No</th><th>Kode</th><th>Uraian</th><th>Pagu</th><th>Realisasi</th><th>Sisa</th><th>Status</th></tr></thead><tbody>${rows||emptyRow(7,'Belum ada RKAS APPROVED pada sekolah binaan.')}</tbody></table></div></div>`;
+}
 
 async function renderSchoolRkasAndRealisasi(){
   const [real, h] = await Promise.all([
@@ -1393,10 +1470,11 @@ async function renderSchoolRkasAndRealisasi(){
   const totalPaguKeseluruhan = mergedList.reduce((sum, x) => sum + Number(x.pagu || 0), 0);
   const totalRealisasiKeseluruhan = mergedList.reduce((sum, x) => sum + Number(x.total_realisasi || 0), 0);
 
-  // Render baris tabel tunggal terpadu
-  const rows = mergedList.map((x, idx) => `
+  const groups = groupBelanjaClient(mergedList, 'pagu');
+  let nomor = 0;
+  const rows = groups.flatMap(g => [kelompokHeaderHtml(g,'Subtotal Pagu'), ...g.items.map(x => `
     <tr>
-      <td style="text-align:center;color:var(--muted);font-weight:600">${idx + 1}</td>
+      <td style="text-align:center;color:var(--muted);font-weight:600">${++nomor}</td>
       <td><code>${esc(x.kode_rekening)}</code></td>
       <td><b>${esc(x.uraian)}</b></td>
       <td><b>${fmtRupiah(x.pagu)}</b></td>
@@ -1406,17 +1484,12 @@ async function renderSchoolRkasAndRealisasi(){
       <td style="text-align:center">
         ${isSchool() ? `
           <div style="display:flex;gap:4px;justify-content:center;flex-wrap:wrap;">
-            <button class="btn btn-sm btn-light btn-edit-rkas" 
-              data-id="${esc(x.id_rkas || x.kode_rekening)}" 
-              data-uraian="${esc(x.uraian)}" 
-              data-pagu="${Number(x.pagu || 0)}" 
-              data-kode="${esc(x.kode_rekening)}">✏️ Ubah</button>
-            <button class="btn btn-sm btn-danger btn-delete-rkas" 
-              data-id="${esc(x.id_rkas || x.kode_rekening)}">🗑️ Hapus</button>
+            <button class="btn btn-sm btn-light btn-edit-rkas" data-id="${esc(x.id_rkas || x.kode_rekening)}" data-uraian="${esc(x.uraian)}" data-pagu="${Number(x.pagu || 0)}" data-kode="${esc(x.kode_rekening)}">✏️ Ubah</button>
+            <button class="btn btn-sm btn-danger btn-delete-rkas" data-id="${esc(x.id_rkas || x.kode_rekening)}">🗑️ Hapus</button>
           </div>
         ` : '-'}
       </td>
-    </tr>`).join('');
+    </tr>` )]).join('');
 
   $('#mainContent').innerHTML = head('RKAS & Realisasi Anggaran', 'Pengelolaan pagu aktif, pemantauan realisasi, dan penyesuaian usulan rincian') +
     `
@@ -1738,29 +1811,31 @@ window.filterAndRenderDinasRkasTable = function(){
       </div>`;
   }
 
-  const rows = filtered.map(x=>`
-    <tr>
-      <td><b>${esc(x.npsn)}</b></td>
-      <td>${esc(x.versi_rkas)}</td>
-      <td>${esc(x.kode_rekening)}</td>
-      <td>${esc(x.uraian)}</td>
-      <td><b>${fmtRupiah(x.pagu)}</b></td>
-      <td>${badge(x.status_rkas, ['APPROVED','DISETUJUI','SELESAI'].includes(String(x.status_rkas).toUpperCase())?'success':'warning')}</td>
-      <td>
-        ${window._activeDinasStatus === 'DIAJUKAN' ? `
-          <button class="btn btn-sm btn-primary" onclick="doReviewRkas('${esc(x.versi_rkas)}','APPROVED')">Setujui</button>
-          <button class="btn btn-sm btn-light" onclick="doReviewRkas('${esc(x.versi_rkas)}','PERLU_PERBAIKAN')">Perbaiki</button>
-          <button class="btn btn-sm btn-danger" onclick="doReviewRkas('${esc(x.versi_rkas)}','DITOLAK')">Tolak</button>
-        ` : `<span class="muted" style="font-weight:600;color:var(--success)">Telah Disetujui</span>`}
-      </td>
-    </tr>`).join('');
+  const schools = groupBelanjaBySekolahClient(filtered, 'pagu');
+  const rows = schools.map(sc => {
+    const groups = groupBelanjaClient(sc.items, 'pagu');
+    return [sekolahHeaderHtml(sc,'Total Pagu Sekolah'), ...groups.flatMap(g => [kelompokHeaderHtml(g,'Subtotal Pagu'), ...g.items.map(x=>`
+      <tr>
+        <td><b>${esc(x.versi_rkas)}</b></td>
+        <td>${esc(x.kode_rekening)}</td>
+        <td>${esc(x.uraian)}</td>
+        <td><b>${fmtRupiah(x.pagu)}</b></td>
+        <td>${badge(x.status_rkas, ['APPROVED','DISETUJUI','SELESAI'].includes(String(x.status_rkas).toUpperCase())?'success':'warning')}</td>
+        <td>
+          ${window._activeDinasStatus === 'DIAJUKAN' ? `
+            <button class="btn btn-sm btn-primary" onclick="doReviewRkas('${esc(x.versi_rkas)}','APPROVED')">Setujui</button>
+            <button class="btn btn-sm btn-light" onclick="doReviewRkas('${esc(x.versi_rkas)}','PERLU_PERBAIKAN')">Perbaiki</button>
+            <button class="btn btn-sm btn-danger" onclick="doReviewRkas('${esc(x.versi_rkas)}','DITOLAK')">Tolak</button>
+          ` : `<span class="muted" style="font-weight:600;color:var(--success)">Telah Disetujui</span>`}
+        </td>
+      </tr>`)] )].join('');
+  }).join('');
 
   panel.innerHTML = `
     <div class="table-wrap">
       <table class="friendly-table">
         <thead>
           <tr>
-            <th>NPSN</th>
             <th>Versi</th>
             <th>Kode</th>
             <th>Uraian</th>
@@ -1769,7 +1844,7 @@ window.filterAndRenderDinasRkasTable = function(){
             <th>Aksi Dinas</th>
           </tr>
         </thead>
-        <tbody>${rows || emptyRow(7, `Tidak ada data RKAS yang cocok dengan filter atau kata kunci pencarian.`)}</tbody>
+        <tbody>${rows || emptyRow(6, `Tidak ada data RKAS yang cocok dengan filter atau kata kunci pencarian.`)}</tbody>
       </table>
     </div>`;
 };
