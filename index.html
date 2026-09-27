@@ -397,6 +397,7 @@ const ROLE_MENUS = {
     { id: 'temuan', label: 'Temuan SPJ' },
     { id: 'pesan', label: 'Pesan & Koordinasi' },
     { id: 'rkasReview', label: 'Referensi RKAS' },
+    { id: 'masterSpj', label: 'Master SPJ & Periode' },
     { id: 'dbCheck', label: 'Validasi Database' }
   ],
   PENGAWAS: [
@@ -800,7 +801,8 @@ async function loadView(view){
       sekolah: sekolahView, 
       penugasan: penugasanView, 
       dinasMonitoring: dinasMonitoringView, 
-      rkasReview: rkasReview, 
+      rkasReview: rkasReview,
+      masterSpj: masterSpjView, 
       crosscheck: crosscheckView, 
       temuan: temuanView, 
       asesmen: asesmenView, 
@@ -2094,9 +2096,37 @@ window.verifyFinding=async function(id){
   try{await api('verifikasiTemuanSPJ',{idTemuan:id,hasilVerifikasi:hasil.toUpperCase(),catatan:''});await loadFindings();}catch(e){alert(errorText(e));}
 };
 
+
+async function masterSpjView(){
+  if(!isDinas()){ $('#mainContent').innerHTML=msg('Modul ini hanya dapat digunakan oleh DINAS.'); return; }
+  const [spjRes, indRes, perRes] = await Promise.all([
+    api('getMasterSPJ'), api('getMasterIndikator'), api('getPeriodeSPJ')
+  ]);
+  const spj=spjRes.data||[], inds=indRes.data||[], pers=perRes.data||[];
+  const spjRows=spj.map(x=>`<tr><td>${esc(x.kode_spj)}</td><td>${esc(x.nama_spj)}</td><td>${esc(x.urutan)}</td><td>${badge(x.status_aktif,x.status_aktif==='AKTIF'?'success':'warning')}</td><td><button class="btn btn-sm btn-light" onclick="editMasterSpj(${JSON.stringify(x).replace(/</g,'\\u003c')})">Edit</button></td></tr>`).join('');
+  const indRows=inds.map(x=>`<tr><td>${esc(x.kode_indikator)}</td><td>${esc(x.nama_indikator)}</td><td>${esc(spj.find(s=>String(s.id_spj)===String(x.id_spj))?.nama_spj||x.id_spj)}</td><td>${esc(x.bobot)}</td><td>${badge(x.status_aktif,x.status_aktif==='AKTIF'?'success':'warning')}</td><td><button class="btn btn-sm btn-light" onclick="editMasterIndikator(${JSON.stringify(x).replace(/</g,'\\u003c')})">Edit</button></td></tr>`).join('');
+  const perRows=pers.map(x=>`<tr><td>${esc(x.nama_periode)}</td><td>${esc(x.tahun)}</td><td>${esc(x.bulan||'Semester')}</td><td>${esc(x.tanggal_mulai||'-')}</td><td>${esc(x.tanggal_selesai||'-')}</td><td>${badge(x.status,x.status==='AKTIF'?'success':'warning')}</td><td><button class="btn btn-sm btn-light" onclick="editPeriodeSpj(${JSON.stringify(x).replace(/</g,'\\u003c')})">Edit</button></td></tr>`).join('');
+  $('#mainContent').innerHTML=head('Master SPJ & Periode','Konfigurasi resmi yang menjadi dasar dokumen dan penilaian SPJ')+
+    `<div class="panel"><div class="toolbar"><button class="btn btn-primary" onclick="openMasterSpjForm()">+ Master SPJ</button><button class="btn btn-primary" onclick="openMasterIndikatorForm()">+ Indikator</button><button class="btn btn-primary" onclick="openPeriodeSpjForm()">+ Periode</button></div></div>`+
+    `<div class="panel"><h3 class="section-title" style="margin-top:0">Master SPJ (${spj.length})</h3><div class="table-wrap"><table class="friendly-table"><thead><tr><th>Kode</th><th>Nama</th><th>Urutan</th><th>Status</th><th>Aksi</th></tr></thead><tbody>${spjRows||emptyRow(5)}</tbody></table></div></div>`+
+    `<div class="panel"><h3 class="section-title" style="margin-top:0">Master Indikator (${inds.length})</h3><div class="table-wrap"><table class="friendly-table"><thead><tr><th>Kode</th><th>Indikator</th><th>Komponen SPJ</th><th>Bobot</th><th>Status</th><th>Aksi</th></tr></thead><tbody>${indRows||emptyRow(6)}</tbody></table></div></div>`+
+    `<div class="panel"><h3 class="section-title" style="margin-top:0">Periode SPJ (${pers.length})</h3><div class="table-wrap"><table class="friendly-table"><thead><tr><th>Nama</th><th>Tahun</th><th>Bulan</th><th>Mulai</th><th>Selesai</th><th>Status</th><th>Aksi</th></tr></thead><tbody>${perRows||emptyRow(7)}</tbody></table></div></div>`;
+}
+function openMasterModal(title,body,onSubmit){
+  const wrap=document.createElement('div'); wrap.id='masterConfigModal';
+  wrap.innerHTML=`<div style="position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:1000;padding:16px"><div style="background:#fff;padding:24px;border-radius:20px;width:min(100%,620px);max-height:90vh;overflow:auto"><h3 style="margin-top:0">${title}</h3><form id="masterConfigForm">${body}<div id="masterConfigMsg"></div><div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px"><button type="button" class="btn btn-light" onclick="$('#masterConfigModal')?.remove()">Batal</button><button class="btn btn-primary">Simpan</button></div></form></div></div>`;
+  document.body.appendChild(wrap); $('#masterConfigForm').onsubmit=onSubmit;
+}
+window.openMasterSpjForm=function(x={}){openMasterModal('Master SPJ',`<div class="form-grid"><div class="field"><label>Kode SPJ</label><input id="mcKode" value="${esc(x.kode_spj||'')}" required></div><div class="field"><label>Nama SPJ</label><input id="mcNama" value="${esc(x.nama_spj||'')}" required></div><div class="field"><label>Urutan</label><input id="mcUrutan" type="number" value="${esc(x.urutan||'')}" required></div><div class="field"><label>Status</label><select id="mcStatus"><option ${x.status_aktif==='AKTIF'?'selected':''}>AKTIF</option><option ${x.status_aktif==='NONAKTIF'?'selected':''}>NONAKTIF</option></select></div><div class="field full-col"><label>Keterangan</label><textarea id="mcKet">${esc(x.keterangan||'')}</textarea></div></div>`,async e=>{e.preventDefault();try{await api('simpanMasterSPJ',{data:{id_spj:x.id_spj,kode_spj:$('#mcKode').value.trim(),nama_spj:$('#mcNama').value.trim(),urutan:$('#mcUrutan').value,status_aktif:$('#mcStatus').value,keterangan:$('#mcKet').value.trim()}});$('#masterConfigModal').remove();await masterSpjView();}catch(err){$('#masterConfigMsg').innerHTML=msg(errorText(err));}})};
+window.editMasterSpj=x=>openMasterSpjForm(x);
+window.openMasterIndikatorForm=async function(x={}){const spj=(await api('getMasterSPJ')).data||[];openMasterModal('Master Indikator',`<div class="form-grid"><div class="field"><label>Komponen SPJ</label><select id="miSpj" required><option value="">-- Pilih --</option>${spj.filter(s=>s.status_aktif==='AKTIF').map(s=>`<option value="${esc(s.id_spj)}" ${String(x.id_spj)===String(s.id_spj)?'selected':''}>${esc(s.kode_spj)} - ${esc(s.nama_spj)}</option>`).join('')}</select></div><div class="field"><label>Kode Indikator</label><input id="miKode" value="${esc(x.kode_indikator||'')}" required></div><div class="field"><label>Nama Indikator</label><input id="miNama" value="${esc(x.nama_indikator||'')}" required></div><div class="field"><label>Bobot</label><input id="miBobot" type="number" step="0.01" value="${esc(x.bobot||0)}"></div><div class="field"><label>Urutan</label><input id="miUrutan" type="number" value="${esc(x.urutan||'')}" required></div><div class="field"><label>Metode Pemeriksaan</label><input id="miMetode" value="${esc(x.metode_pemeriksaan||'')}"></div><div class="field full-col"><label>Deskripsi</label><textarea id="miDesc">${esc(x.deskripsi||'')}</textarea></div></div>`,async e=>{e.preventDefault();try{await api('simpanMasterIndikator',{data:{id_indikator:x.id_indikator,id_spj:$('#miSpj').value,kode_indikator:$('#miKode').value.trim(),nama_indikator:$('#miNama').value.trim(),bobot:$('#miBobot').value,urutan:$('#miUrutan').value,metode_pemeriksaan:$('#miMetode').value.trim(),deskripsi:$('#miDesc').value.trim(),status_indikator:'AKTIF',status_aktif:'AKTIF'}});$('#masterConfigModal').remove();await masterSpjView();}catch(err){$('#masterConfigMsg').innerHTML=msg(errorText(err));}})};
+window.editMasterIndikator=x=>openMasterIndikatorForm(x);
+window.openPeriodeSpjForm=function(x={}){openMasterModal('Periode SPJ',`<div class="form-grid"><div class="field"><label>Nama Periode</label><input id="mpNama" value="${esc(x.nama_periode||'')}" placeholder="Januari 2026" required></div><div class="field"><label>Tahun</label><input id="mpTahun" type="number" value="${esc(x.tahun||new Date().getFullYear())}" required></div><div class="field"><label>Bulan (kosongkan untuk semester)</label><input id="mpBulan" type="number" min="1" max="12" value="${esc(x.bulan||'')}"></div><div class="field"><label>Status</label><select id="mpStatus"><option ${x.status!=='NONAKTIF'?'selected':''}>AKTIF</option><option ${x.status==='NONAKTIF'?'selected':''}>NONAKTIF</option></select></div><div class="field"><label>Tanggal Mulai</label><input id="mpMulai" type="date" value="${esc(x.tanggal_mulai||'')}"></div><div class="field"><label>Tanggal Selesai</label><input id="mpSelesai" type="date" value="${esc(x.tanggal_selesai||'')}"></div></div>`,async e=>{e.preventDefault();try{await api('simpanPeriodeSPJ',{data:{id_periode:x.id_periode,nama_periode:$('#mpNama').value.trim(),tahun:$('#mpTahun').value,bulan:$('#mpBulan').value,tanggal_mulai:$('#mpMulai').value,tanggal_selesai:$('#mpSelesai').value,status:$('#mpStatus').value}});$('#masterConfigModal').remove();await masterSpjView();}catch(err){$('#masterConfigMsg').innerHTML=msg(errorText(err));}})};
+window.editPeriodeSpj=x=>openPeriodeSpjForm(x);
+
 async function asesmenView(){
   const periods=await periodeSelect('periodeSelect', true, 'bulan'); let schoolOptions='';
-  if(isPengawas()||isDinas()){
+  if(isPengawas()){
     const r=await safeApi('getSekolah',{}, {data:[]});
     schoolOptions=`<div class="field"><label>Pilih Sekolah</label><select id="npsnSelect"><option value="">-- Pilih --</option>${(r.data||[]).map(x=>`<option value="${esc(x.npsn)}" ${state.selectedNpsn===x.npsn?'selected':''}>${esc(x.npsn)} -${esc(x.nama_sekolah)}</option>`).join('')}</select></div>`;
   }
@@ -2112,8 +2142,9 @@ window.openAssessment=async function(){
 function renderAssessment(r, indicators){
   const a=r.data||r.asesmen||r;
   const rows=indicators.map(d=>`<tr><td>${esc(d.kode_indikator)}</td><td>${esc(d.nama_indikator)}</td><td>${esc(d.bobot)}</td><td><b>${esc(d.skor)}</b></td><td>${isPengawas()?`<button class="btn btn-sm btn-primary" onclick="editScore('${esc(a.id_asesmen)}','${esc(d.id_indikator)}',${d.skor})">Edit</button>`:'-'}</td></tr>`).join('');
-  $('#assessmentArea').innerHTML=`<div class="cards"><div class="stat"><small>Status</small><strong style="font-size:1.1rem">${esc(a.status_asesmen||'-')}</strong></div><div class="stat"><small>Nilai</small><strong>${a.nilai_kualitas??'-'}</strong></div><div class="stat"><small>Kompleksitas</small><strong>${a.indeks_kompleksitas??'-'}</strong></div><div class="stat"><small>Nilai Akhir</small><strong>${a.nilai_akhir??'-'}</strong></div></div><div class="table-wrap"><table class="friendly-table"><thead><tr><th>Kode</th><th>Indikator</th><th>Bobot</th><th>Skor</th><th>Aksi</th></tr></thead><tbody>${rows||emptyRow(5)}</tbody></table></div>`;
+  $('#assessmentArea').innerHTML=`<div class="cards"><div class="stat"><small>Status</small><strong style="font-size:1.1rem">${esc(a.status_asesmen||'-')}</strong></div><div class="stat"><small>Nilai</small><strong>${a.nilai_kualitas??'-'}</strong></div><div class="stat"><small>Kompleksitas</small><strong>${a.indeks_kompleksitas??'-'}</strong></div><div class="stat"><small>Nilai Akhir</small><strong>${a.nilai_akhir??'-'}</strong></div></div><div class="table-wrap"><table class="friendly-table"><thead><tr><th>Kode</th><th>Indikator</th><th>Bobot</th><th>Skor</th><th>Aksi</th></tr></thead><tbody>${rows||emptyRow(5)}</tbody></table></div>${isPengawas()&&String(a.status_asesmen||'').toUpperCase()!=='SELESAI'?`<div class="toolbar" style="margin-top:14px"><button class="btn btn-primary" onclick="finalizeAssessment('${esc(a.id_asesmen)}')">✓ Finalisasi Asesmen</button></div>`:''}`;
 }
+window.finalizeAssessment=async function(idAsesmen){if(!confirm('Finalisasi asesmen ini? Setelah finalisasi, nilai tidak dapat diedit lagi.'))return;try{const r=await api('finalisasiAsesmen',{idAsesmen});alert(`Asesmen selesai. Nilai akhir: ${r.nilai_akhir}`);await openAssessment();}catch(e){alert(errorText(e));}};
 window.editScore=async function(idAsesmen, idIndikator, current){
   const v=prompt('Masukkan skor (0-4):',current??4);if(v===null)return;const n=Number(v);if(n<0||n>4)return;
   try{await api('simpanDetailAsesmen',{data:{id_asesmen:idAsesmen,id_indikator:idIndikator,skor:n,catatan_pengawas:'',status_berlaku:'BERLAKU'}});await openAssessment();}catch(e){alert(errorText(e));}
