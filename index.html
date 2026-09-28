@@ -2161,6 +2161,353 @@ window.saveImportedTransactions=async function(){
 
 async function rkasReview(){ if(isDinas()) await renderDinasRkasReview(); else if(isPengawas()) await renderPengawasRkasAndRealisasi(); else await renderSchoolRkasAndRealisasi(); }
 
+
+/* ============================================================================
+ * RKAS IMPORT — UPLOAD EXCEL + PREVIEW MAPPING
+ * --------------------------------------------------------------------------
+ * Tahap ini membaca Excel di browser, menormalisasi struktur RKAS, lalu
+ * mengirim baris terpilih ke backend importRKASPreview().
+ * PDF belum diparse pada modul ini; tombol PDF memberi informasi bahwa parser
+ * PDF akan menjadi tahap berikutnya.
+ * ========================================================================== */
+
+window._rkasImportPreview = null;
+
+function _rkasNormLabelClient(v){
+  return String(v ?? '')
+    .replace(/\n/g,' ')
+    .replace(/\s+/g,' ')
+    .trim()
+    .toUpperCase();
+}
+
+function _rkasTextClient(v){
+  return String(v ?? '').replace(/\s+/g,' ').trim();
+}
+
+function _rkasNumberClient(v){
+  if(typeof v === 'number' && Number.isFinite(v)) return v;
+  let s=String(v ?? '').trim();
+  if(!s) return 0;
+  s=s.replace(/[^0-9,.-]/g,'');
+  if(!s) return 0;
+  // Menangani 1.234.567,89 maupun 1234567.89.
+  if(s.includes(',') && s.includes('.')){
+    if(s.lastIndexOf(',') > s.lastIndexOf('.')) s=s.replace(/\./g,'').replace(',','.');
+    else s=s.replace(/,/g,'');
+  }else if(s.includes(',')){
+    const parts=s.split(',');
+    s=parts.length===2 && parts[1].length<=2 ? parts[0]+'.'+parts[1] : s.replace(/,/g,'');
+  }else if((s.match(/\./g)||[]).length>1){
+    s=s.replace(/\./g,'');
+  }
+  const n=Number(s);
+  return Number.isFinite(n)?n:0;
+}
+
+function _rkasFindHeaderClient(rows){
+  const aliases={
+    kodeRekening:['KODE REKENING','KODE REKENING BELANJA','KODE AKUN'],
+    kodeKegiatan:['KODE KEGIATAN','KODE KEGIATAN/PROGRAM'],
+    kegiatan:['URAIAN KEGIATAN','KEGIATAN','NAMA KEGIATAN'],
+    uraian:['URAIAN','URAIAN BELANJA','RINCIAN BELANJA','NAMA BELANJA','RINCIAN OBJEK'],
+    volume:['VOLUME','QTY','KUANTITAS','JUMLAH VOLUME'],
+    satuan:['SATUAN','UNIT'],
+    harga:['HARGA SATUAN','HARGA'],
+    pagu:['PAGU','JUMLAH','TOTAL','NILAI','JUMLAH ANGGARAN']
+  };
+  const findIdx=(cells,names)=>cells.findIndex(x=>names.includes(x));
+  let best=null;
+  for(let r=0;r<Math.min(rows.length,250);r++){
+    const cells=(rows[r]||[]).map(_rkasNormLabelClient);
+    const score={};
+    Object.keys(aliases).forEach(k=>{score[k]=findIdx(cells,aliases[k]);});
+    const hits=Object.values(score).filter(i=>i>=0).length;
+    const strong=(score.kodeRekening>=0?2:0)+(score.kodeKegiatan>=0?2:0)+(score.uraian>=0||score.kegiatan>=0?2:0)+(score.pagu>=0?2:0);
+    if(!best || strong*10+hits > best.rank) best={row:r,idx:score,rank:strong*10+hits};
+  }
+  if(!best || best.rank<25 || best.idx.kodeRekening<0 || best.idx.pagu<0) return null;
+  if(best.idx.uraian<0) best.idx.uraian=best.idx.kegiatan;
+  if(best.idx.kegiatan<0) best.idx.kegiatan=-1;
+  return best;
+}
+
+function _rkasMetaClient(rows){
+  let npsn='',tahun='',nama='';
+  const flat=rows.slice(0,30).map(r=>(r||[]).map(_rkasTextClient));
+  for(const row of flat){
+    for(let c=0;c<row.length;c++){
+      const label=_rkasNormLabelClient(row[c]);
+      if(label==='NPSN'){
+        for(let j=c+1;j<Math.min(row.length,c+7);j++){
+          const v=String(row[j]||'').replace(/^[:\-]\s*/,'').trim();
+          if(/^\d{8}$/.test(v)){npsn=v;break;}
+        }
+      }
+      if(label==='NAMA SEKOLAH'){
+        for(let j=c+1;j<Math.min(row.length,c+7);j++){
+          const v=String(row[j]||'').replace(/^[:\-]\s*/,'').trim();
+          if(v){nama=v;break;}
+        }
+      }
+      const txt=row[c]||'';
+      const m=txt.match(/TAHUN(?:\s+ANGGARAN)?\s*[:\-]?\s*(20\d{2})/i);
+      if(m && !tahun) tahun=m[1];
+      const m2=txt.match(/RKAS\s*-\s*NPSN\s*:\s*(\d{8})\s*,\s*NAMA SEKOLAH\s*:\s*(.+)/i);
+      if(m2){npsn=npsn||m2[1];nama=nama||m2[2].trim();}
+    }
+  }
+  return {npsn,nama,tahun};
+}
+
+function _rkasIsDetailCode(code){
+  return /^5(?:\.|$)/.test(String(code||'').replace(/\s/g,''));
+}
+
+function _rkasExtractRowsClient(rows, header){
+  const out=[];
+  let currentKegiatan='';
+  let currentKodeKegiatan='';
+  let currentProgram='';
+  for(let r=header.row+1;r<rows.length;r++){
+    const row=rows[r]||[];
+    const kodeKegiatan=_rkasTextClient(row[header.idx.kodeKegiatan]);
+    const kegiatanCell=_rkasTextClient(row[header.idx.kegiatan]);
+    const kodeRekening=_rkasTextClient(row[header.idx.kodeRekening]);
+    const uraian=_rkasTextClient(row[header.idx.uraian]);
+    const pagu=_rkasNumberClient(row[header.idx.pagu]);
+    const volume=header.idx.volume>=0?_rkasNumberClient(row[header.idx.volume]):0;
+    const satuan=header.idx.satuan>=0?_rkasTextClient(row[header.idx.satuan]):'';
+    const harga=header.idx.harga>=0?_rkasNumberClient(row[header.idx.harga]):0;
+
+    if(!kodeRekening && !kodeKegiatan && !kegiatanCell && !uraian) continue;
+
+    // Baris dengan kode kegiatan tetapi belum merupakan kode rekening belanja
+    // diperlakukan sebagai konteks kegiatan aktif.
+    if(kodeKegiatan && !_rkasIsDetailCode(kodeRekening)){
+      if(kegiatanCell) currentKegiatan=kegiatanCell;
+      currentKodeKegiatan=kodeKegiatan;
+      continue;
+    }
+
+    // Beberapa format menaruh kegiatan pada kolom uraian kegiatan sekaligus
+    // dengan kode rekening. Jika bukan detail belanja, tetap jadikan konteks.
+    if(kegiatanCell && !_rkasIsDetailCode(kodeRekening)){
+      currentKegiatan=kegiatanCell;
+      currentKodeKegiatan=kodeKegiatan||currentKodeKegiatan;
+      continue;
+    }
+
+    if(!_rkasIsDetailCode(kodeRekening)) continue;
+    if(!(pagu>0) && !uraian) continue;
+
+    const namaBelanja=uraian || kegiatanCell;
+    if(!namaBelanja) continue;
+
+    out.push({
+      kode_kegiatan: currentKodeKegiatan || kodeKegiatan,
+      kegiatan: currentKegiatan || kegiatanCell,
+      kode_rekening: kodeRekening,
+      nama_belanja: namaBelanja,
+      uraian: namaBelanja,
+      volume: volume || 1,
+      satuan: satuan || 'paket',
+      harga_satuan: harga || pagu,
+      pagu,
+      nomor_baris_sumber:r+1
+    });
+  }
+  return out;
+}
+
+function _rkasStatusBadge(status){
+  const st=String(status||'').toUpperCase();
+  const cls=st==='MATCHED'?'success':st==='REVIEW'?'warning':st==='MANUAL'?'info':'danger';
+  return badge(st.replaceAll('_',' '),cls);
+}
+
+function _rkasRenderSummary(d){
+  const s=d.summary||{};
+  return `<div class="cards" style="margin:12px 0 16px;">
+    <div class="stat"><small>Total Baris</small><strong>${fmtNum(s.total_baris||0)}</strong></div>
+    <div class="stat"><small>Berhasil Mapping</small><strong style="color:var(--success)">${fmtNum(s.berhasil_mapping||0)}</strong></div>
+    <div class="stat"><small>Perlu Konfirmasi</small><strong style="color:#a16207">${fmtNum(s.perlu_konfirmasi||0)}</strong></div>
+    <div class="stat"><small>Gagal Mapping</small><strong style="color:var(--danger)">${fmtNum(s.gagal_mapping||0)}</strong></div>
+  </div>`;
+}
+
+window.openRkasImportModal=function(){
+  if(!isSchool()){toast('Upload RKAS hanya dapat dilakukan oleh akun SEKOLAH.','warning');return;}
+  const wrap=document.createElement('div');wrap.id='rkasImportModal';
+  wrap.innerHTML=`<div style="position:fixed;inset:0;background:rgba(0,0,0,.58);display:flex;align-items:center;justify-content:center;z-index:1000;padding:14px;overflow:auto">
+    <div style="background:#fff;padding:26px;border-radius:22px;width:min(1100px,100%);max-height:94vh;overflow:auto;box-shadow:0 24px 60px rgba(0,0,0,.24)">
+      <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap">
+        <div><h2 style="margin:0;color:var(--primary)">Upload & Mapping RKAS</h2><p class="muted" style="margin:6px 0 0">File Excel dibaca di browser, kemudian setiap baris dipetakan ke kegiatan dan referensi barang sebelum disimpan.</p></div>
+        <button class="btn btn-light" onclick="$('#rkasImportModal').remove()">✕ Tutup</button>
+      </div>
+      <div class="panel" style="margin-top:16px;background:rgba(23,75,67,.045)">
+        <div class="form-grid">
+          <div class="field"><label>File RKAS Excel</label><input id="rkasImportFile" type="file" accept=".xlsx,.xls" required></div>
+          <div class="field"><label>Versi RKAS</label><input id="rkasImportVersion" value="V1" placeholder="Contoh: V1, Perubahan 1"></div>
+          <div class="field"><label>Tahun Anggaran</label><input id="rkasImportYear" type="number" value="${new Date().getFullYear()}" min="2000" max="2100"></div>
+          <div class="field"><label>NPSN Akun</label><input value="${esc(ownNpsn())}" readonly></div>
+        </div>
+        <div id="rkasImportMsg" style="margin-top:12px"></div>
+        <div class="toolbar" style="justify-content:flex-end;margin-top:12px">
+          <button class="btn btn-light" onclick="$('#rkasImportModal').remove()">Batal</button>
+          <button class="btn btn-primary" id="rkasReadBtn" onclick="readAndMapRkasFile()">📖 Baca & Mapping RKAS</button>
+        </div>
+      </div>
+      <div id="rkasPreviewArea" style="margin-top:16px"></div>
+    </div>
+  </div>`;
+  document.body.appendChild(wrap);
+};
+
+window.readAndMapRkasFile=async function(){
+  const file=$('#rkasImportFile')?.files?.[0];
+  const out=$('#rkasPreviewArea'),msgHost=$('#rkasImportMsg'),btn=$('#rkasReadBtn');
+  if(!file){msgHost.innerHTML=msg('Pilih file Excel RKAS terlebih dahulu.');return;}
+  if(typeof XLSX==='undefined'){msgHost.innerHTML=msg('Library Excel belum tersedia.','warning');return;}
+  btn.disabled=true;btn.textContent='Membaca & mapping...';out.innerHTML=loading('Menganalisis struktur RKAS dan menjalankan mapping...');
+  try{
+    const buffer=await file.arrayBuffer();
+    const wb=XLSX.read(new Uint8Array(buffer),{type:'array',cellDates:true});
+    let selected=null, selectedRows=null;
+    for(const sheetName of wb.SheetNames){
+      const ws=wb.Sheets[sheetName];
+      const rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:true,defval:''});
+      const header=_rkasFindHeaderClient(rows);
+      if(header){
+        const extracted=_rkasExtractRowsClient(rows,header);
+        if(extracted.length && (!selected || extracted.length>selectedRows.length)){
+          selected={sheetName,rows,header};selectedRows=extracted;
+        }
+      }
+    }
+    if(!selectedRows?.length) throw new Error('Struktur RKAS tidak dikenali. Pastikan terdapat kolom Kode Rekening, Kode Kegiatan, Uraian, dan Jumlah/Pagu.');
+    const meta=_rkasMetaClient(selected.rows);
+    const year=String($('#rkasImportYear').value||meta.tahun||new Date().getFullYear());
+    if(meta.npsn && normalizeNpsnClient(meta.npsn)!==normalizeNpsnClient(ownNpsn())){
+      throw new Error(`NPSN pada file (${meta.npsn}) berbeda dengan NPSN akun (${ownNpsn()}).`);
+    }
+    $('#rkasImportYear').value=year;
+    const payload={
+      nama_file:file.name,
+      jenis_file:file.name.toLowerCase().endsWith('.xls')?'XLS':'XLSX',
+      tahun:Number(year),
+      versi_rkas:$('#rkasImportVersion').value.trim()||'V1',
+      npsn:meta.npsn||ownNpsn(),
+      file_id:'',
+      rows:selectedRows
+    };
+    const r=await api('importRKASPreview',{data:payload});
+    window._rkasImportPreview={fileName:file.name,meta:Object.assign({},meta,{sheetName:selected.sheetName}),payload,response:r,rows:r.data||[]};
+    renderRkasImportPreview();
+  }catch(e){
+    out.innerHTML=msg(errorText(e),'error');
+    window._rkasImportPreview=null;
+  }finally{btn.disabled=false;btn.textContent='📖 Baca & Mapping RKAS';}
+};
+
+window.renderRkasImportPreview=function(){
+  const host=$('#rkasPreviewArea'),p=window._rkasImportPreview;
+  if(!host||!p)return;
+  const d=p.response||{}, rows=p.rows||[];
+  const unresolved=rows.filter(x=>!['MATCHED','MANUAL'].includes(String(x.status_mapping||'').toUpperCase())).length;
+  host.innerHTML=`${_rkasRenderSummary(d)}
+    <div class="panel" style="margin-bottom:14px;background:#f8fafb">
+      <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center">
+        <div><b>${esc(p.fileName)}</b><div class="muted">Sheet: ${esc(p.response?.sheet_name||p.meta?.sheetName||'-')} • NPSN ${esc(d.npsn||ownNpsn())} • Import ${esc(d.id_import||'-')}</div></div>
+        <span class="badge badge-info">PREVIEW MAPPING</span>
+      </div>
+    </div>
+    <div class="panel" style="margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+        <h3 style="margin:0">Hasil Mapping</h3>
+        <span class="muted">${fmtNum(rows.length)} baris • ${fmtNum(unresolved)} perlu diselesaikan</span>
+      </div>
+      <div class="table-wrap" style="max-height:500px;overflow:auto">
+        <table class="friendly-table" id="rkasMappingPreviewTable">
+          <thead style="position:sticky;top:0;z-index:2;background:#f1f5f9"><tr><th>No</th><th>Kegiatan</th><th>Kode Rekening</th><th>Belanja Asli</th><th>Pagu</th><th>Mapping Kegiatan</th><th>Referensi Barang</th><th>Score</th><th>Status</th><th>Aksi</th></tr></thead>
+          <tbody>${rows.map((x,i)=>{
+            const mk=x.mapping_kegiatan||{}; const mb=x.mapping_barang||{};
+            const action=['REVIEW','UNMATCHED'].includes(String(x.status_mapping||'').toUpperCase())
+              ? `<button class="btn btn-sm btn-light" onclick="openRkasMappingChoice(${i})">Pilih Mapping</button>` : '-';
+            return `<tr data-rkas-index="${i}">
+              <td>${i+1}</td><td>${esc(x.kegiatan||'-')}</td><td><code>${esc(x.kode_rekening||'-')}</code></td><td>${esc(x.nama_belanja_asli||x.uraian||'-')}</td><td><b>${fmtRupiah(x.pagu||0)}</b></td>
+              <td>${esc(mk.kegiatan||x.kode_kegiatan||'-')}</td><td>${esc(mb.nama_referensi||'-')}</td><td>${fmtNum(x.mapping_score||0)}%</td><td>${_rkasStatusBadge(x.status_mapping)}</td><td>${action}</td>
+            </tr>`;
+          }).join('')}</tbody>
+        </table>
+      </div>
+    </div>
+    <div class="panel" style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;background:rgba(196,154,74,.08)">
+      <div><b>Simpan RKAS</b><div class="muted">Baris REVIEW/UNMATCHED harus diselesaikan. Setelah tersimpan, sekolah dapat mengajukan RKAS melalui alur yang sudah ada.</div></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-light" onclick="openRkasImportModal()">Upload Ulang</button><button class="btn btn-primary" onclick="commitRkasImportFromPreview()" ${unresolved?'disabled':''}>💾 Simpan ke RKAS</button></div>
+    </div>`;
+};
+
+window.openRkasMappingChoice=function(index){
+  const p=window._rkasImportPreview; if(!p)return;
+  const row=p.rows[index]; if(!row)return;
+  const mk=row.mapping_kegiatan||{}, mb=row.mapping_barang||{};
+  const candidates=[];
+  (mk.kandidat||[]).slice(0,5).forEach(x=>candidates.push({type:'kegiatan',id:x.kode_kegiatan||'',label:x.uraian||x.sub_program||x.program||x.kode_kegiatan||'-',raw:x}));
+  (mb.kandidat||[]).slice(0,5).forEach(x=>candidates.push({type:'barang',id:x.kode_barang||'',label:x.rincian_obyek||x.kode_barang||'-',raw:x}));
+  const wrap=document.createElement('div');wrap.id='rkasChoiceModal';
+  wrap.innerHTML=`<div style="position:fixed;inset:0;background:rgba(0,0,0,.58);display:flex;align-items:center;justify-content:center;z-index:1100;padding:14px">
+    <div style="background:#fff;padding:24px;border-radius:20px;width:min(760px,100%);max-height:90vh;overflow:auto">
+      <h3 style="margin-top:0;color:var(--primary)">Konfirmasi Mapping Baris ${index+1}</h3>
+      <div class="panel" style="background:#f8fafb;margin-bottom:12px"><b>${esc(row.nama_belanja_asli||row.uraian||'-')}</b><div class="muted">Kegiatan: ${esc(row.kegiatan||'-')} • Kode: ${esc(row.kode_rekening||'-')}</div></div>
+      <div class="form-grid">
+        <div class="field"><label>Mapping Kegiatan</label><select id="rkasChoiceKegiatan"><option value="">-- Tidak dipilih --</option>${(mk.kandidat||[]).slice(0,5).map(x=>`<option value="${esc(x.kode_kegiatan||'')}" ${String(x.kode_kegiatan||'')===String(mk.id_kegiatan||'')?'selected':''}>${esc((x.kode_kegiatan||'')+' — '+(x.uraian||x.sub_program||x.program||''))}</option>`).join('')}</select></div>
+        <div class="field"><label>Referensi Barang</label><select id="rkasChoiceBarang"><option value="">-- Tidak dipilih --</option>${(mb.kandidat||[]).slice(0,5).map(x=>`<option value="${esc(x.kode_barang||'')}" ${String(x.kode_barang||'')===String(mb.id_referensi_barang||'')?'selected':''}>${esc((x.kode_barang||'')+' — '+(x.rincian_obyek||''))}</option>`).join('')}</select></div>
+      </div>
+      <div class="field" style="margin-top:10px"><label>Catatan</label><textarea id="rkasChoiceNote" rows="2" placeholder="Alasan pemilihan mapping..."></textarea></div>
+      <div id="rkasChoiceMsg"></div>
+      <div class="toolbar" style="justify-content:flex-end"><button class="btn btn-light" onclick="$('#rkasChoiceModal').remove()">Batal</button><button class="btn btn-primary" onclick="applyRkasMappingChoice(${index})">Gunakan Mapping</button></div>
+    </div></div>`;
+  document.body.appendChild(wrap);
+};
+
+window.applyRkasMappingChoice=function(index){
+  const p=window._rkasImportPreview,row=p?.rows?.[index]; if(!row)return;
+  const kegiatan=$('#rkasChoiceKegiatan')?.value||'';
+  const barang=$('#rkasChoiceBarang')?.value||'';
+  if(!kegiatan||!barang){$('#rkasChoiceMsg').innerHTML=msg('Pilih mapping kegiatan dan referensi barang.','warning');return;}
+  const mk=row.mapping_kegiatan||{}, mb=row.mapping_barang||{};
+  const k=(mk.kandidat||[]).find(x=>String(x.kode_kegiatan||'')===String(kegiatan));
+  const b=(mb.kandidat||[]).find(x=>String(x.kode_barang||'')===String(barang));
+  if(!k||!b){$('#rkasChoiceMsg').innerHTML=msg('Kandidat mapping tidak ditemukan pada preview.','error');return;}
+  row.id_kegiatan=k.kode_kegiatan||'';
+  row.kode_kegiatan=k.kode_kegiatan||'';
+  row.id_referensi_barang=b.kode_barang||'';
+  row.mapping_kegiatan=Object.assign({},mk,{id_kegiatan:row.id_kegiatan,kode_kegiatan:row.kode_kegiatan,kegiatan:k.uraian||k.sub_program||k.program||''});
+  row.mapping_barang=Object.assign({},mb,{id_referensi_barang:row.id_referensi_barang,nama_referensi:b.rincian_obyek||''});
+  row.status_mapping='MANUAL';
+  row.mapping_score=100;
+  row.catatan_mapping=$('#rkasChoiceNote')?.value?.trim()||'Konfirmasi manual sekolah';
+  $('#rkasChoiceModal').remove();
+  renderRkasImportPreview();
+};
+
+window.commitRkasImportFromPreview=async function(){
+  const p=window._rkasImportPreview; if(!p)return;
+  const unresolved=(p.rows||[]).filter(x=>!['MATCHED','MANUAL'].includes(String(x.status_mapping||'').toUpperCase()));
+  if(unresolved.length){toast(`Masih ada ${unresolved.length} baris yang perlu dikonfirmasi.`,'warning');return;}
+  const btns=document.querySelectorAll('#rkasPreviewArea button');btns.forEach(b=>{if(/Simpan ke RKAS/.test(b.textContent))b.disabled=true;});
+  try{
+    const r=await api('commitRKASImport',{data:{id_import:p.response.id_import,rows:p.rows}});
+    toast(r.message||'RKAS berhasil disimpan.','ok',5000);
+    const modal=$('#rkasImportModal');if(modal)modal.remove();
+    await renderSchoolRkasAndRealisasi();
+  }catch(e){
+    toast(errorText(e),'error',6000);
+    btns.forEach(b=>b.disabled=false);
+  }
+};
+
 async function renderPengawasRkasAndRealisasi(){
   $('#mainContent').innerHTML=head('RKAS & Realisasi Sekolah Binaan','Ringkasan sekolah dimuat lebih dahulu. Detail RKAS hanya diambil saat sekolah dibuka.')+`<div id="pengawasRkasArea">${loading('Memuat ringkasan sekolah binaan...')}</div>`;
   try{
@@ -2249,7 +2596,7 @@ async function renderSchoolRkasAndRealisasi(){
            <!-- TOMBOL EKSPOR EXCEL DITAMBAHKAN DI SINI -->
            <button class="btn btn-sm" style="background:#15803d; color:#fff; font-weight:700;" onclick="exportRkasExcel()">📥 Unduh Excel</button>
 
-           ${isSchool() ? '<button class="btn btn-primary btn-sm" onclick="openTambahItemRkasModal()">+ Tambah Usulan Item Baru</button>' : ''}
+           ${isSchool() ? '<button class="btn btn-primary btn-sm" onclick="openRkasImportModal()">📤 Upload RKAS</button><button class="btn btn-primary btn-sm" onclick="openTambahItemRkasModal()">+ Tambah Usulan Item Baru</button>' : ''}
          </div>
        </div>
        <div class="table-wrap" style="max-height:550px;overflow-y:auto;">
