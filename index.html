@@ -1271,7 +1271,10 @@ window.openGlobalSearchResult = function(index){
 
   if(x.tipe === 'SEKOLAH'){
     state.selectedNpsn = normalizeNpsnClient(x.npsn);
-    loadView(isDinas() || isPengawas() ? 'rkasReview' : 'statusSpj');
+    // Pencarian sekolah selalu membuka satu pusat status sekolah.
+    // Sekolah sendiri tetap diarahkan ke Status SPJ miliknya; DINAS/PENGAWAS
+    // mendapat ringkasan lintas modul sesuai hak akses backend.
+    loadView(isDinas() || isPengawas() ? 'statusSekolah' : 'statusSpj');
     return;
   }
 
@@ -1405,6 +1408,7 @@ async function renderViewSafely(view){
     home: homeView,
     dokumenBulanan: dokumenBulananView,
     statusSpj: statusSpjView,
+    statusSekolah: statusSekolahView,
     transaksi: transaksiView,
     sekolah: sekolahView,
     penugasan: penugasanView,
@@ -1784,6 +1788,120 @@ window.openUpload = function(idSpj, namaSpj) {
     };
     reader.readAsDataURL(file);
   };
+};
+
+async function statusSekolahView(){
+  const c=$('#mainContent');
+  if(!c) return;
+  const periods=await periodeSelect('statusSekolahPeriode',true,'bulan');
+  c.innerHTML=head('Status Sekolah','Ringkasan sekolah dari identitas, penugasan pengawas, RKAS APPROVED, input SPJ, sampai hasil penilaian PENGAWAS.')+
+    `<div class="panel">
+      <div class="form-grid">
+        <div class="field"><label>Sekolah</label><input id="statusSekolahNpsn" value="${esc(state.selectedNpsn||'')}" readonly></div>
+        <div class="field"><label>Periode SPJ</label>${periods}</div>
+      </div>
+      <div id="statusSekolahArea" style="margin-top:18px">${loading('Memuat status sekolah...')}</div>
+    </div>`;
+  const np=$('#statusSekolahNpsn');
+  const npsn=normalizeNpsnClient(state.selectedNpsn||'');
+  if(np) np.value=npsn;
+  const ps=$('#statusSekolahPeriode');
+  if(ps){
+    ps.value=state.selectedPeriode||'';
+    ps.onchange=()=>{state.selectedPeriode=ps.value;renderStatusSekolah();};
+  }
+  if(!state.selectedPeriode && ps && ps.options.length>1){
+    ps.selectedIndex=1;
+    state.selectedPeriode=ps.value;
+  }
+  await renderStatusSekolah();
+}
+
+async function renderStatusSekolah(){
+  const area=$('#statusSekolahArea');
+  const npsn=normalizeNpsnClient(state.selectedNpsn||$('#statusSekolahNpsn')?.value||'');
+  const p=$('#statusSekolahPeriode')?.value||state.selectedPeriode||'';
+  if(!area||!npsn){if(area)area.innerHTML=msg('NPSN sekolah belum tersedia.','warning');return;}
+  area.innerHTML=loading('Menyusun status sekolah dan berkas penilaian...');
+  try{
+    const rkasSource = isDinas() || isSchool()
+      ? safeApi('getRKASByStatus',{statusRkas:'APPROVED',npsn},{data:[]})
+      : safeApi('getRekapPaguRKAS',{}, {data:[]});
+    const [schoolRes,assignRes,rkasRes,docRes,statusRes,packetRes]=await Promise.all([
+      safeApi('getSekolah',{}, {data:[]}),
+      safeApi('getPenugasanPengawas',{}, {data:[]}),
+      rkasSource,
+      p?safeApi('getDokumenSPJ',{idPeriode:p,npsn},{data:[]}):Promise.resolve({data:[]}),
+      p?safeApi('getStatusSPJ',{idPeriode:p,npsn},{data:[]}):Promise.resolve({data:[]}),
+      p?safeApi('getPaketPenilaianSPJ',{idPeriode:p,npsn},{data:null}):Promise.resolve({data:null})
+    ]);
+
+    const sekolah=(schoolRes.data||[]).find(x=>normalizeNpsnClient(x.npsn)===npsn)||{};
+    const assignments=(assignRes.data||[]).filter(x=>normalizeNpsnClient(x.npsn)===npsn && upper(x.status||'')==='AKTIF');
+    const pengawas=assignments[0]||{};
+    const rawRkas=rkasRes.data||[];
+    const rkas = isDinas() || isSchool()
+      ? rawRkas
+      : rawRkas.filter(x=>normalizeNpsnClient(x.npsn)===npsn).map(x=>({npsn:x.npsn,total_pagu:x.total_pagu,status_rkas:'APPROVED'}));
+    const docs=docRes.data||[];
+    const spj=statusRes.data||[];
+    const packet=packetRes.data||null;
+    const asesmen=packet?.asesmen||null;
+    const details=packet?.detail_asesmen||[];
+    const findings=packet?.temuan||[];
+    const signed=!!packet?.pengesahan_pengawas;
+    const approved=!!packet?.persetujuan_sekolah;
+    const nilai=asesmen?.nilai_akhir;
+    const uploaded=spj.filter(x=>!['BELUM_UPLOAD','N/A'].includes(upper(x.status||''))).length;
+    const assessed=asesmen ? (upper(asesmen.status_asesmen)==='SELESAI' || details.length>0) : false;
+    const rkasTotal=rkas.reduce((sum,x)=>sum+Number(x.pagu||x.total_pagu||x.nilai_pagu||0),0);
+    const docRows=spj.map(x=>{
+      const st=String(x.status||'BELUM_UPLOAD');
+      const done=!['BELUM_UPLOAD','N/A'].includes(upper(st));
+      return `<tr><td><b>${esc(x.nama_spj||x.id_spj||'-')}</b></td><td>${badge(st,done?'success':upper(st)==='N/A'?'warning':'info')}</td><td>${done?'Sudah diinput':'Belum diinput'}</td></tr>`;
+    }).join('');
+    const detailRows=details.map(x=>`<tr><td>${esc(x.id_indikator||'-')}</td><td>${esc(x.nama_indikator||x.indikator||'-')}</td><td><b>${esc(x.skor??'-')}</b></td><td>${esc(x.status_berlaku||'-')}</td><td>${esc(x.catatan_pengawas||'-')}</td></tr>`).join('');
+    const findingRows=findings.slice(0,100).map(x=>`<tr><td>${esc(x.kode_temuan||'-')}</td><td>${esc(x.uraian_temuan||x.temuan||'-')}</td><td>${badge(x.hasil_verifikasi||'BELUM',upper(x.hasil_verifikasi||'')==='TERBUKTI'?'success':'warning')}</td><td>${esc(x.catatan_verifikasi||'-')}</td></tr>`).join('');
+
+    area.innerHTML=`
+      <div class="school-summary-grid">
+        <div class="school-summary-card"><small>Nama Sekolah</small><strong style="font-size:1rem">${esc(sekolah.nama_sekolah||npsn)}</strong></div>
+        <div class="school-summary-card"><small>NPSN</small><strong>${esc(npsn)}</strong></div>
+        <div class="school-summary-card"><small>Kecamatan</small><strong style="font-size:1rem">${esc(sekolah.kecamatan||'-')}</strong></div>
+        <div class="school-summary-card"><small>Pengawas</small><strong style="font-size:1rem">${esc(pengawas.nama_pengawas||pengawas.id_pengawas||'Belum ditugaskan')}</strong></div>
+      </div>
+      <div class="panel" style="margin-top:14px;border-top:4px solid var(--primary)">
+        <div style="display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap">
+          <div><h3 style="margin:0">🏫 Identitas & Lokasi Sekolah</h3><div class="muted" style="margin-top:8px">NPSN <b>${esc(npsn)}</b> · Kecamatan <b>${esc(sekolah.kecamatan||'-')}</b></div><div style="margin-top:5px">${esc(sekolah.alamat_lengkap||sekolah.alamat||'Alamat sekolah belum tersedia')}</div></div>
+          <div style="text-align:right"><div class="muted">Status penugasan</div><b>${(pengawas.nama_pengawas||pengawas.id_pengawas)?badge('AKTIF','success'):badge('BELUM DITUGASKAN','warning')}</b></div>
+        </div>
+      </div>
+      <div class="school-summary-grid" style="margin-top:14px">
+        <div class="school-summary-card"><small>RKAS APPROVED</small><strong>${fmtNum(rkas.length)}</strong><span class="muted">${fmtRupiah(rkasTotal)}</span></div>
+        <div class="school-summary-card"><small>SPJ Diinput</small><strong>${fmtNum(uploaded)}</strong><span class="muted">dari ${fmtNum(spj.length)} komponen</span></div>
+        <div class="school-summary-card"><small>SPJ Dinilai</small><strong>${assessed?'YA':'BELUM'}</strong><span class="muted">${esc(asesmen?.status_asesmen||'Belum ada asesmen')}</span></div>
+        <div class="school-summary-card"><small>Nilai Akhir</small><strong>${esc(nilai??'-')}</strong><span class="muted">${signed?'Disahkan pengawas':approved?'Disetujui sekolah':'Belum disahkan'}</span></div>
+      </div>
+      <div class="panel" style="margin-top:14px"><h3>👤 Pengawas & Penugasan</h3><div class="muted">${esc(pengawas.nama_pengawas||pengawas.id_pengawas||'Belum ada pengawas')} · ${esc(pengawas.tanggal_mulai||'-')} s.d. ${esc(pengawas.tanggal_selesai||'-')}</div></div>
+      <div class="panel" style="margin-top:14px"><h3>💰 RKAS yang Disetujui</h3><div class="muted" style="margin-bottom:10px">${isDinas()||isSchool()?'Menampilkan data dengan status APPROVED yang diberikan backend.':'Untuk PENGAWAS, backend hanya menyediakan ringkasan pagu sekolah binaan; rincian RKAS tetap mengikuti hak akses backend.'}</div><div class="table-wrap"><table class="friendly-table"><thead><tr><th>${isDinas()||isSchool()?'Versi':'Sekolah'}</th><th>Status</th><th>Total Pagu</th>${isDinas()||isSchool()?'<th>Update</th>':''}</tr></thead><tbody>${rkas.map(x=>`<tr><td>${esc(isDinas()||isSchool()?(x.versi_rkas||x.id_rkas||'-'):(x.nama_sekolah||npsn))}</td><td>${badge(x.status_rkas||'APPROVED','success')}</td><td>${fmtRupiah(x.pagu||x.total_pagu||x.nilai_pagu||0)}</td>${isDinas()||isSchool()?`<td>${esc(x.update_at||'-')}</td>`:''}</tr>`).join('')||emptyRow(isDinas()||isSchool()?4:3,'Belum ada RKAS APPROVED.')}</tbody></table></div></div>
+      <div class="panel" style="margin-top:14px"><h3>📄 SPJ yang Diinput</h3><div class="table-wrap"><table class="friendly-table"><thead><tr><th>Komponen</th><th>Status</th><th>Keterangan</th></tr></thead><tbody>${docRows||emptyRow(3,'Belum ada status SPJ.')}</tbody></table></div></div>
+      <div class="panel" style="margin-top:14px"><h3>📝 SPJ yang Dinilai PENGAWAS</h3><div class="school-summary-grid"><div class="school-summary-card"><small>Status Asesmen</small><strong style="font-size:1rem">${esc(asesmen?.status_asesmen||'BELUM ADA')}</strong></div><div class="school-summary-card"><small>Detail Indikator</small><strong>${fmtNum(details.length)}</strong></div><div class="school-summary-card"><small>Temuan Terkait</small><strong>${fmtNum(findings.length)}</strong></div><div class="school-summary-card"><small>Pengesahan</small><strong style="font-size:1rem">${signed?'DISAHKAN':approved?'DISETUJUI':'BELUM'}</strong></div></div>
+        ${detailRows?`<div class="table-wrap" style="margin-top:12px"><table class="friendly-table"><thead><tr><th>Indikator</th><th>Nama</th><th>Skor</th><th>Status</th><th>Catatan Pengawas</th></tr></thead><tbody>${detailRows}</tbody></table></div>`:msg('Berkas/detail penilaian PENGAWAS belum tersedia untuk periode ini.','warning')}
+      </div>
+      ${findingRows?`<div class="panel" style="margin-top:14px"><h3>🔎 Temuan yang Menjadi Dasar Penilaian</h3><div class="table-wrap"><table class="friendly-table"><thead><tr><th>Kode</th><th>Temuan</th><th>Verifikasi</th><th>Catatan</th></tr></thead><tbody>${findingRows}</tbody></table></div></div>`:''}
+      <div class="toolbar" style="margin-top:14px;justify-content:flex-end;flex-wrap:wrap">
+        ${packet?`<button class="btn btn-primary" onclick="openStatusSekolahArchive()">📂 Buka Berkas Penilaian Lengkap</button><button class="btn btn-light" onclick="openStatusSekolahPdf()">📄 Buka PDF & Bukti Penilaian</button>`:''}
+      </div>`;
+  }catch(e){area.innerHTML=msg(errorText(e));}
+}
+
+window.openStatusSekolahArchive=function(){
+  if(!state.selectedNpsn||!state.selectedPeriode){toast('NPSN dan periode belum lengkap.','warning');return;}
+  loadView('arsipPenilaianV5');
+};
+window.openStatusSekolahPdf=function(){
+  if(!state.selectedNpsn||!state.selectedPeriode){toast('NPSN dan periode belum lengkap.','warning');return;}
+  loadView('pdfInteraktif');
 };
 
 async function statusSpjView(){
