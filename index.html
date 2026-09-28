@@ -2610,7 +2610,7 @@ window.commitRkasImportFromPreview=async function(){
   const btn=document.querySelector('#rkasPreviewArea .btn-primary');if(btn){btn.disabled=true;btn.textContent='Menyimpan...';}
   try{
     const r=await api('commitRKASImport',{data:{id_import:p.response.id_import,rows:selectedRows,npsn:p.payload.npsn}});
-    toast(r.message||'RKAS berhasil disimpan.','ok',5000);
+    toast((r.message||'RKAS berhasil disimpan.')+` NPSN: ${r.npsn||p.payload.npsn||'-'} • ${r.jumlah_baris||0} baris • ${r.verified?'Terverifikasi':'Perlu verifikasi'}.`,'ok',6000);
     $('#rkasImportModal')?.remove();
     if(isDinas()) await renderDinasRkasReview(); else await renderSchoolRkasAndRealisasi();
   }catch(e){
