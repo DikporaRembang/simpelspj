@@ -1941,8 +1941,12 @@ window.loadDinasRkasTab = async function(statusFilter){
   if(!panel) return;
   panel.innerHTML = loading('Memuat daftar sekolah...');
   try{
-    const res = await safeApi('getSemuaUsulanRKAS', {}, {data:[]});
-    window._currentDinasRkasList = res.data || [];
+    const [rkasRes, sekolahRes] = await Promise.all([
+      safeApi('getSemuaUsulanRKAS', {}, {data:[]} ),
+      safeApi('getSekolah', {}, {data:[]} )
+    ]);
+    window._currentDinasRkasList = rkasRes.data || [];
+    window._dinasRkasSchoolMaster = sekolahRes.data || [];
     window._selectedDinasRkasNpsn = '';
     filterAndRenderDinasRkasTable();
   }catch(e){
@@ -1956,59 +1960,68 @@ window.filterAndRenderDinasRkasTable = function(){
   if(!panel) return;
 
   const keyword = String($('#searchDinasRkas')?.value || '').trim().toLowerCase();
-  const list = (window._currentDinasRkasList || []).filter(x => {
+  const rkasList = window._currentDinasRkasList || [];
+  const schoolMaster = window._dinasRkasSchoolMaster || [];
+
+  const isStatusMatch = x => {
     const st = String(x.status_rkas || '').toUpperCase();
     if(window._activeDinasStatus === 'APPROVED'){
       return st === 'APPROVED' || st === 'DISETUJUI' || st === 'SELESAI';
     }
     return st === 'DIAJUKAN' || st === 'PENDING' || st === 'MENUNGGU';
+  };
+
+  /*
+   * MASTER SEKOLAH adalah sumber utama daftar sekolah.
+   * master_rkas hanya mengisi item RKAS yang cocok dengan NPSN tersebut.
+   * Dengan demikian NPSN tambahan yang hanya ada di master_rkas tidak
+   * dapat menambah jumlah sekolah pada menu ini.
+   */
+  const rowsByNpsn = {};
+  rkasList.forEach(x => {
+    const npsn = normalizeNpsnClient(x.npsn);
+    if(!npsn || !isStatusMatch(x)) return;
+    if(!rowsByNpsn[npsn]) rowsByNpsn[npsn] = [];
+    rowsByNpsn[npsn].push(x);
   });
 
-  const map = new Map();
-  list.forEach(x => {
+  const schools = schoolMaster.map(x => {
     const npsn = normalizeNpsnClient(x.npsn);
-    if(!npsn) return;
-    if(!map.has(npsn)) map.set(npsn, {
+    const items = rowsByNpsn[npsn] || [];
+    return {
       npsn,
       nama_sekolah: x.nama_sekolah || '',
       kecamatan: x.kecamatan || '',
       alamat_lengkap: x.alamat_lengkap || '',
-      items: [],
-      total: 0
-    });
-    const s = map.get(npsn);
-    s.items.push(x);
-    s.total += Number(x.pagu || 0);
-    if(!s.nama_sekolah && x.nama_sekolah) s.nama_sekolah = x.nama_sekolah;
-    if(!s.kecamatan && x.kecamatan) s.kecamatan = x.kecamatan;
-    if(!s.alamat_lengkap && x.alamat_lengkap) s.alamat_lengkap = x.alamat_lengkap;
-  });
+      items,
+      total: items.reduce((sum, row) => sum + Number(row.pagu || 0), 0)
+    };
+  }).filter(s => s.npsn);
 
-  let schools = Array.from(map.values()).sort((a,b)=>{
+  const filteredSchools = keyword ? schools.filter(s =>
+    s.npsn.toLowerCase().includes(keyword) ||
+    String(s.nama_sekolah).toLowerCase().includes(keyword) ||
+    String(s.kecamatan).toLowerCase().includes(keyword)
+  ) : schools;
+
+  filteredSchools.sort((a,b)=>{
     const an = normalizeNpsnClient(a.npsn), bn = normalizeNpsnClient(b.npsn);
     return (/^\d+$/.test(an)&&/^\d+$/.test(bn)) ? Number(an)-Number(bn) : an.localeCompare(bn);
   });
 
-  if(keyword){
-    schools = schools.filter(s =>
-      s.npsn.toLowerCase().includes(keyword) ||
-      String(s.nama_sekolah).toLowerCase().includes(keyword) ||
-      String(s.kecamatan).toLowerCase().includes(keyword)
-    );
-  }
-
-  const totalPagu = schools.reduce((sum,s)=>sum+s.total,0);
+  const totalPagu = filteredSchools.reduce((sum,s)=>sum+s.total,0);
+  const totalItems = filteredSchools.reduce((n,s)=>n+s.items.length,0);
   if(statArea){
     statArea.innerHTML = `<div class="cards">
-      <div class="stat"><small>Sekolah</small><strong>${fmtNum(schools.length)}</strong></div>
-      <div class="stat"><small>Item RKAS</small><strong>${fmtNum(schools.reduce((n,s)=>n+s.items.length,0))}</strong></div>
+      <div class="stat"><small>Sekolah</small><strong>${fmtNum(filteredSchools.length)}</strong></div>
+      <div class="stat"><small>Item RKAS</small><strong>${fmtNum(totalItems)}</strong></div>
       <div class="stat"><small>Total Pagu</small><strong>${fmtRupiah(totalPagu)}</strong></div>
     </div>`;
   }
 
-  panel.innerHTML = schools.length ? `
+  panel.innerHTML = filteredSchools.length ? `
     <div class="school-index-grid">
-      ${schools.map(s=>`
+      ${filteredSchools.map(s=>`
         <div class="panel school-index-card" style="margin:0;border:1px solid var(--border);">
           <div style="font-size:.78rem;color:var(--muted);font-weight:800;letter-spacing:.03em;">NPSN</div>
           <div style="font-size:1.12rem;font-weight:900;color:var(--primary);">${esc(s.npsn)}</div>
@@ -2018,7 +2031,9 @@ window.filterAndRenderDinasRkasTable = function(){
             <span class="muted">${fmtNum(s.items.length)} item</span>
             <b>${fmtRupiah(s.total)}</b>
           </div>
-          <button class="btn btn-sm btn-primary" style="margin-top:12px;width:100%;" onclick="openDinasRkasSchool('${esc(s.npsn)}')">Buka Sekolah →</button>
+          ${s.items.length ?
+            `<button class="btn btn-sm btn-primary" style="margin-top:12px;width:100%;" onclick="openDinasRkasSchool('${esc(s.npsn)}')">Buka Sekolah →</button>` :
+            `<button class="btn btn-sm btn-light" style="margin-top:12px;width:100%;cursor:default;" disabled>Belum ada RKAS pada tab ini</button>`}
         </div>`).join('')}
     </div>` : msg('Tidak ada sekolah yang sesuai dengan filter.','warning');
 };
@@ -3318,392 +3333,99 @@ function _v5DocCards(docs){
   }).join('')}</div>`;
 }
 async function tutorialV5View(){
-  const c = $('#mainContent');
+  const c=$('#mainContent');
+  const githubUrl='https://github.com/DikporaRembang/simpelspj/blob/main/tutorial_simpelspj.pdf';
+  const rawUrl='https://raw.githubusercontent.com/DikporaRembang/simpelspj/main/tutorial_simpelspj.pdf';
+  window._v5TutorialUrl=githubUrl;
 
-  const rawUrl = 'https://raw.githubusercontent.com/DikporaRembang/simpelspj/main/tutorial_simpelspj.pdf';
-
-  c.innerHTML = head(
-    'Tutorial SIMPEL SPJ',
-    'Panduan resmi aplikasi'
-  ) +
-  `<div class="panel" style="border-left:4px solid var(--gold);">
-    <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap">
-      <div>
-        <h2 style="margin:0">📖 tutorial_simpelspj.pdf</h2>
-        <div class="muted">
-          Tutorial resmi aplikasi — DINAS, PENGAWAS, dan SEKOLAH.
-        </div>
+  c.innerHTML=head('Tutorial SIMPEL SPJ','Panduan resmi aplikasi dari repositori GitHub')+
+    `<div class="panel" style="border-left:4px solid var(--gold);">
+      <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap">
+        <div><h2 style="margin:0">📖 tutorial_simpelspj.pdf</h2><div class="muted">Tutorial resmi aplikasi — DINAS, PENGAWAS, dan SEKOLAH.</div></div>
+        <a class="btn btn-light" href="${githubUrl}" target="_blank" rel="noopener">Buka di GitHub</a>
       </div>
-    </div>
+      <div id="v5TutorialFeed" style="margin-top:14px">${loading('Menyiapkan pembaca tutorial...')}</div>
+    </div>`;
 
-    <div id="v5TutorialFeed" style="margin-top:14px">
-      ${loading('Menyiapkan pembaca tutorial...')}
-    </div>
-  </div>`;
-
-  const area = $('#v5TutorialFeed');
+  const area=$('#v5TutorialFeed');
   if(!area) return;
 
   try{
-
     /*
-     * PDF dibaca menggunakan PDF.js dan dirender ke canvas.
-     * Tidak menggunakan iframe / Google Docs Viewer,
-     * sehingga PDF tampil langsung di dalam feed aplikasi.
+     * Jangan gunakan iframe/raw PDF di sini. GitHub/Raw dapat mengirim PDF sebagai
+     * attachment sehingga browser mengunduhnya. PDF.js membaca byte PDF lalu
+     * menggambar halaman ke canvas, sehingga tutorial benar-benar tampil di feed.
      */
-
     if(!window.pdfjsLib){
       await new Promise((resolve,reject)=>{
-        const sc = document.createElement('script');
-
-        sc.src =
-          'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
-
-        sc.onload = resolve;
-
-        sc.onerror = () =>
-          reject(
-            new Error('Library pembaca PDF gagal dimuat.')
-          );
-
+        const sc=document.createElement('script');
+        sc.src='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+        sc.onload=resolve; sc.onerror=()=>reject(new Error('Library pembaca PDF gagal dimuat.'));
         document.head.appendChild(sc);
       });
     }
+    if(!window.pdfjsLib) throw new Error('PDF.js tidak tersedia.');
+    window.pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-    if(!window.pdfjsLib){
-      throw new Error('PDF.js tidak tersedia.');
-    }
-
-    window.pdfjsLib.GlobalWorkerOptions.workerSrc =
-      'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-
-    area.innerHTML = `
-      <div id="v5PdfReader"
-        style="
-          background:#eef2f4;
-          border:1px solid var(--border);
-          border-radius:14px;
-          overflow:hidden;
-        ">
-
-        <!-- TOOLBAR -->
-        <div
-          style="
-            position:sticky;
-            top:0;
-            z-index:2;
-            background:#fff;
-            border-bottom:1px solid var(--border);
-            padding:10px 12px;
-            display:flex;
-            align-items:center;
-            justify-content:space-between;
-            gap:8px;
-            flex-wrap:wrap;
-          ">
-
-          <div style="display:flex;align-items:center;gap:8px">
-
-            <button
-              class="btn btn-light btn-sm"
-              id="v5PdfPrev">
-              ← Sebelumnya
-            </button>
-
-            <button
-              class="btn btn-light btn-sm"
-              id="v5PdfNext">
-              Berikutnya →
-            </button>
-
-          </div>
-
-          <div
-            class="muted"
-            id="v5PdfPageInfo">
-            Memuat halaman...
-          </div>
-
-          <div
-            style="display:flex;align-items:center;gap:7px">
-
-            <button
-              class="btn btn-light btn-sm"
-              id="v5PdfZoomOut">
-              −
-            </button>
-
-            <span
-              id="v5PdfZoomInfo"
-              class="muted">
-              100%
-            </span>
-
-            <button
-              class="btn btn-light btn-sm"
-              id="v5PdfZoomIn">
-              +
-            </button>
-
-          </div>
-
+    area.innerHTML=`<div id="v5PdfReader" style="background:#eef2f4;border:1px solid var(--border);border-radius:14px;overflow:hidden">
+      <div style="position:sticky;top:0;z-index:2;background:#fff;border-bottom:1px solid var(--border);padding:10px 12px;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
+        <div style="display:flex;align-items:center;gap:8px">
+          <button class="btn btn-light btn-sm" id="v5PdfPrev">← Sebelumnya</button>
+          <button class="btn btn-light btn-sm" id="v5PdfNext">Berikutnya →</button>
         </div>
-
-        <!-- AREA PDF -->
-        <div
-          id="v5PdfCanvasWrap"
-          style="
-            padding:18px;
-            min-height:72vh;
-            display:flex;
-            justify-content:center;
-            align-items:flex-start;
-            overflow:auto;
-          ">
-
-          <div
-            class="loading-container"
-            style="min-height:55vh">
-            ${loading('Membaca PDF tutorial...')}
-          </div>
-
+        <div class="muted" id="v5PdfPageInfo">Memuat halaman...</div>
+        <div style="display:flex;align-items:center;gap:7px">
+          <button class="btn btn-light btn-sm" id="v5PdfZoomOut">−</button>
+          <span id="v5PdfZoomInfo" class="muted">100%</span>
+          <button class="btn btn-light btn-sm" id="v5PdfZoomIn">+</button>
         </div>
-
       </div>
-
-      <div
-        class="muted"
-        style="margin-top:8px">
-        Tutorial dibaca langsung di dalam aplikasi.
+      <div id="v5PdfCanvasWrap" style="padding:18px;min-height:72vh;display:flex;justify-content:center;align-items:flex-start;overflow:auto">
+        <div class="loading-container" style="min-height:55vh">${loading('Membaca PDF dari GitHub...')}</div>
       </div>
-    `;
+    </div>
+    <div class="muted" style="margin-top:8px">PDF dibaca langsung di halaman aplikasi. Sumber: GitHub resmi SIMPEL SPJ.</div>`;
 
-    /*
-     * LOAD PDF
-     */
-    const pdf =
-      await window.pdfjsLib
-        .getDocument({
-          url: rawUrl,
-          withCredentials: false
-        })
-        .promise;
+    const pdf=await window.pdfjsLib.getDocument({url:rawUrl,withCredentials:false}).promise;
+    let pageNo=1, zoom=1;
+    const wrap=$('#v5PdfCanvasWrap'), info=$('#v5PdfPageInfo'), zoomInfo=$('#v5PdfZoomInfo');
 
-    let pageNo = 1;
-    let zoom = 1;
-
-    const wrap = $('#v5PdfCanvasWrap');
-    const info = $('#v5PdfPageInfo');
-    const zoomInfo = $('#v5PdfZoomInfo');
-
-    /*
-     * RENDER HALAMAN
-     */
     async function renderPage(){
-
       if(!wrap) return;
-
-      wrap.innerHTML =
-        loading(
-          `Memuat halaman ${pageNo} dari ${pdf.numPages}...`
-        );
-
-      const page =
-        await pdf.getPage(pageNo);
-
-      const base =
-        page.getViewport({
-          scale:1
-        });
-
-      const maxWidth =
-        Math.max(
-          320,
-          Math.min(
-            wrap.clientWidth - 36,
-            980
-          )
-        );
-
-      const fitScale =
-        Math.min(
-          maxWidth / base.width,
-          1.55
-        );
-
-      const viewport =
-        page.getViewport({
-          scale: fitScale * zoom
-        });
-
-      const canvas =
-        document.createElement('canvas');
-
-      canvas.style.display = 'block';
-      canvas.style.maxWidth = '100%';
-      canvas.style.height = 'auto';
-      canvas.style.background = '#fff';
-      canvas.style.boxShadow =
-        '0 8px 25px rgba(16,42,67,.12)';
-      canvas.style.border =
-        '1px solid #d7e0e5';
-
-      canvas.width =
-        Math.ceil(viewport.width);
-
-      canvas.height =
-        Math.ceil(viewport.height);
-
-      wrap.innerHTML = '';
+      wrap.innerHTML=loading(`Memuat halaman ${pageNo} dari ${pdf.numPages}...`);
+      const page=await pdf.getPage(pageNo);
+      const base=page.getViewport({scale:1});
+      const maxWidth=Math.max(320, Math.min(wrap.clientWidth-36, 980));
+      const fitScale=Math.min(maxWidth/base.width, 1.55);
+      const viewport=page.getViewport({scale:fitScale*zoom});
+      const canvas=document.createElement('canvas');
+      canvas.style.display='block';
+      canvas.style.maxWidth='100%';
+      canvas.style.height='auto';
+      canvas.style.background='#fff';
+      canvas.style.boxShadow='0 8px 25px rgba(16,42,67,.12)';
+      canvas.style.border='1px solid #d7e0e5';
+      canvas.width=Math.ceil(viewport.width);
+      canvas.height=Math.ceil(viewport.height);
+      wrap.innerHTML='';
       wrap.appendChild(canvas);
-
-      const context =
-        canvas.getContext('2d');
-
-      await page.render({
-        canvasContext: context,
-        viewport: viewport
-      }).promise;
-
-      if(info){
-        info.textContent =
-          `Halaman ${pageNo} dari ${pdf.numPages}`;
-      }
-
-      if(zoomInfo){
-        zoomInfo.textContent =
-          `${Math.round(zoom * 100)}%`;
-      }
-
-      const prev =
-        $('#v5PdfPrev');
-
-      const next =
-        $('#v5PdfNext');
-
-      if(prev){
-        prev.disabled =
-          pageNo <= 1;
-      }
-
-      if(next){
-        next.disabled =
-          pageNo >= pdf.numPages;
-      }
+      await page.render({canvasContext:canvas.getContext('2d'),viewport}).promise;
+      info.textContent=`Halaman ${pageNo} dari ${pdf.numPages}`;
+      zoomInfo.textContent=`${Math.round(zoom*100)}%`;
+      $('#v5PdfPrev').disabled=pageNo<=1;
+      $('#v5PdfNext').disabled=pageNo>=pdf.numPages;
     }
 
-    /*
-     * TOMBOL SEBELUMNYA
-     */
-    const prev =
-      $('#v5PdfPrev');
-
-    if(prev){
-      prev.onclick = async function(){
-
-        if(pageNo <= 1) return;
-
-        pageNo--;
-
-        await renderPage();
-
-        const reader =
-          $('#v5PdfReader');
-
-        if(reader){
-          reader.scrollIntoView({
-            behavior:'smooth',
-            block:'start'
-          });
-        }
-      };
-    }
-
-    /*
-     * TOMBOL BERIKUTNYA
-     */
-    const next =
-      $('#v5PdfNext');
-
-    if(next){
-      next.onclick = async function(){
-
-        if(pageNo >= pdf.numPages) return;
-
-        pageNo++;
-
-        await renderPage();
-
-        const reader =
-          $('#v5PdfReader');
-
-        if(reader){
-          reader.scrollIntoView({
-            behavior:'smooth',
-            block:'start'
-          });
-        }
-      };
-    }
-
-    /*
-     * ZOOM OUT
-     */
-    const zoomOut =
-      $('#v5PdfZoomOut');
-
-    if(zoomOut){
-      zoomOut.onclick = async function(){
-
-        zoom =
-          Math.max(
-            0.75,
-            zoom - 0.10
-          );
-
-        await renderPage();
-      };
-    }
-
-    /*
-     * ZOOM IN
-     */
-    const zoomIn =
-      $('#v5PdfZoomIn');
-
-    if(zoomIn){
-      zoomIn.onclick = async function(){
-
-        zoom =
-          Math.min(
-            2,
-            zoom + 0.10
-          );
-
-        await renderPage();
-      };
-    }
-
-    /*
-     * TAMPILKAN HALAMAN PERTAMA
-     */
+    $('#v5PdfPrev').onclick=async()=>{if(pageNo>1){pageNo--;await renderPage();}};
+    $('#v5PdfNext').onclick=async()=>{if(pageNo<pdf.numPages){pageNo++;await renderPage();}};
+    $('#v5PdfZoomOut').onclick=async()=>{zoom=Math.max(.75,zoom-.1);await renderPage();};
+    $('#v5PdfZoomIn').onclick=async()=>{zoom=Math.min(2,zoom+.1);await renderPage();};
     await renderPage();
-
   }catch(e){
-
-    console.error(
-      'Tutorial PDF error:',
-      e
-    );
-
-    area.innerHTML =
-      msg(
-        'Tutorial tidak dapat ditampilkan langsung di feed: ' +
-        errorText(e),
-        'error'
-      );
+    area.innerHTML=msg('Tutorial tidak dapat ditampilkan langsung di feed: '+errorText(e)+'. Gunakan tombol "Buka di GitHub" untuk membuka dokumen asli.','error');
   }
 }
+
 async function arsipPenilaianV5View(){
   const c=$('#mainContent');
   c.innerHTML=head('Arsip Penilaian SPJ','Cetak bahan penilaian lengkap per sekolah dan periode')+
