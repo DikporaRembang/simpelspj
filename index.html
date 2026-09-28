@@ -778,7 +778,11 @@ async function doLogin(e){
     const r=await api('login',{username:$('#username').value.trim(),password:$('#password').value});
     state.token=r.token; state.user=r.user || {};
     sessionStorage.setItem('simpel_token',state.token);
-    showWelcomeAnimation(() => { startApp(); });
+
+    // Bangun dashboard TERLEBIH DAHULU di balik animasi selamat datang.
+    // Dengan begitu halaman login tidak sempat terlihat kembali saat transisi.
+    await startApp();
+    showWelcomeAnimation();
   }catch(err){$('#authMsg').innerHTML=msg(errorText(err));}
 }
 
@@ -926,19 +930,24 @@ window.toggleRegisterFields = function() {
   }
 };
 
-function showWelcomeAnimation(callback){
+function showWelcomeAnimation(){
   const overlay = document.createElement('div');
   overlay.className = 'welcome-overlay';
+  overlay.style.opacity = '1';
   overlay.innerHTML = `
     <img src="bidangsd.png" class="welcome-logo-lg" alt="Logo">
     <h1 class="welcome-title-anim">SELAMAT DATANG CEO SD</h1>
     <div class="welcome-subtitle-anim">Pemeriksaan & Pertanggungjawaban SPJ Terintegrasi</div>
   `;
   document.body.appendChild(overlay);
+
+  // Dashboard sudah aktif di belakang overlay. Fade-out hanya membuka dashboard,
+  // bukan berpindah dari login ke dashboard setelah animasi selesai.
   setTimeout(() => {
-    overlay.style.transition = 'opacity 0.6s ease'; overlay.style.opacity = '0';
-    setTimeout(() => { overlay.remove(); if(callback) callback(); }, 600);
-  }, 2600);
+    overlay.style.transition = 'opacity 0.6s ease';
+    overlay.style.opacity = '0';
+    setTimeout(() => overlay.remove(), 650);
+  }, 1900);
 }
 
 async function restoreSession(){
