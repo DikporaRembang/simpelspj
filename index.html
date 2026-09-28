@@ -463,6 +463,83 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
 
 .pdf-interactive-grid{border:1px solid #e5e7eb;border-radius:16px;overflow:hidden}.pdf-interactive-grid aside{background:#fff}.pdf-interactive-grid .panel{border:1px solid #e5e7eb}.pdf-interactive-grid table{font-size:.86rem}@media(max-width:900px){.pdf-interactive-grid{grid-template-columns:1fr!important}.pdf-interactive-grid iframe{height:58vh!important}.pdf-interactive-grid aside{max-height:none!important}.pdf-interactive-grid .table-wrap{overflow-x:auto}}
 </style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style id="simpelProfessionalDesign">
+:root{
+  --navy:#102A43;--navy-2:#173F5F;--emerald:#087F5B;--emerald-2:#075E4A;
+  --gold:#C8A24A;--ivory:#F4F7F8;--surface:#FFFFFF;--surface-soft:#F8FAFB;
+  --text:#17212B;--muted:#687887;--border:#E2E8EC;
+  --danger:#B42318;--success:#16805A;--warning:#A36A00;--info:#1769AA;
+  --shadow:0 8px 28px rgba(15,35,55,.055);--shadow-lg:0 18px 48px rgba(15,35,55,.10);
+  --radius:16px;--radius-sm:10px;
+}
+html,body{font-family:'Manrope',Inter,ui-sans-serif,system-ui,-apple-system,'Segoe UI',Arial,sans-serif}
+body{background:radial-gradient(circle at 0 0,rgba(8,127,91,.035),transparent 28%),radial-gradient(circle at 100% 0,rgba(200,162,74,.035),transparent 22%),var(--ivory)}
+.topbar{min-height:72px;padding:10px clamp(16px,3vw,30px);background:rgba(255,255,255,.965);border-bottom:1px solid #E6EBEF;box-shadow:0 4px 18px rgba(16,42,67,.035)}
+.app-logo{width:46px;height:46px;border-radius:13px;box-shadow:0 5px 16px rgba(16,42,67,.08)}
+.brand h2{font-size:1.02rem;letter-spacing:-.45px;font-weight:800}.brand small{font-weight:600}
+.top-search{max-width:600px;flex:1}.top-search-wrap{height:44px;border:1px solid #DCE4E9;border-radius:12px;background:#F8FAFB;box-shadow:inset 0 1px 2px rgba(16,42,67,.02);transition:.2s}
+.top-search-wrap:focus-within{background:#fff;border-color:rgba(8,127,91,.48);box-shadow:0 0 0 4px rgba(8,127,91,.08)}
+.top-search-wrap input{font-size:.88rem;font-weight:550}.top-search-icon{font-size:1.05rem;color:#758696}.top-search-kbd{border:1px solid #D9E2E7;background:#fff;border-radius:7px;padding:3px 7px;font-size:.67rem;color:#748392;box-shadow:0 1px 2px rgba(0,0,0,.03)}
+.layout{grid-template-columns:260px minmax(0,1fr)}
+.sidebar{padding:18px 12px 14px;background:linear-gradient(180deg,#102A43 0%,#12364C 48%,#0D5147 100%);border-right:1px solid rgba(255,255,255,.08);box-shadow:10px 0 30px rgba(16,42,67,.08)}
+.nav-section-title{font-size:.65rem;letter-spacing:1.3px;color:#D9BF74;margin:16px 10px 8px;font-weight:800}
+.nav-btn,.nav-group-toggle{border-radius:10px;min-height:42px;font-size:.84rem;font-weight:650;letter-spacing:.05px;transition:background .18s ease,color .18s ease,transform .18s ease,box-shadow .18s ease}
+.nav-btn{padding:10px 12px}.nav-btn:hover,.nav-group-toggle:hover{background:rgba(255,255,255,.075);transform:translateX(2px)}
+.nav-btn.active{background:linear-gradient(90deg,rgba(8,127,91,.92),rgba(8,127,91,.68));box-shadow:0 7px 18px rgba(0,0,0,.12);color:#fff}
+.nav-group-toggle{padding:10px 12px}.nav-submenu{padding:3px 0 5px 8px}.nav-submenu .nav-btn{min-height:38px;font-size:.81rem;color:#C9D5DD}.nav-submenu .nav-btn.active{color:#fff}
+.nav-chevron{transition:transform .2s ease}.nav-collapsible.open .nav-chevron{transform:rotate(90deg)}
+.sidebar-footer{border-top:1px solid rgba(255,255,255,.1);padding-top:13px;margin-top:12px}.sidebar-footer-item{border-radius:10px;padding:8px 7px}.sidebar-footer-item:hover{background:rgba(255,255,255,.055)}
+.content{padding:26px clamp(16px,3vw,34px) 42px;min-width:0}.content>.page-head{margin-bottom:18px}
+.panel{border:1px solid #E2E8EC;border-radius:16px;box-shadow:var(--shadow);background:#fff}.panel:hover{box-shadow:0 10px 32px rgba(15,35,55,.07)}
+.stat{padding:19px 20px;border-radius:15px;border:1px solid #E5EAEE;background:#fff;box-shadow:var(--shadow);transition:transform .18s ease,box-shadow .18s ease}
+.stat:hover{transform:translateY(-2px);box-shadow:var(--shadow-lg)}.stat strong{font-size:1.65rem;font-weight:800}.stat small{font-size:.68rem;letter-spacing:.8px}
+.btn{min-height:42px;padding:10px 16px;border-radius:10px;font-size:.83rem;font-weight:750;letter-spacing:.05px;transition:transform .18s ease,box-shadow .18s ease,background .18s ease,border-color .18s ease}
+.btn-primary{background:linear-gradient(135deg,#075E4A,#087F5B);box-shadow:0 5px 14px rgba(8,127,91,.16)}
+.btn-primary:hover{box-shadow:0 8px 20px rgba(8,127,91,.23)}
+.btn-light{background:#fff;border:1px solid #DCE4E9;color:#304354;box-shadow:0 2px 6px rgba(16,42,67,.035)}
+.btn-light:hover{border-color:#B9C8D1;background:#F8FAFB}
+.btn-danger{box-shadow:0 5px 14px rgba(180,35,24,.12)}
+.table-wrap{border:1px solid #E1E7EB;border-radius:13px;box-shadow:0 3px 12px rgba(16,42,67,.025)}
+.friendly-table{font-size:.84rem}.friendly-table th{background:#F5F8F9;color:#263B4B;font-size:.74rem;letter-spacing:.25px;text-transform:none;padding:12px 14px}.friendly-table td{padding:12px 14px}.friendly-table tbody tr{transition:background .15s ease}.friendly-table tbody tr:hover{background:#F8FBFA}
+.badge,.status-badge{border-radius:999px!important;font-weight:750!important;padding:5px 9px!important;font-size:.7rem!important;letter-spacing:.1px}
+.search-results{border:1px solid #DCE4E9!important;border-radius:13px!important;box-shadow:0 18px 45px rgba(16,42,67,.12)!important;background:#fff!important}.search-result{padding:11px 13px!important;transition:background .15s ease}.search-result:hover{background:#F5F9F8!important}
+.toast{border-radius:11px!important;box-shadow:0 12px 30px rgba(16,42,67,.13)!important}
+#mainContent{animation:simpelPageIn .24s ease both}
+@keyframes simpelPageIn{from{opacity:.0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+.view-transition-shield{background:rgba(244,247,248,.84);backdrop-filter:blur(7px)}
+.view-transition-card{border-radius:14px;border:1px solid #E1E7EB;box-shadow:0 18px 42px rgba(16,42,67,.12)}
+@media(max-width:980px){.layout{grid-template-columns:235px minmax(0,1fr)}.top-search{max-width:420px}}
+@media(max-width:760px){.topbar{min-height:64px}.top-search{display:none}.layout{grid-template-columns:1fr}.sidebar{position:fixed;left:0;top:64px;bottom:0;width:270px;z-index:80;transform:translateX(-105%);transition:transform .24s ease;overflow:auto}.sidebar.open{transform:translateX(0)}.content{padding:18px 14px 30px}}
+</style>
+
+<style id="simpelV11FullRedesign">
+:root{--v11-ink:#202522;--v11-muted:#68736d;--v11-cream:#f5f2e9;--v11-paper:#fffdf8;--v11-green:#235b45;--v11-green2:#36765b;--v11-gold:#c49a4a;--v11-rust:#b9684e;--v11-line:#e4dfd3;--v11-shadow:0 16px 42px rgba(38,48,42,.09)}
+body{background:var(--v11-cream)!important;color:var(--v11-ink)!important;font-family:Manrope,system-ui,sans-serif!important}
+body:before{background:linear-gradient(180deg,rgba(255,253,248,.86),rgba(245,242,233,.96))!important}
+.topbar{background:rgba(255,253,248,.94)!important;border-bottom:1px solid var(--v11-line)!important;box-shadow:0 3px 18px rgba(50,55,45,.05)!important}
+.brand-title{color:var(--v11-ink)!important}.brand-subtitle{color:var(--v11-muted)!important}
+.sidebar{background:linear-gradient(180deg,#183c31 0%,#214d3c 55%,#183b31 100%)!important;box-shadow:8px 0 30px rgba(22,54,42,.12)!important}
+.sidebar .nav-section-title{color:#b9cdbf!important}.nav-btn{color:#eaf2ec!important;border-radius:12px!important}.nav-btn:hover{background:rgba(255,255,255,.09)!important}.nav-btn.active{background:#f7f2e7!important;color:#204e3b!important;box-shadow:0 5px 16px rgba(0,0,0,.12)!important}.nav-group-toggle{color:#dce9df!important}
+.content{max-width:1500px!important}
+.page-head{margin-bottom:18px!important}.page-head h1{font-size:1.72rem!important;letter-spacing:-.035em!important;color:var(--v11-ink)!important}.muted{color:var(--v11-muted)!important}
+.panel{background:var(--v11-paper)!important;border:1px solid var(--v11-line)!important;border-radius:20px!important;box-shadow:var(--v11-shadow)!important}
+.stat{background:var(--v11-paper)!important;border:1px solid var(--v11-line)!important;border-radius:18px!important;box-shadow:none!important}.stat small{color:var(--v11-muted)!important}.stat strong{color:var(--v11-ink)!important}
+.btn{border-radius:11px!important;font-weight:750!important}.btn-primary{background:var(--v11-green)!important;border-color:var(--v11-green)!important;color:#fff!important}.btn-primary:hover{background:#184735!important}.btn-light{background:#f4f0e7!important;border-color:#ddd6c8!important;color:#294438!important}
+.badge{border-radius:999px!important}
+.table-wrap{border:1px solid var(--v11-line)!important;border-radius:15px!important}.friendly-table th{background:#f0ede4!important;color:#526057!important}.friendly-table td{background:#fffdf8!important}.friendly-table tr:hover td{background:#f7f3ea!important}
+.v11-home{display:grid;gap:18px}.v11-hero{min-height:300px;border-radius:28px;overflow:hidden;position:relative;background:#244b3c url('https://raw.githubusercontent.com/DikporaRembang/simpelspj/main/kantordindikpora.jpeg') center/cover no-repeat;box-shadow:0 20px 48px rgba(31,57,45,.18)}
+.v11-hero:before{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(18,42,33,.92) 0%,rgba(18,42,33,.70) 42%,rgba(18,42,33,.18) 78%,rgba(18,42,33,.08) 100%)}
+.v11-hero-inner{position:relative;z-index:1;min-height:300px;padding:34px;display:flex;align-items:flex-end}.v11-hero-copy{max-width:700px;color:white}.v11-kicker{display:inline-flex;align-items:center;gap:7px;padding:6px 10px;border-radius:999px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.22);font-size:.72rem;font-weight:850;letter-spacing:.08em;text-transform:uppercase}.v11-hero h2{font-size:clamp(1.8rem,4vw,3rem);line-height:1.02;letter-spacing:-.045em;margin:12px 0 9px;color:#fff}.v11-hero p{font-size:.95rem;line-height:1.65;color:#e8eee9;margin:0;max-width:650px}.v11-hero-actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:20px}.v11-hero-actions .btn-primary{background:#d0aa5c!important;color:#1e3429!important;border-color:#d0aa5c!important}.v11-hero-actions .btn-light{background:rgba(255,255,255,.12)!important;border-color:rgba(255,255,255,.3)!important;color:#fff!important}
+.v11-section-label{font-size:.72rem;text-transform:uppercase;letter-spacing:.12em;font-weight:850;color:#7b776d;margin:4px 2px 8px}.v11-focus-grid{display:grid;grid-template-columns:1.3fr .85fr .85fr;gap:14px}.v11-focus{padding:20px;border-radius:19px;background:var(--v11-paper);border:1px solid var(--v11-line);box-shadow:0 10px 28px rgba(38,48,42,.06);min-height:120px}.v11-focus .icon{font-size:1.4rem}.v11-focus h3{margin:11px 0 5px;font-size:1rem}.v11-focus p{margin:0;color:var(--v11-muted);font-size:.82rem;line-height:1.55}.v11-focus .v11-action{display:inline-block;margin-top:12px;color:var(--v11-green);font-size:.78rem;font-weight:850;text-decoration:none}
+.v11-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.v11-stat{padding:17px 18px;background:rgba(255,253,248,.76);border:1px solid var(--v11-line);border-radius:17px}.v11-stat .label{font-size:.7rem;color:var(--v11-muted);text-transform:uppercase;letter-spacing:.07em;font-weight:800}.v11-stat .value{font-size:1.35rem;font-weight:850;margin-top:7px;color:var(--v11-ink)}.v11-stat .sub{font-size:.73rem;color:#78827c;margin-top:4px}
+.v11-tutorial{border-radius:22px;overflow:hidden;background:#ebe7dd;border:1px solid #ddd7ca;box-shadow:var(--v11-shadow)}.v11-tutorial-head{padding:18px 20px;background:#fffdf8;display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;border-bottom:1px solid var(--v11-line)}.v11-tutorial-title{display:flex;gap:12px;align-items:center}.v11-tutorial-icon{width:42px;height:42px;border-radius:13px;display:grid;place-items:center;background:#eee5d2;color:#8c6b2d;font-size:1.25rem}.v11-tutorial h3{margin:0;font-size:1rem}.v11-tutorial-head p{margin:3px 0 0;color:var(--v11-muted);font-size:.78rem}.v11-pdf-shell{padding:14px}.v11-pdf-toolbar{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;background:#f8f5ee;border:1px solid #ddd7ca;border-radius:13px;padding:8px}.v11-pdf-toolbar .group{display:flex;gap:6px;align-items:center}.v11-pdf-canvas{min-height:430px;max-height:760px;overflow:auto;padding:18px;display:flex;justify-content:center;align-items:flex-start;background:#dcd8cf;border-radius:13px;margin-top:9px}.v11-pdf-canvas canvas{max-width:100%;height:auto;background:#fff;box-shadow:0 14px 32px rgba(0,0,0,.18);border:1px solid #cfc9bd}.v11-pdf-foot{font-size:.7rem;color:#77766f;padding:7px 3px 0}
+.v11-activity{display:grid;grid-template-columns:1.25fr .75fr;gap:15px}.v11-list{background:var(--v11-paper);border:1px solid var(--v11-line);border-radius:19px;padding:18px}.v11-list h3{margin:0 0 13px;font-size:.95rem}.v11-item{display:flex;gap:11px;padding:11px 0;border-bottom:1px solid #eee9df}.v11-item:last-child{border-bottom:0}.v11-dot{width:9px;height:9px;border-radius:50%;background:var(--v11-green2);margin-top:6px;flex:none}.v11-item strong{display:block;font-size:.8rem}.v11-item span{display:block;color:var(--v11-muted);font-size:.72rem;margin-top:3px}.v11-tip{background:#234d3d;color:#f4f1e7;border-radius:19px;padding:20px;min-height:100%}.v11-tip h3{color:#fff;margin-top:0}.v11-tip p{color:#dce8df;font-size:.8rem;line-height:1.65}.v11-tip .tip-rule{padding:10px 0;border-top:1px solid rgba(255,255,255,.13);font-size:.77rem}
+@media(max-width:980px){.v11-focus-grid,.v11-activity{grid-template-columns:1fr}.v11-stats{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:650px){.v11-hero-inner{padding:23px}.v11-hero{min-height:390px}.v11-hero-inner{min-height:390px}.v11-stats{grid-template-columns:1fr 1fr}.v11-pdf-canvas{min-height:360px;padding:9px}.v11-hero h2{font-size:1.9rem}}
+</style>
 </head>
 <body>
 <div id="app" class="app"></div>
@@ -1197,102 +1274,80 @@ function setActive(view){
   $$('[data-view]').forEach(b => b.classList.toggle('active', b.dataset.view === view)); 
 }async function homeView(){
   const currentRole = role();
-  const userFullLabel = formatUserLabel(state.user?.username || state.user?.npsn, state.user?.nama_pengguna);
-  let content = '';
+  const userFullLabel = state.user?.nama_pengguna || state.user?.nama || state.user?.username || '-';
+  const roleLabel = currentRole || 'PENGGUNA';
+  let primaryView = isDinas() ? 'monitoringGlobal' : isPengawas() ? 'penugasan' : 'dokumenBulanan';
+  let primaryText = isDinas() ? '📊 Buka Monitoring' : isPengawas() ? '🏫 Buka Sekolah Binaan' : '📄 Buka SPJ Saya';
+  let secondaryView = isDinas() ? 'temuan' : isPengawas() ? 'crosscheck' : 'statusSpj';
+  let secondaryText = isDinas() ? '⚠ Lihat Temuan' : isPengawas() ? '🔎 Mulai Pemeriksaan' : '📋 Lihat Status';
+  const roleDesc = isDinas() ? 'Pusat kendali pemantauan SPJ sekolah, penugasan pengawas, dan tindak lanjut.' : isPengawas() ? 'Ruang kerja pemeriksaan sekolah binaan, bukti, temuan, dan penilaian.' : 'Ruang kerja sekolah untuk mengelola SPJ sesuai periode dan menindaklanjuti hasil pemeriksaan.';
 
-  if(isSchool()){
-    await ensureMasters();
-    await ensurePeriodeMaster();
-    const currentPeriod = state.selectedPeriode || (cachedPeriodeList.find(p => Number(p.bulan) === new Date().getMonth()+1)?.id_periode) || cachedPeriodeList[0]?.id_periode || '';
-    state.selectedPeriode = currentPeriod;
-    const summaryRes = currentPeriod ? await safeApi('getRingkasanSPJ', {idPeriode: currentPeriod}, null) : null;
-    const ringkasan = summaryRes?.ringkasan || {};
-    const totalKomponen = Number(ringkasan.total || ringkasan.TOTAL || state.masterSpj.length || 0);
-    const sudah = Number(ringkasan.SUDAH_UPLOAD || 0) + Number(ringkasan.SELESAI_DINILAI || 0);
-    const persen = totalKomponen > 0 ? Math.min(100, Math.round((sudah / totalKomponen) * 100)) : 0;
-    const namaPeriode = cachedPeriodeList.find(p => String(p.id_periode) === String(currentPeriod))?.nama_periode || currentPeriod || 'Periode belum dikonfigurasi';
-
-    content = `
-      <div class="panel" style="background:linear-gradient(135deg,#0A192F,#0F4C3A);color:#fff;margin-bottom:16px;">
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;">
-          <div>
-            <span class="badge" style="background:var(--gold);color:#0A192F;font-weight:800;">SPJ SESUAI PERIODE</span>
-            <h2 style="margin:8px 0 4px;color:#fff;font-size:1.45rem;">${esc(namaPeriode)}</h2>
-            <p style="color:#dbe5e0;margin:0;">Kelola dokumen pertanggungjawaban sekolah dengan langkah sederhana.</p>
+  $('#mainContent').innerHTML=head(`Beranda ${roleLabel}`,'SIMPEL SPJ — pusat kerja penilaian dan pertanggungjawaban SPJ')+
+    `<div class="v11-home">
+      <section class="v11-hero">
+        <div class="v11-hero-inner"><div class="v11-hero-copy">
+          <span class="v11-kicker">SIMPEL SPJ • DINDIKPORA REMBANG</span>
+          <h2>Selamat datang,<br>${esc(userFullLabel)}</h2>
+          <p>${esc(roleDesc)}</p>
+          <div class="v11-hero-actions">
+            <button class="btn btn-primary" onclick="loadView('${primaryView}')">${primaryText}</button>
+            <button class="btn btn-light" onclick="loadView('${secondaryView}')">${secondaryText}</button>
           </div>
-          <div style="text-align:right;"><strong style="font-size:2.3rem;color:var(--gold);">${persen}%</strong><div style="font-size:.85rem;color:#dbe5e0;">${sudah} dari ${totalKomponen} dokumen</div></div>
-        </div>
-        <div style="background:rgba(255,255,255,.2);border-radius:10px;height:10px;width:100%;margin-top:18px;overflow:hidden;"><div style="background:var(--gold);width:${persen}%;height:100%;"></div></div>
-        <div style="display:flex;gap:9px;margin-top:18px;flex-wrap:wrap;">
-          <button class="btn btn-primary" style="background:var(--gold);color:#0A192F;" onclick="loadView('dokumenBulanan')">📁 Kelola SPJ Periode Ini</button>
-          <button class="btn btn-light" style="background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.25);" onclick="loadView('statusSpj')">🔎 Lihat Status</button>
-        </div>
-      </div>
-      <div class="cards">
-        <div class="stat"><small>Dokumen tersedia</small><strong>${fmtNum(sudah)}</strong></div>
-        <div class="stat"><small>Perlu diperbaiki</small><strong>-</strong></div>
-        <div class="stat"><small>Frekuensi</small><strong style="font-size:1rem">Sesuai pengaturan DINAS</strong></div>
-        <div class="stat"><small>Status akun</small><strong style="color:var(--success)">Aktif</strong></div>
-      </div>
-      <div class="panel">
-        <h3 class="section-title" style="margin-top:0">Langkah Anda</h3>
-        <div class="form-grid">
-          <div><b>1. Siapkan dokumen</b><p class="muted">Gunakan dokumen SPJ sesuai ketentuan dan referensi RKAS/ARKAS.</p></div>
-          <div><b>2. Unggah SPJ</b><p class="muted">Pilih jenis dokumen dan unggah file PDF pada bulan yang sesuai.</p></div>
-          <div><b>3. Pantau pemeriksaan</b><p class="muted">Periksa status dan tindak lanjuti dokumen yang perlu diperbaiki.</p></div>
-        </div>
-      </div>`;
-  } else if(isPengawas()){
-    content = `
-      <div class="panel" style="background:linear-gradient(135deg,#0A192F,#174B43);color:#fff;">
-        <span class="badge" style="background:var(--gold);color:#0A192F;font-weight:800;">PENGAWAS</span>
-        <h2 style="margin:10px 0 5px;color:#fff;">Pemeriksaan SPJ Sekolah Binaan</h2>
-        <p style="color:#dbe5e0;margin:0;">Pilih sekolah dan periode, lalu periksa dokumen dalam satu alur.</p>
-        <div style="display:flex;gap:9px;flex-wrap:wrap;margin-top:18px;">
-          <button class="btn btn-primary" style="background:var(--gold);color:#0A192F;" onclick="loadView('penugasan')">🏫 Pilih Sekolah Binaan</button>
-          <button class="btn btn-light" style="background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.25);" onclick="loadView('crosscheck')">🔎 Mulai Pemeriksaan</button>
-        </div>
-      </div>
-      <div class="cards">
-        <div class="stat"><small>Fokus kerja</small><strong style="font-size:1rem">SPJ sesuai periode</strong></div>
-        <div class="stat"><small>Dokumen</small><strong>Periksa</strong></div>
-        <div class="stat"><small>Temuan</small><strong>Tindak lanjut</strong></div>
-        <div class="stat"><small>Penilaian</small><strong>Finalisasi</strong></div>
-      </div>
-      <div class="panel"><h3 class="section-title" style="margin-top:0">Alur pemeriksaan</h3><div class="form-grid">
-        <div><b>1. Pilih sekolah</b><p class="muted">Gunakan daftar sekolah binaan yang menjadi tanggung jawab Anda.</p></div>
-        <div><b>2. Pilih periode</b><p class="muted">Pemeriksaan dilakukan sesuai periode yang ditetapkan DINAS agar mudah ditelusuri.</p></div>
-        <div><b>3. Periksa & beri catatan</b><p class="muted">Sistem membantu menemukan ketidaksesuaian antar dokumen.</p></div>
-        <div><b>4. Nilai & finalisasi</b><p class="muted">Nilai akhir dihitung sistem dari indikator yang telah diperiksa.</p></div>
-      </div></div>`;
-  } else if(isDinas()){
-    content = `
-      <div class="panel" style="background:linear-gradient(135deg,#0A192F,#164B43);color:#fff;">
-        <span class="badge" style="background:var(--gold);color:#0A192F;font-weight:800;">DINAS</span>
-        <h2 style="margin:10px 0 5px;color:#fff;">Monitoring SPJ Kabupaten</h2>
-        <p style="color:#dbe5e0;margin:0;">Pantau kondisi SPJ sekolah, pemeriksaan pengawas, dan tindak lanjut temuan.</p>
-        <div style="display:flex;gap:9px;flex-wrap:wrap;margin-top:18px;">
-          <button class="btn btn-primary" style="background:var(--gold);color:#0A192F;" onclick="loadView('monitoringGlobal')">📊 Buka Monitoring</button>
-          <button class="btn btn-light" style="background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.25);" onclick="loadView('temuan')">⚠️ Lihat Temuan</button>
-        </div>
-      </div>
-      <div class="cards">
-        <div class="stat"><small>Monitoring</small><strong>SPJ sesuai periode</strong></div>
-        <div class="stat"><small>Satuan pendidikan</small><strong>Data Sekolah</strong></div>
-        <div class="stat"><small>Pengawas</small><strong>Penugasan</strong></div>
-        <div class="stat"><small>Tindak lanjut</small><strong>Temuan</strong></div>
-      </div>
-      <div class="panel"><h3 class="section-title" style="margin-top:0">Pusat kendali Dinas</h3><div class="form-grid">
-        <div><b>Monitoring SPJ</b><p class="muted">Melihat kondisi pelaporan dan pemeriksaan sekolah.</p></div>
-        <div><b>Data sekolah & pengawas</b><p class="muted">Mengelola referensi satuan pendidikan dan penugasan.</p></div>
-        <div><b>Temuan</b><p class="muted">Memantau temuan serta status tindak lanjut.</p></div>
-        <div><b>Referensi RKAS</b><p class="muted">RKAS/ARKAS digunakan sebagai acuan, bukan sebagai pengganti SIMPEL SPJ.</p></div>
-      </div></div>`;
-  }
+        </div></div>
+      </section>
 
-  $('#mainContent').innerHTML=head(`Beranda ${currentRole}`,'SIMPEL SPJ — pemeriksaan pertanggungjawaban secara sederhana dan terarah')+
-    `<div class="cards" style="margin-bottom:12px;"><div class="stat"><small>Pengguna</small><strong style="font-size:1rem">${userFullLabel}</strong></div><div class="stat"><small>Peran</small><strong>${esc(currentRole)}</strong></div><div class="stat"><small>Wilayah</small><strong style="font-size:1rem">Kab. Rembang</strong></div><div class="stat"><small>Sesi</small><strong style="color:var(--success)">Aktif</strong></div></div>`+
-    content;
+      <div class="v11-stats">
+        <div class="v11-stat"><div class="label">Peran</div><div class="value" style="font-size:1rem">${esc(roleLabel)}</div><div class="sub">Akses sesuai tugas</div></div>
+        <div class="v11-stat"><div class="label">Wilayah</div><div class="value" style="font-size:1rem">Kab. Rembang</div><div class="sub">Sistem aktif</div></div>
+        <div class="v11-stat"><div class="label">Sekolah</div><div class="value">378</div><div class="sub">Basis satuan pendidikan</div></div>
+        <div class="v11-stat"><div class="label">Sesi</div><div class="value" style="font-size:1rem">Aktif</div><div class="sub">${esc(currentRole)}</div></div>
+      </div>
+
+      <section>
+        <div class="v11-section-label">Yang perlu Anda lakukan</div>
+        <div class="v11-focus-grid">
+          <article class="v11-focus"><div class="icon">🎯</div><h3>Mulai dari pekerjaan utama</h3><p>${esc(isDinas()?'Pantau sekolah dan tindak lanjut SPJ.':isPengawas()?'Pilih sekolah binaan lalu mulai pemeriksaan.':'Lengkapi SPJ dan dokumen pada periode aktif.')}</p><a class="v11-action" href="javascript:void(0)" onclick="loadView('${primaryView}')">Buka sekarang →</a></article>
+          <article class="v11-focus"><div class="icon">📌</div><h3>Periksa temuan</h3><p>Sistem membantu menemukan hal yang perlu diperiksa; keputusan tetap berada pada pengguna yang berwenang.</p><a class="v11-action" href="javascript:void(0)" onclick="loadView('${secondaryView}')">Lihat →</a></article>
+          <article class="v11-focus"><div class="icon">🔎</div><h3>Cari apa pun</h3><p>Gunakan pencarian di bagian atas untuk nama lengkap sekolah, NPSN, transaksi, atau kata kunci lain.</p><a class="v11-action" href="javascript:void(0)" onclick="document.getElementById('globalSearchInput')?.focus()">Mulai pencarian →</a></article>
+        </div>
+      </section>
+
+      <section class="v11-tutorial" id="v11TutorialFeed">
+        <div class="v11-tutorial-head"><div class="v11-tutorial-title"><div class="v11-tutorial-icon">📖</div><div><h3>Panduan SIMPEL SPJ</h3><p>tutorial_simpelspj.pdf • dibaca langsung di dalam aplikasi</p></div></div><span class="badge badge-info">PANDUAN RESMI</span></div>
+        <div class="v11-pdf-shell"><div class="v11-pdf-toolbar"><div class="group"><button class="btn btn-light btn-sm" id="v11PdfPrev">← Sebelumnya</button><button class="btn btn-light btn-sm" id="v11PdfNext">Berikutnya →</button></div><div class="muted" id="v11PdfPageInfo">Memuat...</div><div class="group"><button class="btn btn-light btn-sm" id="v11PdfZoomOut">−</button><span id="v11PdfZoomInfo" class="muted">100%</span><button class="btn btn-light btn-sm" id="v11PdfZoomIn">+</button></div></div><div class="v11-pdf-canvas" id="v11PdfCanvasWrap"><div class="loading-container" style="min-height:360px">${loading('Menyiapkan pembaca tutorial...')}</div></div><div class="v11-pdf-foot">Tutorial dirender sebagai halaman PDF di feed ini. Pengguna tidak perlu keluar dari SIMPEL SPJ.</div></div>
+      </section>
+
+      <section class="v11-activity"><div class="v11-list"><h3>Aktivitas & arah kerja</h3><div class="v11-item"><div class="v11-dot"></div><div><strong>Kerjakan sesuai konteks sekolah dan periode</strong><span>Setiap pemeriksaan tetap terhubung ke NPSN dan periode SPJ.</span></div></div><div class="v11-item"><div class="v11-dot"></div><div><strong>Gunakan bukti sebagai dasar keputusan</strong><span>Dokumen PDF menjadi bukti utama; sistem hanya membantu pembacaan dan cross-check.</span></div></div><div class="v11-item"><div class="v11-dot"></div><div><strong>Finalisasi setelah pemeriksaan selesai</strong><span>Tindakan final tetap dilakukan oleh pengguna yang berwenang.</span></div></div></div><div class="v11-tip"><h3>Prinsip SIMPEL SPJ</h3><p>Satu sekolah, satu konteks kerja. Data ditampilkan seperlunya agar pengguna dapat fokus pada pekerjaan yang sedang dilakukan.</p><div class="tip-rule">Sistem mendeteksi → pengguna memeriksa → pengguna memutuskan.</div><div class="tip-rule">Data detail dibuka saat diperlukan, bukan semuanya sekaligus.</div></div></section>
+    </div>`;
+
+  try{ await initV11TutorialFeed(); }catch(e){ const w=$('#v11PdfCanvasWrap'); if(w) w.innerHTML=msg('Tutorial belum dapat dimuat. Silakan coba lagi dari menu Tutorial.','warning'); }
+}
+
+async function initV11TutorialFeed(){
+  const rawUrl='https://raw.githubusercontent.com/DikporaRembang/simpelspj/main/tutorial_simpelspj.pdf';
+  if(!window.pdfjsLib){
+    await new Promise((resolve,reject)=>{const sc=document.createElement('script');sc.src='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';sc.onload=resolve;sc.onerror=()=>reject(new Error('Library PDF gagal dimuat.'));document.head.appendChild(sc);});
+  }
+  window.pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  const pdf=await window.pdfjsLib.getDocument({url:rawUrl,withCredentials:false}).promise;
+  let pageNo=1, zoom=1;
+  const wrap=$('#v11PdfCanvasWrap'), info=$('#v11PdfPageInfo'), zi=$('#v11PdfZoomInfo');
+  if(!wrap)return;
+  async function render(){
+    wrap.innerHTML=loading(`Memuat halaman ${pageNo} dari ${pdf.numPages}...`);
+    const page=await pdf.getPage(pageNo), base=page.getViewport({scale:1});
+    const maxWidth=Math.max(300,Math.min(wrap.clientWidth-36,980));
+    const fit=Math.min(maxWidth/base.width,1.5), vp=page.getViewport({scale:fit*zoom});
+    const canvas=document.createElement('canvas'); canvas.width=Math.ceil(vp.width);canvas.height=Math.ceil(vp.height);canvas.className='v11-pdf-page';
+    wrap.innerHTML='';wrap.appendChild(canvas);await page.render({canvasContext:canvas.getContext('2d'),viewport:vp}).promise;
+    info.textContent=`Halaman ${pageNo} dari ${pdf.numPages}`;zi.textContent=`${Math.round(zoom*100)}%`;
+    $('#v11PdfPrev').disabled=pageNo<=1;$('#v11PdfNext').disabled=pageNo>=pdf.numPages;
+  }
+  $('#v11PdfPrev').onclick=()=>{if(pageNo>1){pageNo--;render();}};
+  $('#v11PdfNext').onclick=()=>{if(pageNo<pdf.numPages){pageNo++;render();}};
+  $('#v11PdfZoomOut').onclick=()=>{zoom=Math.max(.75,zoom-.1);render();};
+  $('#v11PdfZoomIn').onclick=()=>{zoom=Math.min(1.8,zoom+.1);render();};
+  await render();
 }
 async function ensureMasters(){
   if(!state.masterSpj.length){ const r=await safeApi('getMasterSPJ',{},null); state.masterSpj=r?.data||[]; }
@@ -3634,7 +3689,58 @@ function printV5Archive(){
   const w=window.open('','_blank','noopener');
   if(!w){toast('Popup diblokir browser. Izinkan popup untuk mencetak.','error');return;}
   w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Paket Penilaian SPJ - ${esc(npsn)} - ${esc(p)}</title><style>
-  @page{size:A4;margin:12mm}body{font-family:Arial,sans-serif;color:#17212b;font-size:10px}h2{font-size:18px}h3{font-size:13px;border-bottom:1px solid #ddd;padding-bottom:5px}.panel{border:1px solid #ddd;border-radius:8px;padding:10px;margin:0 0 10px;break-inside:avoid}.muted{color:#667085}.assessment-guide{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.assessment-guide-card{border:1px solid #ddd;padding:8px}.table-wrap{overflow:visible}table{width:100%;border-collapse:collapse;font-size:8px}th,td{border:1px solid #ccc;padding:4px;vertical-align:top}th{background:#f1f3f5}.school-index-grid{display:block}.school-index-grid .panel{display:inline-block;width:46%;vertical-align:top;margin-right:1%}a{color:#173f5f}.badge{display:inline-block;padding:3px 7px;border:1px solid #ccc;border-radius:10px;font-size:8px}</style></head><body>${body}<script>window.onload=()=>setTimeout(()=>window.print(),350)<\/script></body></html>`);
+  @page{size:A4;margin:12mm}body{font-family:Arial,sans-serif;color:#17212b;font-size:10px}h2{font-size:18px}h3{font-size:13px;border-bottom:1px solid #ddd;padding-bottom:5px}.panel{border:1px solid #ddd;border-radius:8px;padding:10px;margin:0 0 10px;break-inside:avoid}.muted{color:#667085}.assessment-guide{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.assessment-guide-card{border:1px solid #ddd;padding:8px}.table-wrap{overflow:visible}table{width:100%;border-collapse:collapse;font-size:8px}th,td{border:1px solid #ccc;padding:4px;vertical-align:top}th{background:#f1f3f5}.school-index-grid{display:block}.school-index-grid .panel{display:inline-block;width:46%;vertical-align:top;margin-right:1%}a{color:#173f5f}.badge{display:inline-block;padding:3px 7px;border:1px solid #ccc;border-radius:10px;font-size:8px}</style><link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style id="simpelProfessionalDesign">
+:root{
+  --navy:#102A43;--navy-2:#173F5F;--emerald:#087F5B;--emerald-2:#075E4A;
+  --gold:#C8A24A;--ivory:#F4F7F8;--surface:#FFFFFF;--surface-soft:#F8FAFB;
+  --text:#17212B;--muted:#687887;--border:#E2E8EC;
+  --danger:#B42318;--success:#16805A;--warning:#A36A00;--info:#1769AA;
+  --shadow:0 8px 28px rgba(15,35,55,.055);--shadow-lg:0 18px 48px rgba(15,35,55,.10);
+  --radius:16px;--radius-sm:10px;
+}
+html,body{font-family:'Manrope',Inter,ui-sans-serif,system-ui,-apple-system,'Segoe UI',Arial,sans-serif}
+body{background:radial-gradient(circle at 0 0,rgba(8,127,91,.035),transparent 28%),radial-gradient(circle at 100% 0,rgba(200,162,74,.035),transparent 22%),var(--ivory)}
+.topbar{min-height:72px;padding:10px clamp(16px,3vw,30px);background:rgba(255,255,255,.965);border-bottom:1px solid #E6EBEF;box-shadow:0 4px 18px rgba(16,42,67,.035)}
+.app-logo{width:46px;height:46px;border-radius:13px;box-shadow:0 5px 16px rgba(16,42,67,.08)}
+.brand h2{font-size:1.02rem;letter-spacing:-.45px;font-weight:800}.brand small{font-weight:600}
+.top-search{max-width:600px;flex:1}.top-search-wrap{height:44px;border:1px solid #DCE4E9;border-radius:12px;background:#F8FAFB;box-shadow:inset 0 1px 2px rgba(16,42,67,.02);transition:.2s}
+.top-search-wrap:focus-within{background:#fff;border-color:rgba(8,127,91,.48);box-shadow:0 0 0 4px rgba(8,127,91,.08)}
+.top-search-wrap input{font-size:.88rem;font-weight:550}.top-search-icon{font-size:1.05rem;color:#758696}.top-search-kbd{border:1px solid #D9E2E7;background:#fff;border-radius:7px;padding:3px 7px;font-size:.67rem;color:#748392;box-shadow:0 1px 2px rgba(0,0,0,.03)}
+.layout{grid-template-columns:260px minmax(0,1fr)}
+.sidebar{padding:18px 12px 14px;background:linear-gradient(180deg,#102A43 0%,#12364C 48%,#0D5147 100%);border-right:1px solid rgba(255,255,255,.08);box-shadow:10px 0 30px rgba(16,42,67,.08)}
+.nav-section-title{font-size:.65rem;letter-spacing:1.3px;color:#D9BF74;margin:16px 10px 8px;font-weight:800}
+.nav-btn,.nav-group-toggle{border-radius:10px;min-height:42px;font-size:.84rem;font-weight:650;letter-spacing:.05px;transition:background .18s ease,color .18s ease,transform .18s ease,box-shadow .18s ease}
+.nav-btn{padding:10px 12px}.nav-btn:hover,.nav-group-toggle:hover{background:rgba(255,255,255,.075);transform:translateX(2px)}
+.nav-btn.active{background:linear-gradient(90deg,rgba(8,127,91,.92),rgba(8,127,91,.68));box-shadow:0 7px 18px rgba(0,0,0,.12);color:#fff}
+.nav-group-toggle{padding:10px 12px}.nav-submenu{padding:3px 0 5px 8px}.nav-submenu .nav-btn{min-height:38px;font-size:.81rem;color:#C9D5DD}.nav-submenu .nav-btn.active{color:#fff}
+.nav-chevron{transition:transform .2s ease}.nav-collapsible.open .nav-chevron{transform:rotate(90deg)}
+.sidebar-footer{border-top:1px solid rgba(255,255,255,.1);padding-top:13px;margin-top:12px}.sidebar-footer-item{border-radius:10px;padding:8px 7px}.sidebar-footer-item:hover{background:rgba(255,255,255,.055)}
+.content{padding:26px clamp(16px,3vw,34px) 42px;min-width:0}.content>.page-head{margin-bottom:18px}
+.panel{border:1px solid #E2E8EC;border-radius:16px;box-shadow:var(--shadow);background:#fff}.panel:hover{box-shadow:0 10px 32px rgba(15,35,55,.07)}
+.stat{padding:19px 20px;border-radius:15px;border:1px solid #E5EAEE;background:#fff;box-shadow:var(--shadow);transition:transform .18s ease,box-shadow .18s ease}
+.stat:hover{transform:translateY(-2px);box-shadow:var(--shadow-lg)}.stat strong{font-size:1.65rem;font-weight:800}.stat small{font-size:.68rem;letter-spacing:.8px}
+.btn{min-height:42px;padding:10px 16px;border-radius:10px;font-size:.83rem;font-weight:750;letter-spacing:.05px;transition:transform .18s ease,box-shadow .18s ease,background .18s ease,border-color .18s ease}
+.btn-primary{background:linear-gradient(135deg,#075E4A,#087F5B);box-shadow:0 5px 14px rgba(8,127,91,.16)}
+.btn-primary:hover{box-shadow:0 8px 20px rgba(8,127,91,.23)}
+.btn-light{background:#fff;border:1px solid #DCE4E9;color:#304354;box-shadow:0 2px 6px rgba(16,42,67,.035)}
+.btn-light:hover{border-color:#B9C8D1;background:#F8FAFB}
+.btn-danger{box-shadow:0 5px 14px rgba(180,35,24,.12)}
+.table-wrap{border:1px solid #E1E7EB;border-radius:13px;box-shadow:0 3px 12px rgba(16,42,67,.025)}
+.friendly-table{font-size:.84rem}.friendly-table th{background:#F5F8F9;color:#263B4B;font-size:.74rem;letter-spacing:.25px;text-transform:none;padding:12px 14px}.friendly-table td{padding:12px 14px}.friendly-table tbody tr{transition:background .15s ease}.friendly-table tbody tr:hover{background:#F8FBFA}
+.badge,.status-badge{border-radius:999px!important;font-weight:750!important;padding:5px 9px!important;font-size:.7rem!important;letter-spacing:.1px}
+.search-results{border:1px solid #DCE4E9!important;border-radius:13px!important;box-shadow:0 18px 45px rgba(16,42,67,.12)!important;background:#fff!important}.search-result{padding:11px 13px!important;transition:background .15s ease}.search-result:hover{background:#F5F9F8!important}
+.toast{border-radius:11px!important;box-shadow:0 12px 30px rgba(16,42,67,.13)!important}
+#mainContent{animation:simpelPageIn .24s ease both}
+@keyframes simpelPageIn{from{opacity:.0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+.view-transition-shield{background:rgba(244,247,248,.84);backdrop-filter:blur(7px)}
+.view-transition-card{border-radius:14px;border:1px solid #E1E7EB;box-shadow:0 18px 42px rgba(16,42,67,.12)}
+@media(max-width:980px){.layout{grid-template-columns:235px minmax(0,1fr)}.top-search{max-width:420px}}
+@media(max-width:760px){.topbar{min-height:64px}.top-search{display:none}.layout{grid-template-columns:1fr}.sidebar{position:fixed;left:0;top:64px;bottom:0;width:270px;z-index:80;transform:translateX(-105%);transition:transform .24s ease;overflow:auto}.sidebar.open{transform:translateX(0)}.content{padding:18px 14px 30px}}
+</style>
+</head><body>${body}<script>window.onload=()=>setTimeout(()=>window.print(),350)<\/script></body></html>`);
   w.document.close();
 }
 window.loadV5Archive=loadV5Archive;
