@@ -462,6 +462,39 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
 @media(max-width:700px){.school-index-grid{grid-template-columns:1fr}}
 
 .pdf-interactive-grid{border:1px solid #e5e7eb;border-radius:16px;overflow:hidden}.pdf-interactive-grid aside{background:#fff}.pdf-interactive-grid .panel{border:1px solid #e5e7eb}.pdf-interactive-grid table{font-size:.86rem}@media(max-width:900px){.pdf-interactive-grid{grid-template-columns:1fr!important}.pdf-interactive-grid iframe{height:58vh!important}.pdf-interactive-grid aside{max-height:none!important}.pdf-interactive-grid .table-wrap{overflow-x:auto}}
+
+/* V12.1 UX: DINAS & SEKOLAH work-center components */
+.school-directory-toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+.school-directory-toolbar .search-box{flex:1 1 320px;min-width:240px}
+.school-summary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:16px}
+.school-summary-card{background:linear-gradient(145deg,#fff,#f7faf8);border:1px solid var(--border);border-radius:18px;padding:15px 17px}
+.school-summary-card small{display:block;color:var(--muted);font-weight:800;text-transform:uppercase;letter-spacing:.04em;font-size:.72rem}
+.school-summary-card strong{display:block;color:var(--primary);font-size:1.45rem;margin-top:4px}
+.school-directory-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
+.school-directory-card{border:1px solid var(--border);border-radius:18px;padding:16px;background:#fff;transition:.18s ease;box-shadow:0 4px 14px rgba(30,60,45,.035)}
+.school-directory-card:hover{transform:translateY(-1px);box-shadow:0 10px 24px rgba(30,60,45,.08);border-color:rgba(31,85,62,.25)}
+.school-directory-card .school-name{font-weight:900;color:var(--primary);font-size:1rem;line-height:1.35}
+.school-directory-card .school-meta{color:var(--muted);font-size:.8rem;margin-top:4px}
+.school-directory-card .school-pagu{margin-top:13px;padding-top:11px;border-top:1px dashed var(--border);display:flex;justify-content:space-between;gap:8px;align-items:flex-end}
+.assignment-group{border:1px solid var(--border);border-radius:18px;overflow:hidden;background:#fff;margin-bottom:12px;box-shadow:0 4px 14px rgba(30,60,45,.035)}
+.assignment-group-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;background:linear-gradient(90deg,rgba(31,85,62,.08),rgba(31,85,62,.02));cursor:pointer}
+.assignment-group-head:hover{background:linear-gradient(90deg,rgba(31,85,62,.11),rgba(31,85,62,.035))}
+.assignment-group-title{display:flex;align-items:center;gap:11px;min-width:0}
+.assignment-group-icon{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;background:var(--primary);color:#fff;flex:0 0 auto}
+.assignment-group-chevron{font-size:1.1rem;transition:transform .18s ease}
+.assignment-group.collapsed .assignment-group-chevron{transform:rotate(-90deg)}
+.assignment-group.collapsed .assignment-group-body{display:none}
+.assignment-group-body{padding:0}
+.assignment-total{font-weight:900;color:var(--primary);font-size:.92rem}
+.assignment-pagu{font-weight:900;color:var(--primary-2,var(--primary));white-space:nowrap}
+.assignment-grand-total{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;margin-top:4px;padding:16px 18px;border-radius:18px;background:var(--primary);color:#fff}
+.assignment-grand-total .muted{color:rgba(255,255,255,.78)}
+.status-hero{display:flex;justify-content:space-between;align-items:center;gap:18px;flex-wrap:wrap;padding:18px;border-radius:20px;background:linear-gradient(135deg,rgba(31,85,62,.1),rgba(255,255,255,.85));border:1px solid var(--border);margin-bottom:14px}
+.status-progress{height:9px;background:#e9efeb;border-radius:999px;overflow:hidden;margin-top:8px}
+.status-progress>span{display:block;height:100%;background:var(--primary);border-radius:999px;transition:width .25s ease}
+.status-next{margin-top:14px;padding:13px 15px;border-radius:14px;background:#fff;border:1px solid var(--border)}
+@media(max-width:700px){.assignment-pagu{width:100%}.school-directory-grid{grid-template-columns:1fr}.status-hero{padding:15px}}
+
 </style>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -505,7 +538,7 @@ body{background:radial-gradient(circle at 0 0,rgba(8,127,91,.035),transparent 28
 .table-wrap{border:1px solid #E1E7EB;border-radius:13px;box-shadow:0 3px 12px rgba(16,42,67,.025)}
 .friendly-table{font-size:.84rem}.friendly-table th{background:#F5F8F9;color:#263B4B;font-size:.74rem;letter-spacing:.25px;text-transform:none;padding:12px 14px}.friendly-table td{padding:12px 14px}.friendly-table tbody tr{transition:background .15s ease}.friendly-table tbody tr:hover{background:#F8FBFA}
 .badge,.status-badge{border-radius:999px!important;font-weight:750!important;padding:5px 9px!important;font-size:.7rem!important;letter-spacing:.1px}
-.search-results{border:1px solid #DCE4E9!important;border-radius:13px!important;box-shadow:0 18px 45px rgba(16,42,67,.12)!important;background:#fff!important}.search-result{padding:11px 13px!important;transition:background .15s ease}.search-result:hover{background:#F5F9F8!important}
+.search-results{border:1px solid #DCE4E9!important;border-radius:13px!important;box-shadow:0 18px 45px rgba(16,42,67,.12)!important;background:#fff!important}.search-result{padding:11px 13px!important;transition:background .15s ease}.search-result:hover{background:#F5F9F8!important}.search-result{width:100%;border:0;text-align:left;font:inherit;color:inherit;background:transparent;cursor:pointer}
 .toast{border-radius:11px!important;box-shadow:0 12px 30px rgba(16,42,67,.13)!important}
 #mainContent{animation:simpelPageIn .24s ease both}
 @keyframes simpelPageIn{from{opacity:.0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
@@ -543,6 +576,46 @@ body:before{background:linear-gradient(180deg,rgba(255,253,248,.86),rgba(245,242
 <style id="v11PdfAssessmentFeed">
 .v11-assessment-card{border:1px solid #e5e7eb;border-radius:16px;padding:14px;margin-top:10px;background:#fff;box-shadow:0 4px 16px rgba(16,42,67,.05)}
 .v11-assessment-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.v11-assessment-head>div:first-child{display:flex;gap:10px;align-items:flex-start}.v11-indicator-index{width:30px;height:30px;border-radius:9px;background:#eef7f2;color:#176b4d;display:grid;place-items:center;font-weight:800;font-size:11px}.v11-assessment-name{font-size:12px;color:#667085;margin-top:3px;line-height:1.4}.v11-score-chip{font-size:20px;font-weight:800;color:#176b4d;white-space:nowrap}.v11-score-chip small{font-size:11px;color:#98a2b3}.v11-assessment-meta{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0;font-size:11px;color:#667085}.v11-assessment-meta span{background:#f7f8fa;border-radius:999px;padding:5px 8px}.v11-assessment-form{display:grid;grid-template-columns:minmax(0,1fr) 110px;gap:9px}.v11-assessment-card label{display:block;font-size:11px;font-weight:700;color:#475467;margin-bottom:5px}.v11-assessment-card select,.v11-assessment-card input,.v11-assessment-card textarea{width:100%;box-sizing:border-box;border:1px solid #d0d5dd;border-radius:9px;padding:9px;background:#fff;font:inherit;font-size:12px}.v11-assessment-card textarea{resize:vertical}.v11-assessment-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:9px}.v11-locked-note{margin-top:10px;padding:9px;border-radius:9px;background:#f2f4f7;color:#667085;font-size:12px}@media(max-width:900px){.v11-assessment-form{grid-template-columns:1fr}.pdf-interactive-grid{grid-template-columns:1fr!important}.pdf-interactive-grid aside{max-height:none!important}}
+</style>
+<style id="v12DinasSekolahUX">
+:root{
+ --ux-ink:#24332b;--ux-muted:#68756e;--ux-green:#1f5b45;--ux-green-2:#2e7358;
+ --ux-cream:#f7f5ef;--ux-paper:#fffefa;--ux-line:#e4e0d6;--ux-gold:#b99243;
+ --ux-red:#b34b42;--ux-blue:#3f667c;--ux-shadow:0 10px 28px rgba(40,55,47,.07)
+}
+body{background:linear-gradient(180deg,#fbfaf6 0,#f4f2eb 100%)!important;color:var(--ux-ink)!important}
+.topbar{height:72px!important;background:rgba(255,254,250,.96)!important;border-bottom:1px solid var(--ux-line)!important;box-shadow:0 5px 24px rgba(38,52,44,.055)!important}
+.brand h2{letter-spacing:-.045em!important;color:var(--ux-ink)!important}.brand small{color:var(--ux-muted)!important}
+.top-search-wrap{background:#f5f3ed!important;border:1px solid #e2ded4!important;border-radius:14px!important;min-height:44px!important}
+.top-search-wrap:focus-within{background:#fff!important;border-color:#b8c8be!important;box-shadow:0 0 0 4px rgba(46,115,88,.08)!important}
+.top-search-icon{color:var(--ux-green)!important}.top-search-kbd{background:#fff!important;border-color:#ddd8cc!important;color:#7a817c!important}
+.sidebar{width:248px!important;background:linear-gradient(180deg,#173b2e 0,#1e4e3c 58%,#173b2e 100%)!important;box-shadow:8px 0 28px rgba(28,58,45,.10)!important}
+.nav-section-title{font-size:.62rem!important;letter-spacing:.14em!important;color:#b9c9be!important;margin:17px 10px 7px!important}
+.nav-btn,.nav-group-toggle{border-radius:11px!important;min-height:41px!important}.nav-btn{font-size:.82rem!important;color:#e9f0eb!important}
+.nav-btn:hover,.nav-group-toggle:hover{background:rgba(255,255,255,.075)!important;transform:none!important}
+.nav-btn.active{background:#f7f3e8!important;color:#1d513c!important;box-shadow:0 7px 18px rgba(0,0,0,.12)!important;font-weight:800!important}
+.nav-submenu .nav-btn{font-size:.78rem!important;color:#cbd8cf!important;min-height:37px!important}.nav-submenu .nav-btn.active{color:#1d513c!important}
+.content{max-width:1520px!important;padding:26px 30px 42px!important}
+.ux-context{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:11px 14px;margin-bottom:16px;border:1px solid var(--ux-line);background:rgba(255,254,250,.84);border-radius:14px;box-shadow:0 4px 16px rgba(40,55,47,.035)}
+.ux-context-left{display:flex;align-items:center;gap:10px;min-width:0}.ux-context-mark{width:30px;height:30px;border-radius:9px;background:#e8f0ea;color:var(--ux-green);display:grid;place-items:center;font-weight:900}.ux-context-title{font-size:.78rem;font-weight:850;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ux-context-sub{font-size:.68rem;color:var(--ux-muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ux-context-actions{display:flex;gap:7px;flex-wrap:wrap}.ux-mini{min-height:34px!important;padding:7px 11px!important;font-size:.74rem!important;border-radius:9px!important}
+.page-head h1{font-size:1.85rem!important;color:var(--ux-ink)!important;letter-spacing:-.05em!important}.page-head .muted{font-size:.82rem!important}
+.panel{border-color:var(--ux-line)!important;border-radius:18px!important;box-shadow:var(--ux-shadow)!important;background:var(--ux-paper)!important}
+.btn{border-radius:10px!important}.btn-primary{background:var(--ux-green)!important;border-color:var(--ux-green)!important}.btn-secondary{background:#e9f1ec!important;color:var(--ux-green)!important}.btn-light{background:#fffefa!important;border-color:#ded9cf!important;color:#33463c!important}
+.friendly-table th{background:#f1eee5!important;color:#59645e!important;font-size:.72rem!important}.friendly-table td{font-size:.78rem!important}.friendly-table tr:hover td{background:#faf7f0!important}
+.badge{font-size:.68rem!important;font-weight:800!important}
+/* Role-specific home */
+.ux-home{display:grid;gap:18px}.ux-hero{border-radius:25px;overflow:hidden;position:relative;min-height:265px;background:#214c3b url('https://raw.githubusercontent.com/DikporaRembang/simpelspj/main/kantordindikpora.jpeg') center/cover no-repeat;box-shadow:0 18px 45px rgba(30,60,46,.15)}
+.ux-hero:after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(22,53,41,.96) 0,rgba(22,53,41,.78) 42%,rgba(22,53,41,.20) 76%,rgba(22,53,41,.05) 100%)}
+.ux-hero-inner{position:relative;z-index:1;min-height:265px;padding:28px 31px;display:flex;align-items:flex-end}.ux-hero-copy{max-width:760px;color:#fff}.ux-hero-kicker{font-size:.66rem;letter-spacing:.13em;text-transform:uppercase;font-weight:850;color:#e5d29e}.ux-hero h2{font-size:clamp(1.8rem,3.6vw,2.75rem);line-height:1.04;letter-spacing:-.055em;margin:9px 0 8px;color:#fff}.ux-hero p{margin:0;color:#e0e9e3;font-size:.86rem;line-height:1.65;max-width:680px}.ux-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:17px}.ux-actions .btn-primary{background:#d2ad60!important;color:#203b2e!important;border-color:#d2ad60!important}.ux-actions .btn-light{background:rgba(255,255,255,.11)!important;color:#fff!important;border-color:rgba(255,255,255,.26)!important}
+.ux-workbar{display:grid;grid-template-columns:1.35fr .85fr .85fr;gap:12px}.ux-workcard{background:#fffefa;border:1px solid var(--ux-line);border-radius:17px;padding:17px;box-shadow:var(--ux-shadow);min-height:128px}.ux-workcard.primary{background:#eaf1eb;border-color:#d3e2d7}.ux-workcard .eyebrow{font-size:.64rem;text-transform:uppercase;letter-spacing:.1em;font-weight:850;color:#738077}.ux-workcard h3{margin:8px 0 5px;font-size:.98rem;letter-spacing:-.02em}.ux-workcard p{margin:0;color:var(--ux-muted);font-size:.74rem;line-height:1.55}.ux-workcard a{display:inline-flex;margin-top:11px;color:var(--ux-green);font-weight:850;font-size:.73rem;text-decoration:none}
+.ux-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:11px}.ux-kpi{padding:15px 16px;border:1px solid var(--ux-line);border-radius:15px;background:#fffefa}.ux-kpi .label{font-size:.64rem;color:#78817c;text-transform:uppercase;letter-spacing:.08em;font-weight:850}.ux-kpi .value{font-size:1.35rem;font-weight:900;margin-top:6px}.ux-kpi .hint{font-size:.68rem;color:#818982;margin-top:3px}
+.ux-section-label{font-size:.68rem;text-transform:uppercase;letter-spacing:.13em;font-weight:900;color:#7a807b;margin:2px 2px 8px}.ux-school-strip{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 15px;background:#fffefa;border:1px solid var(--ux-line);border-radius:15px}.ux-school-main{display:flex;gap:10px;align-items:center;min-width:0}.ux-school-icon{width:38px;height:38px;border-radius:11px;background:#edf2ed;display:grid;place-items:center;font-size:1.15rem}.ux-school-name{font-weight:850;font-size:.82rem}.ux-school-meta{font-size:.68rem;color:var(--ux-muted);margin-top:2px}.ux-school-actions{display:flex;gap:7px;flex-wrap:wrap}
+.ux-todo{display:grid;grid-template-columns:repeat(3,1fr);gap:11px}.ux-todo-card{border:1px solid var(--ux-line);border-radius:15px;background:#fffefa;padding:15px;display:flex;gap:11px}.ux-todo-icon{width:35px;height:35px;border-radius:10px;display:grid;place-items:center;background:#f1eee5;flex:none}.ux-todo-card strong{font-size:.78rem;display:block}.ux-todo-card span{font-size:.69rem;color:var(--ux-muted);display:block;margin-top:3px;line-height:1.45}.ux-todo-card a{font-size:.69rem;color:var(--ux-green);font-weight:850;text-decoration:none;display:inline-block;margin-top:7px}
+.ux-tip{display:flex;gap:12px;align-items:flex-start;padding:15px 17px;border-radius:16px;background:#203f33;color:#eaf1ec}.ux-tip-icon{font-size:1.15rem}.ux-tip strong{font-size:.78rem;color:#fff}.ux-tip p{margin:3px 0 0;font-size:.7rem;color:#d5e2da;line-height:1.5}
+/* Make long data views calmer */
+.content .table-wrap{box-shadow:none!important}.content .toolbar{gap:7px!important}.content .field input,.content .field select,.content .field textarea{border-color:#ddd9d0!important;background:#fffefa!important;border-radius:10px!important}.content .field input:focus,.content .field select:focus,.content .field textarea:focus{border-color:#8eb19f!important;box-shadow:0 0 0 3px rgba(46,115,88,.08)!important;outline:none}
+@media(max-width:1050px){.ux-workbar{grid-template-columns:1fr}.ux-todo{grid-template-columns:1fr 1fr}.ux-kpis{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:760px){.content{padding:18px 14px 30px!important}.ux-hero,.ux-hero-inner{min-height:360px}.ux-hero-inner{padding:23px}.ux-kpis{grid-template-columns:1fr 1fr}.ux-todo{grid-template-columns:1fr}.ux-school-strip{align-items:flex-start;flex-direction:column}.ux-school-actions{width:100%}.ux-school-actions .btn{flex:1}.ux-context{align-items:flex-start;flex-direction:column}.ux-context-actions{width:100%}.ux-context-actions .btn{flex:1}}
 </style>
 </head>
 <body>
@@ -671,12 +744,16 @@ const state = {
   masterSpj: [],
   importedTransactions: [],
   bkuImport: null,
-  captchaAns: 0
+  captchaAns: 0,
+  captchaQuestion: ''
 };
 
 const $ = s => document.querySelector(s);
 const $$ = s => Array.from(document.querySelectorAll(s));
 const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+// Helper normalisasi teks untuk seluruh modul frontend.
+// Sebelumnya render Manajemen Penugasan memanggil upper() yang hanya tersedia di backend.
+const upper = v => String(v ?? '').trim().toUpperCase();
 const fmtRupiah = v => {
   const n = Number(v);
   return Number.isFinite(n) ? new Intl.NumberFormat('id-ID',{style:'currency',currency:'IDR',maximumFractionDigits:0}).format(n) : '-';
@@ -800,8 +877,31 @@ async function api(action, payload={}){
 async function safeApi(action,payload={},fallback=null){ try{return await api(action,payload);}catch(e){return fallback;} }
 
 function generateMathCaptcha(){
-  const a=Math.floor(Math.random()*7)+2, b=Math.floor(Math.random()*6)+1;
-  state.captchaAns=a+b; return `Berapa hasil ${a} + ${b} ?`;
+  // CAPTCHA tetap mudah dihitung manusia, tetapi tidak lagi selalu penjumlahan.
+  // Pembagian dibuat selalu menghasilkan bilangan bulat; pengurangan dibuat tidak negatif.
+  const op=['+','-','×','÷'][Math.floor(Math.random()*4)];
+  let a,b,answer;
+  if(op==='+'){
+    a=Math.floor(Math.random()*18)+4;
+    b=Math.floor(Math.random()*12)+2;
+    answer=a+b;
+  }else if(op==='-'){
+    a=Math.floor(Math.random()*18)+8;
+    b=Math.floor(Math.random()*Math.min(12,a-1))+1;
+    answer=a-b;
+  }else if(op==='×'){
+    a=Math.floor(Math.random()*9)+2;
+    b=Math.floor(Math.random()*8)+2;
+    answer=a*b;
+  }else{
+    b=Math.floor(Math.random()*7)+2;
+    const hasil=Math.floor(Math.random()*8)+2;
+    a=b*hasil;
+    answer=hasil;
+  }
+  state.captchaAns=answer;
+  state.captchaQuestion=`Berapa hasil ${a} ${op} ${b} ?`;
+  return state.captchaQuestion;
 }
 
 function authView(notice=''){
@@ -845,7 +945,7 @@ function authView(notice=''){
               </button>
             </div>
           </div>
-          <div class="field"><label>Verifikasi Keamanan (${generateMathCaptcha()})</label><input id="captchaInput" type="number" required placeholder="Jawaban angka"></div>
+          <div class="field"><label>Verifikasi Keamanan</label><div class="captcha-question" style="font-weight:850;color:var(--primary);margin-bottom:7px">${generateMathCaptcha()}</div><input id="captchaInput" type="number" required inputmode="numeric" autocomplete="off" placeholder="Masukkan hasil perhitungan"></div>
           <div id="authMsg"></div>
           <button class="btn btn-primary full" type="submit" style="margin-top:8px">Masuk ke Aplikasi</button>
         </form>
@@ -858,7 +958,14 @@ function authView(notice=''){
 
 async function doLogin(e){
   e.preventDefault();
-  if(Number($('#captchaInput').value)!==state.captchaAns){$('#authMsg').innerHTML=msg('Jawaban verifikasi salah.');return;}
+  if(Number($('#captchaInput').value)!==state.captchaAns){
+    $('#authMsg').innerHTML=msg('Jawaban verifikasi salah. CAPTCHA baru telah dibuat.');
+    const captchaLabel=document.querySelector('#loginForm .captcha-question');
+    if(captchaLabel) captchaLabel.textContent=generateMathCaptcha();
+    $('#captchaInput').value='';
+    $('#captchaInput').focus();
+    return;
+  }
   try{
     const r=await api('login',{username:$('#username').value.trim(),password:$('#password').value});
     state.token=r.token; state.user=r.user || {};
@@ -1161,33 +1268,102 @@ function renderShell(){
 }
 
 let _globalSearchTimer = null;
+window._globalSearchRows = [];
+
+window.openGlobalSearchResult = function(index){
+  const rows = Array.isArray(window._globalSearchRows) ? window._globalSearchRows : [];
+  const x = rows[Number(index)];
+  const box = $('#globalSearchResults');
+  if(box) box.classList.add('hidden');
+  if(!x) return;
+
+  if(x.tipe === 'SEKOLAH'){
+    state.selectedNpsn = normalizeNpsnClient(x.npsn);
+    loadView(isDinas() || isPengawas() ? 'rkasReview' : 'statusSpj');
+    return;
+  }
+
+  if(x.tipe === 'PENGGUNA'){
+    toast(`${x.nama || x.username || 'Pengguna'} • ${x.role || ''} • ${x.username || x.id || ''}`, 'ok', 5000);
+  }
+};
+
 async function runGlobalSearch(q){
   const box = $('#globalSearchResults'), input = $('#globalSearchInput');
   if(!box || !input) return;
   q = String(q || '').trim();
-  if(q.length < 2){ box.classList.add('hidden'); box.innerHTML=''; return; }
+  if(q.length < 2){
+    window._globalSearchRows = [];
+    box.classList.add('hidden');
+    box.innerHTML='';
+    return;
+  }
   box.classList.remove('hidden');
   box.innerHTML = loading('Mencari...');
   try{
     const res = await api('cariGlobalSIMPEL',{q});
-    const rows = res.data || [];
-    if(!rows.length){ box.innerHTML='<div class="search-empty">Tidak ditemukan. Coba nama lengkap, nama sekolah, NPSN, atau kata kunci lain.</div>'; return; }
+    const rows = Array.isArray(res.data) ? res.data : [];
+    window._globalSearchRows = rows;
+    if(!rows.length){
+      box.innerHTML='<div class="search-empty">Tidak ditemukan. Coba nama lengkap, nama sekolah, NPSN, atau kata kunci lain.</div>';
+      return;
+    }
+
     box.innerHTML = rows.map((x,i)=>{
       const icon = x.tipe === 'PENGGUNA' ? '👤' : '🏫';
-      const action = x.tipe === 'SEKOLAH'
-        ? `state.selectedNpsn='${esc(x.npsn)}';loadView('${isDinas() ? 'rkasReview' : isPengawas() ? 'rkasReview' : 'statusSpj'}')`
-        : `toast('Profil pengguna: ${esc(x.nama || x.username || '')}','ok')`;
-      return `<div class="search-result" data-search-index="${i}" onclick="${action}">\n        <div class="search-result-icon">${icon}</div>\n        <div class="search-result-main"><strong>${esc(x.nama || x.username || '-')}</strong><small>${esc(x.sub || x.npsn || '')}</small></div>\n        <span class="muted">›</span>\n      </div>`;
+      const roleText = x.tipe === 'PENGGUNA' ? 'Buka informasi pengguna' : 'Buka konteks sekolah';
+      return `<button type="button" class="search-result" data-search-index="${i}" aria-label="${esc(roleText)}">
+        <span class="search-result-icon">${icon}</span>
+        <span class="search-result-main"><strong>${esc(x.nama || x.username || '-')}</strong><small>${esc(x.sub || x.npsn || '')}</small></span>
+        <span class="muted">›</span>
+      </button>`;
     }).join('');
-  }catch(e){ box.innerHTML = '<div class="search-empty">Pencarian belum dapat digunakan. Silakan coba lagi.</div>'; }
+
+    $$('#globalSearchResults [data-search-index]').forEach(el=>{
+      el.addEventListener('click', function(ev){
+        ev.preventDefault();
+        ev.stopPropagation();
+        window.openGlobalSearchResult(Number(this.dataset.searchIndex));
+      });
+    });
+  }catch(e){
+    window._globalSearchRows = [];
+    box.innerHTML = `<div class="search-empty">${esc(errorText(e) || 'Pencarian belum dapat digunakan. Silakan coba lagi.')}</div>`;
+  }
 }
+
 function initGlobalSearch(){
   const input = $('#globalSearchInput'), box = $('#globalSearchResults');
   if(!input) return;
-  input.oninput = () => { clearTimeout(_globalSearchTimer); _globalSearchTimer=setTimeout(()=>runGlobalSearch(input.value),280); };
-  input.onkeydown = e => { if(e.key==='Escape'){input.value='';box?.classList.add('hidden');input.blur();} };
-  document.addEventListener('click', e => { const host=$('#globalSearchBox'); if(host && !host.contains(e.target)) box?.classList.add('hidden'); }, {once:true});
-  document.addEventListener('keydown', e => { if((e.ctrlKey || e.metaKey) && e.key.toLowerCase()==='k'){e.preventDefault();input.focus();input.select();} });
+  input.oninput = () => {
+    clearTimeout(_globalSearchTimer);
+    _globalSearchTimer=setTimeout(()=>runGlobalSearch(input.value),280);
+  };
+  input.onkeydown = e => {
+    if(e.key==='Escape'){
+      input.value='';
+      box?.classList.add('hidden');
+      input.blur();
+    }
+    if(e.key==='Enter'){
+      const first = box?.querySelector('[data-search-index="0"]');
+      if(first){
+        e.preventDefault();
+        first.click();
+      }
+    }
+  };
+  document.addEventListener('click', e => {
+    const host=$('#globalSearchBox');
+    if(host && !host.contains(e.target)) box?.classList.add('hidden');
+  });
+  document.addEventListener('keydown', e => {
+    if((e.ctrlKey || e.metaKey) && e.key.toLowerCase()==='k'){
+      e.preventDefault();
+      input.focus();
+      input.select();
+    }
+  });
 }
 
 let _viewNavRunning = false;
@@ -1619,21 +1795,42 @@ window.openUpload = function(idSpj, namaSpj) {
 };
 
 async function statusSpjView(){
-  const periods=await periodeSelect('periodeSelect', true, 'bulan');
-  $('#mainContent').innerHTML=head('Status Pemeriksaan','Ringkasan kelengkapan dan status pemeriksaan per periode')+
-    `<div class="panel"><div class="form-grid"><div class="field"><label>Periode SPJ</label>${periods}</div></div><div id="statusArea" style="margin-top:18px">${msg('Pilih periode.','ok')}</div></div>`;
+  const periods=await periodeSelect('periodeSelect',true,'bulan');
+  $('#mainContent').innerHTML=head('Status SPJ Saya','Satu halaman untuk melihat posisi pemeriksaan, kelengkapan dokumen, dan tindakan berikutnya.')+
+    `<div class="panel"><div class="form-grid"><div class="field"><label>Periode SPJ</label>${periods}</div></div><div id="statusArea" style="margin-top:18px">${msg('Pilih periode untuk melihat status.','ok')}</div></div>`;
   $('#periodeSelect').value=state.selectedPeriode;
   $('#periodeSelect').onchange=()=>{state.selectedPeriode=$('#periodeSelect').value;renderStatus();};
   if(state.selectedPeriode)await renderStatus();
 }
 
 async function renderStatus(){
-  const p=$('#periodeSelect').value, area=$('#statusArea'); if(!p)return;
-  area.innerHTML=loading();
+  const p=$('#periodeSelect')?.value,area=$('#statusArea');if(!p||!area)return;
+  area.innerHTML=loading('Menyusun ringkasan status SPJ...');
   try{
-    const [s,r]=await Promise.all([api('getStatusSPJ',{idPeriode:p}),safeApi('getRingkasanSPJ',{idPeriode:p},null)]);
-    const rows=(s.data||[]).map(x=>`<tr><td>${esc(x.nama_spj||x.id_spj)}</td><td>${badge(x.status,x.status==='SELESAI_DINILAI'?'success':x.status==='N/A'?'warning':'info')}</td></tr>`).join('');
-    area.innerHTML=`<div class="cards"><div class="stat"><small>Total Komponen</small><strong>${fmtNum(s.data?.length||0)}</strong></div><div class="stat"><small>Status Umum</small><strong style="font-size:1.1rem">${esc(r?.status_umum||'-')}</strong></div></div><div class="table-wrap"><table class="friendly-table"><thead><tr><th>Komponen</th><th>Status</th></tr></thead><tbody>${rows||emptyRow(2)}</tbody></table></div>`;
+    const [s,r]=await Promise.all([api('getStatusSPJ',{idPeriode:p}),safeApi('getRingkasanSPJ',{idPeriode:p},{})]);
+    const items=s.data||[];
+    const done=items.filter(x=>['SELESAI','SELESAI_DINILAI','SELESAI_DISETUJUI'].includes(upper(x.status||''))).length;
+    const progress=items.length?Math.round(done/items.length*100):0;
+    const overall=String(r?.status_umum||'BELUM DIMULAI');
+    const next=overall.includes('SELESAI')?'SPJ periode ini sudah mencapai tahap akhir.':items.some(x=>!['SELESAI','SELESAI_DINILAI','SELESAI_DISETUJUI'].includes(upper(x.status||'')))?'Lengkapi komponen yang masih berstatus belum selesai, lalu cek kembali hasil pemeriksaan.':'Periksa hasil pemeriksaan dan tindak lanjuti bila ada catatan.';
+    const rows=items.map(x=>{
+      const st=String(x.status||'N/A');
+      const finished=['SELESAI','SELESAI_DINILAI','SELESAI_DISETUJUI'].includes(upper(st));
+      return `<tr><td><b>${esc(x.nama_spj||x.id_spj)}</b></td><td>${badge(st,finished?'success':st==='N/A'?'warning':'info')}</td><td>${finished?'✓ Selesai':'→ Perlu ditindaklanjuti'}</td></tr>`;
+    }).join('');
+    area.innerHTML=`
+      <div class="status-hero">
+        <div style="flex:1 1 360px"><div class="muted" style="font-size:.78rem;font-weight:800;text-transform:uppercase">Posisi SPJ periode</div><div style="font-size:1.35rem;font-weight:900;color:var(--primary);margin-top:4px">${esc(overall)}</div><div class="status-progress"><span style="width:${progress}%"></span></div><div class="muted" style="font-size:.78rem;margin-top:6px">${fmtNum(done)} dari ${fmtNum(items.length)} komponen selesai • ${progress}%</div></div>
+        <div style="text-align:right"><div class="muted">Periode</div><strong>${esc(p)}</strong></div>
+      </div>
+      <div class="school-summary-grid">
+        <div class="school-summary-card"><small>Komponen</small><strong>${fmtNum(items.length)}</strong></div>
+        <div class="school-summary-card"><small>Selesai</small><strong>${fmtNum(done)}</strong></div>
+        <div class="school-summary-card"><small>Progres</small><strong>${progress}%</strong></div>
+        <div class="school-summary-card"><small>Status Umum</small><strong style="font-size:1rem;margin-top:8px">${esc(overall)}</strong></div>
+      </div>
+      <div class="status-next"><b>Langkah berikutnya</b><div class="muted" style="margin-top:4px">${esc(next)}</div></div>
+      <div class="table-wrap" style="margin-top:14px"><table class="friendly-table"><thead><tr><th>Komponen SPJ</th><th>Status</th><th>Arah Tindakan</th></tr></thead><tbody>${rows||emptyRow(3)}</tbody></table></div>`;
   }catch(e){area.innerHTML=msg(errorText(e));}
 }
 
@@ -2319,20 +2516,88 @@ window.doReviewRkas = async function(versiRkas, keputusan) {
 
 async function sekolahView(){
   const c=$('#mainContent');
-  c.innerHTML=head('Daftar Sekolah','Data satuan pendidikan terdaftar')+`<div class="toolbar"><input id="searchSekolahInput" placeholder="🔍 Cari berdasarkan Nama Sekolah atau NPSN..." style="max-width:350px"></div><div class="panel" id="sekolahContent">${loading()}</div>`;
+  c.innerHTML=head('Daftar Sekolah','Pusat navigasi DINAS: cari sekolah, lihat pagu RKAS, lalu buka konteks sekolah.')+
+    `<div class="school-directory-toolbar">
+       <input id="searchSekolahInput" class="search-box" placeholder="🔍 Cari nama sekolah, NPSN, atau kecamatan...">
+       <button class="btn btn-light" onclick="clearSchoolDirectorySearch()">Bersihkan</button>
+     </div>
+     <div class="panel" id="sekolahContent">${loading('Memuat daftar sekolah...')}</div>`;
   try{
-    const r=await api('getSekolah'); const list = r.data || [];
-    renderSekolahTable(list);
-    $('#searchSekolahInput').oninput = e => {
-      const q = e.target.value.toLowerCase();
-      renderSekolahTable(list.filter(x => String(x.npsn).toLowerCase().includes(q) || String(x.nama_sekolah||'').toLowerCase().includes(q) || String(x.kecamatan||'').toLowerCase().includes(q)));
-    };
+    const [schoolRes,paguRes]=await Promise.all([
+      api('getSekolah'),
+      isDinas()?safeApi('getRekapPaguRKAS',{},{data:[]}):Promise.resolve({data:[]})
+    ]);
+    const list=schoolRes.data||[];
+    const paguMap=buildPaguMap(paguRes.data||[]);
+    window._schoolDirectoryData=list.map(x=>Object.assign({},x,{total_pagu:Number(paguMap[normalizeNpsnClient(x.npsn)]||0)}));
+    renderSchoolDirectory(window._schoolDirectoryData);
+    $('#searchSekolahInput').oninput=e=>filterSchoolDirectory(e.target.value);
   }catch(e){$('#sekolahContent').innerHTML=msg(errorText(e));}
 }
 
-function renderSekolahTable(list){
-  const rows = list.map(x=>`<tr><td><b>${esc(x.npsn)}</b></td><td>${esc(x.nama_sekolah)}</td><td>${esc(x.kecamatan)}</td><td>${esc(x.alamat_lengkap||'-')}</td></tr>`).join('');
-  $('#sekolahContent').innerHTML=`<div class="table-wrap"><table class="friendly-table"><thead><tr><th>NPSN</th><th>Sekolah</th><th>Kecamatan</th><th>Alamat</th></tr></thead><tbody>${rows||emptyRow(4)}</tbody></table></div>`;
+function buildPaguMap(list){
+  const map={};
+  (Array.isArray(list)?list:[]).forEach(x=>{
+    const n=normalizeNpsnClient(x.npsn);
+    if(n) map[n]=Number(x.total_pagu||0);
+  });
+  return map;
+}
+
+function filterSchoolDirectory(query){
+  const q=String(query||'').trim().toLowerCase();
+  const source=window._schoolDirectoryData||[];
+  renderSchoolDirectory(!q?source:source.filter(x=>
+    String(x.npsn||'').toLowerCase().includes(q)||
+    String(x.nama_sekolah||'').toLowerCase().includes(q)||
+    String(x.kecamatan||'').toLowerCase().includes(q)
+  ));
+}
+window.clearSchoolDirectorySearch=function(){const i=$('#searchSekolahInput');if(i)i.value='';filterSchoolDirectory('');};
+
+function renderSchoolDirectory(list){
+  const area=$('#sekolahContent');if(!area)return;
+  const rows=Array.isArray(list)?list:[];
+  const totalPagu=rows.reduce((a,x)=>a+Number(x.total_pagu||0),0);
+  const assigned=rows.filter(x=>x.id_pengawas||x.nama_pengawas).length;
+  area.innerHTML=`
+    <div class="school-summary-grid">
+      <div class="school-summary-card"><small>Sekolah</small><strong>${fmtNum(rows.length)}</strong></div>
+      <div class="school-summary-card"><small>Total Pagu RKAS</small><strong>${fmtRupiah(totalPagu)}</strong></div>
+      <div class="school-summary-card"><small>Rata-rata Pagu</small><strong>${fmtRupiah(rows.length?totalPagu/rows.length:0)}</strong></div>
+      <div class="school-summary-card"><small>Konteks Kerja</small><strong style="font-size:1rem;margin-top:8px;">${isDinas()?'Pusat Kendali DINAS':'Sekolah Saya'}</strong></div>
+    </div>
+    <div class="panel" style="margin:0 0 14px;background:rgba(31,85,62,.035)">
+      <b>${fmtNum(rows.length)} sekolah ditampilkan</b>
+      <span class="muted"> • Pilih sekolah untuk masuk ke konteks kerja sekolah tanpa memuat semua detail sekaligus.</span>
+    </div>
+    <div class="school-directory-grid">
+      ${rows.map(x=>`<article class="school-directory-card">
+        <div class="school-name">🏫 ${esc(x.nama_sekolah||'Nama sekolah belum tersedia')}</div>
+        <div class="school-meta">NPSN ${esc(x.npsn||'-')} • Kecamatan ${esc(x.kecamatan||'-')}</div>
+        <div class="school-meta">${esc(x.alamat_lengkap||'Alamat belum tersedia')}</div>
+        <div class="school-pagu"><span class="muted">Pagu RKAS Approved</span><b>${fmtRupiah(x.total_pagu||0)}</b></div>
+        <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+          <button class="btn btn-sm btn-primary" onclick="openDinasSchoolContext('${esc(x.npsn)}')">Buka Sekolah →</button>
+          <button class="btn btn-sm btn-light" onclick="openDinasSchoolRkas('${esc(x.npsn)}')">Lihat RKAS</button>
+        </div>
+      </article>`).join('')||msg('Sekolah tidak ditemukan.','warning')}
+    </div>`;
+}
+
+window.openDinasSchoolContext=function(npsn){state.selectedNpsn=normalizeNpsnClient(npsn);loadView('monitoringGlobal');};
+window.openDinasSchoolRkas=function(npsn){state.selectedNpsn=normalizeNpsnClient(npsn);loadView('rkasReview');};
+
+
+function formatTanggalPenugasan(v){
+  if(v==null || v==='') return '-';
+  const raw=String(v).trim();
+  if(/^\d{2}\/\d{2}\/\d{4}$/.test(raw)) return raw;
+  const m=raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if(m) return `${m[3]}/${m[2]}/${m[1]}`;
+  const d=new Date(raw);
+  if(!isNaN(d.getTime())) return `${String(d.getUTCDate()).padStart(2,'0')}/${String(d.getUTCMonth()+1).padStart(2,'0')}/${d.getUTCFullYear()}`;
+  return raw;
 }
 
 async function penugasanView() {
@@ -2367,9 +2632,14 @@ async function penugasanView() {
       `<div class="panel">
          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap:wrap; gap:12px;">
            <h3 style="margin:0">Daftar Penugasan Aktif</h3>
-           <button class="btn btn-primary" onclick="triggerDistribusiPenugasanAdil()">
-             ⚡ Distribusi Otomatis Adil & Lintas Kecamatan
-           </button>
+           <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
+             <button class="btn btn-primary" onclick="triggerDistribusiPenugasanAdil(false)">
+               ⚡ Distribusi Otomatis Adil & Lintas Kecamatan
+             </button>
+             <button class="btn btn-light" onclick="triggerDistribusiPenugasanAdil(true)" title="Menyusun ulang penugasan dengan urutan acak, tetap menggunakan algoritma distribusi lintas kecamatan.">
+               🔀 Acak Ulang
+             </button>
+           </div>
          </div>
          
          <div id="distribusiResult" style="display:none; margin-bottom:16px;"></div>
@@ -2383,9 +2653,20 @@ async function penugasanView() {
        </div>`;
        
     try {
-      const res = await api('getPenugasanPengawas'); 
-      const list = res.data || [];
-      window._cachedPenugasan = list; 
+      // V12.6: gunakan action lama getPenugasanPengawas sebagai satu-satunya
+      // sumber data halaman ini. Backend sudah mengembalikan pagu_rkas/total_pagu
+      // dari master_rkas, sehingga tidak ada action tambahan yang dapat gagal.
+      const res = await api('getPenugasanPengawas');
+      const list = (res.data || []).map(x => {
+        const direct = Number(x.pagu_rkas ?? x.total_pagu ?? 0);
+        return Object.assign({}, x, {
+          pagu_rkas: Number.isFinite(direct) ? direct : 0,
+          total_pagu: Number.isFinite(direct) ? direct : 0
+        });
+      });
+      window._cachedPenugasan = list;
+      window._cachedPaguSekolah = list;
+      window._paguRkasMeta = res.meta || {};
       renderPenugasanTable(list);
       
       const searchP = $('#searchPenugasanInput');
@@ -2407,7 +2688,7 @@ async function penugasanView() {
                   `<div class="panel" id="penugasanContent">${loading()}</div>`;
     try {
       const r = await api('getPenugasanPengawas');
-      const rows = (r.data||[]).map(x=>`<tr><td>${formatUserLabel ? formatUserLabel(x.id_pengawas, x.nama_pengawas) : (x.nama_pengawas || x.id_pengawas)}</td><td>${esc(x.npsn)}</td><td>${esc(x.tanggal_mulai||'-')}</td><td>${badge(x.status,'info')}</td></tr>`).join('');
+      const rows = (r.data||[]).map(x=>`<tr><td>${formatUserLabel ? formatUserLabel(x.id_pengawas, x.nama_pengawas) : (x.nama_pengawas || x.id_pengawas)}</td><td>${esc(x.npsn)}</td><td>${esc(formatTanggalPenugasan(x.tanggal_mulai))}</td><td>${badge(x.status,'info')}</td></tr>`).join('');
       const pContent = $('#penugasanContent');
       if(pContent) {
         pContent.innerHTML = `<div class="table-wrap"><table class="friendly-table"><thead><tr><th>Pengawas Pembina</th><th>NPSN</th><th>Mulai</th><th>Status</th></tr></thead><tbody>${rows||emptyRow(4)}</tbody></table></div>`;
@@ -2458,57 +2739,151 @@ window.pilihSekolahBinaan = function(npsn) {
 };
 
 function renderPenugasanTable(list){
-  const rows = list.map(x => `<tr>
-    <td>${formatPengawasLabel(x.id_pengawas, x.nama_pengawas)}</td>
-    <td>${formatSekolahLabel(x.npsn, x.nama_sekolah, x.kecamatan)}</td>
-    <td>${esc(x.tanggal_mulai || '-')}</td>
-    <td>${esc(x.tanggal_selesai || '-')}</td>
-    <td>${badge(x.status || 'AKTIF', 'success')}</td>
-  </tr>`).join('');
-  $('#penugasanContent').innerHTML = `<div class="table-wrap"><table class="friendly-table"><thead><tr><th>Pengawas Pembina</th><th>Satuan Pendidikan & Kecamatan</th><th>Mulai</th><th>Selesai</th><th>Status</th></tr></thead><tbody>${rows||emptyRow(6)}</tbody></table></div>`;
-}
+  const content=$('#penugasanContent');if(!content)return;
+  const rows=Array.isArray(list)?list:[];
+  const groupsMap=new Map();
+  rows.forEach(x=>{
+    const id=String(x.id_pengawas||'').trim();
+    const nama=String(x.nama_pengawas||'').trim();
+    const key=id||nama||'TANPA_PENGAWAS';
+    if(!groupsMap.has(key))groupsMap.set(key,{id,nama:nama||id||'Tanpa Pengawas',items:[]});
+    const item=Object.assign({},x,{total_pagu:Number(x.pagu_rkas ?? x.total_pagu ?? 0)});
+    groupsMap.get(key).items.push(item);
+  });
+  const groups=Array.from(groupsMap.values()).sort((a,b)=>String(a.nama).localeCompare(String(b.nama),'id',{sensitivity:'base'}));
+  const totalPenugasan=rows.length;
+  const totalPengawas=groups.length;
+  const uniqueSchools=new Set(rows.map(x=>normalizeNpsnClient(x.npsn)).filter(Boolean)).size;
+  const aktif=rows.filter(x=>upper(x.status||'')==='AKTIF').length;
+  const totalPagu=rows.reduce((sum,x)=>sum+Number(x.pagu_rkas ?? x.total_pagu ?? 0),0);
 
-window.triggerDistribusiPenugasanAdil = async function() {
-  if (!confirm('Jalankan algoritma distribusi penugasan pengawas secara otomatis, adil, dan lintas kecamatan berdasarkan pagu RKAS?')) {
-    return;
-  }
+  if(!rows.length){content.innerHTML=`<div class="panel" style="text-align:center;padding:36px 20px"><div style="font-size:2rem">👥</div><h3>Belum ada penugasan</h3><p class="muted">Belum terdapat data penugasan pengawas yang sesuai dengan pencarian.</p></div>`;return;}
+
+  const paguMeta = window._paguRkasMeta || {};
+  const summary=`<div class="school-summary-grid">
+    <div class="school-summary-card"><small>Pengawas</small><strong>${fmtNum(totalPengawas)}</strong></div>
+    <div class="school-summary-card"><small>Sekolah</small><strong>${fmtNum(uniqueSchools)}</strong></div>
+    <div class="school-summary-card"><small>Penugasan Aktif</small><strong>${fmtNum(aktif)}</strong></div>
+    <div class="school-summary-card"><small>Total Pagu RKAS</small><strong>${fmtRupiah(totalPagu)}</strong></div>
+  </div>
+  <div class="muted" style="margin:8px 2px 14px;font-size:.76rem">
+    Sumber pagu: <b>${esc(paguMeta.pagu_source || 'master_rkas')}</b>
+    · ${fmtNum(Number(paguMeta.approved_rows || 0))} baris RKAS APPROVED
+    · ${fmtNum(Number(paguMeta.matched_npsn || 0))} NPSN memiliki pagu
+  </div>
+  <div style="display:flex;justify-content:flex-end;gap:8px;margin:0 0 14px;flex-wrap:wrap"><button class="btn btn-sm btn-light" onclick="diagnoseSelectedPagu()">🔎 Diagnostik NPSN / Pagu</button><button class="btn btn-sm btn-light" onclick="diagnosePaguSource()">🧪 Cek Sumber Master RKAS</button></div>`;
+
+  const groupsHtml=groups.map((g,index)=>{
+    const items=g.items.slice().sort((a,b)=>String(a.nama_sekolah||a.npsn||'').localeCompare(String(b.nama_sekolah||b.npsn||''),'id',{sensitivity:'base'}));
+    const subtotalSekolah=new Set(items.map(x=>normalizeNpsnClient(x.npsn)).filter(Boolean)).size;
+    const subtotalAktif=items.filter(x=>upper(x.status||'')==='AKTIF').length;
+    const subtotalPagu=items.reduce((sum,x)=>sum+Number(x.total_pagu||0),0);
+    const gid='assignmentGroup_'+index;
+    const rowsHtml=items.map((x,i)=>`<tr>
+      <td style="width:48px;text-align:center;color:#87928b;font-weight:700">${i+1}</td>
+      <td>${formatSekolahLabel(x.npsn,x.nama_sekolah,x.kecamatan)}</td>
+      <td><b class="assignment-pagu">${fmtRupiah(x.total_pagu||0)}</b><div class="muted" style="font-size:.68rem">RKAS: ${Number(x.pagu_rkas_rows||0) ? fmtNum(x.pagu_rkas_rows)+' baris cocok' : 'tidak cocok'}${x.npsn_raw && x.npsn_raw!==x.npsn_key ? ' · key: '+esc(x.npsn_key) : ''}</div></td>
+      <td>${esc(formatTanggalPenugasan(x.tanggal_mulai))}</td><td>${esc(formatTanggalPenugasan(x.tanggal_selesai))}</td><td>${badge(x.status||'AKTIF','success')}</td>
+    </tr>`).join('');
+    return `<section class="assignment-group" id="${gid}">
+      <div class="assignment-group-head" onclick="toggleAssignmentGroup('${gid}')">
+        <div class="assignment-group-title"><div class="assignment-group-icon">👤</div><div style="min-width:0"><div style="font-size:1rem;font-weight:900;color:var(--primary)">${formatPengawasLabel(g.id,g.nama)}</div><div class="muted" style="font-size:.76rem">${g.id?'ID Pengawas: '+esc(g.id):'Identitas pengawas belum tersedia'}</div></div></div>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end">
+          <span class="assignment-total">${fmtNum(subtotalSekolah)} sekolah</span>
+          <span class="assignment-pagu">${fmtRupiah(subtotalPagu)}</span>
+          <span class="assignment-group-chevron">⌄</span>
+        </div>
+      </div>
+      <div class="assignment-group-body">
+        <div class="table-wrap" style="margin:0"><table class="friendly-table"><thead><tr><th>No.</th><th>Satuan Pendidikan & Kecamatan</th><th>Pagu RKAS</th><th>Mulai</th><th>Selesai</th><th>Status</th></tr></thead><tbody>${rowsHtml}</tbody><tfoot><tr style="background:#fafcfb;font-weight:800"><td colspan="2" style="text-align:right">Subtotal ${esc(g.nama)}:</td><td>${fmtRupiah(subtotalPagu)}</td><td colspan="3">${fmtNum(subtotalSekolah)} sekolah • ${fmtNum(subtotalAktif)} aktif</td></tr></tfoot></table></div>
+      </div>
+    </section>`;
+  }).join('');
+  content.innerHTML=summary+groupsHtml+`<div class="assignment-grand-total"><div><div style="font-weight:900">Total seluruh penugasan</div><div class="muted">${fmtNum(totalPengawas)} pengawas • ${fmtNum(uniqueSchools)} sekolah • ${fmtNum(aktif)} aktif</div></div><div style="font-size:1.15rem;font-weight:900">${fmtRupiah(totalPagu)}</div></div>`;
+}
+window.diagnosePaguSource = async function(){
+  try {
+    const r = await api('getDiagnostikSumberPagu');
+    const d = r.data || {};
+    const statuses = Object.entries(d.status_counts_sample || {}).map(([k,v]) => `${k}: ${v}`).join(' | ') || '-';
+    alert([
+      'DIAGNOSTIK SUMBER MASTER RKAS',
+      'Spreadsheet : ' + (d.spreadsheet_name || '-'),
+      'Spreadsheet ID: ' + (d.spreadsheet_id || '-'),
+      'Sheet       : ' + (d.master_rkas_sheet || '-'),
+      'Baris data  : ' + Number(d.data_rows || 0).toLocaleString('id-ID'),
+      'Kolom       : ' + Number(d.last_column || 0).toLocaleString('id-ID'),
+      'Kolom NPSN  : ' + Number(d.npsn_column_index ?? -1),
+      'Kolom Pagu  : ' + Number(d.pagu_column_index ?? -1),
+      'Kolom Status: ' + Number(d.status_column_index ?? -1),
+      'Status (sampel): ' + statuses,
+      'Contoh NPSN: ' + ((d.sample_npsn || []).join(', ') || '-'),
+      '',
+      'TARGET 20315823 = 97 baris / Rp120.650.000',
+      'TARGET 20315874 = 53 baris / Rp64.600.000'
+    ].join('\n'));
+  } catch(e) { alert(errorText(e)); }
+};
+
+window.diagnoseSelectedPagu = async function(){
+  const npsn = prompt('Masukkan NPSN yang ingin diperiksa, misalnya 20315823:');
+  if(!npsn) return;
+  try {
+    const r = await api('getDiagnostikPaguPenugasan', { npsn: String(npsn).trim() });
+    const d = r.data || {};
+    alert([
+      'DIAGNOSTIK PAGU RKAS',
+      'NPSN mentah : ' + (d.npsn_raw || '-'),
+      'NPSN key    : ' + (d.npsn_key || '-'),
+      'Cocok       : ' + (d.matched ? 'YA' : 'TIDAK'),
+      'Baris RKAS  : ' + Number(d.rkas_rows || 0).toLocaleString('id-ID'),
+      'Total pagu  : ' + fmtRupiah(d.pagu || 0),
+      'Sumber      : ' + (d.source || 'master_rkas')
+    ].join('\n'));
+  } catch(e) { alert(errorText(e)); }
+};
+
+window.toggleAssignmentGroup=function(id){const el=document.getElementById(id);if(el)el.classList.toggle('collapsed');};
+
+window.triggerDistribusiPenugasanAdil = async function(acakUlang = false) {
+  const question = acakUlang
+    ? 'Acak ulang seluruh penugasan aktif? Penugasan saat ini akan disusun ulang dengan urutan sekolah dan titik awal pengawas yang berbeda, tetapi tetap memakai algoritma distribusi lintas kecamatan.'
+    : 'Jalankan algoritma distribusi penugasan pengawas secara otomatis, adil, dan lintas kecamatan berdasarkan pagu RKAS?';
+  if (!confirm(question)) return;
 
   const resultBox = $('#distribusiResult');
   if (resultBox) {
     resultBox.style.display = 'block';
-    resultBox.innerHTML = loading('Menjalankan algoritma distribusi adil lintas kecamatan...');
+    resultBox.innerHTML = loading(acakUlang
+      ? 'Mengacak ulang dan menyusun kembali penugasan...'
+      : 'Menjalankan algoritma distribusi adil lintas kecamatan...');
   }
 
   try {
-    const res = await api('generatePenugasanAdil');
-    
+    const action = acakUlang ? 'acakUlangPenugasanAdil' : 'generatePenugasanAdil';
+    const res = await api(action);
+
     if (resultBox) {
       let statistikHtml = `<div style="background:#f0fdf4; border:1px solid #bbf7d0; padding:16px; border-radius:12px; color:var(--success);">
-        <strong>${esc(res.message || 'Distribusi berhasil dijalankan!')}</strong><br><br>
+        <strong>${esc(res.message || (acakUlang ? 'Penugasan berhasil diacak ulang!' : 'Distribusi berhasil dijalankan!'))}</strong><br>
+        <div class="muted" style="margin-top:5px">${acakUlang ? 'Urutan penempatan diacak ulang tanpa mengubah struktur database.' : 'Penugasan baru dibentuk dari data sekolah, pengawas aktif, dan pagu RKAS.'}</div><br>
         <div style="font-size:0.9rem; color:var(--text);"><b>Statistik Beban Pengawas:</b><ul>`;
-      
+
       const stats = res.statistik_beban || {};
       for (const pid in stats) {
         const item = stats[pid];
         statistikHtml += `<li>Pengawas (ID: <b>${esc(pid)}</b>): Menangani <b>${item.jumlah_sekolah} sekolah</b> | Total Pagu Binaan: <b>Rp ${Number(item.total_beban || 0).toLocaleString('id-ID')}</b></li>`;
       }
       statistikHtml += `</ul></div></div>`;
-      
       resultBox.innerHTML = statistikHtml;
     } else {
-      alert(res.message || 'Distribusi penugasan adil berhasil dijalankan!');
+      alert(res.message || (acakUlang ? 'Penugasan berhasil diacak ulang!' : 'Distribusi penugasan adil berhasil dijalankan!'));
     }
 
-    if (typeof penugasanView === 'function') {
-      setTimeout(() => { penugasanView(); }, 2000);
-    }
-
+    setTimeout(() => { penugasanView(); }, 700);
   } catch (err) {
-    if (resultBox) {
-      resultBox.innerHTML = msg(errorText(err));
-    } else {
-      alert('Gagal: ' + errorText(err));
-    }
+    if (resultBox) resultBox.innerHTML = msg(errorText(err));
+    else alert('Gagal: ' + errorText(err));
   }
 };
 
@@ -3726,7 +4101,7 @@ async function loadV5Archive(){
         <div class="panel"><h3>G. PERSETUJUAN & PENGESAHAN</h3>
           <p>Persetujuan sekolah: <b>${appr?'TERCATAT':'BELUM TERCATAT'}</b></p>
           ${appr?`<p>Disetujui oleh: <b>${esc(appr.disetujui_oleh||'-')}</b><br>Waktu: ${esc(appr.disetujui_at||'-')}</p>`:''}
-          <p>Pengesahan pengawas: <b>${sig?'DISAHKAN':'BELUM DISAHKAN'}</b></p>
+          <p>Pengesahan pengawas: <b>${sig?'DISAHKAN SECARA ELEKTRONIK':'BELUM DISAHKAN'}</b></p>
           ${sig?`<p>Penandatangan: <b>${esc(sig.ditandatangani_oleh||'-')}</b><br>Waktu: ${esc(sig.ditandatangani_at||'-')}<br>Kode pengesahan: <b>${esc(sig.kode_pengesahan||'-')}</b><br>Hash integritas: <code style="word-break:break-all">${esc(sig.integrity_hash||'-')}</code></p><div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap"><img alt="QR Verifikasi Pengesahan" src="https://quickchart.io/qr?size=180&text=${encodeURIComponent(sig.verification_url||'')}" style="width:150px;height:150px;border:1px solid #ddd;padding:5px;background:#fff"><div><b>QR Verifikasi</b><br><span class="muted">Pindai QR untuk membuka halaman verifikasi pengesahan.</span><br><a href="${esc(sig.verification_url||'#')}" target="_blank">Buka verifikasi</a></div></div>`:''}
         </div>
         <div class="panel"><h3>H. DAFTAR BERKAS ASLI</h3><p class="muted">Berkas PDF asli tetap menjadi bukti utama. Daftar di bawah menunjukkan seluruh dokumen yang terhubung pada periode penilaian dan dapat dibuka dari aplikasi.</p>${_v5DocCards(d.dokumen)}</div>
@@ -3735,64 +4110,57 @@ async function loadV5Archive(){
   }catch(e){area.innerHTML=msg(errorText(e),'error');}
 }
 function printV5Archive(){
-  const d=window._v5ArchiveData;if(!d){toast('Buka arsip terlebih dahulu.','error');return;}
+  const d=window._v5ArchiveData;
+  if(!d){toast('Buka arsip terlebih dahulu.','error');return;}
+
   const npsn=d.sekolah?.npsn||'', p=d.id_periode||'';
   const body=$('#v5PrintableArchive')?.innerHTML||'';
   const w=window.open('','_blank','noopener');
   if(!w){toast('Popup diblokir browser. Izinkan popup untuk mencetak.','error');return;}
-  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Paket Penilaian SPJ - ${esc(npsn)} - ${esc(p)}</title><style>
-  @page{size:A4;margin:12mm}body{font-family:Arial,sans-serif;color:#17212b;font-size:10px}h2{font-size:18px}h3{font-size:13px;border-bottom:1px solid #ddd;padding-bottom:5px}.panel{border:1px solid #ddd;border-radius:8px;padding:10px;margin:0 0 10px;break-inside:avoid}.muted{color:#667085}.assessment-guide{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.assessment-guide-card{border:1px solid #ddd;padding:8px}.table-wrap{overflow:visible}table{width:100%;border-collapse:collapse;font-size:8px}th,td{border:1px solid #ccc;padding:4px;vertical-align:top}th{background:#f1f3f5}.school-index-grid{display:block}.school-index-grid .panel{display:inline-block;width:46%;vertical-align:top;margin-right:1%}a{color:#173f5f}.badge{display:inline-block;padding:3px 7px;border:1px solid #ccc;border-radius:10px;font-size:8px}</style><link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<style id="simpelProfessionalDesign">
-:root{
-  --navy:#102A43;--navy-2:#173F5F;--emerald:#087F5B;--emerald-2:#075E4A;
-  --gold:#C8A24A;--ivory:#F4F7F8;--surface:#FFFFFF;--surface-soft:#F8FAFB;
-  --text:#17212B;--muted:#687887;--border:#E2E8EC;
-  --danger:#B42318;--success:#16805A;--warning:#A36A00;--info:#1769AA;
-  --shadow:0 8px 28px rgba(15,35,55,.055);--shadow-lg:0 18px 48px rgba(15,35,55,.10);
-  --radius:16px;--radius-sm:10px;
-}
-html,body{font-family:'Manrope',Inter,ui-sans-serif,system-ui,-apple-system,'Segoe UI',Arial,sans-serif}
-body{background:radial-gradient(circle at 0 0,rgba(8,127,91,.035),transparent 28%),radial-gradient(circle at 100% 0,rgba(200,162,74,.035),transparent 22%),var(--ivory)}
-.topbar{min-height:72px;padding:10px clamp(16px,3vw,30px);background:rgba(255,255,255,.965);border-bottom:1px solid #E6EBEF;box-shadow:0 4px 18px rgba(16,42,67,.035)}
-.app-logo{width:46px;height:46px;border-radius:13px;box-shadow:0 5px 16px rgba(16,42,67,.08)}
-.brand h2{font-size:1.02rem;letter-spacing:-.45px;font-weight:800}.brand small{font-weight:600}
-.top-search{max-width:600px;flex:1}.top-search-wrap{height:44px;border:1px solid #DCE4E9;border-radius:12px;background:#F8FAFB;box-shadow:inset 0 1px 2px rgba(16,42,67,.02);transition:.2s}
-.top-search-wrap:focus-within{background:#fff;border-color:rgba(8,127,91,.48);box-shadow:0 0 0 4px rgba(8,127,91,.08)}
-.top-search-wrap input{font-size:.88rem;font-weight:550}.top-search-icon{font-size:1.05rem;color:#758696}.top-search-kbd{border:1px solid #D9E2E7;background:#fff;border-radius:7px;padding:3px 7px;font-size:.67rem;color:#748392;box-shadow:0 1px 2px rgba(0,0,0,.03)}
-.layout{grid-template-columns:260px minmax(0,1fr)}
-.sidebar{padding:18px 12px 14px;background:linear-gradient(180deg,#102A43 0%,#12364C 48%,#0D5147 100%);border-right:1px solid rgba(255,255,255,.08);box-shadow:10px 0 30px rgba(16,42,67,.08)}
-.nav-section-title{font-size:.65rem;letter-spacing:1.3px;color:#D9BF74;margin:16px 10px 8px;font-weight:800}
-.nav-btn,.nav-group-toggle{border-radius:10px;min-height:42px;font-size:.84rem;font-weight:650;letter-spacing:.05px;transition:background .18s ease,color .18s ease,transform .18s ease,box-shadow .18s ease}
-.nav-btn{padding:10px 12px}.nav-btn:hover,.nav-group-toggle:hover{background:rgba(255,255,255,.075);transform:translateX(2px)}
-.nav-btn.active{background:linear-gradient(90deg,rgba(8,127,91,.92),rgba(8,127,91,.68));box-shadow:0 7px 18px rgba(0,0,0,.12);color:#fff}
-.nav-group-toggle{padding:10px 12px}.nav-submenu{padding:3px 0 5px 8px}.nav-submenu .nav-btn{min-height:38px;font-size:.81rem;color:#C9D5DD}.nav-submenu .nav-btn.active{color:#fff}
-.nav-chevron{transition:transform .2s ease}.nav-collapsible.open .nav-chevron{transform:rotate(90deg)}
-.sidebar-footer{border-top:1px solid rgba(255,255,255,.1);padding-top:13px;margin-top:12px}.sidebar-footer-item{border-radius:10px;padding:8px 7px}.sidebar-footer-item:hover{background:rgba(255,255,255,.055)}
-.content{padding:26px clamp(16px,3vw,34px) 42px;min-width:0}.content>.page-head{margin-bottom:18px}
-.panel{border:1px solid #E2E8EC;border-radius:16px;box-shadow:var(--shadow);background:#fff}.panel:hover{box-shadow:0 10px 32px rgba(15,35,55,.07)}
-.stat{padding:19px 20px;border-radius:15px;border:1px solid #E5EAEE;background:#fff;box-shadow:var(--shadow);transition:transform .18s ease,box-shadow .18s ease}
-.stat:hover{transform:translateY(-2px);box-shadow:var(--shadow-lg)}.stat strong{font-size:1.65rem;font-weight:800}.stat small{font-size:.68rem;letter-spacing:.8px}
-.btn{min-height:42px;padding:10px 16px;border-radius:10px;font-size:.83rem;font-weight:750;letter-spacing:.05px;transition:transform .18s ease,box-shadow .18s ease,background .18s ease,border-color .18s ease}
-.btn-primary{background:linear-gradient(135deg,#075E4A,#087F5B);box-shadow:0 5px 14px rgba(8,127,91,.16)}
-.btn-primary:hover{box-shadow:0 8px 20px rgba(8,127,91,.23)}
-.btn-light{background:#fff;border:1px solid #DCE4E9;color:#304354;box-shadow:0 2px 6px rgba(16,42,67,.035)}
-.btn-light:hover{border-color:#B9C8D1;background:#F8FAFB}
-.btn-danger{box-shadow:0 5px 14px rgba(180,35,24,.12)}
-.table-wrap{border:1px solid #E1E7EB;border-radius:13px;box-shadow:0 3px 12px rgba(16,42,67,.025)}
-.friendly-table{font-size:.84rem}.friendly-table th{background:#F5F8F9;color:#263B4B;font-size:.74rem;letter-spacing:.25px;text-transform:none;padding:12px 14px}.friendly-table td{padding:12px 14px}.friendly-table tbody tr{transition:background .15s ease}.friendly-table tbody tr:hover{background:#F8FBFA}
-.badge,.status-badge{border-radius:999px!important;font-weight:750!important;padding:5px 9px!important;font-size:.7rem!important;letter-spacing:.1px}
-.search-results{border:1px solid #DCE4E9!important;border-radius:13px!important;box-shadow:0 18px 45px rgba(16,42,67,.12)!important;background:#fff!important}.search-result{padding:11px 13px!important;transition:background .15s ease}.search-result:hover{background:#F5F9F8!important}
-.toast{border-radius:11px!important;box-shadow:0 12px 30px rgba(16,42,67,.13)!important}
-#mainContent{animation:simpelPageIn .24s ease both}
-@keyframes simpelPageIn{from{opacity:.0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
-.view-transition-shield{background:rgba(244,247,248,.84);backdrop-filter:blur(7px)}
-.view-transition-card{border-radius:14px;border:1px solid #E1E7EB;box-shadow:0 18px 42px rgba(16,42,67,.12)}
-@media(max-width:980px){.layout{grid-template-columns:235px minmax(0,1fr)}.top-search{max-width:420px}}
-@media(max-width:760px){.topbar{min-height:64px}.top-search{display:none}.layout{grid-template-columns:1fr}.sidebar{position:fixed;left:0;top:64px;bottom:0;width:270px;z-index:80;transform:translateX(-105%);transition:transform .24s ease;overflow:auto}.sidebar.open{transform:translateX(0)}.content{padding:18px 14px 30px}}
-</style>
-</head><body>${body}<script>window.onload=()=>setTimeout(()=>window.print(),350)<\/script></body></html>`);
+
+  const sekolah=d.sekolah||{};
+  const namaSekolah=sekolah.nama_sekolah||sekolah.nama||npsn||'NAMA SD';
+  const alamat=sekolah.alamat_lengkap||sekolah.alamat||'Alamat Lengkap sekolah';
+  const kecamatan=sekolah.kecamatan||sekolah.nama_kecamatan||'Nama Kecamatan';
+  const logoEl=document.querySelector('img[src*="logorembang"], img[alt="Rembang"]');
+  const logoSrc=logoEl?.src || 'logorembang.png';
+
+  const kop = `
+    <div class="official-letterhead">
+      <div class="letterhead-logo"><img src="${esc(logoSrc)}" alt="Lambang Kabupaten Rembang"></div>
+      <div class="letterhead-text">
+        <div class="letterhead-line">PEMERINTAH KABUPATEN REMBANG</div>
+        <div class="letterhead-line">DINAS PENDIDIKAN, PEMUDA DAN OLAHRAGA</div>
+        <div class="letterhead-school">${esc(namaSekolah)}</div>
+        <div class="letterhead-address">${esc(alamat)}${kecamatan && kecamatan !== '-' ? ' • '+esc(kecamatan) : ''}</div>
+      </div>
+      <div></div>
+    </div>
+    <div class="letterhead-rule"></div>
+  `;
+
+  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Lembar Penilaian SPJ - ${esc(namaSekolah)} - ${esc(p)}</title>
+  <style>
+  @page{size:A4;margin:12mm 14mm 14mm}
+  *{box-sizing:border-box}
+  body{font-family:Arial,sans-serif;color:#17212b;font-size:10px;line-height:1.35;margin:0}
+  .official-letterhead{display:grid;grid-template-columns:78px 1fr 78px;align-items:center;min-height:91px;margin:0 0 3px}
+  .letterhead-logo{grid-column:1;display:flex;align-items:center;justify-content:center}
+  .letterhead-logo img{width:66px;height:78px;object-fit:contain}
+  .letterhead-text{grid-column:2;text-align:center;padding:0 4px}
+  .letterhead-line{font-size:15px;line-height:1.15;font-weight:500;letter-spacing:.1px}
+  .letterhead-school{font-size:18px;line-height:1.18;font-weight:800;margin-top:2px;text-transform:uppercase}
+  .letterhead-address{font-size:11px;line-height:1.2;margin-top:2px}
+  .letterhead-rule{height:2px;background:#0b5f91;margin:3px 0 13px;border-bottom:1px solid #0b5f91}
+  h2{font-size:18px}h3{font-size:13px;border-bottom:1px solid #ddd;padding-bottom:5px}
+  .panel{border:1px solid #ddd;border-radius:8px;padding:10px;margin:0 0 10px;break-inside:avoid}
+  .muted{color:#667085}.assessment-guide{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.assessment-guide-card{border:1px solid #ddd;padding:8px}
+  .table-wrap{overflow:visible}table{width:100%;border-collapse:collapse;font-size:8px}th,td{border:1px solid #ccc;padding:4px;vertical-align:top}th{background:#f1f3f5}
+  .school-index-grid{display:block}.school-index-grid .panel{display:inline-block;width:46%;vertical-align:top;margin-right:1%}
+  a{color:#173f5f}.badge{display:inline-block;padding:3px 7px;border:1px solid #ccc;border-radius:10px;font-size:8px}
+  .v5-print-sheet>.panel:first-of-type{border-top:0!important}
+  @media print{a{color:#173f5f;text-decoration:none}.official-letterhead{break-inside:avoid}}
+  </style></head><body>${kop}${body}<script>window.onload=()=>setTimeout(()=>window.print(),350)<\/script></body></html>`);
   w.document.close();
 }
 window.loadV5Archive=loadV5Archive;
@@ -3843,10 +4211,30 @@ async function renderPengesahanPanel(idAsesmen){
         </div>
         ${approved?`<div class="message ok" style="margin-top:12px">✓ Persetujuan sekolah tercatat oleh <b>${esc(approval.disetujui_oleh||'-')}</b> pada ${esc(approval.disetujui_at||approval.tanggal||'-')}.</div>`:''}
         ${appeal && ['DIAJUKAN','DIKAJI_ULANG'].includes(String(appeal.status_keberatan||'').toUpperCase())?`<div class="message warning" style="margin-top:12px">Keberatan masih dalam proses. Pengesahan ditahan sampai kaji ulang selesai.</div>`:''}
+        ${signed?`<div class="toolbar" style="margin-top:12px;justify-content:flex-end"><button class="btn btn-primary" onclick="bukaArsipTersahkan('${esc(idAsesmen)}')">🖨️ Cetak Berkas Penilaian Sah</button></div>`:''}
         ${action}
       </div>`;
   }catch(e){host.innerHTML=msg(errorText(e));}
 }
+
+window.bukaArsipTersahkan=async function(idAsesmen){
+  try{
+    const r=await api('getPengesahanPenilaian',{idAsesmen});
+    const d=r.data||{};
+    if(!d.persetujuan_sekolah || !d.pengesahan_pengawas) {
+      toast('Berkas baru dapat dicetak sebagai berkas sah setelah persetujuan sekolah dan pengesahan pengawas tercatat.','warning',5000);
+      return;
+    }
+    state.selectedNpsn=d.npsn;
+    state.selectedPeriode=d.id_periode;
+    await loadView('arsipPenilaianV5');
+    const n=$('#v5ArchiveNpsn'), p=$('#v5ArchivePeriode');
+    if(n) n.value=d.npsn;
+    if(p) p.value=d.id_periode;
+    await loadV5Archive();
+    setTimeout(()=>printV5Archive(),400);
+  }catch(e){toast(errorText(e),'error',5000);}
+};
 
 window.setujuiPenilaian=async function(idAsesmen){
   if(!confirm('Anda menyetujui hasil penilaian ini. Setelah disetujui, pengawas dapat melakukan pengesahan elektronik. Lanjutkan?'))return;
@@ -3876,4 +4264,109 @@ renderAssessment = function(a, indicators){
   const host=document.createElement('div'); host.id='assessmentSigningArea'; area.appendChild(host);
   renderPengesahanPanel(a.id_asesmen);
 };
+</script>
+
+<script>
+/* V12 UX — fokus DINAS & SEKOLAH. Tidak mengubah API/database/business flow. */
+(function(){
+  // Perapihan label navigasi agar berorientasi pekerjaan.
+  if(window.ROLE_MENUS){
+    const d=ROLE_MENUS.DINAS, k=ROLE_MENUS.SEKOLAH;
+    const relabel=(arr,map)=>arr?.forEach(g=>{
+      if(g.items) g.items.forEach(i=>{ if(map[i.id]) i.label=map[i.id]; });
+      else if(map[g.id]) g.label=map[g.id];
+    });
+    relabel(d,{
+      home:'Beranda',masterSpj:'Periode & Master SPJ',sekolah:'Daftar Sekolah',penugasan:'Penugasan Pengawas',
+      rkasReview:'RKAS & Anggaran',transaksi:'Realisasi SPJ',monitoringGlobal:'Monitoring Sekolah',temuan:'Temuan & Tindak Lanjut',
+      pesan:'Pesan & Koordinasi',dbCheck:'Validasi Sistem',tutorialV5:'Panduan SIMPEL SPJ'
+    });
+    relabel(k,{
+      home:'Beranda',dokumenBulanan:'Dokumen SPJ',statusSpj:'Status SPJ',transaksi:'Transaksi & BKU',
+      sekolah:'Profil Sekolah',temuan:'Temuan Pemeriksaan',pesan:'Pesan dari Dinas/Pengawas',tutorialV5:'Panduan SIMPEL SPJ',
+      ubahPassword:'Ubah Password'
+    });
+  }
+
+  function roleName(){return String(window.state?.user?.role||'').toUpperCase()}
+  function isD(){return roleName()==='DINAS'}
+  function isS(){return roleName()==='SEKOLAH'}
+  function userName(){return window.state?.user?.nama_pengguna||window.state?.user?.nama||window.state?.user?.username||'-'}
+  function go(v){window.loadView(v)}
+  function schoolName(){return window.state?.user?.nama_sekolah||window.state?.user?.nama_pengguna||'Sekolah'}
+  function schoolNpsn(){return window.state?.user?.npsn||window.state?.user?.username||''}
+
+  // Home baru: lebih sedikit informasi, lebih banyak arahan kerja.
+  window.homeView = async function(){
+    const role=roleName();
+    const name=userName();
+    let primary, secondary, desc;
+    if(isD()){
+      primary=['monitoringGlobal','Buka Monitoring Sekolah'];
+      secondary=['sekolah','Lihat Daftar Sekolah'];
+      desc='Pantau sekolah, periode SPJ, penugasan pengawas, temuan, dan tindak lanjut dari satu ruang kerja.';
+    }else if(isS()){
+      primary=['statusSpj','Buka Status SPJ'];
+      secondary=['dokumenBulanan','Kelola Dokumen'];
+      desc='Kelola SPJ sesuai periode, lengkapi dokumen, dan tindak lanjuti hasil pemeriksaan tanpa berpindah-pindah konteks.';
+    }else{
+      primary=['home','Beranda']; secondary=['tutorialV5','Buka Panduan']; desc='Ruang kerja SIMPEL SPJ.';
+    }
+    const schoolBlock = isS() ? '<section class="ux-school-strip"><div class="ux-school-main"><div class="ux-school-icon">🏫</div><div><div class="ux-school-name">'+esc(schoolName())+'</div><div class="ux-school-meta">NPSN '+esc(schoolNpsn())+' • satu konteks kerja sekolah</div></div></div><div class="ux-school-actions"><button class="btn btn-light ux-mini" onclick="loadView(\'statusSpj\')">Status SPJ</button><button class="btn btn-primary ux-mini" onclick="loadView(\'dokumenBulanan\')">Buka Dokumen</button></div></section>' : '';
+    $('#mainContent').innerHTML=`
+      <div class="ux-home">
+        <section class="ux-hero"><div class="ux-hero-inner"><div class="ux-hero-copy">
+          <div class="ux-hero-kicker">SIMPEL SPJ • DINDIKPORA REMBANG</div>
+          <h2>${isD()?'Pusat Kendali SPJ':isS()?'Ruang Kerja SPJ Sekolah':'SIMPEL SPJ'}</h2>
+          <p>Selamat datang, <b>${esc(name)}</b>. ${esc(desc)}</p>
+          <div class="ux-actions"><button class="btn btn-primary" onclick="loadView('${primary[0]}')">${isD()?'📊 ': '📋 '}${primary[1]} →</button><button class="btn btn-light" onclick="loadView('${secondary[0]}')">${isD()?'🏫 ': '📁 '}${secondary[1]}</button></div>
+        </div></div></section>
+
+        <div class="ux-section-label">Arah kerja</div>
+        <section class="ux-workbar">
+          <article class="ux-workcard primary"><div class="eyebrow">01 • Pekerjaan utama</div><h3>${isD()?'Pantau sekolah yang membutuhkan perhatian':'Pastikan SPJ periode aktif lengkap'}</h3><p>${isD()?'Mulai dari status sekolah, lalu buka sekolah yang perlu ditindaklanjuti.':'Mulai dari status SPJ, lanjutkan ke dokumen dan transaksi yang masih perlu dilengkapi.'}</p><a href="javascript:void(0)" onclick="loadView('${primary[0]}')">Mulai dari sini →</a></article>
+          <article class="ux-workcard"><div class="eyebrow">02 • Pemeriksaan</div><h3>${isD()?'Temuan & tindak lanjut':'Hasil pemeriksaan'}</h3><p>${isD()?'Lihat temuan yang membutuhkan perhatian dan tindak lanjut.':'Lihat status pemeriksaan dan tindak lanjut yang diminta.'}</p><a href="javascript:void(0)" onclick="loadView('${isD()?'temuan':'temuan'}')">Lihat →</a></article>
+          <article class="ux-workcard"><div class="eyebrow">03 • Bantuan</div><h3>Panduan & pencarian</h3><p>Gunakan pencarian di atas atau baca panduan langsung tanpa meninggalkan aplikasi.</p><a href="javascript:void(0)" onclick="document.getElementById('globalSearchInput')?.focus()">Cari sekarang →</a>
+          </article>
+        </section>
+
+        <div class="ux-section-label">Ringkasan cepat</div>
+        <section class="ux-kpis">
+          <div class="ux-kpi"><div class="label">Peran</div><div class="value" style="font-size:1rem">${esc(role)}</div><div class="hint">Akses sesuai kewenangan</div></div>
+          <div class="ux-kpi"><div class="label">Wilayah</div><div class="value" style="font-size:1rem">Rembang</div><div class="hint">Sistem aktif</div></div>
+          <div class="ux-kpi"><div class="label">Sekolah</div><div class="value">378</div><div class="hint">Basis satuan pendidikan</div></div>
+          <div class="ux-kpi"><div class="label">Sesi</div><div class="value" style="font-size:1rem">Aktif</div><div class="hint">${esc(role)}</div></div>
+        </section>
+
+        ${schoolBlock}
+
+        <div class="ux-section-label">Yang perlu dilakukan</div>
+        <section class="ux-todo">
+          <article class="ux-todo-card"><div class="ux-todo-icon">🎯</div><div><strong>${isD()?'Pilih sekolah untuk mulai monitoring':'Periksa periode SPJ aktif'}</strong><span>${isD()?'Buka daftar sekolah dan masuk ke satu sekolah untuk melihat konteks lengkapnya.':'Pastikan periode, transaksi, dan dokumen sesuai kondisi terbaru.'}</span><a href="javascript:void(0)" onclick="loadView('${primary[0]}')">Buka →</a></div></article>
+          <article class="ux-todo-card"><div class="ux-todo-icon">📄</div><div><strong>${isD()?'Periksa temuan yang belum selesai':'Lengkapi dokumen yang diminta'}</strong><span>${isD()?'Fokus pada item yang memerlukan keputusan atau tindak lanjut.':'Dokumen bukti menjadi dasar pemeriksaan SPJ.'}</span><a href="javascript:void(0)" onclick="loadView('${isD()?'temuan':'dokumenBulanan'}')">Lihat →</a></div></article>
+          <article class="ux-todo-card"><div class="ux-todo-icon">🔎</div><div><strong>Gunakan pencarian global</strong><span>Cari sekolah dengan nama lengkap, NPSN, atau kata kunci lain tanpa membuka menu satu per satu.</span><a href="javascript:void(0)" onclick="document.getElementById('globalSearchInput')?.focus()">Mulai pencarian →</a></div></article>
+        </section>
+
+        <section class="ux-tip"><div class="ux-tip-icon">💡</div><div><strong>Prinsip penggunaan SIMPEL SPJ</strong><p>${isD()?'Mulai dari sekolah → lihat status → buka konteks sekolah → tindak lanjuti. Tidak perlu membuka semua modul sekaligus.':'Mulai dari periode → lengkapi transaksi dan dokumen → lihat hasil pemeriksaan → tindak lanjuti. Semua tetap dalam konteks sekolah.'}</p></div></section>
+      </div>`;
+  };
+
+  // Tambahkan context bar ke setiap halaman selain beranda.
+  const originalRender=window.renderViewSafely;
+  if(originalRender){
+    window.renderViewSafely=async function(view){
+      await originalRender(view);
+      const c=document.getElementById('mainContent'); if(!c || view==='home') return;
+      if(c.querySelector('.ux-context')) return;
+      const labels={monitoringGlobal:'Monitoring Sekolah',sekolah:'Daftar Sekolah',rkasReview:'RKAS & Anggaran',transaksi:'Realisasi SPJ',temuan:'Temuan & Tindak Lanjut',penugasan:'Penugasan Pengawas',statusSpj:'Status SPJ',dokumenBulanan:'Dokumen SPJ',tutorialV5:'Panduan SIMPEL SPJ',pesan:'Pesan & Koordinasi',asesmen:'Penilaian SPJ',pdfInteraktif:'Bukti PDF'};
+      const title=labels[view]||String(view||'Modul').replace(/([A-Z])/g,' $1');
+      const context=isD()?'DINAS':isS()?'SEKOLAH':roleName();
+      const school=state?.selectedNpsn?`NPSN ${state.selectedNpsn}`:isS()?`NPSN ${schoolNpsn()}`:'';
+      const bar=document.createElement('div');bar.className='ux-context';bar.innerHTML=`<div class="ux-context-left"><div class="ux-context-mark">${isD()?'D':isS()?'S':'S'}</div><div><div class="ux-context-title">${esc(context)} · ${esc(title)}</div><div class="ux-context-sub">${esc(school||'Gunakan menu seperlunya dan tetap pada konteks pekerjaan yang sedang dikerjakan.')}</div></div><div class="ux-context-actions"><button class="btn btn-light ux-mini" onclick="loadView('home')">← Beranda</button>${isD()?`<button class="btn btn-light ux-mini" onclick="loadView('sekolah')">🏫 Sekolah</button>`:''}${isS()?`<button class="btn btn-light ux-mini" onclick="loadView('statusSpj')">📋 Status</button>`:''}</div>`;c.prepend(bar);
+    };
+  }
+
+  // Shortcut ringan: Alt+H kembali ke beranda.
+  document.addEventListener('keydown',e=>{if(e.altKey && e.key.toLowerCase()==='h'){e.preventDefault();if(window.state?.token) loadView('home')}});
+})();
 </script>
