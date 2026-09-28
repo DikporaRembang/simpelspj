@@ -540,6 +540,10 @@ body:before{background:linear-gradient(180deg,rgba(255,253,248,.86),rgba(245,242
 @media(max-width:980px){.v11-focus-grid,.v11-activity{grid-template-columns:1fr}.v11-stats{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:650px){.v11-hero-inner{padding:23px}.v11-hero{min-height:390px}.v11-hero-inner{min-height:390px}.v11-stats{grid-template-columns:1fr 1fr}.v11-pdf-canvas{min-height:360px;padding:9px}.v11-hero h2{font-size:1.9rem}}
 </style>
+<style id="v11PdfAssessmentFeed">
+.v11-assessment-card{border:1px solid #e5e7eb;border-radius:16px;padding:14px;margin-top:10px;background:#fff;box-shadow:0 4px 16px rgba(16,42,67,.05)}
+.v11-assessment-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.v11-assessment-head>div:first-child{display:flex;gap:10px;align-items:flex-start}.v11-indicator-index{width:30px;height:30px;border-radius:9px;background:#eef7f2;color:#176b4d;display:grid;place-items:center;font-weight:800;font-size:11px}.v11-assessment-name{font-size:12px;color:#667085;margin-top:3px;line-height:1.4}.v11-score-chip{font-size:20px;font-weight:800;color:#176b4d;white-space:nowrap}.v11-score-chip small{font-size:11px;color:#98a2b3}.v11-assessment-meta{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0;font-size:11px;color:#667085}.v11-assessment-meta span{background:#f7f8fa;border-radius:999px;padding:5px 8px}.v11-assessment-form{display:grid;grid-template-columns:minmax(0,1fr) 110px;gap:9px}.v11-assessment-card label{display:block;font-size:11px;font-weight:700;color:#475467;margin-bottom:5px}.v11-assessment-card select,.v11-assessment-card input,.v11-assessment-card textarea{width:100%;box-sizing:border-box;border:1px solid #d0d5dd;border-radius:9px;padding:9px;background:#fff;font:inherit;font-size:12px}.v11-assessment-card textarea{resize:vertical}.v11-assessment-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:9px}.v11-locked-note{margin-top:10px;padding:9px;border-radius:9px;background:#f2f4f7;color:#667085;font-size:12px}@media(max-width:900px){.v11-assessment-form{grid-template-columns:1fr}.pdf-interactive-grid{grid-template-columns:1fr!important}.pdf-interactive-grid aside{max-height:none!important}}
+</style>
 </head>
 <body>
 <div id="app" class="app"></div>
@@ -2950,14 +2954,62 @@ window.loadInteractiveIndicators=async function(){
   const c=window.__pdfInteractiveContext; if(!c||!isPengawas())return;
   const box=$('#interactiveIndicators'); if(!box)return;
   try{
-    const r=await api('hitungIndikatorDariTemuan',{idPeriode:c.p,npsn:c.n,idAsesmen:c.assessment.id_asesmen}); const list=r.data||[];
+    const r=await api('hitungIndikatorDariTemuan',{idPeriode:c.p,npsn:c.n,idAsesmen:c.assessment.id_asesmen});
+    const list=r.data||[];
     const details=c.details||[];
-    box.innerHTML=list.map(d=>{
-      const dt=details.find(x=>String(x.id_indikator)===String(d.id_indikator)); const page=dt?.halaman_bukti||'';
-      return `<div style="padding:10px 0;border-bottom:1px solid #eee"><div style="display:flex;justify-content:space-between;gap:8px"><b>${esc(d.kode_indikator)}</b><strong>${Number(d.skor).toFixed(2)}/4</strong></div><div class="muted">${esc(d.nama_indikator)} • Risiko ${Number(d.risiko||0).toFixed(1)}/100 • Bukti halaman ${esc(page||'-')}</div>${String(c.assessment.status_asesmen||'').toUpperCase()!=='SELESAI'?`<button class="btn btn-sm btn-light" style="margin-top:7px" onclick="interactiveEditScore('${esc(c.assessment.id_asesmen)}','${esc(d.id_indikator)}','${esc(d.skor)}','${esc(d.skor_otomatis)}','${esc(page)}','${esc(dt?.id_temuan||'')}')">Koreksi / Tandai Halaman</button>`:''}</div>`;
+    const locked=String(c.assessment.status_asesmen||'').toUpperCase()==='SELESAI';
+    box.innerHTML=list.map((d,i)=>{
+      const dt=details.find(x=>String(x.id_indikator)===String(d.id_indikator));
+      const page=dt?.halaman_bukti||'';
+      const current=(dt?.skor!==''&&dt?.skor!=null)?dt.skor:d.skor;
+      const automatic=dt?.hasil_otomatis??d.skor_otomatis??d.skor;
+      const finding=dt?.id_temuan||'';
+      const pageNow=$('#interactivePage')?.value||page||1;
+      return `<div class="v11-assessment-card" data-indicator="${esc(d.id_indikator)}">
+        <div class="v11-assessment-head">
+          <div><span class="v11-indicator-index">${String(i+1).padStart(2,'0')}</span><div><b>${esc(d.kode_indikator||'INDIKATOR')}</b><div class="v11-assessment-name">${esc(d.nama_indikator||'-')}</div></div></div>
+          <div class="v11-score-chip">${Number(current||0).toFixed(2)}<small>/4</small></div>
+        </div>
+        <div class="v11-assessment-meta"><span>Otomatis <b>${Number(automatic||0).toFixed(2)}</b></span><span>Risiko <b>${Number(d.risiko||0).toFixed(1)}/100</b></span><span>Bukti <b>Hal. ${esc(page||'-')}</b></span></div>
+        ${locked ? `<div class="v11-locked-note">🔒 Penilaian sudah difinalisasi.</div>` : `
+        <div class="v11-assessment-form">
+          <div><label>Keputusan / skor</label><select id="v11score_${esc(d.id_indikator)}"><option value="">Gunakan otomatis (${Number(automatic||0).toFixed(2)})</option>${[0,1,2,3,4].map(v=>`<option value="${v}" ${String(current)===String(v)?'selected':''}>${v} — ${['Sangat baik / tanpa masalah','Perlu perhatian ringan','Temuan minor','Temuan major','Temuan critical'][v]}</option>`).join('')}</select></div>
+          <div><label>Halaman bukti</label><input id="v11page_${esc(d.id_indikator)}" type="number" min="1" value="${esc(page||pageNow||1)}" placeholder="No. halaman"></div>
+        </div>
+        <div style="margin-top:8px"><label>Catatan Pengawas</label><textarea id="v11note_${esc(d.id_indikator)}" rows="2" placeholder="Tambahkan alasan atau catatan pemeriksaan...">${esc(dt?.catatan_pengawas||'')}</textarea></div>
+        <div class="v11-assessment-actions"><button class="btn btn-sm btn-primary" onclick="saveInlinePdfAssessment('${esc(c.assessment.id_asesmen)}','${esc(d.id_indikator)}','${esc(automatic)}','${esc(finding)}')">✓ Simpan Penilaian</button><button class="btn btn-sm btn-light" onclick="focusPdfIndicatorPage('${esc(d.id_indikator)}')">📄 Lihat Bukti</button></div>
+        `}
+      </div>`;
     }).join('')||'<div class="muted">Belum ada indikator.</div>';
   }catch(e){box.innerHTML=msg(errorText(e));}
 };
+
+window.focusPdfIndicatorPage=function(idIndikator){
+  const c=window.__pdfInteractiveContext||{};
+  const d=(c.details||[]).find(x=>String(x.id_indikator)===String(idIndikator));
+  const page=d?.halaman_bukti||1;
+  const input=$('#interactivePage'); if(input)input.value=page;
+  goInteractivePage();
+};
+
+window.saveInlinePdfAssessment=async function(idAsesmen,idIndikator,automatic,idTemuan){
+  const scoreEl=$('#v11score_'+idIndikator), pageEl=$('#v11page_'+idIndikator), noteEl=$('#v11note_'+idIndikator);
+  if(!pageEl||!/^\d+$/.test(String(pageEl.value||''))||Number(pageEl.value)<1){toast('Nomor halaman bukti wajib diisi dengan benar.','warning');return;}
+  const raw=scoreEl?.value||'';
+  const score=raw===''?'':Number(raw);
+  const auto=Number(automatic);
+  let note=(noteEl?.value||'').trim();
+  if(score!=='' && (score<0||score>4)){toast('Skor harus 0 sampai 4.','warning');return;}
+  if(score!=='' && Math.abs(score-auto)>.001 && !note){toast('Jika skor berbeda dari sistem, alasan/catatan Pengawas wajib diisi.','warning');noteEl?.focus();return;}
+  try{
+    await api('simpanDetailAsesmen',{data:{id_asesmen:idAsesmen,id_indikator:idIndikator,skor:score,catatan_pengawas:note,status_berlaku:'BERLAKU',halaman_bukti:String(pageEl.value),id_temuan:idTemuan||''}});
+    const page=String(pageEl.value);
+    $('#interactivePage').value=page;
+    toast('Penilaian dan bukti halaman berhasil disimpan.','ok');
+    await openPdfInteractive();
+  }catch(e){toast(errorText(e),'error',5000);}
+};
+
 window.interactiveEditScore=async function(idAsesmen,idIndikator,current,automatic,page,idTemuan){
   const p=prompt('Nomor halaman PDF yang menjadi bukti indikator ini:',page||($('#interactivePage')?.value||'1')); if(p===null)return;
   if(p && (!/^\d+$/.test(p)||Number(p)<1)){toast('Nomor halaman tidak valid.','warning');return;}
