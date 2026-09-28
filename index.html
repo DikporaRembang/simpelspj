@@ -293,6 +293,46 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
   box-shadow:0 24px 70px rgba(16,42,67,.22)!important
 }
 
+/* ================= MODERN UX LAYER ================= */
+.topbar{padding:10px clamp(14px,2.5vw,30px);min-height:70px;box-shadow:0 8px 24px rgba(16,42,67,.055)}
+.topbar .brand{flex:0 0 auto}
+.top-search{position:relative;flex:1;max-width:560px;margin:0 auto}
+.top-search-wrap{display:flex;align-items:center;gap:9px;background:#f7faf9;border:1px solid #d7e4df;border-radius:15px;padding:4px 7px 4px 13px;transition:.2s}
+.top-search-wrap:focus-within{background:#fff;border-color:var(--emerald);box-shadow:0 0 0 4px rgba(8,127,91,.08)}
+.top-search-icon{font-size:1rem;color:var(--muted)}
+.top-search input{width:100%;border:0;outline:0;background:transparent;padding:10px 4px;font-size:.9rem;color:var(--text);min-width:0}
+.top-search input::placeholder{color:#82919d}
+.top-search-kbd{font-size:.67rem;color:#7b8a96;border:1px solid #d8e1de;border-radius:7px;padding:3px 6px;background:#fff;white-space:nowrap}
+.search-results{position:absolute;top:calc(100% + 9px);left:0;right:0;background:#fff;border:1px solid var(--border);border-radius:16px;box-shadow:0 20px 55px rgba(16,42,67,.16);padding:7px;z-index:1000;max-height:min(65vh,520px);overflow:auto}
+.search-result{display:flex;align-items:center;gap:11px;padding:11px 12px;border-radius:11px;cursor:pointer;transition:.15s}
+.search-result:hover{background:var(--surface-soft)}
+.search-result-icon{width:35px;height:35px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:var(--emerald-soft);color:var(--emerald);flex:0 0 auto;font-weight:850}
+.search-result-main{min-width:0;flex:1}.search-result-main strong{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.search-result-main small{display:block;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.search-empty{padding:18px;text-align:center;color:var(--muted);font-size:.86rem}
+.sidebar{padding:16px 12px;background:linear-gradient(180deg,#0D263F 0%,#0D3B3A 60%,#087F5B 150%);box-shadow:10px 0 30px rgba(16,42,67,.05)}
+.nav-section-title{margin:15px 10px 7px;color:#d9bf74;font-size:.64rem;letter-spacing:1.25px}
+.nav-group{gap:3px}
+.nav-group.nav-collapsible{margin-bottom:3px}
+.nav-group-toggle{width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;border:1px solid transparent;background:transparent;color:#aebdca;padding:8px 11px;border-radius:10px;font-size:.67rem;font-weight:850;letter-spacing:.7px;text-transform:uppercase;cursor:pointer}
+.nav-group-toggle:hover{background:rgba(255,255,255,.055);color:#fff}
+.nav-chevron{font-size:1rem;line-height:1;transition:.2s}.nav-group.open>.nav-group-toggle .nav-chevron{transform:rotate(90deg)}
+.nav-submenu{padding:2px 0 6px 5px;gap:3px}
+.nav-submenu .nav-btn{min-height:41px;padding:9px 11px;border-radius:10px;font-size:.83rem}
+.nav-btn{min-height:43px;padding:10px 12px;border-radius:11px}
+.nav-btn.active{background:linear-gradient(100deg,rgba(200,162,74,.2),rgba(255,255,255,.08));box-shadow:inset 3px 0 0 var(--gold),0 6px 15px rgba(0,0,0,.08)}
+.nav-btn:hover{transform:none;background:rgba(255,255,255,.08)}
+.sidebar-footer{padding-top:12px}
+.content{padding:clamp(18px,2.7vw,34px);max-width:1580px}
+.page-head{margin-bottom:18px}
+.page-head h1{font-size:clamp(1.35rem,2.1vw,1.85rem)}
+.panel{border-radius:18px;box-shadow:0 8px 28px rgba(16,42,67,.055)}
+.stat{border-radius:16px;box-shadow:0 7px 22px rgba(16,42,67,.055)}
+.toolbar{align-items:center}
+.toolbar .btn,.toolbar input,.toolbar select{border-radius:11px}
+.table-wrap{border-radius:13px;box-shadow:0 4px 18px rgba(16,42,67,.035)}
+@media(max-width:900px){.top-search{max-width:none;margin:0 8px}.topbar .top-actions>span{display:none}.top-search-kbd{display:none}}
+@media(max-width:700px){.top-search{margin:0 3px}.top-search-wrap{padding-left:10px}.top-search input{font-size:16px}.content{padding:14px 12px 28px}}
+
 /* ================= RESPONSIVE TABLET ================= */
 @media (max-width:1100px){
   .auth{grid-template-columns:1fr}
@@ -955,6 +995,14 @@ function renderShell(){
             <div><h2>SIMPEL SPJ</h2><small>Peran: <b>${esc(currentRole)}</b></small></div>
           </div>
         </div>
+        <div class="top-search" id="globalSearchBox">
+          <div class="top-search-wrap">
+            <span class="top-search-icon">⌕</span>
+            <input id="globalSearchInput" autocomplete="off" placeholder="Cari sekolah, NPSN, nama lengkap, pengguna..." aria-label="Pencarian global">
+            <span class="top-search-kbd">Ctrl K</span>
+          </div>
+          <div id="globalSearchResults" class="search-results hidden"></div>
+        </div>
         <div class="top-actions">
           <span class="muted" style="font-weight:600; display:inline-flex; align-items:center; gap:8px;">
             ${schoolInfoText}
@@ -1004,6 +1052,37 @@ function renderShell(){
   });
   $('#logoutBtn').onclick = logout; 
   $('#menuBtn').onclick = () => $('#sidebar')?.classList.toggle('open');
+  initGlobalSearch();
+}
+
+let _globalSearchTimer = null;
+async function runGlobalSearch(q){
+  const box = $('#globalSearchResults'), input = $('#globalSearchInput');
+  if(!box || !input) return;
+  q = String(q || '').trim();
+  if(q.length < 2){ box.classList.add('hidden'); box.innerHTML=''; return; }
+  box.classList.remove('hidden');
+  box.innerHTML = loading('Mencari...');
+  try{
+    const res = await api('cariGlobalSIMPEL',{q});
+    const rows = res.data || [];
+    if(!rows.length){ box.innerHTML='<div class="search-empty">Tidak ditemukan. Coba nama lengkap, nama sekolah, NPSN, atau kata kunci lain.</div>'; return; }
+    box.innerHTML = rows.map((x,i)=>{
+      const icon = x.tipe === 'PENGGUNA' ? '👤' : '🏫';
+      const action = x.tipe === 'SEKOLAH'
+        ? `state.selectedNpsn='${esc(x.npsn)}';loadView('${isDinas() ? 'rkasReview' : isPengawas() ? 'rkasReview' : 'statusSpj'}')`
+        : `toast('Profil pengguna: ${esc(x.nama || x.username || '')}','ok')`;
+      return `<div class="search-result" data-search-index="${i}" onclick="${action}">\n        <div class="search-result-icon">${icon}</div>\n        <div class="search-result-main"><strong>${esc(x.nama || x.username || '-')}</strong><small>${esc(x.sub || x.npsn || '')}</small></div>\n        <span class="muted">›</span>\n      </div>`;
+    }).join('');
+  }catch(e){ box.innerHTML = '<div class="search-empty">Pencarian belum dapat digunakan. Silakan coba lagi.</div>'; }
+}
+function initGlobalSearch(){
+  const input = $('#globalSearchInput'), box = $('#globalSearchResults');
+  if(!input) return;
+  input.oninput = () => { clearTimeout(_globalSearchTimer); _globalSearchTimer=setTimeout(()=>runGlobalSearch(input.value),280); };
+  input.onkeydown = e => { if(e.key==='Escape'){input.value='';box?.classList.add('hidden');input.blur();} };
+  document.addEventListener('click', e => { const host=$('#globalSearchBox'); if(host && !host.contains(e.target)) box?.classList.add('hidden'); }, {once:true});
+  document.addEventListener('keydown', e => { if((e.ctrlKey || e.metaKey) && e.key.toLowerCase()==='k'){e.preventDefault();input.focus();input.select();} });
 }
 
 async function loadView(view){
