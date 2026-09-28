@@ -3318,26 +3318,392 @@ function _v5DocCards(docs){
   }).join('')}</div>`;
 }
 async function tutorialV5View(){
-  const c=$('#mainContent');
-  const githubUrl='https://github.com/DikporaRembang/simpelspj/blob/main/tutorial_simpelspj.pdf';
-  const rawUrl='https://raw.githubusercontent.com/DikporaRembang/simpelspj/main/tutorial_simpelspj.pdf';
-  const viewerUrl='https://docs.google.com/gview?embedded=1&url='+encodeURIComponent(rawUrl);
-  window._v5TutorialUrl=githubUrl;
-  c.innerHTML=head('Tutorial SIMPEL SPJ','Panduan resmi aplikasi dari repositori GitHub')+
-    `<div class="panel" style="border-left:4px solid var(--gold);">
-      <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap">
-        <div><h2 style="margin:0">📖 tutorial_simpelspj.pdf</h2><div class="muted">Tutorial resmi aplikasi — DINAS, PENGAWAS, dan SEKOLAH.</div></div>
-        <button class="btn btn-primary" onclick="window.open(window._v5TutorialUrl,'_blank')">Buka di GitHub</button>
-      </div>
-      <div id="v5TutorialFeed" style="margin-top:14px">
-        <div class="panel" style="padding:0;overflow:hidden">
-          <iframe title="Tutorial SIMPEL SPJ" src="${viewerUrl}" style="width:100%;height:76vh;border:0;background:#f5f7f9" allow="fullscreen" loading="lazy"></iframe>
-        </div>
-        <div class="muted" style="margin-top:8px">Sumber tutorial: GitHub resmi SIMPEL SPJ. File tidak disimpan di Google Drive aplikasi.</div>
-      </div>
-    </div>`;
-}
+  const c = $('#mainContent');
 
+  const rawUrl = 'https://raw.githubusercontent.com/DikporaRembang/simpelspj/main/tutorial_simpelspj.pdf';
+
+  c.innerHTML = head(
+    'Tutorial SIMPEL SPJ',
+    'Panduan resmi aplikasi'
+  ) +
+  `<div class="panel" style="border-left:4px solid var(--gold);">
+    <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap">
+      <div>
+        <h2 style="margin:0">📖 tutorial_simpelspj.pdf</h2>
+        <div class="muted">
+          Tutorial resmi aplikasi — DINAS, PENGAWAS, dan SEKOLAH.
+        </div>
+      </div>
+    </div>
+
+    <div id="v5TutorialFeed" style="margin-top:14px">
+      ${loading('Menyiapkan pembaca tutorial...')}
+    </div>
+  </div>`;
+
+  const area = $('#v5TutorialFeed');
+  if(!area) return;
+
+  try{
+
+    /*
+     * PDF dibaca menggunakan PDF.js dan dirender ke canvas.
+     * Tidak menggunakan iframe / Google Docs Viewer,
+     * sehingga PDF tampil langsung di dalam feed aplikasi.
+     */
+
+    if(!window.pdfjsLib){
+      await new Promise((resolve,reject)=>{
+        const sc = document.createElement('script');
+
+        sc.src =
+          'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+
+        sc.onload = resolve;
+
+        sc.onerror = () =>
+          reject(
+            new Error('Library pembaca PDF gagal dimuat.')
+          );
+
+        document.head.appendChild(sc);
+      });
+    }
+
+    if(!window.pdfjsLib){
+      throw new Error('PDF.js tidak tersedia.');
+    }
+
+    window.pdfjsLib.GlobalWorkerOptions.workerSrc =
+      'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+    area.innerHTML = `
+      <div id="v5PdfReader"
+        style="
+          background:#eef2f4;
+          border:1px solid var(--border);
+          border-radius:14px;
+          overflow:hidden;
+        ">
+
+        <!-- TOOLBAR -->
+        <div
+          style="
+            position:sticky;
+            top:0;
+            z-index:2;
+            background:#fff;
+            border-bottom:1px solid var(--border);
+            padding:10px 12px;
+            display:flex;
+            align-items:center;
+            justify-content:space-between;
+            gap:8px;
+            flex-wrap:wrap;
+          ">
+
+          <div style="display:flex;align-items:center;gap:8px">
+
+            <button
+              class="btn btn-light btn-sm"
+              id="v5PdfPrev">
+              ← Sebelumnya
+            </button>
+
+            <button
+              class="btn btn-light btn-sm"
+              id="v5PdfNext">
+              Berikutnya →
+            </button>
+
+          </div>
+
+          <div
+            class="muted"
+            id="v5PdfPageInfo">
+            Memuat halaman...
+          </div>
+
+          <div
+            style="display:flex;align-items:center;gap:7px">
+
+            <button
+              class="btn btn-light btn-sm"
+              id="v5PdfZoomOut">
+              −
+            </button>
+
+            <span
+              id="v5PdfZoomInfo"
+              class="muted">
+              100%
+            </span>
+
+            <button
+              class="btn btn-light btn-sm"
+              id="v5PdfZoomIn">
+              +
+            </button>
+
+          </div>
+
+        </div>
+
+        <!-- AREA PDF -->
+        <div
+          id="v5PdfCanvasWrap"
+          style="
+            padding:18px;
+            min-height:72vh;
+            display:flex;
+            justify-content:center;
+            align-items:flex-start;
+            overflow:auto;
+          ">
+
+          <div
+            class="loading-container"
+            style="min-height:55vh">
+            ${loading('Membaca PDF tutorial...')}
+          </div>
+
+        </div>
+
+      </div>
+
+      <div
+        class="muted"
+        style="margin-top:8px">
+        Tutorial dibaca langsung di dalam aplikasi.
+      </div>
+    `;
+
+    /*
+     * LOAD PDF
+     */
+    const pdf =
+      await window.pdfjsLib
+        .getDocument({
+          url: rawUrl,
+          withCredentials: false
+        })
+        .promise;
+
+    let pageNo = 1;
+    let zoom = 1;
+
+    const wrap = $('#v5PdfCanvasWrap');
+    const info = $('#v5PdfPageInfo');
+    const zoomInfo = $('#v5PdfZoomInfo');
+
+    /*
+     * RENDER HALAMAN
+     */
+    async function renderPage(){
+
+      if(!wrap) return;
+
+      wrap.innerHTML =
+        loading(
+          `Memuat halaman ${pageNo} dari ${pdf.numPages}...`
+        );
+
+      const page =
+        await pdf.getPage(pageNo);
+
+      const base =
+        page.getViewport({
+          scale:1
+        });
+
+      const maxWidth =
+        Math.max(
+          320,
+          Math.min(
+            wrap.clientWidth - 36,
+            980
+          )
+        );
+
+      const fitScale =
+        Math.min(
+          maxWidth / base.width,
+          1.55
+        );
+
+      const viewport =
+        page.getViewport({
+          scale: fitScale * zoom
+        });
+
+      const canvas =
+        document.createElement('canvas');
+
+      canvas.style.display = 'block';
+      canvas.style.maxWidth = '100%';
+      canvas.style.height = 'auto';
+      canvas.style.background = '#fff';
+      canvas.style.boxShadow =
+        '0 8px 25px rgba(16,42,67,.12)';
+      canvas.style.border =
+        '1px solid #d7e0e5';
+
+      canvas.width =
+        Math.ceil(viewport.width);
+
+      canvas.height =
+        Math.ceil(viewport.height);
+
+      wrap.innerHTML = '';
+      wrap.appendChild(canvas);
+
+      const context =
+        canvas.getContext('2d');
+
+      await page.render({
+        canvasContext: context,
+        viewport: viewport
+      }).promise;
+
+      if(info){
+        info.textContent =
+          `Halaman ${pageNo} dari ${pdf.numPages}`;
+      }
+
+      if(zoomInfo){
+        zoomInfo.textContent =
+          `${Math.round(zoom * 100)}%`;
+      }
+
+      const prev =
+        $('#v5PdfPrev');
+
+      const next =
+        $('#v5PdfNext');
+
+      if(prev){
+        prev.disabled =
+          pageNo <= 1;
+      }
+
+      if(next){
+        next.disabled =
+          pageNo >= pdf.numPages;
+      }
+    }
+
+    /*
+     * TOMBOL SEBELUMNYA
+     */
+    const prev =
+      $('#v5PdfPrev');
+
+    if(prev){
+      prev.onclick = async function(){
+
+        if(pageNo <= 1) return;
+
+        pageNo--;
+
+        await renderPage();
+
+        const reader =
+          $('#v5PdfReader');
+
+        if(reader){
+          reader.scrollIntoView({
+            behavior:'smooth',
+            block:'start'
+          });
+        }
+      };
+    }
+
+    /*
+     * TOMBOL BERIKUTNYA
+     */
+    const next =
+      $('#v5PdfNext');
+
+    if(next){
+      next.onclick = async function(){
+
+        if(pageNo >= pdf.numPages) return;
+
+        pageNo++;
+
+        await renderPage();
+
+        const reader =
+          $('#v5PdfReader');
+
+        if(reader){
+          reader.scrollIntoView({
+            behavior:'smooth',
+            block:'start'
+          });
+        }
+      };
+    }
+
+    /*
+     * ZOOM OUT
+     */
+    const zoomOut =
+      $('#v5PdfZoomOut');
+
+    if(zoomOut){
+      zoomOut.onclick = async function(){
+
+        zoom =
+          Math.max(
+            0.75,
+            zoom - 0.10
+          );
+
+        await renderPage();
+      };
+    }
+
+    /*
+     * ZOOM IN
+     */
+    const zoomIn =
+      $('#v5PdfZoomIn');
+
+    if(zoomIn){
+      zoomIn.onclick = async function(){
+
+        zoom =
+          Math.min(
+            2,
+            zoom + 0.10
+          );
+
+        await renderPage();
+      };
+    }
+
+    /*
+     * TAMPILKAN HALAMAN PERTAMA
+     */
+    await renderPage();
+
+  }catch(e){
+
+    console.error(
+      'Tutorial PDF error:',
+      e
+    );
+
+    area.innerHTML =
+      msg(
+        'Tutorial tidak dapat ditampilkan langsung di feed: ' +
+        errorText(e),
+        'error'
+      );
+  }
+}
 async function arsipPenilaianV5View(){
   const c=$('#mainContent');
   c.innerHTML=head('Arsip Penilaian SPJ','Cetak bahan penilaian lengkap per sekolah dan periode')+
