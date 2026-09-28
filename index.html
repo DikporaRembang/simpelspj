@@ -3321,6 +3321,7 @@ async function tutorialV5View(){
   const c=$('#mainContent');
   const githubUrl='https://github.com/DikporaRembang/simpelspj/blob/main/tutorial_simpelspj.pdf';
   const rawUrl='https://raw.githubusercontent.com/DikporaRembang/simpelspj/main/tutorial_simpelspj.pdf';
+  const viewerUrl='https://docs.google.com/gview?embedded=1&url='+encodeURIComponent(rawUrl);
   window._v5TutorialUrl=githubUrl;
   c.innerHTML=head('Tutorial SIMPEL SPJ','Panduan resmi aplikasi dari repositori GitHub')+
     `<div class="panel" style="border-left:4px solid var(--gold);">
@@ -3330,7 +3331,7 @@ async function tutorialV5View(){
       </div>
       <div id="v5TutorialFeed" style="margin-top:14px">
         <div class="panel" style="padding:0;overflow:hidden">
-          <iframe title="Tutorial SIMPEL SPJ" src="${rawUrl}" style="width:100%;height:76vh;border:0;background:#f5f7f9"></iframe>
+          <iframe title="Tutorial SIMPEL SPJ" src="${viewerUrl}" style="width:100%;height:76vh;border:0;background:#f5f7f9" allow="fullscreen" loading="lazy"></iframe>
         </div>
         <div class="muted" style="margin-top:8px">Sumber tutorial: GitHub resmi SIMPEL SPJ. File tidak disimpan di Google Drive aplikasi.</div>
       </div>
