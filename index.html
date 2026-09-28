@@ -97,6 +97,10 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
   letter-spacing:1.8px;margin:0;text-shadow:0 10px 30px rgba(0,0,0,.3)
 }
 .welcome-subtitle-anim{color:#e2e8f0;font-size:1.02rem;margin-top:12px;font-weight:550;letter-spacing:.5px}
+.view-transition-shield{position:absolute;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;background:rgba(245,247,249,.78);backdrop-filter:blur(5px);opacity:1;transition:opacity .28s ease;border-radius:inherit}
+.view-transition-shield.fade-out{opacity:0;pointer-events:none}
+.view-transition-card{min-width:220px;padding:18px 22px;border:1px solid rgba(16,42,67,.10);border-radius:16px;background:rgba(255,255,255,.94);box-shadow:0 14px 35px rgba(16,42,67,.12);text-align:center}
+#mainContent{position:relative;overflow:visible}
 
 /* ================= BUTTONS ================= */
 .btn{
@@ -779,10 +783,12 @@ async function doLogin(e){
     state.token=r.token; state.user=r.user || {};
     sessionStorage.setItem('simpel_token',state.token);
 
-    // Bangun dashboard TERLEBIH DAHULU di balik animasi selamat datang.
-    // Dengan begitu halaman login tidak sempat terlihat kembali saat transisi.
+    // Tampilkan layar Selamat Datang TERLEBIH DAHULU sebagai lapisan penuh.
+    // Halaman login tetap tertutup di bawahnya sehingga tidak pernah terlihat
+    // kembali. Dashboard dibangun di belakang layar selama animasi berlangsung.
+    const welcomePromise = showWelcomeAnimation();
     await startApp();
-    showWelcomeAnimation();
+    await welcomePromise;
   }catch(err){$('#authMsg').innerHTML=msg(errorText(err));}
 }
 
@@ -931,23 +937,32 @@ window.toggleRegisterFields = function() {
 };
 
 function showWelcomeAnimation(){
-  const overlay = document.createElement('div');
-  overlay.className = 'welcome-overlay';
-  overlay.style.opacity = '1';
-  overlay.innerHTML = `
-    <img src="bidangsd.png" class="welcome-logo-lg" alt="Logo">
-    <h1 class="welcome-title-anim">SELAMAT DATANG CEO SD</h1>
-    <div class="welcome-subtitle-anim">Pemeriksaan & Pertanggungjawaban SPJ Terintegrasi</div>
-  `;
-  document.body.appendChild(overlay);
+  return new Promise(resolve => {
+    const old = document.querySelector('.welcome-overlay');
+    if(old) old.remove();
 
-  // Dashboard sudah aktif di belakang overlay. Fade-out hanya membuka dashboard,
-  // bukan berpindah dari login ke dashboard setelah animasi selesai.
-  setTimeout(() => {
-    overlay.style.transition = 'opacity 0.6s ease';
-    overlay.style.opacity = '0';
-    setTimeout(() => overlay.remove(), 650);
-  }, 1900);
+    const overlay = document.createElement('div');
+    overlay.className = 'welcome-overlay';
+    overlay.style.opacity = '1';
+    overlay.style.animation = 'none';
+    overlay.innerHTML = `
+      <img src="bidangsd.png" class="welcome-logo-lg" alt="Logo">
+      <h1 class="welcome-title-anim">SELAMAT DATANG CEO SD</h1>
+      <div class="welcome-subtitle-anim">Pemeriksaan & Pertanggungjawaban SPJ Terintegrasi</div>
+    `;
+    document.body.appendChild(overlay);
+
+    // Login tertutup penuh oleh overlay. Setelah dashboard selesai dibangun,
+    // baru overlay menghilang secara halus sehingga perpindahannya terasa satu tahap.
+    setTimeout(() => {
+      overlay.style.transition = 'opacity .65s cubic-bezier(.16,1,.3,1)';
+      overlay.style.opacity = '0';
+      setTimeout(() => {
+        overlay.remove();
+        resolve();
+      }, 680);
+    }, 1750);
+  });
 }
 
 async function restoreSession(){
@@ -1094,40 +1109,88 @@ function initGlobalSearch(){
   document.addEventListener('keydown', e => { if((e.ctrlKey || e.metaKey) && e.key.toLowerCase()==='k'){e.preventDefault();input.focus();input.select();} });
 }
 
-async function loadView(view){
-  state.view = view; 
+let _viewNavRunning = false;
+let _viewNavPending = null;
+
+function loadView(view){
+  return new Promise(resolve => {
+    // Jika user mengklik beberapa submenu dengan cepat, hanya permintaan terakhir
+    // yang dipertahankan. Permintaan sebelumnya tidak dibiarkan menimpa feed baru.
+    if(_viewNavPending) _viewNavPending.resolve();
+    _viewNavPending = { view, resolve };
+    runViewNavigationQueue();
+  });
+}
+
+async function runViewNavigationQueue(){
+  if(_viewNavRunning) return;
+  _viewNavRunning = true;
+
+  try{
+    while(_viewNavPending){
+      const job = _viewNavPending;
+      _viewNavPending = null;
+      await renderViewSafely(job.view);
+      job.resolve();
+    }
+  }finally{
+    _viewNavRunning = false;
+  }
+}
+
+async function renderViewSafely(view){
+  const c = $('#mainContent');
+  if(!c) return;
+
+  state.view = view;
   setActive(view);
-  const c = $('#mainContent'); 
-  if(!c) return; 
-  c.innerHTML = loading('Memuat modul...'); 
-  try{ 
-    const map = { 
-      home: homeView, 
-      dokumenBulanan: dokumenBulananView, 
-      statusSpj: statusSpjView, 
-      transaksi: transaksiView, 
-      sekolah: sekolahView, 
-      penugasan: penugasanView, 
-      dinasMonitoring: dinasMonitoringView, 
-      rkasReview: rkasReview,
-      masterSpj: masterSpjView, 
-      crosscheck: crosscheckView, 
-      temuan: temuanView, 
-      asesmen: asesmenView, 
-      keberatan: keberatanView,
-      dbCheck: dbCheckView, 
-      pesan: pesanView,
-      monitoringGlobal: renderMonitoringGlobalView,
-      tutorialV5: tutorialV5View,
-      arsipPenilaianV5: arsipPenilaianV5View,
-      pdfInteraktif: pdfInteraktifView,
-      ubahPassword: ubahPasswordView
-    }; 
-    if(!map[view]) throw new Error('Modul belum tersedia: ' + view); 
-    await map[view](); 
-  } catch(e) {
-    c.innerHTML = msg(errorText(e));
-  } 
+
+  // Tutup feed lama dengan shield, bukan menggantinya langsung dengan HTML baru.
+  // Ini mencegah pengguna melihat data submenu sebelumnya saat modul berganti.
+  const shield = document.createElement('div');
+  shield.className = 'view-transition-shield';
+  shield.innerHTML = `<div class="view-transition-card">${loading('Memuat modul...')}</div>`;
+  c.appendChild(shield);
+
+  const map = {
+    home: homeView,
+    dokumenBulanan: dokumenBulananView,
+    statusSpj: statusSpjView,
+    transaksi: transaksiView,
+    sekolah: sekolahView,
+    penugasan: penugasanView,
+    dinasMonitoring: dinasMonitoringView,
+    rkasReview: rkasReview,
+    masterSpj: masterSpjView,
+    crosscheck: crosscheckView,
+    temuan: temuanView,
+    asesmen: asesmenView,
+    keberatan: keberatanView,
+    dbCheck: dbCheckView,
+    pesan: pesanView,
+    monitoringGlobal: renderMonitoringGlobalView,
+    tutorialV5: tutorialV5View,
+    arsipPenilaianV5: arsipPenilaianV5View,
+    pdfInteraktif: pdfInteraktifView,
+    ubahPassword: ubahPasswordView
+  };
+
+  try{
+    if(!map[view]) throw new Error('Modul belum tersedia: ' + view);
+    await map[view]();
+  }catch(e){
+    // Hanya tampilkan error bila modul yang gagal masih merupakan modul aktif.
+    if(state.view === view) c.innerHTML = msg(errorText(e));
+  }finally{
+    // Jika user sudah meminta submenu lain saat modul ini sedang dimuat,
+    // shield tetap menutup tampilan sampai modul terbaru selesai.
+    if(state.view === view && shield.parentNode === c){
+      shield.classList.add('fade-out');
+      setTimeout(() => shield.remove(), 300);
+    }else if(shield.parentNode === c){
+      shield.remove();
+    }
+  }
 }
 
 function setActive(view){ 
