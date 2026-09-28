@@ -857,6 +857,12 @@ function head(title,desc=''){
 }
 function emptyRow(cols,text='Tidak ada data.'){ return `<tr><td colspan="${cols}" class="muted" style="text-align:center;padding:25px">${esc(text)}</td></tr>`; }
 
+/* V14.2 API CONTRACT
+ * Semua modul frontend menggunakan api(action,payload) sebagai satu-satunya transport.
+ * Tidak ada direct fetch ke endpoint backend lain, kecuali helper legacy yang dipertahankan
+ * untuk kompatibilitas browser lama. Action RKAS import memakai:
+ * importRKASPreview -> confirmRKASMapping -> commitRKASImport.
+ */
 async function api(action, payload={}){
   const body = { action, ...payload };
   if(state.token) body.token = state.token;
@@ -4046,9 +4052,38 @@ window.autoFillSekolahByNpsn = async function(npsn) {
 };
 
 async function dbCheckView(){
-  $('#mainContent').innerHTML=head('Validasi Database','Memeriksa skema 14 tabel SIMPEL SPJ')+`<div class="panel"><button class="btn btn-primary" onclick="runDbCheck()">Jalankan Validasi</button><div id="dbResult" style="margin-top:16px">${msg('Klik untuk mulai.','ok')}</div></div>`;
+  $('#mainContent').innerHTML=head('Validasi & Sinkronisasi Database','Satu modul untuk memeriksa kontrak tabel dan menyiapkan schema V14.2 tanpa menghapus data')+
+    `<div class="panel">
+      <div class="toolbar" style="gap:8px;flex-wrap:wrap">
+        <button class="btn btn-primary" onclick="runDbCheck()">🔎 Validasi Struktur</button>
+        ${isDinas()?`<button class="btn btn-light" onclick="prepareDbV142()">🛠 Sinkronkan Schema V14.2</button>`:''}
+      </div>
+      <div id="dbResult" style="margin-top:16px">${msg('Validasi hanya membaca database. Sinkronisasi V14.2 bersifat additive dan mempertahankan kolom/data lama.','ok')}</div>
+    </div>`;
 }
-window.runDbCheck=async function(){const r=$('#dbResult');r.innerHTML=loading();try{const x=await api('validateDatabaseStructure');r.innerHTML=msg('Struktur 14 tabel database sehat dan lengkap!','ok');}catch(e){r.innerHTML=msg(errorText(e));}};
+window.runDbCheck=async function(){
+  const r=$('#dbResult'); r.innerHTML=loading('Memeriksa kontrak tabel...');
+  try{
+    const x=await api('validateDatabaseStructure');
+    const bad=(x.data?.errors||x.errors||[]).length;
+    r.innerHTML=bad
+      ? msg(`<b>Schema belum siap untuk V14.2.</b><pre style="white-space:pre-wrap">${esc(JSON.stringify(x.data?.errors||x.errors||[],null,2))}</pre>`,'warning')
+      : msg(`Schema V14.2 valid. Versi aplikasi: ${esc(x.data?.version||x.version||'V14.2')}`,'ok');
+  }catch(e){r.innerHTML=msg(errorText(e));}
+};
+window.prepareDbV142=async function(){
+  const r=$('#dbResult');
+  if(!confirm('Sinkronkan schema V14.2 sekarang? Proses ini hanya menambah sheet/kolom yang belum ada dan mempertahankan data lama.')) return;
+  r.innerHTML=loading('Menyiapkan schema V14.2...');
+  try{
+    const x=await api('prepareDatabaseV142');
+    const d=x.data||x;
+    const added=(d.added_columns||[]).map(v=>`${v.sheet}.${v.column}`).join(', ')||'Tidak ada kolom baru';
+    const sheets=(d.created_sheets||[]).join(', ')||'Tidak ada sheet baru';
+    r.innerHTML=msg(`<b>Schema V14.2 siap.</b><br>Sheet baru: ${esc(sheets)}<br>Kolom ditambahkan: ${esc(added)}<br>Data lama dipertahankan; id_rkas historis tidak diubah.`,'ok');
+    await runDbCheck();
+  }catch(e){r.innerHTML=msg(errorText(e),'error');}
+};
 
 document.addEventListener('submit',e=>{if(e.target.id==='loginForm')doLogin(e);});
 window.addEventListener('DOMContentLoaded',restoreSession);
@@ -4748,60 +4783,6 @@ renderAssessment = function(a, indicators){
   function schoolNpsn(){return window.state?.user?.npsn||window.state?.user?.username||''}
 
   // Home baru: lebih sedikit informasi, lebih banyak arahan kerja.
-  window.homeView = async function(){
-    const role=roleName();
-    const name=userName();
-    let primary, secondary, desc;
-    if(isD()){
-      primary=['monitoringGlobal','Buka Monitoring Sekolah'];
-      secondary=['sekolah','Lihat Daftar Sekolah'];
-      desc='Pantau sekolah, periode SPJ, penugasan pengawas, temuan, dan tindak lanjut dari satu ruang kerja.';
-    }else if(isS()){
-      primary=['statusSpj','Buka Status SPJ'];
-      secondary=['dokumenBulanan','Kelola Dokumen'];
-      desc='Kelola SPJ sesuai periode, lengkapi dokumen, dan tindak lanjuti hasil pemeriksaan tanpa berpindah-pindah konteks.';
-    }else{
-      primary=['home','Beranda']; secondary=['tutorialV5','Buka Panduan']; desc='Ruang kerja SIMPEL SPJ.';
-    }
-    const schoolBlock = isS() ? '<section class="ux-school-strip"><div class="ux-school-main"><div class="ux-school-icon">🏫</div><div><div class="ux-school-name">'+esc(schoolName())+'</div><div class="ux-school-meta">NPSN '+esc(schoolNpsn())+' • satu konteks kerja sekolah</div></div></div><div class="ux-school-actions"><button class="btn btn-light ux-mini" onclick="loadView(\'statusSpj\')">Status SPJ</button><button class="btn btn-primary ux-mini" onclick="loadView(\'dokumenBulanan\')">Buka Dokumen</button></div></section>' : '';
-    $('#mainContent').innerHTML=`
-      <div class="ux-home">
-        <section class="ux-hero"><div class="ux-hero-inner"><div class="ux-hero-copy">
-          <div class="ux-hero-kicker">SIMPEL SPJ • DINDIKPORA REMBANG</div>
-          <h2>${isD()?'Pusat Kendali SPJ':isS()?'Ruang Kerja SPJ Sekolah':'SIMPEL SPJ'}</h2>
-          <p>Selamat datang, <b>${esc(name)}</b>. ${esc(desc)}</p>
-          <div class="ux-actions"><button class="btn btn-primary" onclick="loadView('${primary[0]}')">${isD()?'📊 ': '📋 '}${primary[1]} →</button><button class="btn btn-light" onclick="loadView('${secondary[0]}')">${isD()?'🏫 ': '📁 '}${secondary[1]}</button></div>
-        </div></div></section>
-
-        <div class="ux-section-label">Arah kerja</div>
-        <section class="ux-workbar">
-          <article class="ux-workcard primary"><div class="eyebrow">01 • Pekerjaan utama</div><h3>${isD()?'Pantau sekolah yang membutuhkan perhatian':'Pastikan SPJ periode aktif lengkap'}</h3><p>${isD()?'Mulai dari status sekolah, lalu buka sekolah yang perlu ditindaklanjuti.':'Mulai dari status SPJ, lanjutkan ke dokumen dan transaksi yang masih perlu dilengkapi.'}</p><a href="javascript:void(0)" onclick="loadView('${primary[0]}')">Mulai dari sini →</a></article>
-          <article class="ux-workcard"><div class="eyebrow">02 • Pemeriksaan</div><h3>${isD()?'Temuan & tindak lanjut':'Hasil pemeriksaan'}</h3><p>${isD()?'Lihat temuan yang membutuhkan perhatian dan tindak lanjut.':'Lihat status pemeriksaan dan tindak lanjut yang diminta.'}</p><a href="javascript:void(0)" onclick="loadView('${isD()?'temuan':'temuan'}')">Lihat →</a></article>
-          <article class="ux-workcard"><div class="eyebrow">03 • Bantuan</div><h3>Panduan & pencarian</h3><p>Gunakan pencarian di atas atau baca panduan langsung tanpa meninggalkan aplikasi.</p><a href="javascript:void(0)" onclick="document.getElementById('globalSearchInput')?.focus()">Cari sekarang →</a>
-          </article>
-        </section>
-
-        <div class="ux-section-label">Ringkasan cepat</div>
-        <section class="ux-kpis">
-          <div class="ux-kpi"><div class="label">Peran</div><div class="value" style="font-size:1rem">${esc(role)}</div><div class="hint">Akses sesuai kewenangan</div></div>
-          <div class="ux-kpi"><div class="label">Wilayah</div><div class="value" style="font-size:1rem">Rembang</div><div class="hint">Sistem aktif</div></div>
-          <div class="ux-kpi"><div class="label">Sekolah</div><div class="value">378</div><div class="hint">Basis satuan pendidikan</div></div>
-          <div class="ux-kpi"><div class="label">Sesi</div><div class="value" style="font-size:1rem">Aktif</div><div class="hint">${esc(role)}</div></div>
-        </section>
-
-        ${schoolBlock}
-
-        <div class="ux-section-label">Yang perlu dilakukan</div>
-        <section class="ux-todo">
-          <article class="ux-todo-card"><div class="ux-todo-icon">🎯</div><div><strong>${isD()?'Pilih sekolah untuk mulai monitoring':'Periksa periode SPJ aktif'}</strong><span>${isD()?'Buka daftar sekolah dan masuk ke satu sekolah untuk melihat konteks lengkapnya.':'Pastikan periode, transaksi, dan dokumen sesuai kondisi terbaru.'}</span><a href="javascript:void(0)" onclick="loadView('${primary[0]}')">Buka →</a></div></article>
-          <article class="ux-todo-card"><div class="ux-todo-icon">📄</div><div><strong>${isD()?'Periksa temuan yang belum selesai':'Lengkapi dokumen yang diminta'}</strong><span>${isD()?'Fokus pada item yang memerlukan keputusan atau tindak lanjut.':'Dokumen bukti menjadi dasar pemeriksaan SPJ.'}</span><a href="javascript:void(0)" onclick="loadView('${isD()?'temuan':'dokumenBulanan'}')">Lihat →</a></div></article>
-          <article class="ux-todo-card"><div class="ux-todo-icon">🔎</div><div><strong>Gunakan pencarian global</strong><span>Cari sekolah dengan nama lengkap, NPSN, atau kata kunci lain tanpa membuka menu satu per satu.</span><a href="javascript:void(0)" onclick="document.getElementById('globalSearchInput')?.focus()">Mulai pencarian →</a></div></article>
-        </section>
-
-        <section class="ux-tip"><div class="ux-tip-icon">💡</div><div><strong>Prinsip penggunaan SIMPEL SPJ</strong><p>${isD()?'Mulai dari sekolah → lihat status → buka konteks sekolah → tindak lanjuti. Tidak perlu membuka semua modul sekaligus.':'Mulai dari periode → lengkapi transaksi dan dokumen → lihat hasil pemeriksaan → tindak lanjuti. Semua tetap dalam konteks sekolah.'}</p></div></section>
-      </div>`;
-  };
-
   // Tambahkan context bar ke setiap halaman selain beranda.
   const originalRender=window.renderViewSafely;
   if(originalRender){
