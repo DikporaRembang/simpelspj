@@ -2185,6 +2185,16 @@ function _rkasTextClient(v){
   return String(v ?? '').replace(/\s+/g,' ').trim();
 }
 
+function _rkasCodeClient(v){
+  if(v instanceof Date && !isNaN(v)){
+    const dd=String(v.getDate()).padStart(2,'0');
+    const mm=String(v.getMonth()+1).padStart(2,'0');
+    const yy=String(v.getFullYear()).slice(-2);
+    return `${dd}.${mm}.${yy}`;
+  }
+  return _rkasTextClient(v).replace(/\s+/g,'').replace(/\.0+$/,'');
+}
+
 function _rkasNumberClient(v){
   if(typeof v === 'number' && Number.isFinite(v)) return v;
   let s=String(v ?? '').trim();
@@ -2271,9 +2281,9 @@ function _rkasExtractRowsClient(rows, header){
   let currentProgram='';
   for(let r=header.row+1;r<rows.length;r++){
     const row=rows[r]||[];
-    const kodeKegiatan=_rkasTextClient(row[header.idx.kodeKegiatan]);
+    const kodeKegiatan=_rkasCodeClient(row[header.idx.kodeKegiatan]);
     const kegiatanCell=_rkasTextClient(row[header.idx.kegiatan]);
-    const kodeRekening=_rkasTextClient(row[header.idx.kodeRekening]);
+    const kodeRekening=_rkasCodeClient(row[header.idx.kodeRekening]);
     const uraian=_rkasTextClient(row[header.idx.uraian]);
     const pagu=_rkasNumberClient(row[header.idx.pagu]);
     const volume=header.idx.volume>=0?_rkasNumberClient(row[header.idx.volume]):0;
@@ -2453,16 +2463,16 @@ window.openRkasMappingChoice=function(index){
   const row=p.rows[index]; if(!row)return;
   const mk=row.mapping_kegiatan||{}, mb=row.mapping_barang||{};
   const candidates=[];
-  (mk.kandidat||[]).slice(0,5).forEach(x=>candidates.push({type:'kegiatan',id:x.kode_kegiatan||'',label:x.uraian||x.sub_program||x.program||x.kode_kegiatan||'-',raw:x}));
-  (mb.kandidat||[]).slice(0,5).forEach(x=>candidates.push({type:'barang',id:x.kode_barang||'',label:x.rincian_obyek||x.kode_barang||'-',raw:x}));
+  (mk.kandidat||[]).slice(0,10).forEach(x=>candidates.push({type:'kegiatan',id:x.kode_kegiatan||'',label:x.uraian||x.sub_program||x.program||x.kode_kegiatan||'-',raw:x}));
+  (mb.kandidat||[]).slice(0,10).forEach(x=>candidates.push({type:'barang',id:x.kode_barang||'',label:x.rincian_obyek||x.kode_barang||'-',raw:x}));
   const wrap=document.createElement('div');wrap.id='rkasChoiceModal';
   wrap.innerHTML=`<div style="position:fixed;inset:0;background:rgba(0,0,0,.58);display:flex;align-items:center;justify-content:center;z-index:1100;padding:14px">
     <div style="background:#fff;padding:24px;border-radius:20px;width:min(760px,100%);max-height:90vh;overflow:auto">
       <h3 style="margin-top:0;color:var(--primary)">Konfirmasi Mapping Baris ${index+1}</h3>
       <div class="panel" style="background:#f8fafb;margin-bottom:12px"><b>${esc(row.nama_belanja_asli||row.uraian||'-')}</b><div class="muted">Kegiatan: ${esc(row.kegiatan||'-')} • Kode: ${esc(row.kode_rekening||'-')}</div></div>
       <div class="form-grid">
-        <div class="field"><label>Mapping Kegiatan</label><select id="rkasChoiceKegiatan"><option value="">-- Tidak dipilih --</option>${(mk.kandidat||[]).slice(0,5).map(x=>`<option value="${esc(x.kode_kegiatan||'')}" ${String(x.kode_kegiatan||'')===String(mk.id_kegiatan||'')?'selected':''}>${esc((x.kode_kegiatan||'')+' — '+(x.uraian||x.sub_program||x.program||''))}</option>`).join('')}</select></div>
-        <div class="field"><label>Referensi Barang</label><select id="rkasChoiceBarang"><option value="">-- Tidak dipilih --</option>${(mb.kandidat||[]).slice(0,5).map(x=>`<option value="${esc(x.kode_barang||'')}" ${String(x.kode_barang||'')===String(mb.id_referensi_barang||'')?'selected':''}>${esc((x.kode_barang||'')+' — '+(x.rincian_obyek||''))}</option>`).join('')}</select></div>
+        <div class="field"><label>Mapping Kegiatan</label><select id="rkasChoiceKegiatan"><option value="">-- Tidak dipilih --</option>${(mk.kandidat||[]).slice(0,10).map(x=>`<option value="${esc(x.kode_kegiatan||'')}" ${String(x.kode_kegiatan||'')===String(mk.id_kegiatan||'')?'selected':''}>${esc((x.kode_kegiatan||'')+' — '+(x.uraian||x.sub_program||x.program||''))}${x._score!=null?' • '+Math.round(Number(x._score)*100)+'%':''}</option>`).join('')}</select></div>
+        <div class="field"><label>Referensi Barang</label><select id="rkasChoiceBarang"><option value="">-- Tidak dipilih --</option>${(mb.kandidat||[]).slice(0,10).map(x=>`<option value="${esc(x.kode_barang||'')}" ${String(x.kode_barang||'')===String(mb.id_referensi_barang||'')?'selected':''}>${esc((x.kode_barang||'')+' — '+(x.rincian_obyek||''))}${x._score!=null?' • '+Math.round(Number(x._score)*100)+'%':''}</option>`).join('')}</select></div>
       </div>
       <div class="field" style="margin-top:10px"><label>Catatan</label><textarea id="rkasChoiceNote" rows="2" placeholder="Alasan pemilihan mapping..."></textarea></div>
       <div id="rkasChoiceMsg"></div>
