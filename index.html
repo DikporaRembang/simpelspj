@@ -2348,10 +2348,6 @@ function _rkasExtractRowsClient(rows, header){
     const satuan=header.idx.satuan>=0?_rkasTextClient(row[header.idx.satuan]):'';
     const harga=header.idx.harga>=0?_rkasNumberClient(row[header.idx.harga]):0;
 
-    const rowLabels=(row||[]).map(_rkasNormLabelClient);
-    if(rowLabels.includes('KODE REKENING') || rowLabels.includes('URAIAN KEGIATAN') || rowLabels.includes('URAIAN') || rowLabels.includes('JUMLAH (RP)')){
-      continue;
-    }
     if(!kodeCell && !kodeKegiatan && !kegiatanCell && !uraian && !(pagu>0)) continue;
 
     // Pola DPA Unit: baris 8 digit pada kolom Kode Rekening adalah NPSN,
@@ -2447,13 +2443,17 @@ function _rkasRenderSummary(d){
   </div>`;
 }
 
+window.showRkasTargetSchools=function(){filterRkasTargetSchools($('#rkasImportTargetSearch')?.value||'',true);};
+window.filterRkasTargetSchools=function(query,showAll=false){const box=$('#rkasTargetSchoolResults');if(!box)return;const q=String(query||'').trim().toLowerCase();const src=window._rkasTargetSchools||[];const list=(showAll&&!q?src:src.filter(x=>String(x.npsn).toLowerCase().includes(q)||String(x.nama_sekolah).toLowerCase().includes(q)||String(x.kecamatan).toLowerCase().includes(q))).slice(0,30);box.innerHTML=list.length?list.map(x=>`<button type="button" style="display:block;width:100%;text-align:left;border:0;background:#fff;padding:11px 13px;border-bottom:1px solid #eee;cursor:pointer" onmousedown="event.preventDefault();selectRkasTargetSchool('${esc(x.npsn)}')"><b>${esc(x.nama_sekolah||'-')}</b><div style="font-size:.76rem;color:var(--muted);margin-top:2px">NPSN ${esc(x.npsn)}${x.kecamatan?' • '+esc(x.kecamatan):''}</div></button>`).join(''):'<div style="padding:14px;color:var(--muted);font-size:.85rem">Sekolah tidak ditemukan.</div>';box.style.display='block';};
+window.selectRkasTargetSchool=function(npsn){const s=(window._rkasTargetSchools||[]).find(x=>normalizeNpsnClient(x.npsn)===normalizeNpsnClient(npsn));if(!s)return;$('#rkasImportTargetSearch').value=`${s.nama_sekolah} — ${s.npsn}`;$('#rkasImportTargetNpsn').value=s.npsn;$('#rkasTargetSchoolResults').style.display='none';};
 window.openRkasImportModal=async function(){
   if(!isSchool() && !isDinas()){toast('Impor RKAS hanya tersedia untuk akun SEKOLAH atau DINAS.','warning');return;}
   let schoolOptions='';
   if(isDinas()){
     try{
       const r=await api('getSekolah',{});
-      schoolOptions=(r.data||[]).map(s=>`<option value="${esc(normalizeNpsnClient(s.npsn))}">${esc(s.nama_sekolah||'-')} — ${esc(s.npsn)}</option>`).join('');
+      window._rkasTargetSchools=(r.data||[]).map(s=>({npsn:normalizeNpsnClient(s.npsn),nama_sekolah:String(s.nama_sekolah||''),kecamatan:String(s.kecamatan||'')})).filter(s=>s.npsn);
+      schoolOptions='';
     }catch(e){toast(errorText(e),'error');return;}
   }
 
@@ -2469,9 +2469,7 @@ window.openRkasImportModal=async function(){
           <div class="field"><label>File RKAS Excel</label><input id="rkasImportFile" type="file" accept=".xlsx,.xls" required></div>
           <div class="field"><label>Versi RKAS</label><input id="rkasImportVersion" value="V1" placeholder="Contoh: V1, Perubahan 1"></div>
           <div class="field"><label>Tahun Anggaran</label><input id="rkasImportYear" type="number" value="${new Date().getFullYear()}" min="2000" max="2100"></div>
-          ${isDinas()
-            ? `<div class="field"><label>Sekolah Tujuan</label><select id="rkasImportTargetNpsn"><option value="">Pilih sekolah...</option>${schoolOptions}</select></div>`
-            : `<div class="field"><label>NPSN Sekolah</label><input value="${esc(ownNpsn())}" readonly></div>`}
+          ${isDinas() ? `<div class="field" style="position:relative"><label>Sekolah Tujuan</label><input id="rkasImportTargetSearch" autocomplete="off" placeholder="🔎 Cari NPSN atau nama sekolah..." oninput="filterRkasTargetSchools(this.value)" onclick="showRkasTargetSchools()"><input id="rkasImportTargetNpsn" type="hidden"><div id="rkasTargetSchoolResults" style="display:none;position:absolute;left:0;right:0;top:100%;z-index:1200;background:#fff;border:1px solid var(--border);border-radius:12px;box-shadow:0 18px 40px rgba(0,0,0,.14);max-height:300px;overflow:auto;margin-top:4px"></div></div>` : `<div class="field"><label>NPSN Sekolah</label><input value="${esc(ownNpsn())}" readonly></div>`}
         </div>
         <div id="rkasImportMsg" style="margin-top:12px"></div>
         <div class="toolbar" style="justify-content:flex-end;margin-top:12px">
@@ -2519,14 +2517,6 @@ window.readAndMapRkasFile=async function(){
       throw new Error(`NPSN pada file (${meta.npsn}) berbeda dengan sekolah tujuan (${targetNpsn}).`);
     }
     $('#rkasImportYear').value=year;
-    // Jika format DPA berisi banyak sekolah, impor biasa Dinas tetap
-    // dibatasi pada sekolah tujuan yang dipilih. Mode massal menggunakan
-    // menu Reset/Ganti RKAS.
-    if(selected.header.pattern==='DPA_UNIT' && selectedRows.some(x=>x.npsn)){
-      selectedRows=selectedRows.filter(x=>normalizeNpsnClient(x.npsn)===targetNpsn);
-      if(!selectedRows.length) throw new Error(`NPSN ${targetNpsn} tidak ditemukan pada file DPA.`);
-    }
-    selectedRows=selectedRows.map(x=>Object.assign({},x,{npsn:targetNpsn}));
     const payload={
       nama_file:file.name,
       jenis_file:file.name.toLowerCase().endsWith('.xls')?'XLS':'XLSX',
@@ -2913,8 +2903,7 @@ async function renderDinasRkasReview(){
        <input id="searchDinasRkas" placeholder="🔍 Cari NPSN, nama sekolah, kecamatan..." style="padding:10px 14px;border:1px solid var(--border);border-radius:10px;font-size:0.9rem;min-width:300px;background:#fff;" oninput="filterAndRenderDinasRkasTable()">
      </div>
      <div id="dinasRkasStatArea" style="margin-bottom:16px;"></div>
-     <div class="panel" id="dinasRkasPanel" style="margin-top:0;">${loading('Memuat paket RKAS...')}</div>`;
-  await loadDinasRkasTab('DIAJUKAN');
+     <div class="panel" id="dinasRkasPanel" style="margin-top:0;"><div style="padding:30px 22px;text-align:center;"><div style="font-size:2rem;margin-bottom:8px;">📚</div><h3 style="margin:0 0 7px;">Referensi RKAS</h3><div class="muted">Pilih tab status untuk memuat data. RKAS tidak dimuat otomatis agar aplikasi tetap ringan.</div></div></div>`;
 }
 
 window.loadDinasRkasTab = async function(statusFilter){
@@ -4920,137 +4909,31 @@ function _rkasReplaceNum_(v){
  */
 function _rkasParseDpaWorkbookClient(wb){
   const all=[];
-  const diagnostics={sheets:[],mode:'AUTO',ignoredSubtotal:0,ignoredHeader:0,patterns:{DPA_UNIT:0,LEMBAR_RKAS:0}};
+  const diagnostics={sheets:[],mode:'DPA_HIERARCHICAL',ignoredSubtotal:0,ignoredHeader:0};
   for(const sheetName of wb.SheetNames){
     const ws=wb.Sheets[sheetName];
     const rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:true,defval:''});
+    let codeCol=0, descCol=5, volCol=20, unitCol=23, priceCol=26, totalCol=29;
+    let headerRow=-1;
 
-    let headerRow=-1, pattern='DPA_UNIT';
-    let codeCol=0, descCol=5, volCol=20, unitCol=23, priceCol=26, totalCol=29, activityCol=-1;
-
-    // Cari header Lembar RKAS terlebih dahulu.
+    // Cari baris "Kode Rekening" + "Uraian". Jika tidak ada, gunakan posisi
+    // baku file DPA yang kita analisis.
     for(let r=0;r<Math.min(rows.length,300);r++){
       const cells=(rows[r]||[]).map(x=>_rkasReplaceNorm_(x).toUpperCase());
       const hasCode=cells.some(x=>x==='KODE REKENING'||x==='KODE\nREKENING');
-      const hasUraian=cells.some(x=>x==='URAIAN KEGIATAN'||x==='URAIAN'||x==='RINCIAN PERHITUNGAN');
-      const hasJumlah=cells.some(x=>x==='JUMLAH'||x==='JUMLAH (RP)'||x==='PAGU');
-      if(hasCode&&hasUraian&&hasJumlah){
-        headerRow=r;
-        const hasKodeKegiatan=cells.some(x=>x==='KODE KEGIATAN'||x==='KODE KEGIATAN/PROGRAM');
-        pattern=hasKodeKegiatan?'LEMBAR_RKAS':'DPA_UNIT';
-        break;
-      }
+      const hasUraian=cells.some(x=>x==='URAIAN');
+      if(hasCode&&hasUraian){headerRow=r;break;}
     }
+
+    // File dapat berisi header berulang pada halaman berikutnya. Bahkan bila
+    // header tidak ditemukan, tetap coba posisi baku.
     if(headerRow<0) headerRow=27;
 
-    if(pattern==='LEMBAR_RKAS'){
-      const header=rows[headerRow]||[];
-      const normHeader=header.map(x=>_rkasReplaceNorm_(x).toUpperCase());
-      const find=(arr)=>normHeader.findIndex(x=>arr.includes(x));
-      codeCol=find(['KODE REKENING','KODE\nREKENING']);
-      activityCol=find(['KODE KEGIATAN','KODE KEGIATAN/PROGRAM']);
-      descCol=find(['URAIAN KEGIATAN','URAIAN','RINCIAN BELANJA','NAMA BELANJA','RINCIAN OBJEK']);
-      totalCol=find(['JUMLAH','TOTAL','PAGU','NILAI','JUMLAH ANGGARAN','JUMLAH (RP)']);
-      volCol=find(['VOLUME','QTY','KUANTITAS','JUMLAH VOLUME']);
-      unitCol=find(['SATUAN','UNIT']);
-      priceCol=find(['HARGA SATUAN','HARGA']);
+    let currentKode='';
+    let currentNpsn='';
+    let currentKegiatan='';
+    let currentKodeKegiatan='';
 
-      if(codeCol<0||descCol<0||totalCol<0) continue;
-
-      let currentKodeKegiatan='', currentKegiatan='';
-      for(let r=headerRow+1;r<rows.length;r++){
-        const row=rows[r]||[];
-        const a=_rkasReplaceNorm_(row[codeCol]);
-        const code=_rkasReplaceCode_(a);
-        const kodeKegiatan=activityCol>=0?_rkasReplaceNorm_(row[activityCol]):'';
-        const uraian=_rkasReplaceNorm_(row[descCol]);
-        const pagu=_rkasReplaceNum_(row[totalCol]);
-        const volume=volCol>=0?_rkasReplaceNum_(row[volCol]):0;
-        const harga=priceCol>=0?_rkasReplaceNum_(row[priceCol]):0;
-        const satuan=unitCol>=0?_rkasReplaceNorm_(row[unitCol]):'';
-
-        const joined=(row||[]).map(x=>_rkasReplaceNorm_(x).toUpperCase());
-        if(joined.includes('KODE REKENING') || joined.includes('URAIAN KEGIATAN') || joined.includes('JUMLAH (RP)')){
-          diagnostics.ignoredHeader++; continue;
-        }
-        if(!code && !kodeKegiatan && !uraian && !(pagu>0)) continue;
-
-        if(kodeKegiatan && !code){
-          currentKodeKegiatan=kodeKegiatan;
-          currentKegiatan=uraian||currentKegiatan;
-          continue;
-        }
-
-        if(!code) continue;
-
-        // Parent/subtotal: uraian tidak bernomor, tetapi baris berikutnya
-        // menggunakan kode yang sama dan diawali nomor item 001., 002., dst.
-        const numbered=/^\s*\d{1,4}\s*[.)\-:]\s+/.test(uraian);
-        if(!numbered){
-          let child=false;
-          for(let j=r+1;j<Math.min(rows.length,r+20);j++){
-            const rr=rows[j]||[];
-            const nc=_rkasReplaceCode_(rr[codeCol]);
-            const nd=_rkasReplaceNorm_(rr[descCol]);
-            if(!nc && !nd) continue;
-            if(nc!==code) break;
-            child=/^\s*\d{1,4}\s*[.)\-:]\s+/.test(nd);
-            break;
-          }
-          if(child){ diagnostics.ignoredSubtotal++; continue; }
-        }
-
-        if(!(pagu>0)||!uraian) continue;
-        const clean=_rkasReplaceNorm_(uraian)
-          .replace(/^\s*\d{1,4}\s*[.)\-:]\s*/,'')
-          .replace(/[\-–—]+$/,'')
-          .replace(/\s+/g,' ')
-          .trim();
-
-        // NPSN berasal dari metadata file Lembar RKAS.
-        let fileNpsn='';
-        for(let rr=0;rr<Math.min(rows.length,30);rr++){
-          const rrow=rows[rr]||[];
-          for(let cc=0;cc<rrow.length;cc++){
-            if(_rkasReplaceNorm_(rrow[cc]).toUpperCase()==='NPSN'){
-              for(let jj=cc+1;jj<Math.min(rrow.length,cc+8);jj++){
-                const n=_rkasReplaceNpsn_(rrow[jj]);
-                if(n){fileNpsn=n;break;}
-              }
-            }
-          }
-          if(fileNpsn)break;
-        }
-        if(!fileNpsn){
-          // Beberapa file menyimpan identitas di footer.
-          const m=joined.join(' ').match(/RKAS\s*-\s*NPSN\s*:\s*(\d{8})/i);
-          if(m)fileNpsn=m[1];
-        }
-        if(!fileNpsn) continue;
-
-        all.push({
-          npsn:fileNpsn,
-          kode_rekening:code,
-          kode_kegiatan:currentKodeKegiatan||kodeKegiatan,
-          kegiatan:currentKegiatan,
-          nama_belanja_asli:clean,
-          uraian:clean,
-          volume:volume||1,
-          satuan:satuan||'paket',
-          harga_satuan:harga||pagu,
-          pagu,
-          nomor_baris_sumber:r+1,
-          sheet_name:sheetName
-        });
-      }
-
-      diagnostics.patterns.LEMBAR_RKAS++;
-      diagnostics.sheets.push({sheet:sheetName,rows:rows.length,pattern});
-      continue;
-    }
-
-    // ===================== FORMAT DPA/RKA UNIT =====================
-    let currentKode='', currentNpsn='', currentKegiatan='', currentKodeKegiatan='';
     for(let r=headerRow+1;r<rows.length;r++){
       const row=rows[r]||[];
       const a=_rkasReplaceNorm_(row[codeCol]);
@@ -5058,20 +4941,30 @@ function _rkasParseDpaWorkbookClient(wb){
       const fullCode=_rkasReplaceCode_(a);
       const npsn=_rkasReplaceNpsn_(a);
 
-      const upperRow=(row||[]).map(x=>_rkasReplaceNorm_(x).toUpperCase());
-      if(upperRow.includes('KODE REKENING') || upperRow.includes('URAIAN') || upperRow.includes('RINCIAN PERHITUNGAN')){
-        diagnostics.ignoredHeader++; continue;
-      }
-
-      if(npsn){ currentNpsn=npsn; continue; }
-
-      if(fullCode){
-        currentKode=fullCode;
+      // Lewati baris header/nomor kolom.
+      if(/^KODE\s*$/i.test(a)||/^URAIAN$/i.test(uraian)||a==='1'||a==='2'){
+        diagnostics.ignoredHeader++;
         continue;
       }
 
+      // NPSN menandai awal blok sekolah.
+      if(npsn){
+        currentNpsn=npsn;
+        continue;
+      }
+
+      // Kode rekening penuh menandai parent objek belanja.
+      // Reset sekolah agar detail tidak bocor ke sekolah sebelumnya.
+      if(fullCode){
+        currentKode=fullCode;
+        currentNpsn=currentNpsn||'';
+        continue;
+      }
+
+      // Parent/subtotal seperti 5., 5.1, 5.1.02, dst tidak menjadi detail.
       if(/^\d+(?:\.\d+){0,4}\.?$/.test(a) && a){
-        diagnostics.ignoredSubtotal++; continue;
+        diagnostics.ignoredSubtotal++;
+        continue;
       }
 
       if(!currentKode||!currentNpsn||!uraian) continue;
@@ -5079,8 +4972,12 @@ function _rkasParseDpaWorkbookClient(wb){
       const volume=_rkasReplaceNum_(row[volCol]);
       const harga=_rkasReplaceNum_(row[priceCol]);
       const pagu=_rkasReplaceNum_(row[totalCol]);
-      if(!(pagu>0)||!(volume>0)||!(harga>0)){
-        diagnostics.ignoredSubtotal++; continue;
+
+      // Baris subtotal umumnya tidak mempunyai volume/satuan/harga.
+      // Detail barang minimal mempunyai pagu > 0.
+      if(!(pagu>0)) {
+        diagnostics.ignoredSubtotal++;
+        continue;
       }
 
       all.push({
@@ -5099,9 +4996,9 @@ function _rkasParseDpaWorkbookClient(wb){
       });
     }
 
-    diagnostics.patterns.DPA_UNIT++;
-    diagnostics.sheets.push({sheet:sheetName,rows:rows.length,pattern});
+    diagnostics.sheets.push({sheet:sheetName,rows:rows.length});
   }
+
   return {rows:all,diagnostics};
 }
 
