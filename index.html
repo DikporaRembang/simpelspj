@@ -2540,37 +2540,52 @@ window.renderRkasImportPreview=function(){
   if(!host||!p)return;
   const d=p.response||{}, rows=p.rows||[];
   const unresolved=rows.filter(x=>!['MATCHED','MANUAL'].includes(String(x.status_mapping||'').toUpperCase())).length;
+  const matched=rows.length-unresolved;
+  const sampleLimit=100;
+  const sample=rows.slice(0,sampleLimit);
   host.innerHTML=`${_rkasRenderSummary(d)}
     <div class="panel" style="margin-bottom:14px;background:#f8fafb">
       <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center">
-        <div><b>${esc(p.fileName)}</b><div class="muted">Format: ${esc(p.meta?.pattern||'-')} • Sheet: ${esc(p.response?.sheet_name||p.meta?.sheetName||'-')} • NPSN ${esc(d.npsn||ownNpsn())} • Import ${esc(d.id_import||'-')}</div></div>
-        <span class="badge badge-info">PREVIEW MAPPING</span>
+        <div><b>${esc(p.fileName)}</b><div class="muted">Format: ${esc(p.meta?.pattern||'-')} • Sheet: ${esc(p.response?.sheet_name||p.meta?.sheetName||'-')} • NPSN ${esc(d.npsn||ownNpsn())}</div></div>
+        <span class="badge badge-success">AUTO MAPPING</span>
+      </div>
+      <div style="margin-top:10px;padding:10px 12px;border-radius:10px;background:rgba(23,75,67,.07)">
+        <b>${fmtNum(matched)}</b> dari <b>${fmtNum(rows.length)}</b> baris sudah dipetakan otomatis.
+        ${unresolved?`<span class="muted"> ${fmtNum(unresolved)} baris belum menemukan referensi yang cukup kuat; baris tetap dapat disimpan tanpa memilih mapping satu per satu.</span>`:' Semua baris siap disimpan.'}
       </div>
     </div>
     <div class="panel" style="margin-bottom:14px">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px">
-        <h3 style="margin:0">Hasil Mapping</h3>
-        <span class="muted">${fmtNum(rows.length)} baris • ${fmtNum(unresolved)} perlu diselesaikan</span>
+        <div><h3 style="margin:0">Pratinjau Otomatis</h3><div class="muted">Hanya contoh ${Math.min(sampleLimit,rows.length)} baris ditampilkan agar aplikasi tetap ringan. Seluruh ${fmtNum(rows.length)} baris tetap diproses saat disimpan.</div></div>
+        <input id="rkasPreviewSearch" placeholder="🔎 Cari kode / uraian / referensi..." style="min-width:280px;padding:9px 11px;border:1px solid var(--border);border-radius:10px" oninput="filterRkasAutoPreview(this.value)">
       </div>
-      <div class="table-wrap" style="max-height:500px;overflow:auto">
+      <div class="table-wrap" style="max-height:460px;overflow:auto">
         <table class="friendly-table" id="rkasMappingPreviewTable">
-          <thead style="position:sticky;top:0;z-index:2;background:#f1f5f9"><tr><th>No</th><th>Kegiatan</th><th>Kode Rekening</th><th>Belanja Asli</th><th>Pagu</th><th>Mapping Kegiatan</th><th>Referensi Barang</th><th>Score</th><th>Status</th><th>Aksi</th></tr></thead>
-          <tbody>${rows.map((x,i)=>{
-            const mk=x.mapping_kegiatan||{}; const mb=x.mapping_barang||{};
-            const action=['REVIEW','UNMATCHED'].includes(String(x.status_mapping||'').toUpperCase())
-              ? `<button class="btn btn-sm btn-light" onclick="openRkasMappingChoice(${i})">Pilih Mapping</button>` : '-';
-            return `<tr data-rkas-index="${i}">
-              <td>${i+1}</td><td>${esc(x.kegiatan||'-')}</td><td><code>${esc(x.kode_rekening||'-')}</code></td><td>${esc(x.nama_belanja_asli||x.uraian||'-')}</td><td><b>${fmtRupiah(x.pagu||0)}</b></td>
-              <td>${esc(mk.kegiatan||x.kode_kegiatan||'-')}</td><td>${esc(mb.nama_referensi||'-')}</td><td>${fmtNum(x.mapping_score||0)}%</td><td>${_rkasStatusBadge(x.status_mapping)}</td><td>${action}</td>
-            </tr>`;
-          }).join('')}</tbody>
+          <thead style="position:sticky;top:0;z-index:2;background:#f1f5f9"><tr><th>No</th><th>Kode Rekening</th><th>Belanja</th><th>Pagu</th><th>Kegiatan</th><th>Referensi Barang</th><th>Skor</th><th>Status</th></tr></thead>
+          <tbody id="rkasAutoPreviewBody">${sample.map((x,i)=>_rkasAutoPreviewRowHtml_(x,i)).join('')}</tbody>
         </table>
       </div>
     </div>
-    <div class="panel" style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;background:rgba(196,154,74,.08)">
-      <div><b>Simpan RKAS</b><div class="muted">Baris REVIEW/UNMATCHED harus diselesaikan. Setelah tersimpan, sekolah dapat mengajukan RKAS melalui alur yang sudah ada.</div></div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-light" onclick="openRkasImportModal()">Upload Ulang</button><button class="btn btn-primary" onclick="commitRkasImportFromPreview()" ${unresolved?'disabled':''}>💾 Simpan ke RKAS</button></div>
+    <div class="panel" style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;background:rgba(23,75,67,.055)">
+      <div><b>Siap disimpan</b><div class="muted">Tidak perlu memilih mapping satu per satu. Sistem menggunakan kode rekening, nama/uraian, dan kode kegiatan secara otomatis. Baris tanpa referensi tetap disimpan agar proses tidak terhenti.</div></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-light" onclick="openRkasImportModal()">Upload Ulang</button><button class="btn btn-primary" onclick="commitRkasImportFromPreview()">⚡ Simpan Otomatis</button></div>
     </div>`;
+};
+
+function _rkasAutoPreviewRowHtml_(x,i){
+  const mk=x.mapping_kegiatan||{}, mb=x.mapping_barang||{};
+  const st=String(x.status_mapping||'').toUpperCase();
+  const displayStatus=st==='MATCHED'?'AUTO':(st==='MANUAL'?'MANUAL':'BELUM TERPETAKAN');
+  const cls=st==='MATCHED'?'success':st==='MANUAL'?'info':'warning';
+  return `<tr data-rkas-auto-row="${i}"><td>${i+1}</td><td><code>${esc(x.kode_rekening||'-')}</code></td><td>${esc(x.nama_belanja_asli||x.uraian||'-')}</td><td><b>${fmtRupiah(x.pagu||0)}</b></td><td>${esc(mk.kegiatan||x.kegiatan||x.kode_kegiatan||'-')}</td><td>${esc(mb.nama_referensi||'Belum ada referensi')}</td><td>${fmtNum(x.mapping_score||0)}%</td><td>${badge(displayStatus,cls)}</td></tr>`;
+}
+
+window.filterRkasAutoPreview=function(query){
+  const p=window._rkasImportPreview;if(!p)return;
+  const q=String(query||'').trim().toLowerCase();
+  const rows=(p.rows||[]).filter(x=>!q || [x.kode_rekening,x.nama_belanja_asli,x.uraian,x.kegiatan,x.kode_kegiatan,x.mapping_barang?.nama_referensi].some(v=>String(v||'').toLowerCase().includes(q))).slice(0,100);
+  const body=$('#rkasAutoPreviewBody'); if(!body)return;
+  body.innerHTML=rows.length?rows.map((x)=>_rkasAutoPreviewRowHtml_(x,(p.rows||[]).indexOf(x))).join(''):`<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--muted)">Tidak ada hasil.</td></tr>`;
 };
 
 window.openRkasMappingChoice=function(index){
@@ -2619,14 +2634,16 @@ window.applyRkasMappingChoice=function(index){
 
 window.commitRkasImportFromPreview=async function(){
   const p=window._rkasImportPreview; if(!p)return;
-  const unresolved=(p.rows||[]).filter(x=>!['MATCHED','MANUAL'].includes(String(x.status_mapping||'').toUpperCase()));
-  if(unresolved.length){toast(`Masih ada ${unresolved.length} baris yang perlu dikonfirmasi.`,'warning');return;}
-  const btns=document.querySelectorAll('#rkasPreviewArea button');btns.forEach(b=>{if(/Simpan ke RKAS/.test(b.textContent))b.disabled=true;});
+  const btns=document.querySelectorAll('#rkasPreviewArea button');btns.forEach(b=>{if(/Simpan Otomatis/.test(b.textContent))b.disabled=true;});
   try{
-    const payload={id_import:p.response.id_import,rows:p.rows};
+    // Tidak lagi memaksa user menyelesaikan mapping satu per satu. Backend akan
+    // mempertahankan MATCHED dan otomatis menandai sisanya sebagai MANUAL/nota
+    // jika referensi benar-benar tidak tersedia.
+    const rows=(p.rows||[]).map(x=>Object.assign({},x));
+    const payload={id_import:p.response.id_import,rows};
     if(isDinas()) payload.npsn=normalizeNpsnClient($('#rkasImportTargetNpsn')?.value||p.response.npsn||'');
     const r=await api('commitRKASImport',{data:payload});
-    toast(r.message||'RKAS berhasil disimpan.','ok',5000);
+    toast(r.message||`RKAS ${fmtNum(rows.length)} baris berhasil disimpan.`,'ok',5000);
     const modal=$('#rkasImportModal');if(modal)modal.remove();
     if(isDinas()) await renderDinasRkasReview(); else await renderSchoolRkasAndRealisasi();
   }catch(e){
