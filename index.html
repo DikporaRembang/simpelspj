@@ -757,7 +757,9 @@ function groupBelanjaClient(list, amountField, contextFields=[]) {
   (list || []).forEach(x => {
     const ctx = contextFields.map(k => String(x[k] ?? '')).join('|');
     const groupCode = String(x.kode_kelompok_belanja || x.kode_rekening || 'LAINNYA').trim();
-    const groupName = String(x.nama_kelompok_belanja || 'Belanja Belum Terpetakan').trim();
+    // Jika backend sudah menemukan referensi exact, nama referensi menjadi label utama.
+    // Ini hanya memengaruhi label kelompok; pagu/subtotal tetap dihitung dari amountField.
+    const groupName = String(x.nama_referensi || x.nama_kelompok_belanja || 'Belanja Belum Terpetakan').trim();
     const key = [ctx, groupCode, groupName].join('||');
     if (!map.has(key)) map.set(key, {
       context: contextFields.reduce((o,k)=>{o[k]=x[k]??'';return o;},{}),
@@ -1393,6 +1395,13 @@ async function runViewNavigationQueue(){
 async function renderViewSafely(view){
   const c = $('#mainContent');
   if(!c) return;
+
+  // RKAS management is strictly scoped to the RKAS sub-menu.
+  // Never leave its menu/modal attached when navigating to Beranda or another module.
+  if(view !== 'rkasReview'){
+    document.querySelector('#rkasReplaceModal')?.remove();
+    document.querySelector('#rkasManageMenu')?.remove();
+  }
 
   state.view = view;
   setActive(view);
@@ -2575,7 +2584,7 @@ async function renderSchoolRkasAndRealisasi(){
     <tr>
       <td style="text-align:center;color:var(--muted);font-weight:600">${++nomor}</td>
       <td><code>${esc(x.kode_rekening)}</code></td>
-      <td><b>${esc(x.uraian)}</b></td>
+      <td><b>${esc(x.uraian)}</b>${x.nama_referensi ? `<div class="muted" style="margin-top:3px;font-size:.74rem">Referensi: ${esc(x.nama_referensi)}</div>` : ''}</td>
       <td><b>${fmtRupiah(x.pagu)}</b></td>
       <td style="color:var(--success);font-weight:600">${fmtRupiah(x.total_realisasi)}</td>
       <td style="color:${Number(x.sisa_pagu) < 0 ? 'var(--danger)' : 'var(--text)'};font-weight:600">${fmtRupiah(x.sisa_pagu)}</td>
@@ -2783,6 +2792,8 @@ window.openTambahItemRkasModal = function(){
 };
 
 async function renderDinasRkasReview(){
+  document.querySelector('#rkasReplaceModal')?.remove();
+  document.querySelector('#rkasManageMenu')?.remove();
   const c = $('#mainContent');
   c.innerHTML = head('Review & Persetujuan RKAS (Dinas)', 'Kelola paket RKAS sekolah: yang harus disetujui, sudah disetujui, dan impor RKAS.') +
     `<div class="toolbar" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:16px;">
@@ -2790,6 +2801,12 @@ async function renderDinasRkasReview(){
          <button class="btn btn-sm btn-primary" id="btnTabDiajukan" onclick="loadDinasRkasTab('DIAJUKAN')">⏳ Yang Harus Disetujui</button>
          <button class="btn btn-sm btn-light" id="btnTabApproved" onclick="loadDinasRkasTab('APPROVED')">✅ Sudah Disetujui</button>
          <button class="btn btn-sm btn-secondary" onclick="openRkasImportModal()">📤 Impor RKAS</button>
+         <div style="position:relative;display:inline-block">
+           <button class="btn btn-sm btn-light" onclick="toggleRkasManageMenu(event)">⚙️ Kelola RKAS ▾</button>
+           <div id="rkasManageMenu" style="display:none;position:absolute;right:0;top:calc(100% + 6px);z-index:50;min-width:220px;background:#fff;border:1px solid var(--border);border-radius:12px;box-shadow:0 12px 30px rgba(0,0,0,.14);padding:6px">
+             <button class="btn btn-sm btn-light" style="display:block;width:100%;text-align:left" onclick="closeRkasManageMenu();openRkasReplaceModal()">♻️ Reset / Ganti RKAS</button>
+           </div>
+         </div>
        </div>
        <input id="searchDinasRkas" placeholder="🔍 Cari NPSN, nama sekolah, kecamatan..." style="padding:10px 14px;border:1px solid var(--border);border-radius:10px;font-size:0.9rem;min-width:300px;background:#fff;" oninput="filterAndRenderDinasRkasTable()">
      </div>
@@ -4558,9 +4575,6 @@ function printV5Archive(){
 window.loadV5Archive=loadV5Archive;
 </script>
 
-</body>
-</html>
-
 <script>
 /* ============================================================================
  * UI PENGESAHAN ELEKTRONIK — V3
@@ -4762,3 +4776,463 @@ renderAssessment = function(a, indicators){
   document.addEventListener('keydown',e=>{if(e.altKey && e.key.toLowerCase()==='h'){e.preventDefault();if(window.state?.token) loadView('home')}});
 })();
 </script>
+
+<script>
+/* ============================================================================
+ * RKAS REPLACE UI — FINAL17
+ * Dinas only: Ganti seluruh sekolah / satu sekolah.
+ * Parser khusus format DPA/RKA seperti "RKA Unit - Manajemen Aplikasi RKAS".
+ * ========================================================================== */
+
+function _rkasReplaceNorm_(v){
+  return String(v ?? '').replace(/\u00a0/g,' ').trim();
+}
+function _rkasReplaceCode_(v){
+  const s=_rkasReplaceNorm_(v).replace(/\s+/g,'');
+  return /^\d+(?:\.\d+){5}$/.test(s) ? s : '';
+}
+function _rkasReplaceNpsn_(v){
+  const s=_rkasReplaceNorm_(v).replace(/[^\d]/g,'');
+  return /^\d{8}$/.test(s)?s:'';
+}
+function _rkasReplaceNum_(v){
+  if(typeof v==='number' && Number.isFinite(v)) return v;
+  const s=_rkasReplaceNorm_(v).replace(/[^\d,.-]/g,'');
+  if(!s)return 0;
+  if(s.includes(',') && s.includes('.')) return Number(s.replace(/\./g,'').replace(',','.'))||0;
+  if(s.includes(',')) return Number(s.replace(',','.'))||0;
+  return Number(s)||0;
+}
+
+/**
+ * Parser format DPA:
+ * col A = Kode Rekening / NPSN
+ * col F = Uraian
+ * col U = Volume
+ * col X = Satuan
+ * col AA = Harga Satuan
+ * col AD = Jumlah
+ *
+ * Parser tidak menganggap baris subtotal sebagai barang.
+ * Kode rekening penuh diwariskan ke detail sampai muncul kode rekening baru.
+ */
+function _rkasParseDpaWorkbookClient(wb){
+  const all=[];
+  const diagnostics={sheets:[],mode:'DPA_HIERARCHICAL',ignoredSubtotal:0,ignoredHeader:0};
+  for(const sheetName of wb.SheetNames){
+    const ws=wb.Sheets[sheetName];
+    const rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:true,defval:''});
+    let codeCol=0, descCol=5, volCol=20, unitCol=23, priceCol=26, totalCol=29;
+    let headerRow=-1;
+
+    // Cari baris "Kode Rekening" + "Uraian". Jika tidak ada, gunakan posisi
+    // baku file DPA yang kita analisis.
+    for(let r=0;r<Math.min(rows.length,300);r++){
+      const cells=(rows[r]||[]).map(x=>_rkasReplaceNorm_(x).toUpperCase());
+      const hasCode=cells.some(x=>x==='KODE REKENING'||x==='KODE\nREKENING');
+      const hasUraian=cells.some(x=>x==='URAIAN');
+      if(hasCode&&hasUraian){headerRow=r;break;}
+    }
+
+    // File dapat berisi header berulang pada halaman berikutnya. Bahkan bila
+    // header tidak ditemukan, tetap coba posisi baku.
+    if(headerRow<0) headerRow=27;
+
+    let currentKode='';
+    let currentNpsn='';
+    let currentKegiatan='';
+    let currentKodeKegiatan='';
+
+    for(let r=headerRow+1;r<rows.length;r++){
+      const row=rows[r]||[];
+      const a=_rkasReplaceNorm_(row[codeCol]);
+      const uraian=_rkasReplaceNorm_(row[descCol]);
+      const fullCode=_rkasReplaceCode_(a);
+      const npsn=_rkasReplaceNpsn_(a);
+
+      // Lewati baris header/nomor kolom.
+      if(/^KODE\s*$/i.test(a)||/^URAIAN$/i.test(uraian)||a==='1'||a==='2'){
+        diagnostics.ignoredHeader++;
+        continue;
+      }
+
+      // NPSN menandai awal blok sekolah.
+      if(npsn){
+        currentNpsn=npsn;
+        continue;
+      }
+
+      // Kode rekening penuh menandai parent objek belanja.
+      // Reset sekolah agar detail tidak bocor ke sekolah sebelumnya.
+      if(fullCode){
+        currentKode=fullCode;
+        currentNpsn=currentNpsn||'';
+        continue;
+      }
+
+      // Parent/subtotal seperti 5., 5.1, 5.1.02, dst tidak menjadi detail.
+      if(/^\d+(?:\.\d+){0,4}\.?$/.test(a) && a){
+        diagnostics.ignoredSubtotal++;
+        continue;
+      }
+
+      if(!currentKode||!currentNpsn||!uraian) continue;
+
+      const volume=_rkasReplaceNum_(row[volCol]);
+      const harga=_rkasReplaceNum_(row[priceCol]);
+      const pagu=_rkasReplaceNum_(row[totalCol]);
+
+      // Baris subtotal umumnya tidak mempunyai volume/satuan/harga.
+      // Detail barang minimal mempunyai pagu > 0.
+      if(!(pagu>0)) {
+        diagnostics.ignoredSubtotal++;
+        continue;
+      }
+
+      all.push({
+        npsn:currentNpsn,
+        kode_rekening:currentKode,
+        kode_kegiatan:currentKodeKegiatan,
+        kegiatan:currentKegiatan,
+        nama_belanja_asli:uraian,
+        uraian:uraian,
+        volume:volume||1,
+        satuan:_rkasReplaceNorm_(row[unitCol])||'paket',
+        harga_satuan:harga||pagu,
+        pagu:pagu,
+        nomor_baris_sumber:r+1,
+        sheet_name:sheetName
+      });
+    }
+
+    diagnostics.sheets.push({sheet:sheetName,rows:rows.length});
+  }
+
+  return {rows:all,diagnostics};
+}
+
+function _rkasReplaceSchoolSet_(rows){
+  return [...new Set((rows||[]).map(x=>_rkasReplaceNpsn_(x.npsn)).filter(Boolean))];
+}
+
+function _rkasReplaceTotal_(rows){
+  return (rows||[]).reduce((a,x)=>a+Number(x.pagu||0),0);
+}
+
+window.toggleRkasManageMenu=function(ev){
+  ev?.stopPropagation();
+  const m=$('#rkasManageMenu');
+  if(!m)return;
+  m.style.display=m.style.display==='none'?'block':'none';
+};
+window.closeRkasManageMenu=function(){ const m=$('#rkasManageMenu'); if(m)m.style.display='none'; };
+
+// Safety net: modal Reset/Ganti tidak boleh bertahan ketika halaman berpindah
+// dari RKAS ke login/beranda atau ketika sesi DINAS sudah tidak aktif.
+function _rkasReplaceGuard_(){
+  const modal=$('#rkasReplaceModal');
+  if(!modal)return;
+  const stillRkas=!!document.querySelector('#mainContent #btnTabDiajukan');
+  if(!isDinas() || !stillRkas) modal.remove();
+}
+setInterval(_rkasReplaceGuard_,1000);
+document.addEventListener('click',function(ev){
+  const m=$('#rkasManageMenu');
+  if(m && !m.parentElement.contains(ev.target)) m.style.display='none';
+});
+
+window.openRkasReplaceModal=async function(){
+  // HARD GUARD: Reset/Ganti hanya boleh dipanggil dari submenu RKAS Dinas.
+  if(!isDinas()){toast('Fitur Reset / Ganti RKAS hanya tersedia untuk DINAS.','warning');return;}
+  if(state.view !== 'rkasReview'){
+    toast('Buka menu RKAS & Anggaran → Kelola RKAS terlebih dahulu.','warning');
+    return;
+  }
+  const rkasPage = document.querySelector('#mainContent #btnTabDiajukan');
+  if(!rkasPage){
+    toast('Halaman Review & Persetujuan RKAS belum siap.','warning');
+    return;
+  }
+  document.querySelector('#rkasReplaceModal')?.remove();
+  let schools=[];
+  try{
+    const r=await api('getSekolah',{});
+    schools=r.data||[];
+  }catch(e){toast(errorText(e),'error');return;}
+
+  window._rkasReplaceSchools=schools;
+  const options=schools.map(s=>{
+    const n=_rkasReplaceNpsn_(s.npsn);
+    return `<option value="${esc(n)}">${esc(s.nama_sekolah||'-')} — ${esc(n)}</option>`;
+  }).join('');
+
+  const wrap=document.createElement('div');
+  wrap.id='rkasReplaceModal';
+  wrap.innerHTML=`<div style="position:fixed;inset:0;background:rgba(0,0,0,.62);display:flex;align-items:center;justify-content:center;z-index:1200;padding:14px;overflow:auto">
+    <div style="background:#fff;padding:26px;border-radius:22px;width:min(1080px,100%);max-height:94vh;overflow:auto;box-shadow:0 24px 70px rgba(0,0,0,.25)">
+      <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start">
+        <div>
+          <h2 style="margin:0;color:var(--primary)">♻️ Reset / Ganti RKAS</h2>
+          <p class="muted" style="margin:6px 0 0">Import ulang RKAS Dinas. Data lama baru dibersihkan setelah RKAS baru berhasil diverifikasi.</p>
+        </div>
+        <button class="btn btn-light" onclick="$('#rkasReplaceModal').remove()">✕ Tutup</button>
+      </div>
+
+      <div class="panel" style="margin-top:16px;background:#f8fafc">
+        <div class="form-grid">
+          <div class="field">
+            <label>Mode Penggantian</label>
+            <select id="rkasReplaceScope" onchange="toggleRkasReplaceSchool()">
+              <option value="ONE">Ganti 1 sekolah</option>
+              <option value="ALL">Ganti seluruh sekolah dari file</option>
+            </select>
+          </div>
+          <div class="field" id="rkasReplaceSchoolField">
+            <label>Sekolah</label>
+            <input id="rkasReplaceSchoolSearch" placeholder="🔎 Cari nama sekolah atau NPSN..." oninput="filterRkasReplaceSchools()" autocomplete="off">
+            <select id="rkasReplaceNpsn" style="margin-top:8px">${options}</select>
+          </div>
+          <div class="field">
+            <label>Tahun Anggaran</label>
+            <input id="rkasReplaceYear" type="number" value="${new Date().getFullYear()}" min="2000" max="2100">
+          </div>
+          <div class="field">
+            <label>Versi RKAS</label>
+            <input id="rkasReplaceVersion" value="PERUBAHAN" placeholder="Contoh: PERUBAHAN / 2026">
+          </div>
+          <div class="field">
+            <label>File Excel RKAS</label>
+            <input id="rkasReplaceFile" type="file" accept=".xlsx,.xls" required>
+          </div>
+        </div>
+        <div id="rkasReplaceMsg" style="margin-top:12px"></div>
+        <div class="toolbar" style="justify-content:flex-end;margin-top:12px">
+          <button class="btn btn-light" onclick="$('#rkasReplaceModal').remove()">Batal</button>
+          <button class="btn btn-primary" id="rkasReplaceAnalyzeBtn" onclick="analyzeRkasReplaceFile()">🔎 Analisis File</button>
+        </div>
+      </div>
+
+      <div id="rkasReplacePreview" style="margin-top:16px"></div>
+    </div>
+  </div>`;
+  document.body.appendChild(wrap);
+  // Pastikan mode awal konsisten dan sekolah disabled pada mode ALL.
+  toggleRkasReplaceSchool();
+  filterRkasReplaceSchools();
+};
+
+window.filterRkasReplaceSchools=function(){
+  const q=String($('#rkasReplaceSchoolSearch')?.value||'').trim().toLowerCase();
+  const sel=$('#rkasReplaceNpsn');
+  if(!sel)return;
+  const all=Array.isArray(window._rkasReplaceSchools)?window._rkasReplaceSchools:[];
+  const current=String(sel.value||'');
+  const filtered=!q?all:all.filter(s=>{
+    const n=_rkasReplaceNpsn_(s.npsn);
+    return String(n).includes(q)||String(s.nama_sekolah||'').toLowerCase().includes(q)||String(s.kecamatan||'').toLowerCase().includes(q);
+  });
+  sel.innerHTML=filtered.map(s=>{
+    const n=_rkasReplaceNpsn_(s.npsn);
+    return `<option value="${esc(n)}">${esc(s.nama_sekolah||'-')} — ${esc(n)}</option>`;
+  }).join('');
+  if(current && filtered.some(s=>_rkasReplaceNpsn_(s.npsn)===current)) sel.value=current;
+};
+
+window.toggleRkasReplaceSchool=function(){
+  const scope=$('#rkasReplaceScope')?.value||'ONE';
+  const f=$('#rkasReplaceSchoolField');
+  const sel=$('#rkasReplaceNpsn');
+  const one=scope==='ONE';
+  if(f){
+    f.style.display=one?'block':'none';
+    f.setAttribute('aria-hidden',one?'false':'true');
+  }
+  if(sel)sel.disabled=!one;
+};
+
+window.analyzeRkasReplaceFile=async function(){
+  const file=$('#rkasReplaceFile')?.files?.[0];
+  const out=$('#rkasReplacePreview'), msgHost=$('#rkasReplaceMsg'), btn=$('#rkasReplaceAnalyzeBtn');
+  if(!file){msgHost.innerHTML=msg('Pilih file Excel RKAS terlebih dahulu.','warning');return;}
+  if(typeof XLSX==='undefined'){msgHost.innerHTML=msg('Library Excel belum tersedia.','warning');return;}
+  btn.disabled=true;btn.textContent='Menganalisis...';
+  out.innerHTML=loading('Membaca struktur DPA/RKAS dan memisahkan subtotal dari detail barang...');
+  try{
+    const buffer=await file.arrayBuffer();
+    const wb=XLSX.read(new Uint8Array(buffer),{type:'array',cellDates:true});
+    const parsed=_rkasParseDpaWorkbookClient(wb);
+    let rows=parsed.rows||[];
+    if(!rows.length) throw new Error('Tidak ditemukan detail barang RKAS. Pastikan file menggunakan format DPA/RKA yang memiliki Kode Rekening, NPSN sekolah, uraian barang, volume, harga, dan jumlah.');
+
+    const scope=$('#rkasReplaceScope').value;
+    const selected=_rkasReplaceNpsn_($('#rkasReplaceNpsn')?.value||'');
+    if(scope==='ONE'){
+      const before=rows.length;
+      rows=rows.filter(x=>x.npsn===selected);
+      if(!rows.length) throw new Error(`NPSN ${selected} tidak ditemukan pada file.`);
+      parsed.filtered=before-rows.length;
+    }
+
+    // Master sekolah adalah sumber kebenaran. File DPA dapat memuat NPSN
+    // legacy/di luar 378 sekolah resmi; untuk mode ALL, NPSN tersebut
+    // ditampilkan sebagai peringatan dan tidak diimpor.
+    let officialSchoolMap={};
+    try{
+      const sr=await api('getSekolah',{});
+      (sr.data||[]).forEach(s=>{
+        const n=_rkasReplaceNpsn_(s.npsn);
+        if(n) officialSchoolMap[n]=s;
+      });
+    }catch(e){ throw new Error('Gagal membaca master sekolah: '+errorText(e)); }
+
+    const unknownNpsn=[...new Set(rows.map(x=>x.npsn).filter(n=>!officialSchoolMap[n]))];
+    const originalRows=rows.length;
+    if(scope==='ALL'){
+      rows=rows.filter(x=>!!officialSchoolMap[x.npsn]);
+    }
+    if(!rows.length) throw new Error('Tidak ada detail RKAS yang cocok dengan 378 sekolah resmi.');
+    const schools=_rkasReplaceSchoolSet_(rows);
+    const total=_rkasReplaceTotal_(rows);
+    const bySchool={};
+    rows.forEach(x=>{
+      if(!bySchool[x.npsn])bySchool[x.npsn]={npsn:x.npsn,count:0,total:0};
+      bySchool[x.npsn].count++;
+      bySchool[x.npsn].total+=Number(x.pagu||0);
+    });
+
+    window._rkasReplacePreview={file,rows,scope,selectedNpsn:selected,schools,bySchool,total,diagnostics:parsed.diagnostics};
+    const schoolCards=Object.values(bySchool).slice(0,30).map(x=>
+      `<div class="panel" style="margin:0;padding:10px"><b>${esc(x.npsn)}</b><div class="muted">${fmtNum(x.count)} item • ${fmtRupiah(x.total)}</div></div>`
+    ).join('');
+
+    const sample=rows.slice(0,30).map((x,i)=>
+      `<tr><td>${i+1}</td><td>${esc(x.npsn)}</td><td><code>${esc(x.kode_rekening)}</code></td><td>${esc(x.uraian)}</td><td>${fmtRupiah(x.pagu)}</td></tr>`
+    ).join('');
+
+    out.innerHTML=`
+      <div class="cards">
+        <div class="stat"><small>Sekolah</small><strong>${fmtNum(schools.length)}</strong></div>
+        <div class="stat"><small>Detail Barang</small><strong>${fmtNum(rows.length)}</strong></div>
+        <div class="stat"><small>Total Pagu</small><strong>${fmtRupiah(total)}</strong></div>
+        <div class="stat"><small>Subtotal disaring</small><strong>${fmtNum(parsed.diagnostics.ignoredSubtotal||0)}</strong></div>
+        <div class="stat"><small>NPSN di luar master</small><strong>${fmtNum(unknownNpsn.length)}</strong></div>
+      </div>
+      ${unknownNpsn.length?`<div class="panel" style="margin-top:12px;background:#fff7ed;border-color:#fed7aa">
+        <b>⚠️ ${fmtNum(unknownNpsn.length)} NPSN pada file tidak ada di master sekolah</b>
+        <div class="muted" style="margin-top:5px">${esc(unknownNpsn.slice(0,20).join(', '))}${unknownNpsn.length>20?' …':''}. Baris NPSN tersebut tidak akan diimpor pada mode seluruh sekolah.</div>
+        <div class="muted" style="margin-top:5px">Data resmi yang akan diproses: ${fmtNum(rows.length)} detail dari ${fmtNum(schools.length)} sekolah.</div>
+      </div>`:''}
+
+      <div class="panel" style="margin-top:14px;background:#fff7ed;border-color:#fed7aa">
+        <b>⚠️ Aturan penggantian</b>
+        <div class="muted" style="margin-top:6px">
+          RKAS lama <b>tidak dihapus sekarang</b>. Sistem akan menulis RKAS baru sebagai pending,
+          memverifikasi jumlah dan pagu, baru kemudian membersihkan RKAS lama yang tidak sedang
+          dipakai transaksi SPJ. RKAS lama yang masih direferensikan transaksi akan dipertahankan
+          sebagai <b>ARCHIVED_REPLACED</b>.
+        </div>
+      </div>
+
+      <div class="panel" style="margin-top:14px">
+        <h3 style="margin-top:0">Sekolah yang terdeteksi</h3>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:8px">${schoolCards}</div>
+        ${schools.length>30?`<div class="muted" style="margin-top:8px">Menampilkan 30 pertama. Seluruh ${fmtNum(schools.length)} sekolah tetap akan diproses.</div>`:''}
+      </div>
+
+      <div class="panel" style="margin-top:14px">
+        <h3 style="margin-top:0">Contoh detail yang akan diimpor</h3>
+        <div class="table-wrap" style="max-height:360px;overflow:auto">
+          <table class="friendly-table"><thead><tr><th>No</th><th>NPSN</th><th>Kode</th><th>Uraian</th><th>Pagu</th></tr></thead><tbody>${sample}</tbody></table>
+        </div>
+      </div>
+
+      <div class="panel" style="margin-top:14px;display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;background:#ecfdf5">
+        <div><b>Siap mengganti RKAS?</b><div class="muted">Mapping referensi barang akan dilakukan dari kode rekening secara exact-match.</div></div>
+        <button class="btn btn-primary" onclick="executeRkasReplace()">♻️ Proses & Ganti RKAS</button>
+      </div>`;
+  }catch(e){
+    out.innerHTML=msg(errorText(e),'error');
+    window._rkasReplacePreview=null;
+  }finally{
+    btn.disabled=false;btn.textContent='🔎 Analisis File';
+  }
+};
+
+window.executeRkasReplace=async function(){
+  const p=window._rkasReplacePreview;
+  if(!p||!p.rows?.length){toast('Belum ada hasil analisis file.','warning');return;}
+  const btns=$('#rkasReplacePreview')?.querySelectorAll('button')||[];
+  btns.forEach(b=>b.disabled=true);
+  const msgHost=$('#rkasReplaceMsg');
+  try{
+    if(!confirm(
+      p.scope==='ALL'
+      ? `Ganti RKAS untuk ${p.schools.length} sekolah dari file ini?\n\n${fmtNum(p.rows.length)} detail akan diproses. Data lama baru dibersihkan setelah verifikasi berhasil.`
+      : `Ganti RKAS sekolah ${p.selectedNpsn}?\n\n${fmtNum(p.rows.length)} detail akan diproses. Data lama baru dibersihkan setelah verifikasi berhasil.`
+    )){btns.forEach(b=>b.disabled=false);return;}
+
+    msgHost.innerHTML=msg('Membuat sesi penggantian RKAS...','info');
+    const start=await api('rkasReplaceStart',{data:{
+      scope:p.scope,
+      npsn:p.scope==='ONE'?p.selectedNpsn:'',
+      tahun:Number($('#rkasReplaceYear').value||new Date().getFullYear()),
+      versi_rkas:$('#rkasReplaceVersion').value.trim()||'PERUBAHAN',
+      nama_file:p.file.name,
+      jenis_file:p.file.name.toLowerCase().endsWith('.xls')?'XLS':'XLSX'
+    }});
+    const importId=start.id_import;
+    // Batch lebih besar mengurangi round-trip Apps Script secara drastis.
+    // Backend juga tidak lagi membaca ulang seluruh staging pada setiap batch.
+    const batchSize=2000;
+    let done=0;
+    const totalRows=p.rows.length;
+    const startedAt=Date.now();
+    for(let i=0;i<totalRows;i+=batchSize){
+      const batch=p.rows.slice(i,i+batchSize);
+      const r=await api('rkasReplaceAppend',{data:{
+        id_import:importId,
+        scope:p.scope,
+        npsn:p.scope==='ONE'?p.selectedNpsn:'',
+        rows:batch,
+        source_start:i+1
+      }});
+      done=Math.min(i+batch.length,totalRows);
+      const elapsed=Math.max(1,Date.now()-startedAt);
+      const rate=done/(elapsed/1000);
+      const remain=Math.max(0,totalRows-done);
+      const eta=rate>0?Math.round(remain/rate):0;
+      const etaText=eta>0?` • perkiraan ${Math.ceil(eta/60)} menit lagi`:'';
+      msgHost.innerHTML=msg(
+        `♻️ Memproses RKAS: ${fmtNum(done)} / ${fmtNum(totalRows)} detail (${Math.round(done/totalRows*100)}%)${etaText}<br>`+
+        `<span class="muted">Batch ${Math.ceil(done/batchSize)} • ${fmtNum(r.accepted||batch.length)} detail diterima</span>`,
+        'info'
+      );
+      await new Promise(requestAnimationFrame);
+    }
+
+    msgHost.innerHTML=msg('Semua detail sudah masuk staging. Memverifikasi dan mengganti RKAS lama...','info');
+    const fin=await api('rkasReplaceFinalize',{data:{
+      id_import:importId,
+      scope:p.scope,
+      npsn:p.scope==='ONE'?p.selectedNpsn:''
+    }});
+
+    msgHost.innerHTML=msg(
+      `Berhasil. ${fmtNum(fin.jumlah_baris)} detail menjadi APPROVED. `+
+      `${fmtNum(fin.deleted_lama)} baris RKAS lama dihapus`+
+      (fin.archived_karena_transaksi?`; ${fmtNum(fin.archived_karena_transaksi)} baris lama dipertahankan karena dipakai transaksi SPJ.`:'')+'.',
+      'ok'
+    );
+    toast('RKAS berhasil diganti.','ok',6000);
+    setTimeout(async()=>{
+      $('#rkasReplaceModal')?.remove();
+      await renderDinasRkasReview();
+    },900);
+  }catch(e){
+    msgHost.innerHTML=msg(errorText(e),'error');
+    btns.forEach(b=>b.disabled=false);
+  }
+};
+</script>
+</body>
+</html>
