@@ -60,19 +60,97 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
 .brand small{color:var(--muted);font-size:.78rem;font-weight:600}
 
 /* ================= LOADING / WELCOME ================= */
-@keyframes logoBounce{
-  0%,100%{transform:translateY(0);animation-timing-function:cubic-bezier(.8,0,1,1)}
-  50%{transform:translateY(-10px);animation-timing-function:cubic-bezier(0,0,.2,1)}
+/* Global Loading B+E: bidangsd.png + cahaya berjalan + ring progress.
+   Catatan: blok .welcome-overlay di bawahnya TIDAK DIUBAH. */
+@keyframes loadingBreathe{
+  0%,100%{transform:scale(.965);opacity:.92}
+  50%{transform:scale(1.035);opacity:1}
+}
+@keyframes loadingOrbit{
+  to{transform:rotate(360deg)}
+}
+@keyframes loadingSweep{
+  to{transform:rotate(360deg)}
+}
+@keyframes loadingHalo{
+  0%,100%{transform:scale(.88);opacity:.28}
+  50%{transform:scale(1.06);opacity:.62}
 }
 .loading-container{
+  --loading-progress:0%;
+  position:relative;
+  min-height:210px;
   display:flex;flex-direction:column;align-items:center;justify-content:center;
-  padding:48px 20px;gap:16px
+  padding:30px 20px;gap:9px;
+  overflow:hidden;
+}
+.loading-visual{
+  position:relative;width:132px;height:132px;
+  display:grid;place-items:center;
+}
+.loading-ring{
+  position:absolute;inset:0;border-radius:50%;
+  background:conic-gradient(from -90deg,var(--green) var(--loading-progress),#e7ece8 0);
+  -webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 7px),#000 calc(100% - 6px));
+  mask:radial-gradient(farthest-side,transparent calc(100% - 7px),#000 calc(100% - 6px));
+  filter:drop-shadow(0 4px 10px rgba(8,127,91,.12));
+  transition:none;
+}
+.loading-halo{
+  position:absolute;width:92px;height:92px;border-radius:50%;
+  background:radial-gradient(circle,rgba(8,127,91,.18),rgba(8,127,91,.05) 52%,transparent 72%);
+  animation:loadingHalo 2.7s ease-in-out infinite;
 }
 .loading-logo{
-  width:58px;height:58px;object-fit:contain;background:#fff;border-radius:16px;padding:7px;
-  box-shadow:0 8px 24px rgba(8,127,91,.16);animation:logoBounce .9s infinite
+  position:relative;z-index:2;width:66px;height:66px;object-fit:contain;
+  background:#fff;border-radius:17px;padding:7px;
+  box-shadow:0 8px 24px rgba(8,127,91,.15);
+  animation:loadingBreathe 2.7s ease-in-out infinite;
 }
-.loading-text{font-size:.9rem;font-weight:650;color:var(--muted);letter-spacing:.25px}
+.loading-sweep{
+  position:absolute;inset:7px;border-radius:50%;
+  border:2px solid transparent;
+  border-top-color:rgba(8,127,91,.48);
+  border-right-color:rgba(8,127,91,.10);
+  animation:loadingSweep 2.4s linear infinite;
+}
+.loading-orbit-dot{
+  position:absolute;left:calc(50% - 5px);top:calc(50% - 5px);
+  width:10px;height:10px;border-radius:50%;
+  background:#2b9b75;
+  box-shadow:0 0 0 6px rgba(43,155,117,.10),0 0 16px rgba(43,155,117,.45);
+  transform-origin:5px 61px;
+  animation:loadingOrbit 2.4s linear infinite;
+}
+.loading-text{
+  font-size:.92rem;font-weight:700;color:var(--navy);
+  letter-spacing:.05px;text-align:center;
+}
+.loading-progress-percent{
+  min-height:34px;
+  margin-top:2px;
+  font-size:1.45rem;
+  line-height:1;
+  font-weight:800;
+  letter-spacing:-.6px;
+  color:var(--navy);
+  font-variant-numeric:tabular-nums;
+  text-align:center;
+}
+.loading-progress-text{
+  min-height:18px;font-size:.78rem;font-weight:650;color:var(--muted);
+  text-align:center;
+}
+.loading-progress-track{
+  width:min(330px,78vw);height:6px;margin-top:3px;
+  border-radius:99px;background:#e8ede9;overflow:hidden;
+}
+.loading-progress-bar{
+  width:var(--loading-progress);height:100%;
+  border-radius:inherit;
+  background:linear-gradient(90deg,var(--green),#49a985);
+  transition:none;
+}
 
 @keyframes smoothWelcome{
   0%{opacity:0;transform:scale(.94) translateY(10px);backdrop-filter:blur(0)}
@@ -851,7 +929,77 @@ function toast(text,type='ok',duration=3200){
   const el=document.createElement('div');el.className=`toast ${type}`;el.textContent=String(text||'');host.appendChild(el);
   setTimeout(()=>{el.style.opacity='0';el.style.transform='translateY(8px)';setTimeout(()=>el.remove(),220)},duration);
 }
-function loading(text='Memuat data...'){ return `<div class="loading-container"><img src="bidangsd.png" class="loading-logo" alt="Loading"><div class="loading-text">${esc(text)}</div></div>`; }
+function loading(text='Memuat data...', progress=null, detail=''){
+  const hasProgress = Number.isFinite(Number(progress));
+  const pct = hasProgress ? Math.max(0, Math.min(100, Number(progress))) : 0;
+  return `<div class="loading-container" data-loading-progress="${pct}" style="--loading-progress:${pct}%">
+    <div class="loading-visual">
+      <div class="loading-ring"></div>
+      <div class="loading-halo"></div>
+      <div class="loading-sweep"></div>
+      <div class="loading-orbit-dot"></div>
+      <img src="bidangsd.png" class="loading-logo" alt="Loading">
+    </div>
+    <div class="loading-text">${esc(text)}</div>
+    ${hasProgress ? `<div class="loading-progress-percent">0%</div>
+      <div class="loading-progress-track"><div class="loading-progress-bar"></div></div>` : ''}
+    <div class="loading-progress-text">${esc(detail || '')}</div>
+  </div>`;
+}
+function updateLoadingProgress(container, progress, detail=''){
+  const root = typeof container === 'string' ? document.querySelector(container) : container;
+  if(!root) return;
+
+  const target = Math.max(0, Math.min(100, Number(progress) || 0));
+  const previous = Number(root.dataset.loadingProgress || 0);
+  root.dataset.loadingProgress = String(target);
+
+  if(root._loadingRaf) cancelAnimationFrame(root._loadingRaf);
+
+  const duration = Math.max(420, Math.min(1100, 420 + Math.abs(target - previous) * 9));
+  const startTime = performance.now();
+
+  const ease = t => 1 - Math.pow(1 - t, 3);
+
+  const frame = now => {
+    const t = Math.min(1, (now - startTime) / duration);
+    const value = previous + (target - previous) * ease(t);
+
+    root.style.setProperty('--loading-progress', `${value}%`);
+
+    const bar = root.querySelector('.loading-progress-bar');
+    if(bar) bar.style.width = `${value}%`;
+
+    const pct = root.querySelector('.loading-progress-percent');
+    if(pct) pct.textContent = `${Math.round(value)}%`;
+
+    if(t < 1){
+      root._loadingRaf = requestAnimationFrame(frame);
+    }else{
+      root._loadingRaf = null;
+      root.style.setProperty('--loading-progress', `${target}%`);
+      if(bar) bar.style.width = `${target}%`;
+      if(pct) pct.textContent = `${Math.round(target)}%`;
+    }
+  };
+
+  if(detail){
+    const detailEl = root.querySelector('.loading-progress-text');
+    if(detailEl) detailEl.textContent = detail;
+  }
+
+  root._loadingRaf = requestAnimationFrame(frame);
+}
+function initLoadingProgress(root){
+  const el = typeof root === 'string' ? document.querySelector(root) : root;
+  if(!el) return;
+  const initial = Number(el.dataset.loadingProgress);
+  if(Number.isFinite(initial) && el.querySelector('.loading-progress-percent')){
+    el.dataset.loadingProgress = '0';
+    updateLoadingProgress(el, initial);
+  }
+}
+
 function head(title,desc=''){
   const info = SUBMENU_TUTORIALS[state.view];
   const tutorial = info ? `<div class="tutorial-feed"><div class="tutorial-label">Tutorial singkat • Hubungan dengan alur SPJ BOS SD</div><h3>${esc(info.title)}</h3><p>${esc(info.text)}</p><div class="tutorial-flow">${info.flow.map((x,i)=>`${i?'<span class="tutorial-arrow">→</span>':''}<span class="tutorial-step">${esc(x)}</span>`).join('')}</div></div>` : '';
