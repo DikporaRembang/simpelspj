@@ -941,8 +941,8 @@ function loading(text='Memuat data...', progress=null, detail=''){
       <img src="bidangsd.png" class="loading-logo" alt="Loading">
     </div>
     <div class="loading-text">${esc(text)}</div>
-    ${hasProgress ? `<div class="loading-progress-percent">0%</div>
-      <div class="loading-progress-track"><div class="loading-progress-bar"></div></div>` : ''}
+    ${hasProgress ? `<div class="loading-progress-percent">${Math.round(pct)}%</div>
+      <div class="loading-progress-track"><div class="loading-progress-bar" style="width:${pct}%"></div></div>` : ''}
     <div class="loading-progress-text">${esc(detail || '')}</div>
   </div>`;
 }
@@ -951,36 +951,25 @@ function updateLoadingProgress(container, progress, detail=''){
   if(!root) return;
 
   const target = Math.max(0, Math.min(100, Number(progress) || 0));
-  const previous = Number(root.dataset.loadingProgress || 0);
-  root.dataset.loadingProgress = String(target);
+  const current = Number(root.dataset.loadingProgress || 0);
 
   if(root._loadingRaf) cancelAnimationFrame(root._loadingRaf);
+  root.dataset.loadingProgress = String(target);
 
-  const duration = Math.max(420, Math.min(1100, 420 + Math.abs(target - previous) * 9));
+  const distance = Math.abs(target - current);
+  const duration = Math.max(280, Math.min(900, 280 + distance * 7));
   const startTime = performance.now();
-
   const ease = t => 1 - Math.pow(1 - t, 3);
 
-  const frame = now => {
-    const t = Math.min(1, (now - startTime) / duration);
-    const value = previous + (target - previous) * ease(t);
-
-    root.style.setProperty('--loading-progress', `${value}%`);
+  const paint = value => {
+    const v = Math.max(0, Math.min(100, value));
+    root.style.setProperty('--loading-progress', `${v}%`);
 
     const bar = root.querySelector('.loading-progress-bar');
-    if(bar) bar.style.width = `${value}%`;
+    if(bar) bar.style.width = `${v}%`;
 
     const pct = root.querySelector('.loading-progress-percent');
-    if(pct) pct.textContent = `${Math.round(value)}%`;
-
-    if(t < 1){
-      root._loadingRaf = requestAnimationFrame(frame);
-    }else{
-      root._loadingRaf = null;
-      root.style.setProperty('--loading-progress', `${target}%`);
-      if(bar) bar.style.width = `${target}%`;
-      if(pct) pct.textContent = `${Math.round(target)}%`;
-    }
+    if(pct) pct.textContent = `${Math.round(v)}%`;
   };
 
   if(detail){
@@ -988,15 +977,31 @@ function updateLoadingProgress(container, progress, detail=''){
     if(detailEl) detailEl.textContent = detail;
   }
 
+  const frame = now => {
+    const t = Math.min(1, (now - startTime) / duration);
+    paint(current + (target - current) * ease(t));
+    if(t < 1){
+      root._loadingRaf = requestAnimationFrame(frame);
+    }else{
+      root._loadingRaf = null;
+      paint(target);
+    }
+  };
+
   root._loadingRaf = requestAnimationFrame(frame);
 }
+
 function initLoadingProgress(root){
   const el = typeof root === 'string' ? document.querySelector(root) : root;
   if(!el) return;
-  const initial = Number(el.dataset.loadingProgress);
-  if(Number.isFinite(initial) && el.querySelector('.loading-progress-percent')){
+  const target = Number(el.dataset.loadingProgress);
+  if(Number.isFinite(target) && el.querySelector('.loading-progress-percent')){
     el.dataset.loadingProgress = '0';
-    updateLoadingProgress(el, initial);
+    const bar = el.querySelector('.loading-progress-bar');
+    if(bar) bar.style.width = '0%';
+    const pct = el.querySelector('.loading-progress-percent');
+    if(pct) pct.textContent = '0%';
+    updateLoadingProgress(el, target);
   }
 }
 
@@ -2881,14 +2886,17 @@ async function renderSchoolRkasAndRealisasi(){
     <!-- Panel Tabel Tunggal Terpadu -->
     <div class="panel">
        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:16px;">
-         <h3 class="section-title" style="margin:0">Tabel Monitoring RKAS & Realisasi Terpadu</h3>
+         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+         <h3 class="section-title" style="margin:0">Kartu RKAS Sekolah</h3>
+         <span class="badge success">RKAS aktif</span>
+       </div>
          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
            <input id="searchRkasList" placeholder="🔍 Cari uraian atau kode..." style="padding:8px 12px;border:1px solid var(--border);border-radius:10px;font-size:0.88rem;width:240px;background:#fff;" oninput="filterRkasTable(this.value)">
            
            <!-- TOMBOL EKSPOR EXCEL DITAMBAHKAN DI SINI -->
            <button class="btn btn-sm" style="background:#15803d; color:#fff; font-weight:700;" onclick="exportRkasExcel()">📥 Unduh Excel</button>
 
-           ${isSchool() ? '<button class="btn btn-primary btn-sm" onclick="openRkasImportModal()">📤 Upload RKAS</button><button class="btn btn-primary btn-sm" onclick="openTambahItemRkasModal()">+ Tambah Usulan Item Baru</button>' : ''}
+           ${isSchool() ? '<button class="btn btn-primary btn-sm" onclick="openRkasImportModal()">📤 Upload RKAS</button><button class="btn btn-primary btn-sm" onclick="openTambahItemRkasModal()">+ Tambah Usulan Item Baru</button><button class="btn btn-danger btn-sm" onclick="hapusRkasSekolah()">🗑️ Hapus RKAS Sekolah</button>' : ''}
          </div>
        </div>
        <div class="table-wrap" style="max-height:550px;overflow-y:auto;">
@@ -2938,6 +2946,29 @@ async function renderSchoolRkasAndRealisasi(){
     };
   });
 }
+
+window.hapusRkasSekolah = async function(){
+  if(!isSchool()){
+    toast('Hapus RKAS sekolah hanya tersedia untuk akun SEKOLAH.','warning');
+    return;
+  }
+
+  const ok = confirm(
+    'HAPUS SELURUH RKAS SEKOLAH?\n\n' +
+    'Semua baris RKAS sekolah akan dihapus dari master_rkas.\n' +
+    'Sistem akan menolak penghapusan jika RKAS sudah memiliki transaksi/SPJ yang mengacu kepadanya.\n\n' +
+    'Tindakan ini tidak dapat dibatalkan. Lanjutkan?'
+  );
+  if(!ok) return;
+
+  try{
+    const result = await api('hapusRkasSekolah', {});
+    toast(result.message || 'RKAS sekolah berhasil dihapus.','ok',5000);
+    await renderSchoolRkasAndRealisasi();
+  }catch(err){
+    toast(errorText(err),'error',7000);
+  }
+};
 
 // Fungsi pencarian instan
 // Pencarian instan tabel RKAS — satu implementasi canonical.
