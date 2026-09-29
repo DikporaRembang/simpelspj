@@ -122,37 +122,6 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
   55%{left:100%}
   100%{left:100%}
 }
-.loading-progress-percent{
-  min-height:31px;
-  margin-top:2px;
-  font-size:1.4rem;
-  line-height:1;
-  font-weight:800;
-  letter-spacing:-.5px;
-  color:var(--navy);
-  font-variant-numeric:tabular-nums;
-}
-.loading-progress-track{
-  width:min(360px,78vw);
-  height:7px;
-  margin-top:3px;
-  border-radius:99px;
-  background:#e7ece8;
-  overflow:hidden;
-}
-.loading-progress-bar{
-  width:0%;
-  height:100%;
-  border-radius:inherit;
-  background:linear-gradient(90deg,var(--green),#49a985);
-  will-change:width;
-}
-.loading-progress-text{
-  min-height:18px;
-  font-size:.78rem;
-  font-weight:650;
-  color:var(--muted);
-}
 .loading-steps{
   width:min(390px,88vw);
   margin-top:8px;
@@ -228,31 +197,6 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
 .loading-text{
   font-size:.92rem;font-weight:700;color:var(--navy);
   letter-spacing:.05px;text-align:center;
-}
-.loading-progress-percent{
-  min-height:34px;
-  margin-top:2px;
-  font-size:1.45rem;
-  line-height:1;
-  font-weight:800;
-  letter-spacing:-.6px;
-  color:var(--navy);
-  font-variant-numeric:tabular-nums;
-  text-align:center;
-}
-.loading-progress-text{
-  min-height:18px;font-size:.78rem;font-weight:650;color:var(--muted);
-  text-align:center;
-}
-.loading-progress-track{
-  width:min(330px,78vw);height:6px;margin-top:3px;
-  border-radius:99px;background:#e8ede9;overflow:hidden;
-}
-.loading-progress-bar{
-  width:var(--loading-progress);height:100%;
-  border-radius:inherit;
-  background:linear-gradient(90deg,var(--green),#49a985);
-  transition:none;
 }
 
 @keyframes smoothWelcome{
@@ -789,196 +733,6 @@ body{background:linear-gradient(180deg,#fbfaf6 0,#f4f2eb 100%)!important;color:v
 .content .table-wrap{box-shadow:none!important}.content .toolbar{gap:7px!important}.content .field input,.content .field select,.content .field textarea{border-color:#ddd9d0!important;background:#fffefa!important;border-radius:10px!important}.content .field input:focus,.content .field select:focus,.content .field textarea:focus{border-color:#8eb19f!important;box-shadow:0 0 0 3px rgba(46,115,88,.08)!important;outline:none}
 @media(max-width:1050px){.ux-workbar{grid-template-columns:1fr}.ux-todo{grid-template-columns:1fr 1fr}.ux-kpis{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:760px){.content{padding:18px 14px 30px!important}.ux-hero,.ux-hero-inner{min-height:360px}.ux-hero-inner{padding:23px}.ux-kpis{grid-template-columns:1fr 1fr}.ux-todo{grid-template-columns:1fr}.ux-school-strip{align-items:flex-start;flex-direction:column}.ux-school-actions{width:100%}.ux-school-actions .btn{flex:1}.ux-context{align-items:flex-start;flex-direction:column}.ux-context-actions{width:100%}.ux-context-actions .btn{flex:1}}
-
-/* FINAL30 — one loading UI, independent from legacy loading CSS */
-.app-loading{
-  min-height:210px;display:flex;flex-direction:column;align-items:center;
-  justify-content:center;gap:9px;padding:26px 18px;text-align:center;
-}
-.app-loading-logo{
-  width:58px;height:58px;object-fit:contain;background:#fff;border-radius:14px;
-  padding:6px;box-shadow:0 7px 20px rgba(8,127,91,.13);
-}
-.app-loading-spinner{
-  width:27px;height:27px;border:3px solid #e6ece8;border-top-color:var(--green);
-  border-right-color:var(--green);border-radius:50%;animation:appLoadingSpin .75s linear infinite;
-}
-@keyframes appLoadingSpin{to{transform:rotate(360deg)}}
-.app-loading-title{font-size:.92rem;font-weight:750;color:var(--navy)}
-.app-loading-percent{
-  min-height:27px;font-size:1.3rem;font-weight:850;line-height:1;
-  font-variant-numeric:tabular-nums;color:var(--navy)
-}
-.app-loading-track{
-  display:block;position:relative;width:min(360px,82vw);height:7px;
-  overflow:hidden;border-radius:99px;background:#e7ece8;
-}
-.app-loading-bar{height:100%;width:0;border-radius:99px;background:linear-gradient(90deg,var(--green),#49a985)}
-.app-loading-indeterminate>div{
-  position:absolute;left:-35%;top:0;width:35%;height:100%;border-radius:99px;
-  background:linear-gradient(90deg,var(--green),#49a985);
-  animation:appLoadingIndeterminate 1.15s ease-in-out infinite;
-}
-@keyframes appLoadingIndeterminate{
-  0%{left:-35%}55%{left:100%}100%{left:100%}
-}
-.app-loading-detail{min-height:18px;font-size:.76rem;font-weight:650;color:var(--muted)}
-@media(max-width:600px){
-  .app-loading{min-height:190px;padding:22px 14px}
-  .app-loading-logo{width:52px;height:52px}
-  .app-loading-track{width:88vw}
-}
-
-
-/* =========================================================
-   FINAL31 — BIDANG SD ORBIT LOADER
-   No percentage / no progress bar / logo is visual only.
-   ========================================================= */
-.orbit-loader{
-  min-height:250px;
-  width:100%;
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  justify-content:center;
-  gap:10px;
-  padding:28px 18px;
-  box-sizing:border-box;
-  text-align:center;
-}
-.orbit-stage{
-  position:relative;
-  width:122px;
-  height:122px;
-  display:grid;
-  place-items:center;
-}
-.orbit-logo-wrap{
-  position:relative;
-  z-index:5;
-  width:64px;
-  height:64px;
-  display:grid;
-  place-items:center;
-  border-radius:18px;
-  background:rgba(255,255,255,.97);
-  box-shadow:0 8px 24px rgba(8,127,91,.15);
-  animation:orbitLogoBreath 2.4s ease-in-out infinite;
-}
-.orbit-logo{
-  width:54px;
-  height:54px;
-  object-fit:contain;
-  display:block;
-}
-.orbit-halo{
-  position:absolute;
-  inset:25px;
-  border-radius:50%;
-  z-index:1;
-  pointer-events:none;
-}
-.orbit-halo-a{
-  box-shadow:0 0 0 1px rgba(8,127,91,.08),0 0 26px rgba(8,127,91,.10);
-  animation:orbitHalo 2.2s ease-in-out infinite;
-}
-.orbit-halo-b{
-  inset:17px;
-  box-shadow:0 0 22px rgba(8,127,91,.06);
-  animation:orbitHalo 2.2s ease-in-out .5s infinite;
-}
-.orbit-ring{
-  position:absolute;
-  border:1px solid rgba(8,127,91,.18);
-  border-radius:50%;
-  pointer-events:none;
-}
-.orbit-ring-a{
-  inset:9px;
-  animation:orbitSpin 3.2s linear infinite;
-}
-.orbit-ring-b{
-  inset:20px;
-  border-style:dashed;
-  opacity:.55;
-  animation:orbitSpinReverse 4.4s linear infinite;
-}
-.orbit-dot{
-  position:absolute;
-  width:7px;
-  height:7px;
-  border-radius:50%;
-  background:var(--green);
-  box-shadow:0 0 10px rgba(8,127,91,.35);
-  z-index:4;
-  left:calc(50% - 3.5px);
-  top:calc(50% - 3.5px);
-  transform-origin:3.5px 3.5px;
-}
-.orbit-dot-a{animation:orbitDotA 2.7s linear infinite}
-.orbit-dot-b{width:5px;height:5px;left:calc(50% - 2.5px);top:calc(50% - 2.5px);animation:orbitDotB 3.5s linear infinite}
-.orbit-dot-c{width:4px;height:4px;left:calc(50% - 2px);top:calc(50% - 2px);opacity:.55;animation:orbitDotC 4.1s linear infinite}
-.orbit-title{
-  min-height:21px;
-  max-width:min(520px,90vw);
-  color:var(--navy);
-  font-size:.94rem;
-  font-weight:750;
-}
-.orbit-dots{
-  height:12px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  gap:4px;
-}
-.orbit-dots span{
-  width:5px;height:5px;border-radius:50%;
-  background:var(--green);
-  opacity:.25;
-  animation:orbitTyping 1.25s ease-in-out infinite;
-}
-.orbit-dots span:nth-child(2){animation-delay:.16s}
-.orbit-dots span:nth-child(3){animation-delay:.32s}
-.orbit-detail{
-  min-height:18px;
-  max-width:min(600px,88vw);
-  color:var(--muted);
-  font-size:.76rem;
-  font-weight:600;
-}
-@keyframes orbitLogoBreath{
-  0%,100%{transform:scale(.96)}
-  50%{transform:scale(1.04)}
-}
-@keyframes orbitHalo{
-  0%,100%{transform:scale(.92);opacity:.35}
-  50%{transform:scale(1.08);opacity:.9}
-}
-@keyframes orbitSpin{to{transform:rotate(360deg)}}
-@keyframes orbitSpinReverse{to{transform:rotate(-360deg)}}
-@keyframes orbitDotA{
-  to{transform:rotate(360deg) translateX(50px) rotate(-360deg)}
-}
-@keyframes orbitDotB{
-  to{transform:rotate(-360deg) translateX(40px) rotate(360deg)}
-}
-@keyframes orbitDotC{
-  to{transform:rotate(360deg) translateX(31px) rotate(-360deg)}
-}
-@keyframes orbitTyping{
-  0%,70%,100%{transform:translateY(0);opacity:.22}
-  35%{transform:translateY(-4px);opacity:1}
-}
-@media(max-width:600px){
-  .orbit-loader{min-height:210px;padding:22px 14px}
-  .orbit-stage{width:108px;height:108px}
-  .orbit-logo-wrap{width:58px;height:58px;border-radius:16px}
-  .orbit-logo{width:49px;height:49px}
-  .orbit-ring-a{inset:7px}
-  .orbit-ring-b{inset:18px}
-}
-
 </style>
 </head>
 <body>
@@ -1224,146 +978,21 @@ function toast(text,type='ok',duration=3200){
 }
 let __loadingSeq = 0;
 
-function loading(text='Memuat data...', progress=null, detail=''){
-  // FINAL31: no percentage. Loading is purely visual and independent from
-  // backend progress, so it cannot freeze at 0%.
-  return `<div class="orbit-loader" role="status" aria-live="polite">
-    <div class="orbit-stage">
-      <div class="orbit-halo orbit-halo-a"></div>
-      <div class="orbit-halo orbit-halo-b"></div>
-      <div class="orbit-ring orbit-ring-a"></div>
-      <div class="orbit-ring orbit-ring-b"></div>
-      <div class="orbit-dot orbit-dot-a"></div>
-      <div class="orbit-dot orbit-dot-b"></div>
-      <div class="orbit-dot orbit-dot-c"></div>
-      <div class="orbit-logo-wrap">
-        <img src="bidangsd.png" class="orbit-logo" alt="Bidang SD">
-      </div>
-    </div>
-    <div class="orbit-title">${esc(text)}</div>
-    <div class="orbit-dots" aria-hidden="true"><span></span><span></span><span></span></div>
-    ${detail ? `<div class="orbit-detail">${esc(detail)}</div>` : ''}
+function loading(text='Memuat data...', progress=null, detail='', steps=[]){
+  const id = `loading-${Date.now()}-${++__loadingSeq}`;
+  return `<div class="loading-container" data-loading-id="${id}">
+    <img src="bidangsd.png" class="loading-logo" alt="Bidang SD">
+    <div class="loading-spinner" aria-hidden="true"></div>
+    <div class="loading-text">${esc(text)}</div>
   </div>`;
 }
 
-function updateLoadingProgress(container, progress, detail=''){
-  // Compatibility shim: FINAL31 intentionally does not display percentages.
-  const root = typeof container === 'string' ? document.querySelector(container) : container;
-  if(!root) return;
-  if(detail){
-    const el = root.querySelector('.orbit-detail');
-    if(el) el.textContent = detail;
-  }
-}
-
-function updateLoadingBatch(container, done, total, detail=''){
-  updateLoadingProgress(container, total ? (done/total)*100 : 0, detail || `Memproses batch ${done} / ${total}`);
-}
-
-function updateLoadingProgress(container, progress, detail=''){
-  const root=typeof container==='string'?document.querySelector(container):container;
-  if(!root) return;
-  const target=Math.max(0,Math.min(100,Number(progress)||0));
-  const current=Number(root.dataset.loadingProgress||0);
-  const start=performance.now();
-  const duration=Math.max(180,Math.min(650,180+Math.abs(target-current)*4));
-  if(root._loadingRaf) cancelAnimationFrame(root._loadingRaf);
-
-  const paint=v=>{
-    root.dataset.loadingProgress=String(v);
-    const p=root.querySelector('.app-loading-percent');
-    const b=root.querySelector('.app-loading-bar');
-    if(p)p.textContent=`${Math.round(v)}%`;
-    if(b)b.style.width=`${v}%`;
-  };
-  const d=root.querySelector('.app-loading-detail');
-  if(d&&detail)d.textContent=detail;
-
-  const frame=now=>{
-    const t=Math.min(1,(now-start)/duration);
-    const e=1-Math.pow(1-t,3);
-    paint(current+(target-current)*e);
-    if(t<1) root._loadingRaf=requestAnimationFrame(frame);
-    else { root._loadingRaf=null; paint(target); }
-  };
-  root._loadingRaf=requestAnimationFrame(frame);
-}
-
-function updateLoadingBatch(container, done, total, detail=''){
-  const n=Math.max(0,Number(done)||0), t=Math.max(1,Number(total)||1);
-  updateLoadingProgress(container,(n/t)*100,detail||`Batch ${n} / ${t}`);
-}
-
-/* Satu sumber nilai: angka dan bar selalu dicat dari nilai yang sama.
-   Tidak ada CSS transition dan tidak ada MutationObserver. */
-function updateLoadingProgress(container, progress, detail=''){
-  const root = typeof container === 'string' ? document.querySelector(container) : container;
-  if(!root) return;
-
-  const target = Math.max(0, Math.min(100, Number(progress) || 0));
-  const current = Number(root.dataset.loadingProgress || 0);
-  const distance = Math.abs(target - current);
-  const duration = Math.max(220, Math.min(700, 220 + distance * 5));
-  const start = performance.now();
-
-  if(root._loadingRaf) cancelAnimationFrame(root._loadingRaf);
-
-  const paint = value => {
-    const v = Math.max(0, Math.min(100, value));
-    root.dataset.loadingProgress = String(v);
-    const pct = root.querySelector('.loading-progress-percent');
-    const bar = root.querySelector('.loading-progress-bar');
-    const track = root.querySelector('.loading-progress-track');
-
-    if(pct) pct.textContent = `${Math.round(v)}%`;
-    if(bar) bar.style.width = `${v}%`;
-    if(track) track.style.display = 'block';
-  };
-
-  if(detail){
-    const d = root.querySelector('.loading-progress-text');
-    if(d) d.textContent = detail;
-  }
-
-  const ease = t => 1 - Math.pow(1-t, 3);
-
-  const frame = now => {
-    const t = Math.min(1, (now-start)/duration);
-    paint(current + (target-current)*ease(t));
-    if(t < 1){
-      root._loadingRaf = requestAnimationFrame(frame);
-    }else{
-      root._loadingRaf = null;
-      paint(target);
-    }
-  };
-
-  root._loadingRaf = requestAnimationFrame(frame);
-}
-
-/* Untuk loading lama yang belum mengirim progress:
-   tampilkan spinner saja. Tidak ada lagi progress palsu yang bisa freeze. */
-function initLoadingProgress(root){
-  const el = typeof root === 'string' ? document.querySelector(root) : root;
-  if(!el) return;
-
-  const real = el.dataset.loadingReal === '1';
-  const target = Number(el.dataset.loadingProgress || 0);
-
-  if(real){
-    updateLoadingProgress(el, target);
-  }
-}
-
-/* Dipakai ketika proses backend memang melaporkan jumlah batch. */
-function setLoadingStage(container, progress, text=''){
-  updateLoadingProgress(container, progress, text);
-}
-function updateLoadingBatch(container, done, total, detail=''){
-  const n = Math.max(0, Number(done) || 0);
-  const t = Math.max(1, Number(total) || 1);
-  updateLoadingProgress(container, (n/t)*100, detail || `Batch ${n} / ${t}`);
-}
+// Kompatibilitas untuk pemanggil lama. Progress sengaja diabaikan karena
+// proses backend tidak menyediakan progres nyata yang dapat diverifikasi.
+function updateLoadingProgress(container, progress, detail=''){}
+function initLoadingProgress(root){}
+function setLoadingStage(container, progress, text=''){}
+function updateLoadingBatch(container, done, total, detail=''){}
 
 function head(title,desc=''){
   const info = SUBMENU_TUTORIALS[state.view];
@@ -1476,6 +1105,9 @@ async function doLogin(e){
   try{
     const r=await api('login',{username:$('#username').value.trim(),password:$('#password').value});
     state.token=r.token; state.user=r.user || {};
+    if(isSchool() && !state.user.npsn && /^\\d{8}$/.test(String(state.user.username||''))){
+      state.user.npsn = String(state.user.username);
+    }
     sessionStorage.setItem('simpel_token',state.token);
 
     // Tampilkan layar Selamat Datang TERLEBIH DAHULU sebagai lapisan penuh.
@@ -1665,7 +1297,13 @@ async function restoreSession(){
   try{
     const r=await api('getSession');
     if(!r.data) throw new Error('Sesi berakhir.');
-    state.user=r.data; await startApp();
+    state.user=r.data;
+    // Kompatibilitas akun sekolah lama: bila backend belum mengirim field npsn,
+    // username 8 digit dapat dipakai sebagai NPSN.
+    if(isSchool() && !state.user.npsn && /^\\d{8}$/.test(String(state.user.username||''))){
+      state.user.npsn = String(state.user.username);
+    }
+    await startApp();
   }catch(e){state.token=''; state.user=null; sessionStorage.removeItem('simpel_token'); authView();}
 }
 
@@ -3191,120 +2829,239 @@ window.openPengawasRkasDetail=async function(npsn,page=1){
 };
 
 async function renderSchoolRkasAndRealisasi(){
-  const [real, h] = await Promise.all([
-    safeApi('realisasiRKAS', {}, { data: [] }),
-    safeApi('rkasHistory', {}, { data: [] })
-  ]);
+  const area = $('#mainContent');
+  if(!area) return;
 
-  const mergedList = real.data || [];
-  const totalPaguKeseluruhan = mergedList.reduce((sum, x) => sum + Number(x.pagu || 0), 0);
-  const totalRealisasiKeseluruhan = mergedList.reduce((sum, x) => sum + Number(x.total_realisasi || 0), 0);
+  const schoolMode = isSchool();
+  // SEKOLAH wajib memakai identitas NPSN dari sesi login.
+  // Jangan memakai state.selectedNpsn karena itu dipakai untuk konteks
+  // pencarian/pemilihan sekolah pada role lain.
+  const schoolUser = state.user || {};
+  const ownNpsn = normalizeNpsnClient(
+    schoolUser.npsn ||
+    schoolUser.npsn_sekolah ||
+    schoolUser.npsnSekolah ||
+    ''
+  );
 
-  const groups = groupBelanjaClient(mergedList, 'pagu');
-  let nomor = 0;
-  const rows = groups.flatMap(g => [kelompokHeaderHtml(g,'Subtotal Pagu'), ...g.items.map(x => `
-    <tr>
-      <td style="text-align:center;color:var(--muted);font-weight:600">${++nomor}</td>
-      <td><code>${esc(x.kode_rekening)}</code></td>
-      <td><b>${esc(x.uraian)}</b>${x.nama_referensi ? `<div class="muted" style="margin-top:3px;font-size:.74rem">Referensi: ${esc(x.nama_referensi)}</div>` : ''}</td>
-      <td><b>${fmtRupiah(x.pagu)}</b></td>
-      <td style="color:var(--success);font-weight:600">${fmtRupiah(x.total_realisasi)}</td>
-      <td style="color:${Number(x.sisa_pagu) < 0 ? 'var(--danger)' : 'var(--text)'};font-weight:600">${fmtRupiah(x.sisa_pagu)}</td>
-      <td>${badge(x.status_rkas || 'APPROVED', 'success')}</td>
-      <td style="text-align:center">
-        ${isSchool() ? `
-          <div style="display:flex;gap:4px;justify-content:center;flex-wrap:wrap;">
-            <button class="btn btn-sm btn-light btn-edit-rkas" data-id="${esc(x.id_rkas || x.kode_rekening)}" data-uraian="${esc(x.uraian)}" data-pagu="${Number(x.pagu || 0)}" data-kode="${esc(x.kode_rekening)}">✏️ Ubah</button>
-            <button class="btn btn-sm btn-danger btn-delete-rkas" data-id="${esc(x.id_rkas || x.kode_rekening)}">🗑️ Hapus</button>
-          </div>
-        ` : '-'}
-      </td>
-    </tr>` )]).join('');
+  // SEKOLAH: konteks selalu satu NPSN dari akun/session.
+  // DINAS/PENGAWAS tetap memakai renderer/context mereka sendiri.
+  if(schoolMode){
+    area.innerHTML = head(
+      'RKAS & Realisasi Anggaran',
+      `Rincian RKAS sekolah ${esc(ownNpsn || '')}.`
+    ) + `<div id="schoolRkasArea">${loading('Memuat rincian RKAS sekolah...')}</div>`;
 
-  $('#mainContent').innerHTML = head('RKAS & Realisasi Anggaran', 'Pengelolaan pagu aktif, pemantauan realisasi, dan penyesuaian usulan rincian') +
-    `
-    <!-- Ringkasan Statistik Terpadu -->
-    <div class="cards" style="margin-bottom:20px;">
-      <div class="stat">
-        <small>Total Pagu Anggaran</small>
-        <strong style="color:var(--primary);font-size:1.3rem;">${fmtRupiah(totalPaguKeseluruhan)}</strong>
-      </div>
-      <div class="stat">
-        <small>Total Realisasi Belanja</small>
-        <strong style="color:var(--success);font-size:1.3rem;">${fmtRupiah(totalRealisasiKeseluruhan)}</strong>
-      </div>
-      <div class="stat">
-        <small>Sisa Saldo Pagu</small>
-        <strong style="color:var(--primary-2);font-size:1.3rem;">${fmtRupiah(totalPaguKeseluruhan - totalRealisasiKeseluruhan)}</strong>
-      </div>
-      <div class="stat">
-        <small>Jumlah Item Belanja</small>
-        <strong>${fmtNum(mergedList.length)} Item</strong>
-      </div>
-    </div>
-
-    <!-- Panel Tabel Tunggal Terpadu -->
-    <div class="panel">
-       <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:16px;">
-         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-         <h3 class="section-title" style="margin:0">Kartu RKAS Sekolah</h3>
-         <span class="badge success">RKAS aktif</span>
-       </div>
-         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-           <input id="searchRkasList" placeholder="🔍 Cari uraian atau kode..." style="padding:8px 12px;border:1px solid var(--border);border-radius:10px;font-size:0.88rem;width:240px;background:#fff;" oninput="filterRkasTable(this.value)">
-           
-           <!-- TOMBOL EKSPOR EXCEL DITAMBAHKAN DI SINI -->
-           <button class="btn btn-sm" style="background:#15803d; color:#fff; font-weight:700;" onclick="exportRkasExcel()">📥 Unduh Excel</button>
-
-           ${isSchool() ? '<button class="btn btn-primary btn-sm" onclick="openRkasImportModal()">📤 Upload RKAS</button><button class="btn btn-primary btn-sm" onclick="openTambahItemRkasModal()">+ Tambah Usulan Item Baru</button><button class="btn btn-danger btn-sm" onclick="hapusRkasSekolah()">🗑️ Hapus RKAS Sekolah</button>' : ''}
-         </div>
-       </div>
-       <div class="table-wrap" style="max-height:550px;overflow-y:auto;">
-         <!-- ID PADA TABEL DITAMBAHKAN AGAR MUDAH DIBACA SHEETJS -->
-         <table class="friendly-table" id="tableRkasRealisasi" style="font-size:0.9rem;">
-           <thead style="position:sticky;top:0;z-index:2;background:#f1f5f9;">
-             <tr>
-               <th style="width:40px;text-align:center">No</th>
-               <th>Kode Rekening</th>
-               <th>Uraian Belanja</th>
-               <th>Pagu Anggaran</th>
-               <th>Realisasi</th>
-               <th>Sisa Pagu</th>
-               <th>Status</th>
-               <th style="text-align:center">Aksi Sekolah</th>
-             </tr>
-           </thead>
-           <tbody id="rkasTableBody">${rows || emptyRow(8, 'Belum ada data RKAS aktif.')}</tbody>
-         </table>
-       </div>
-    </div>`;
-
-  // Event listener tombol Ubah
-  document.querySelectorAll('.btn-edit-rkas').forEach(btn => {
-    btn.onclick = () => {
-      openEditRkasItem(
-        btn.dataset.id,
-        btn.dataset.uraian,
-        Number(btn.dataset.pagu),
-        btn.dataset.kode
+    if(!ownNpsn){
+      $('#schoolRkasArea').innerHTML = msg(
+        'NPSN sekolah belum tersedia pada data sesi login. Silakan login ulang agar identitas sekolah dimuat.',
+        'warning'
       );
-    };
-  });
+      return;
+    }
 
-  // Event listener tombol Hapus
-  document.querySelectorAll('.btn-delete-rkas').forEach(btn => {
-    btn.onclick = async () => {
-      const idRkas = btn.dataset.id;
-      if(!confirm('Apakah Anda yakin ingin menghapus item/usulan RKAS ini?')) return;
-      try {
-        await api('hapusDetailRKAS', { idRkas: idRkas });
-        toast('Item RKAS berhasil dihapus.','ok');
-        await renderSchoolRkasAndRealisasi();
-      } catch(err) {
-        alert(errorText(err));
-      }
-    };
-  });
+    try{
+      const [real, h] = await Promise.all([
+        safeApi('realisasiRKAS', { npsn: ownNpsn }, { data: [] }),
+        safeApi('rkasHistory', { npsn: ownNpsn }, { data: [] })
+      ]);
+
+      const raw = Array.isArray(real.data) ? real.data : [];
+
+      // DISPLAY DEDUP ONLY:
+      // Jangan gunakan id transaksi/generic "id" sebagai identitas RKAS.
+      // Jika id_rkas tersedia, pakai itu. Untuk record identik yang
+      // datang berulang dari JOIN realisasi, gunakan fingerprint isi.
+      const norm = v => String(v ?? '').trim().toLowerCase().replace(/\s+/g,' ');
+      const amount = v => {
+        const n = Number(v);
+        return Number.isFinite(n) ? n : norm(v);
+      };
+
+      const displayKey = x => [
+        'ITEM',
+        norm(x.npsn ?? ownNpsn),
+        norm(x.kode_rekening ?? x.kodeRekening ?? x.kode),
+        norm(x.uraian ?? x.nama_belanja_asli ?? x.nama_barang ?? x.namaBarang ?? x.deskripsi),
+        amount(x.volume ?? ''),
+        norm(x.satuan ?? ''),
+        amount(x.harga_satuan ?? ''),
+        amount(x.pagu ?? x.nilai ?? x.jumlah_pagu ?? x.jumlahPagu),
+        norm(x.id_referensi_barang ?? x.kode_barang ?? ''),
+        norm(x.status_rkas ?? x.status ?? 'APPROVED')
+      ].join('|');
+
+      const seen = new Set();
+      const mergedList = raw.filter(x => {
+        const k = displayKey(x);
+        if(seen.has(k)) return false;
+        seen.add(k);
+        return true;
+      });
+
+      const totalPaguKeseluruhan = mergedList.reduce(
+        (sum,x)=>sum+Number(x.pagu||0),0
+      );
+      const totalRealisasiKeseluruhan = mergedList.reduce(
+        (sum,x)=>sum+Number(x.total_realisasi||0),0
+      );
+
+      const groups = groupBelanjaClient(mergedList, 'pagu');
+      let nomor = 0;
+
+      const rows = groups.flatMap(g => [
+        kelompokHeaderHtml(g,'Subtotal Pagu'),
+        ...g.items.map(x => `
+          <tr>
+            <td style="text-align:center;color:var(--muted);font-weight:600">${++nomor}</td>
+            <td><code>${esc(x.kode_rekening || '-')}</code></td>
+            <td><b>${esc(x.uraian || '-')}</b></td>
+            <td><b>${fmtRupiah(x.pagu)}</b></td>
+            <td style="color:var(--success);font-weight:600">${fmtRupiah(x.total_realisasi)}</td>
+            <td style="color:${Number(x.sisa_pagu)<0?'var(--danger)':'var(--text)'};font-weight:600">${fmtRupiah(x.sisa_pagu)}</td>
+            <td>${badge(x.status_rkas || 'APPROVED','success')}</td>
+            <td style="text-align:center">
+              <div style="display:flex;gap:4px;justify-content:center;flex-wrap:wrap;">
+                <button class="btn btn-sm btn-light btn-edit-rkas"
+                  data-id="${esc(x.id_rkas || '')}"
+                  data-uraian="${esc(x.uraian || '')}"
+                  data-pagu="${Number(x.pagu || 0)}"
+                  data-kode="${esc(x.kode_rekening || '')}">✏️ Ubah</button>
+                <button class="btn btn-sm btn-danger btn-delete-rkas"
+                  data-id="${esc(x.id_rkas || '')}">🗑️ Hapus</button>
+              </div>
+            </td>
+          </tr>`
+        )
+      ]).join('');
+
+      const area2 = $('#schoolRkasArea');
+      if(!area2) return;
+
+      area2.innerHTML = `
+        <div class="cards" style="margin-bottom:20px;">
+          <div class="stat">
+            <small>Total Pagu Anggaran</small>
+            <strong style="color:var(--primary);font-size:1.3rem;">${fmtRupiah(totalPaguKeseluruhan)}</strong>
+          </div>
+          <div class="stat">
+            <small>Total Realisasi Belanja</small>
+            <strong style="color:var(--success);font-size:1.3rem;">${fmtRupiah(totalRealisasiKeseluruhan)}</strong>
+          </div>
+          <div class="stat">
+            <small>Sisa Saldo Pagu</small>
+            <strong style="color:var(--primary-2);font-size:1.3rem;">
+              ${fmtRupiah(totalPaguKeseluruhan-totalRealisasiKeseluruhan)}
+            </strong>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="section-head" style="margin-bottom:12px;">
+            <div>
+              <b>Rincian RKAS Sekolah</b>
+              <div class="muted">NPSN ${esc(ownNpsn)} • ${fmtNum(mergedList.length)} item</div>
+            </div>
+            <div class="toolbar">
+              <button class="btn btn-light btn-sm" onclick="exportRkasExcel()">📥 Unduh Excel</button>
+              <button class="btn btn-primary btn-sm" onclick="openRkasImportModal()">📤 Upload RKAS</button>
+              <button class="btn btn-primary btn-sm" onclick="openTambahItemRkasModal()">+ Tambah Usulan Item Baru</button>
+              <button class="btn btn-danger btn-sm" onclick="hapusRkasSekolah()">🗑️ Hapus RKAS Sekolah</button>
+            </div>
+          </div>
+
+          <div class="table-wrap" style="max-height:550px;overflow-y:auto;">
+            <table class="friendly-table" id="tableRkasRealisasi" style="font-size:.9rem;">
+              <thead style="position:sticky;top:0;z-index:2;background:#f1f5f9;">
+                <tr>
+                  <th style="width:40px;text-align:center">No</th>
+                  <th>Kode Rekening</th>
+                  <th>Uraian Belanja</th>
+                  <th>Pagu Anggaran</th>
+                  <th>Realisasi</th>
+                  <th>Sisa Pagu</th>
+                  <th>Status</th>
+                  <th style="text-align:center">Aksi Sekolah</th>
+                </tr>
+              </thead>
+              <tbody id="rkasTableBody">
+                ${rows || emptyRow(8,'Belum ada data RKAS aktif.')}
+              </tbody>
+            </table>
+          </div>
+        </div>`;
+
+      document.querySelectorAll('.btn-edit-rkas').forEach(btn => {
+        btn.onclick = () => openEditRkasItem(
+          btn.dataset.id,
+          btn.dataset.uraian,
+          Number(btn.dataset.pagu),
+          btn.dataset.kode
+        );
+      });
+
+      document.querySelectorAll('.btn-delete-rkas').forEach(btn => {
+        btn.onclick = async () => {
+          const idRkas = btn.dataset.id;
+          if(!idRkas){
+            toast('ID RKAS tidak tersedia pada item ini.','warning');
+            return;
+          }
+          if(!confirm('Apakah Anda yakin ingin menghapus item/usulan RKAS ini?')) return;
+          try{
+            await api('hapusDetailRKAS',{idRkas});
+            toast('Item RKAS berhasil dihapus.','ok');
+            await renderSchoolRkasAndRealisasi();
+          }catch(err){
+            alert(errorText(err));
+          }
+        };
+      });
+
+    }catch(e){
+      const a=$('#schoolRkasArea');
+      if(a) a.innerHTML=msg(errorText(e));
+    }
+    return;
+  }
+
+  // Non-SEKOLAH: jangan menampilkan konteks sekolah pada renderer SEKOLAH.
+  // Alur DINAS/PENGAWAS yang sudah ada dipertahankan di fungsi masing-masing.
+  const [real, h] = await Promise.all([
+    safeApi('realisasiRKAS', {}, {data:[]}),
+    safeApi('rkasHistory', {}, {data:[]})
+  ]);
+  const mergedList = Array.isArray(real.data) ? real.data : [];
+  const totalPaguKeseluruhan = mergedList.reduce((sum,x)=>sum+Number(x.pagu||0),0);
+  const totalRealisasiKeseluruhan = mergedList.reduce((sum,x)=>sum+Number(x.total_realisasi||0),0);
+  const groups = groupBelanjaClient(mergedList,'pagu');
+  let numero=0;
+  const rows=groups.flatMap(g=>[
+    kelompokHeaderHtml(g,'Subtotal Pagu'),
+    ...g.items.map(x=>`<tr>
+      <td style="text-align:center">${++numero}</td>
+      <td><code>${esc(x.kode_rekening||'-')}</code></td>
+      <td><b>${esc(x.uraian||'-')}</b></td>
+      <td><b>${fmtRupiah(x.pagu)}</b></td>
+      <td>${fmtRupiah(x.total_realisasi)}</td>
+      <td>${fmtRupiah(x.sisa_pagu)}</td>
+      <td>${badge(x.status_rkas||'APPROVED','success')}</td>
+      <td>-</td>
+    </tr>`)
+  ]).join('');
+
+  area.innerHTML = head(
+    'RKAS & Realisasi Anggaran',
+    'Pengelolaan pagu aktif dan pemantauan realisasi.'
+  ) + `<div class="panel">
+    <div class="muted">Total Pagu: <b>${fmtRupiah(totalPaguKeseluruhan)}</b> • Realisasi: <b>${fmtRupiah(totalRealisasiKeseluruhan)}</b></div>
+    <div class="table-wrap" style="margin-top:12px;">
+      <table class="friendly-table">
+        <thead><tr><th>No</th><th>Kode</th><th>Uraian</th><th>Pagu</th><th>Realisasi</th><th>Sisa</th><th>Status</th><th>Aksi</th></tr></thead>
+        <tbody>${rows||emptyRow(8,'Belum ada data RKAS aktif.')}</tbody>
+      </table>
+    </div>
+  </div>`;
 }
 
 window.hapusRkasSekolah = async function(){
@@ -3572,7 +3329,7 @@ async function sekolahView(){
        <input id="searchSekolahInput" class="search-box" placeholder="🔍 Cari nama sekolah, NPSN, atau kecamatan...">
        <button class="btn btn-light" onclick="clearSchoolDirectorySearch()">Bersihkan</button>
      </div>
-     <div class="panel" id="sekolahContent">${loading('Memuat daftar sekolah...', null, 'Mengambil data sekolah...')}</div>`;
+     <div class="panel" id="sekolahContent">${loading('Memuat daftar sekolah...')}</div>`;
   try{
     const [schoolRes,paguRes]=await Promise.all([
       api('getSekolah'),
