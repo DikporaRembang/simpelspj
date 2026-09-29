@@ -2825,6 +2825,7 @@ window.filterAndRenderDinasRkasTable=function(){
     if(!q)return true;
     return [x.npsn,x.nama_sekolah,x.kecamatan,x.nama_file,x.versi_rkas,x.id_import].some(v=>String(v||'').toLowerCase().includes(q));
   });
+  window._renderedDinasRkasList=list;
   const total=list.reduce((s,x)=>s+Number(x.total_pagu||0),0);
   if(stat)stat.innerHTML=`<div class="cards">
     <div class="stat"><small>Paket RKAS</small><strong>${fmtNum(list.length)}</strong></div>
@@ -2848,7 +2849,7 @@ window.filterAndRenderDinasRkasTable=function(){
 };
 
 window.openDinasRkasPackage=function(index){
-  const list=window._currentDinasRkasList||[], pkg=list[index]; if(!pkg)return;
+  const list=window._renderedDinasRkasList||window._currentDinasRkasList||[], pkg=list[index]; if(!pkg)return;
   window._selectedDinasRkasPackage=pkg;
   renderDinasRkasPackageDetail();
 };
@@ -2860,7 +2861,7 @@ window.renderDinasRkasPackageDetail=async function(){
   try{
     let r;
     if(pkg._queue_source==='LEGACY'){
-      r=await api('getRKASLegacyPackage',{npsn:pkg.npsn,versi_rkas:pkg.versi_rkas||''});
+      r=await api('getRKASLegacyPackage',{npsn:pkg.npsn,versi_rkas:pkg.versi_rkas||'',sumber_data:pkg.sumber_data||''});
     }else{
       r=await api('getRKASImport',{idImport:pkg.id_import_paket||pkg.id_import});
     }
@@ -2894,7 +2895,7 @@ window.doReviewRkas = async function(versiRkas, keputusan) {
   try {
     await api('reviewRKAS', { versiRkas, keputusan });
     toast('Keputusan review RKAS berhasil disimpan.','ok');
-    await dinasRkasView();
+    await renderDinasRkasReview();
   } catch (err) {
     alert(errorText(err));
   }
