@@ -2861,7 +2861,7 @@ window.renderDinasRkasPackageDetail=async function(){
   try{
     let r;
     if(pkg._queue_source==='LEGACY'){
-      r=await api('getRKASLegacyPackage',{npsn:pkg.npsn,versi_rkas:pkg.versi_rkas||'',sumber_data:pkg.sumber_data||''});
+      r=await api('getRKASLegacyPackage',{data:{npsn:pkg.npsn,versi_rkas:pkg.versi_rkas||'',sumber_data:pkg.sumber_data||''}});
     }else{
       r=await api('getRKASImport',{idImport:pkg.id_import_paket||pkg.id_import});
     }
