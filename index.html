@@ -875,7 +875,7 @@ const state = {
   captchaQuestion: ''
 };
 
-const $ = s => document.querySelector(s);
+window.$ = s => document.querySelector(s);
 const $$ = s => Array.from(document.querySelectorAll(s));
 const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 // Helper normalisasi teks untuk seluruh modul frontend.
