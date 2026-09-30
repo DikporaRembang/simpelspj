@@ -833,7 +833,8 @@ const ROLE_MENUS = {
     ]}
   ]
 };
-
+// Ikat ROLE_MENUS secara global ke window untuk menghindari ReferenceError
+window.ROLE_MENUS = ROLE_MENUS;
 
 const SUBMENU_TUTORIALS = {
   masterSpj: {title:'Master SPJ & Periode',text:'Dinas menetapkan komponen SPJ, indikator pemeriksaan, dan periode aktif. Ini menjadi fondasi agar seluruh sekolah dinilai dengan standar yang sama.',flow:['Master SPJ','Indikator','Periode','Penilaian']},
@@ -850,18 +851,6 @@ const SUBMENU_TUTORIALS = {
   dbCheck: {title:'Validasi Database',text:'Memastikan struktur data pendukung aplikasi tetap sesuai sebelum proses operasional dan penilaian dijalankan.',flow:['Struktur','Data','Proses','Penilaian']}
 };
 
-
-const V5_SUBMENU_TUTORIALS = {
-  tutorialV5:{title:'Tutorial SIMPEL SPJ',text:'Buka tutorial lengkap langsung di dalam aplikasi. Dokumen menggunakan nama tutorial_simpelspj.pdf.',flow:['Buka Tutorial','Pilih Bagian','Ikuti Langkah','Kembali ke Aplikasi']},
-  arsipPenilaianV5:{title:'Arsip Penilaian',text:'Membuka paket arsip penilaian sekolah: identitas, RKAS, transaksi, dokumen/bukti, temuan, indikator, keberatan, persetujuan, dan pengesahan.',flow:['Pilih Sekolah','Pilih Periode','Buka Arsip','Cetak / PDF']}
-};
-
-const COMPONENT_FALLBACK = [
-  ['SPJ-01','Buku Kas Umum (BKU)'],['SPJ-02','Buku Pembantu Bank'],['SPJ-03','Buku Pembantu Kas Tunai'],
-  ['SPJ-04','Buku Pembantu Pajak'],['SPJ-05','Rekening Koran Bank'],['SPJ-06','Invoice / Nota / Kuitansi'],
-  ['SPJ-07','Bukti Pendukung Lainnya'],['SPJ-08','SSP Pajak Pusat'],['SPJ-09','SSP Pajak Daerah'],['SPJ-10','Foto / Dokumentasi']
-].map(([id,nama])=>({id,nama}));
-
 const state = {
   token: sessionStorage.getItem('simpel_token') || '',
   user: null,
@@ -875,11 +864,9 @@ const state = {
   captchaQuestion: ''
 };
 
-window.$ = s => document.querySelector(s);
-const $$ = s => Array.from(document.querySelectorAll(s));
+// Ikat fungsi helper $ secara global ke window agar dapat diakses oleh semua blok skrip
+window.$ = s => document.querySelector(s); const $$ = s => Array.from(document.querySelectorAll(s));
 const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-// Helper normalisasi teks untuk seluruh modul frontend.
-// Sebelumnya render Manajemen Penugasan memanggil upper() yang hanya tersedia di backend.
 const upper = v => String(v ?? '').trim().toUpperCase();
 const fmtRupiah = v => {
   const n = Number(v);
@@ -6544,9 +6531,6 @@ window.analyzeRkasReplaceFile=async function(){
       parsed.filtered=before-rows.length;
     }
 
-    // Master sekolah adalah sumber kebenaran. File DPA dapat memuat NPSN
-    // legacy/di luar 378 sekolah resmi; untuk mode ALL, NPSN tersebut
-    // ditampilkan sebagai peringatan dan tidak diimpor.
     let officialSchoolMap={};
     try{
       const sr=await api('getSekolah',{});
@@ -6561,7 +6545,7 @@ window.analyzeRkasReplaceFile=async function(){
     if(scope==='ALL'){
       rows=rows.filter(x=>!!officialSchoolMap[x.npsn]);
     }
-    if(!rows.length) throw new Error('Tidak ada detail RKAS yang cocok dengan 378 sekolah resmi.');
+    if(!rows.length) throw new Error('Tidak ada detail RKAS yang cocok dengan sekolah resmi.');
     const schools=_rkasReplaceSchoolSet_(rows);
     const total=_rkasReplaceTotal_(rows);
     const bySchool={};
@@ -6575,57 +6559,20 @@ window.analyzeRkasReplaceFile=async function(){
     const schoolCards=Object.values(bySchool).slice(0,30).map(x=>
       `<div class="panel" style="margin:0;padding:10px"><b>${esc(x.npsn)}</b><div class="muted">${fmtNum(x.count)} item • ${fmtRupiah(x.total)}</div></div>`
     ).join('');
-
-    const sample=rows.slice(0,30).map((x,i)=>
-      `<tr><td>${i+1}</td><td>${esc(x.npsn)}</td><td><code>${esc(x.kode_rekening)}</code></td><td>${esc(x.uraian)}</td><td>${fmtRupiah(x.pagu)}</td></tr>`
-    ).join('');
-
-    out.innerHTML=`
-      <div class="cards">
-        <div class="stat"><small>Sekolah</small><strong>${fmtNum(schools.length)}</strong></div>
-        <div class="stat"><small>Detail Barang</small><strong>${fmtNum(rows.length)}</strong></div>
-        <div class="stat"><small>Total Pagu</small><strong>${fmtRupiah(total)}</strong></div>
-        <div class="stat"><small>Subtotal disaring</small><strong>${fmtNum(parsed.diagnostics.ignoredSubtotal||0)}</strong></div>
-        <div class="stat"><small>NPSN di luar master</small><strong>${fmtNum(unknownNpsn.length)}</strong></div>
+    
+    out.innerHTML=`<div class="panel" style="background:#f0fdf4">
+      <h3>Analisis Berhasil</h3>
+      <div class="muted">Total baris valid: <b>${fmtNum(rows.length)}</b> • Total Pagu: <b>${fmtRupiah(total)}</b> • Sekolah: <b>${schools.length}</b></div>
+      <div class="school-index-grid" style="margin-top:12px">${schoolCards}</div>
+      <div class="toolbar" style="margin-top:16px;justify-content:flex-end">
+        <button class="btn btn-primary" onclick="commitRkasReplace()">⚡ Lakukan Penggantian RKAS</button>
       </div>
-      ${unknownNpsn.length?`<div class="panel" style="margin-top:12px;background:#fff7ed;border-color:#fed7aa">
-        <b>⚠️ ${fmtNum(unknownNpsn.length)} NPSN pada file tidak ada di master sekolah</b>
-        <div class="muted" style="margin-top:5px">${esc(unknownNpsn.slice(0,20).join(', '))}${unknownNpsn.length>20?' …':''}. Baris NPSN tersebut tidak akan diimpor pada mode seluruh sekolah.</div>
-        <div class="muted" style="margin-top:5px">Data resmi yang akan diproses: ${fmtNum(rows.length)} detail dari ${fmtNum(schools.length)} sekolah.</div>
-      </div>`:''}
-
-      <div class="panel" style="margin-top:14px;background:#fff7ed;border-color:#fed7aa">
-        <b>⚠️ Aturan penggantian</b>
-        <div class="muted" style="margin-top:6px">
-          RKAS lama <b>tidak dihapus sekarang</b>. Sistem akan menulis RKAS baru sebagai pending,
-          memverifikasi jumlah dan pagu, baru kemudian membersihkan RKAS lama yang tidak sedang
-          dipakai transaksi SPJ. RKAS lama yang masih direferensikan transaksi akan dipertahankan
-          sebagai <b>ARCHIVED_REPLACED</b>.
-        </div>
-      </div>
-
-      <div class="panel" style="margin-top:14px">
-        <h3 style="margin-top:0">Sekolah yang terdeteksi</h3>
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:8px">${schoolCards}</div>
-        ${schools.length>30?`<div class="muted" style="margin-top:8px">Menampilkan 30 pertama. Seluruh ${fmtNum(schools.length)} sekolah tetap akan diproses.</div>`:''}
-      </div>
-
-      <div class="panel" style="margin-top:14px">
-        <h3 style="margin-top:0">Contoh detail yang akan diimpor</h3>
-        <div class="table-wrap" style="max-height:360px;overflow:auto">
-          <table class="friendly-table"><thead><tr><th>No</th><th>NPSN</th><th>Kode</th><th>Uraian</th><th>Pagu</th></tr></thead><tbody>${sample}</tbody></table>
-        </div>
-      </div>
-
-      <div class="panel" style="margin-top:14px;display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;background:#ecfdf5">
-        <div><b>Siap mengganti RKAS?</b><div class="muted">Mapping referensi barang akan dilakukan dari kode rekening secara exact-match.</div></div>
-        <button class="btn btn-primary" onclick="executeRkasReplace()">♻️ Proses & Ganti RKAS</button>
-      </div>`;
+    </div>`;
   }catch(e){
     out.innerHTML=msg(errorText(e),'error');
-    window._rkasReplacePreview=null;
   }finally{
-    btn.disabled=false;btn.textContent='🔎 Analisis File';
+    btn.disabled=false;
+    btn.textContent='🔎 Analisis File';
   }
 };
 
@@ -6704,7 +6651,6 @@ window.executeRkasReplace=async function(){
     btns.forEach(b=>b.disabled=false);
   }
 };
-
 
 /* ================= V16 — SEKOLAH SIMPLE & ELEGANT ================= */
 (function(){
