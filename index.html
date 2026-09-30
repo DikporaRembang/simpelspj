@@ -765,7 +765,7 @@ const V10_VERSION = 'V17.3-PENGAWAS-SIMPLE-LOGIN-FIX';
 const API_URL = 'https://script.google.com/macros/s/AKfycbyWvJXKr1QZ1zwbeJDoULTUihycj1771SsDlGFy8jnuF4i3DsEbHXlcJU48VDAg17fqDA/exec';
 
 // 1. DEKLARASIKAN ROLE_MENUS DI SINI (PALING ATAS)
-const ROLE_MENUS = {
+window.ROLE_MENUS = {
   DINAS: [
     { id: 'home', label: 'Beranda' },
     { group: 'PERSIAPAN', items: [
@@ -784,7 +784,7 @@ const ROLE_MENUS = {
     { group: 'KOMUNIKASI', items: [
       { id: 'pesan', label: 'Pesan & Koordinasi' }
     ]},
-     { group: 'SISTEM', items: [
+    { group: 'SISTEM', items: [
       { id: 'dbCheck', label: 'Validasi Database' },
       { id: 'tutorialV5', label: '📖 Tutorial SIMPEL SPJ' },
       { id: 'arsipPenilaianV5', label: '🖨️ Arsip Penilaian' }
@@ -834,8 +834,7 @@ const ROLE_MENUS = {
     ]}
   ]
 };
-// Ikat ROLE_MENUS secara global ke window untuk menghindari ReferenceError
-window.ROLE_MENUS = ROLE_MENUS;
+const ROLE_MENUS = window.ROLE_MENUS;
 
 const SUBMENU_TUTORIALS = {
   masterSpj: {title:'Master SPJ & Periode',text:'Dinas menetapkan komponen SPJ, indikator pemeriksaan, dan periode aktif. Ini menjadi fondasi agar seluruh sekolah dinilai dengan standar yang sama.',flow:['Master SPJ','Indikator','Periode','Penilaian']},
@@ -6112,7 +6111,8 @@ renderAssessment = function(a, indicators){
   renderPengesahanPanel(a.id_asesmen);
 };
 </script>
-  
+
+<script>
 /* ============================================================================
  * V12 UX — fokus DINAS & SEKOLAH. Tidak mengubah API/database/business flow.
  * ========================================================================== */
