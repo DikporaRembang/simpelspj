@@ -1125,6 +1125,7 @@ async function doLogin(e){
     // kembali. Dashboard dibangun di belakang layar selama animasi berlangsung.
     const welcomePromise = showWelcomeAnimation();
     await startApp();
+    startSessionHeartbeat();
     await welcomePromise;
   }catch(err){$('#authMsg').innerHTML=msg(errorText(err));}
 }
@@ -1207,14 +1208,19 @@ window.showRegisterView = function(e) {
       nama_pengguna: roleVal === 'PENGAWAS' ? $('#regNamaPengawas').value.trim() : $('#regNamaSekolah').value.trim()
     };
     const msgBox = $('#regMsg');
+    const submitBtn = document.querySelector('#registerForm button[type="submit"]');
+    if(submitBtn?.disabled) return;
+    if(submitBtn){ submitBtn.disabled = true; submitBtn.dataset.originalText = submitBtn.textContent; submitBtn.textContent = 'Memproses...'; }
     msgBox.innerHTML = '<p class="muted">Memproses pendaftaran akun...</p>';
 
     try {
       const res = await api('registerAkun', { data: payload });
       msgBox.innerHTML = msg(res.message || 'Pendaftaran akun berhasil! Silakan masuk.', 'ok');
+      if(submitBtn) submitBtn.textContent = 'Berhasil';
       setTimeout(() => { authView(); }, 1500);
     } catch(err) {
       msgBox.innerHTML = msg(errorText(err));
+      if(submitBtn){ submitBtn.disabled = false; submitBtn.textContent = submitBtn.dataset.originalText || 'Daftarkan Akun Sekarang'; }
     }
   };
 };
@@ -1302,6 +1308,43 @@ function showWelcomeAnimation(){
   });
 }
 
+let _sessionHeartbeatTimer = null;
+let _lastUserActivityAt = Date.now();
+let _sessionHeartbeatBusy = false;
+
+function noteUserActivity(){
+  _lastUserActivityAt = Date.now();
+}
+['click','keydown','pointerdown','mousemove','touchstart'].forEach(ev=>document.addEventListener(ev,noteUserActivity,{passive:true}));
+
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState==='visible') noteUserActivity();
+});
+
+function stopSessionHeartbeat(){
+  if(_sessionHeartbeatTimer){ clearInterval(_sessionHeartbeatTimer); _sessionHeartbeatTimer=null; }
+}
+
+function startSessionHeartbeat(){
+  stopSessionHeartbeat();
+  if(!state.token) return;
+  _sessionHeartbeatTimer=setInterval(async()=>{
+    if(!state.token || document.visibilityState==='hidden' || _sessionHeartbeatBusy) return;
+    // Heartbeat hanya dikirim jika user benar-benar aktif dalam 20 menit terakhir.
+    if(Date.now()-_lastUserActivityAt > 20*60*1000) return;
+    _sessionHeartbeatBusy=true;
+    try{
+      const r=await api('refreshSession');
+      if(r?.data) state.user = Object.assign({},state.user||{},r.data);
+    }catch(e){
+      stopSessionHeartbeat();
+      state.token=''; state.user=null;
+      sessionStorage.removeItem('simpel_token');
+      authView(msg(errorText(e),'warning'));
+    }finally{ _sessionHeartbeatBusy=false; }
+  }, 10*60*1000);
+}
+
 async function restoreSession(){
   if(!state.token){authView();return;}
   try{
@@ -1314,10 +1357,12 @@ async function restoreSession(){
       state.user.npsn = String(state.user.username);
     }
     await startApp();
+    startSessionHeartbeat();
   }catch(e){state.token=''; state.user=null; sessionStorage.removeItem('simpel_token'); authView();}
 }
 
 async function logout(){
+  stopSessionHeartbeat();
   try{if(state.token) await api('logout');}catch(e){}
   state.token=''; state.user=null; sessionStorage.removeItem('simpel_token'); authView(msg('Anda telah keluar dari aplikasi.','ok'));
 }
