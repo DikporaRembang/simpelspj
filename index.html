@@ -1650,7 +1650,7 @@ async function renderViewSafely(view){
 
 function setActive(view){ 
   $$('[data-view]').forEach(b => b.classList.toggle('active', b.dataset.view === view)); 
-}async function homeView(){
+}async function schoolHomeView(){
   const currentRole = role();
   const userFullLabel = state.user?.nama_pengguna || state.user?.nama || state.user?.username || '-';
 
@@ -1740,6 +1740,74 @@ function setActive(view){
   const roleDesc = isDinas() ? 'Pusat kendali pemantauan SPJ sekolah, penugasan pengawas, dan tindak lanjut.' : 'Ruang kerja pemeriksaan sekolah binaan, bukti, temuan, dan penilaian.';
   $('#mainContent').innerHTML=head(`Beranda ${currentRole}`,'SIMPEL SPJ — pusat kerja penilaian dan pertanggungjawaban SPJ')+
     `<div class="v11-home"><section class="v11-hero"><div class="v11-hero-inner"><div class="v11-hero-copy"><span class="v11-kicker">SIMPEL SPJ • DINDIKPORA REMBANG</span><h2>Selamat datang,<br>${esc(userFullLabel)}</h2><p>${esc(roleDesc)}</p><div class="v11-hero-actions"><button class="btn btn-primary" onclick="loadView('${primaryView}')">${primaryText}</button><button class="btn btn-light" onclick="loadView('${secondaryView}')">${secondaryText}</button></div></div></div></section><div class="v11-stats"><div class="v11-stat"><div class="label">Peran</div><div class="value" style="font-size:1rem">${esc(currentRole)}</div><div class="sub">Akses sesuai tugas</div></div><div class="v11-stat"><div class="label">Wilayah</div><div class="value" style="font-size:1rem">Kab. Rembang</div><div class="sub">Sistem aktif</div></div><div class="v11-stat"><div class="label">Sesi</div><div class="value" style="font-size:1rem">Aktif</div><div class="sub">Login terverifikasi</div></div><div class="v11-stat"><div class="label">Pencarian</div><div class="value" style="font-size:1rem">Aktif</div><div class="sub">Gunakan pencarian sekolah</div></div></div><section class="v11-focus-grid"><article class="v11-focus"><div class="icon">🎯</div><h3>Mulai pekerjaan utama</h3><p>${esc(isDinas()?'Pantau sekolah dan tindak lanjut SPJ.':'Pilih sekolah binaan lalu mulai pemeriksaan.')}</p><a class="v11-action" href="javascript:void(0)" onclick="loadView('${primaryView}')">Buka sekarang →</a></article><article class="v11-focus"><div class="icon">⚠</div><h3>Periksa temuan</h3><p>Lihat temuan yang perlu diverifikasi atau ditindaklanjuti.</p><a class="v11-action" href="javascript:void(0)" onclick="loadView('${secondaryView}')">Lihat →</a></article><article class="v11-focus"><div class="icon">🔎</div><h3>Cari sekolah</h3><p>Gunakan pencarian di bagian atas untuk membuka konteks sekolah.</p><a class="v11-action" href="javascript:void(0)" onclick="document.getElementById('globalSearchInput')?.focus()">Cari →</a></article></section></div>`;
+}
+
+async function homeView(){
+  const currentRole = role();
+  const userFullLabel = state.user?.nama_pengguna || state.user?.nama || state.user?.username || '-';
+
+  // Beranda sekolah tetap menggunakan alur sekolah yang sudah ada.
+  if(isSchool()) return schoolHomeView();
+
+  // Dashboard Pengawas: urutan kerja dibuat mengikuti proses pemeriksaan,
+  // bukan urutan teknis menu. Tidak mengubah endpoint atau logika penilaian.
+  if(isPengawas()){
+    const name = userFullLabel;
+    let schoolCount = 0, totalPagu = 0;
+    try{
+      const r = await safeApi('getRekapPaguRKAS', {}, {data:[]});
+      const rows = Array.isArray(r?.data) ? r.data : [];
+      schoolCount = rows.length;
+      totalPagu = rows.reduce((a,x)=>a+Number(x.total_pagu||0),0);
+    }catch(e){}
+
+    $('#mainContent').innerHTML = head('Beranda Pengawas','Pusat kerja pemeriksaan SPJ. Ikuti urutan dari sekolah binaan sampai penilaian.') + `
+      <div class="v17-pengawas-home">
+        <section class="v17-ph-hero">
+          <div>
+            <span class="v17-ph-kicker">SIMPEL SPJ • RUANG KERJA PENGAWAS</span>
+            <h2>Selamat datang, ${esc(name)}</h2>
+            <p>Mulai dari sekolah binaan. Setelah memilih sekolah, periksa RKAS dan realisasi, bukti SPJ, temuan, lalu selesaikan penilaian.</p>
+          </div>
+          <button class="btn btn-primary" onclick="loadView('penugasan')">🏫 Buka Sekolah Binaan →</button>
+        </section>
+
+        <section class="v17-ph-stats">
+          <div class="v17-ph-stat"><small>SEKOLAH BINAAN</small><strong>${fmtNum(schoolCount)}</strong><span>Ringkasan sekolah yang tersedia</span></div>
+          <div class="v17-ph-stat"><small>TOTAL PAGU RKAS</small><strong>${fmtRupiah(totalPagu)}</strong><span>Beban kerja sekolah binaan</span></div>
+          <div class="v17-ph-stat"><small>PERAN</small><strong>PENGAWAS</strong><span>Akses sesuai penugasan</span></div>
+        </section>
+
+        <section class="v17-ph-section">
+          <div class="v17-ph-section-head"><div><span class="v17-ph-label">ALUR KERJA</span><h3>Kerjakan secara berurutan</h3></div><span class="muted">1 → 5</span></div>
+          <div class="v17-ph-flow">
+            <button class="v17-ph-step" onclick="loadView('penugasan')"><b>1</b><div><strong>Sekolah Binaan</strong><small>Pilih sekolah yang menjadi tanggung jawab Anda.</small></div><em>→</em></button>
+            <button class="v17-ph-step" onclick="loadView('rkasReview')"><b>2</b><div><strong>RKAS & Realisasi</strong><small>Kenali pagu, realisasi, dan konteks belanja sekolah.</small></div><em>→</em></button>
+            <button class="v17-ph-step" onclick="loadView('pdfInteraktif')"><b>3</b><div><strong>Bukti & Pemeriksaan</strong><small>Periksa dokumen dan bukti yang tersedia.</small></div><em>→</em></button>
+            <button class="v17-ph-step" onclick="loadView('crosscheck')"><b>4</b><div><strong>Cross-check & Temuan</strong><small>Bandingkan bukti, transaksi, dan RKAS; catat temuan.</small></div><em>→</em></button>
+            <button class="v17-ph-step" onclick="loadView('asesmen')"><b>5</b><div><strong>Penilaian SPJ</strong><small>Selesaikan penilaian berdasarkan hasil pemeriksaan.</small></div><em>→</em></button>
+          </div>
+        </section>
+
+        <section class="v17-ph-grid">
+          <article class="v17-ph-card"><span>⚠️</span><div><h3>Tindak lanjut</h3><p>Gunakan Temuan SPJ dan Pesan & Koordinasi setelah pemeriksaan menemukan hal yang perlu ditindaklanjuti.</p><button class="btn btn-light btn-sm" onclick="loadView('temuan')">Buka Temuan</button></div></article>
+          <article class="v17-ph-card"><span>📊</span><div><h3>Hasil penilaian</h3><p>Setelah penilaian selesai, buka Arsip Penilaian untuk melihat dan mencetak hasil yang sudah tersedia.</p><button class="btn btn-light btn-sm" onclick="loadView('arsipPenilaianV5')">Buka Arsip</button></div></article>
+          <article class="v17-ph-card"><span>💬</span><div><h3>Komunikasi</h3><p>Gunakan pesan untuk klarifikasi resmi dengan sekolah atau pihak terkait.</p><button class="btn btn-light btn-sm" onclick="loadView('pesan')">Buka Pesan</button></div></article>
+        </section>
+
+        <div class="v17-ph-note">💡 <b>Prinsip kerja:</b> pilih sekolah terlebih dahulu. Menu berikutnya digunakan sesuai tahap pemeriksaan; Anda tidak perlu membuka semua menu sekaligus.</div>
+      </div>`;
+    return;
+  }
+
+  // Beranda Dinas tetap pada alur lama.
+  const primaryView = isDinas() ? 'monitoringGlobal' : 'penugasan';
+  const primaryText = isDinas() ? '📊 Buka Monitoring' : '🏫 Buka Sekolah Binaan';
+  const secondaryView = isDinas() ? 'temuan' : 'crosscheck';
+  const secondaryText = isDinas() ? '⚠ Lihat Temuan' : '🔎 Mulai Pemeriksaan';
+  const roleDesc = isDinas() ? 'Pusat kendali pemantauan SPJ sekolah, penugasan pengawas, dan tindak lanjut.' : 'Ruang kerja pemeriksaan sekolah binaan, bukti, temuan, dan penilaian.';
+  $('#mainContent').innerHTML=head(`Beranda ${currentRole}`,'SIMPEL SPJ — pusat kerja penilaian dan pertanggungjawaban SPJ')+
+    `<div class="v11-home"><section class="v11-hero"><div class="v11-hero-inner"><div class="v11-hero-copy"><span class="v11-kicker">SIMPEL SPJ • DINDIKPORA REMBANG</span><h2>Selamat datang,<br>${esc(userFullLabel)}</h2><p>${esc(roleDesc)}</p><div class="v11-hero-actions"><button class="btn btn-primary" onclick="loadView('${primaryView}')">${primaryText}</button><button class="btn btn-light" onclick="loadView('${secondaryView}')">${secondaryText}</button></div></div></div></section><div class="v11-stats"><div class="v11-stat"><div class="label">Peran</div><div class="value" style="font-size:1rem">${esc(currentRole)}</div><div class="sub">Akses sesuai tugas</div></div><div class="v11-stat"><div class="label">Wilayah</div><div class="value" style="font-size:1rem">Kab. Rembang</div><div class="sub">Sistem aktif</div></div><div class="v11-stat"><div class="label">Sesi</div><div class="value" style="font-size:1rem">Aktif</div><div class="sub">Login terverifikasi</div></div><div class="v11-stat"><div class="label">Pencarian</div><div class="value" style="font-size:1rem">Aktif</div><div class="sub">Gunakan pencarian sekolah</div></div></div><section class="v11-focus-grid"><article class="v11-focus"><div class="icon">🎯</div><h3>Mulai pekerjaan utama</h3><p>Pantau sekolah dan tindak lanjut SPJ.</p><a class="v11-action" href="javascript:void(0)" onclick="loadView('${primaryView}')">Buka sekarang →</a></article><article class="v11-focus"><div class="icon">⚠</div><h3>Periksa temuan</h3><p>Lihat temuan yang perlu diverifikasi atau ditindaklanjuti.</p><a class="v11-action" href="javascript:void(0)" onclick="loadView('${secondaryView}')">Lihat →</a></article><article class="v11-focus"><div class="icon">🔎</div><h3>Cari sekolah</h3><p>Gunakan pencarian di bagian atas untuk membuka konteks sekolah.</p><a class="v11-action" href="javascript:void(0)" onclick="document.getElementById('globalSearchInput')?.focus()">Cari →</a></article></section></div>`;
 }
 
 async function initV11TutorialFeed(){
@@ -3077,32 +3145,78 @@ async function renderPengawasRkasAndRealisasi(){
   const contentArea = $('#mainContent');
   if(!contentArea) return;
 
-  contentArea.innerHTML = head('RKAS & Realisasi Sekolah Binaan','Ringkasan sekolah dimuat lebih dahulu. Detail RKAS hanya diambil saat sekolah dibuka.') +
-    `<div id="pengawasRkasArea">${loading('Memuat ringkasan sekolah binaan...')}</div>`;
-  
+  contentArea.innerHTML = head(
+    'RKAS & Realisasi Sekolah Binaan',
+    'Ringkasan pagu dan realisasi dimuat dalam satu feed ringan. Rincian hanya dibuka saat diperlukan.'
+  ) + `<div id="pengawasRkasArea">${loading('Memuat ringkasan RKAS & realisasi...')}</div>`;
+
   try{
-    const r = await api('getRekapPaguRKAS');
+    // Satu endpoint agregat: tidak menarik seluruh detail RKAS/SPJ ke browser.
+    // Cache frontend hanya untuk perpindahan menu; detail tetap lazy-load.
+    const r = await api('getRingkasanRKASRealisasi');
     const list = r.data || [];
     const totalPagu = list.reduce((a,x) => a + Number(x.total_pagu || 0), 0);
-    
-    // OPTIMASI: Menggunakan .map().join('') agar kartu sekolah dirender sekali jalan di memori
-    const schoolCardsHtml = list.map(x => `
-      <div class="panel" style="margin:0;border:1px solid var(--border);">
-        <div style="font-weight:850;color:var(--primary);">🏫 ${esc(x.nama_sekolah||'-')}</div>
-        <div class="muted" style="margin:4px 0 4px;">NPSN <b>${esc(x.npsn)}</b> • Kecamatan ${esc(x.kecamatan||'-')}</div>
-        <div class="muted" style="margin:0 0 10px;">${esc(x.alamat_lengkap||'-')}</div>
-        <div style="font-weight:800;margin-bottom:10px;">Pagu: ${fmtRupiah(x.total_pagu||0)}</div>
-        <button class="btn btn-sm btn-primary" onclick="openPengawasRkasDetail('${esc(x.npsn)}')">Lihat RKAS</button>
-      </div>`).join('') || msg('Belum ada sekolah binaan.', 'ok');
+    const totalRealisasi = list.reduce((a,x) => a + Number(x.total_realisasi || 0), 0);
+    const totalSisa = list.reduce((a,x) => a + Number(x.sisa_pagu || 0), 0);
+    const persen = totalPagu > 0 ? (totalRealisasi / totalPagu) * 100 : 0;
+
+    const periodLabel = r.nama_periode_aktif
+      ? `<span class="badge badge-info">Periode aktif: ${esc(r.nama_periode_aktif)}</span>`
+      : `<span class="badge badge-warning">Belum ada periode aktif</span>`;
+
+    const schoolCardsHtml = list.map(x => {
+      const pagu = Number(x.total_pagu || 0);
+      const realisasi = Number(x.total_realisasi || 0);
+      const sisa = Number(x.sisa_pagu || 0);
+      const pct = Math.max(0, Math.min(100, Number(x.persentase_realisasi || 0)));
+      const pctText = Number(x.persentase_realisasi || 0).toFixed(1);
+      return `
+      <article class="panel" style="margin:0;border:1px solid var(--border);padding:17px;">
+        <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;">
+          <div>
+            <div style="font-weight:850;color:var(--primary);">🏫 ${esc(x.nama_sekolah||'-')}</div>
+            <div class="muted" style="margin-top:4px;">NPSN <b>${esc(x.npsn||'-')}</b> • Kecamatan ${esc(x.kecamatan||'-')}</div>
+          </div>
+          <span class="badge badge-info">${pctText}%</span>
+        </div>
+
+        <div style="margin-top:13px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;">
+          <div style="background:#f8fafc;border-radius:10px;padding:9px;">
+            <small class="muted">Pagu RKAS</small><div style="font-weight:800;">${fmtRupiah(pagu)}</div>
+          </div>
+          <div style="background:#f8fafc;border-radius:10px;padding:9px;">
+            <small class="muted">Realisasi</small><div style="font-weight:800;">${fmtRupiah(realisasi)}</div>
+          </div>
+          <div style="background:#f8fafc;border-radius:10px;padding:9px;">
+            <small class="muted">Sisa Pagu</small><div style="font-weight:800;">${fmtRupiah(sisa)}</div>
+          </div>
+        </div>
+
+        <div style="margin-top:11px;">
+          <div style="height:7px;background:#e9eef5;border-radius:99px;overflow:hidden;">
+            <div style="height:100%;width:${pct}%;background:var(--primary);border-radius:99px;"></div>
+          </div>
+        </div>
+
+        <button class="btn btn-sm btn-primary" style="width:100%;margin-top:13px;" onclick="openPengawasRkasDetail('${esc(x.npsn)}')">
+          Lihat Rincian RKAS & Realisasi
+        </button>
+      </article>`;
+    }).join('') || msg('Belum ada sekolah binaan.', 'ok');
 
     $('#pengawasRkasArea').innerHTML = `
-      <div class="cards" style="margin-bottom:20px;">
-        <div class="stat"><small>Jumlah Sekolah Binaan</small><strong>${fmtNum(list.length)}</strong></div>
+      <div class="cards" style="margin-bottom:14px;">
+        <div class="stat"><small>Sekolah Binaan</small><strong>${fmtNum(list.length)}</strong></div>
         <div class="stat"><small>Total Pagu RKAS</small><strong>${fmtRupiah(totalPagu)}</strong></div>
+        <div class="stat"><small>Total Realisasi</small><strong>${fmtRupiah(totalRealisasi)}</strong></div>
+        <div class="stat"><small>Realisasi Keseluruhan</small><strong>${persen.toFixed(1)}%</strong></div>
       </div>
       <div class="panel">
-        <div class="muted" style="margin-bottom:12px;">Pilih sekolah untuk memuat rincian RKAS. Data detail tidak dikirim sebelum diperlukan.</div>
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px;">
+          <div class="muted">Pilih sekolah untuk membuka rincian RKAS, realisasi, sisa pagu, dan kelompok belanja.</div>
+          ${periodLabel}
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:12px;">
           ${schoolCardsHtml}
         </div>
       </div>`;
@@ -6009,6 +6123,25 @@ function printV5Archive(){
   .instrument-pdf-inline-frame{height:65vh;min-height:360px}
   .instrument-pdf-inline-head{align-items:flex-start;flex-direction:column}
 }
+
+/* V17.3 — Dashboard Pengawas: alur kerja berurutan */
+.v17-pengawas-home{display:flex;flex-direction:column;gap:16px}
+.v17-ph-hero{display:flex;justify-content:space-between;align-items:center;gap:22px;padding:26px;border:1px solid var(--ux-line,#dfe8e2);border-radius:20px;background:linear-gradient(135deg,#f8fcf8,#fffdf8);box-shadow:var(--ux-shadow,0 10px 28px rgba(28,58,45,.07))}
+.v17-ph-kicker,.v17-ph-label{font-size:.68rem;font-weight:850;letter-spacing:.12em;color:#8b6c28;text-transform:uppercase}
+.v17-ph-hero h2{margin:7px 0 6px;font-size:1.7rem;color:var(--ux-ink,#18352b)}
+.v17-ph-hero p{margin:0;max-width:760px;color:#607068;line-height:1.6}
+.v17-ph-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.v17-ph-stat{padding:17px 18px;background:#fff;border:1px solid #e2e9e4;border-radius:16px;box-shadow:0 6px 18px rgba(28,58,45,.045)}
+.v17-ph-stat small{display:block;font-size:.66rem;font-weight:850;letter-spacing:.09em;color:#728078}.v17-ph-stat strong{display:block;margin:6px 0 2px;font-size:1.18rem;color:#1d513c}.v17-ph-stat span{font-size:.72rem;color:#839087}
+.v17-ph-section{padding:19px;background:#fff;border:1px solid #e2e9e4;border-radius:18px;box-shadow:0 6px 18px rgba(28,58,45,.045)}
+.v17-ph-section-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:11px}.v17-ph-section-head h3{margin:4px 0 0;color:#18352b}
+.v17-ph-flow{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:9px}
+.v17-ph-step{display:flex;flex-direction:column;align-items:flex-start;gap:9px;min-height:150px;text-align:left;padding:15px;border:1px solid #e2e9e4;border-radius:14px;background:#fbfdfb;cursor:pointer;transition:.18s}
+.v17-ph-step:hover{transform:translateY(-2px);border-color:#c9d8ce;box-shadow:0 8px 20px rgba(28,58,45,.07)}
+.v17-ph-step>b{display:grid;place-items:center;width:28px;height:28px;border-radius:9px;background:#e8f0ea;color:#1d513c}.v17-ph-step strong{display:block;color:#18352b;font-size:.86rem}.v17-ph-step small{display:block;margin-top:5px;color:#78867f;line-height:1.45}.v17-ph-step em{margin-top:auto;font-style:normal;color:#9a7625;font-weight:900}
+.v17-ph-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.v17-ph-card{display:flex;gap:12px;padding:16px;background:#fff;border:1px solid #e2e9e4;border-radius:16px}.v17-ph-card>span{font-size:1.25rem}.v17-ph-card h3{margin:0 0 5px;font-size:.92rem;color:#18352b}.v17-ph-card p{margin:0 0 11px;font-size:.76rem;line-height:1.5;color:#718078}.v17-ph-note{padding:13px 15px;border-left:4px solid #c8a24a;background:#fffdf7;border-radius:12px;color:#68766e;font-size:.78rem}
+@media(max-width:1050px){.v17-ph-flow{grid-template-columns:repeat(2,minmax(0,1fr))}.v17-ph-grid{grid-template-columns:1fr 1fr}.v17-ph-hero{align-items:flex-start;flex-direction:column}.v17-ph-stats{grid-template-columns:1fr 1fr}}
+@media(max-width:650px){.v17-ph-flow,.v17-ph-grid,.v17-ph-stats{grid-template-columns:1fr}.v17-ph-hero{padding:19px}.v17-ph-hero h2{font-size:1.35rem}.v17-ph-step{min-height:auto}}
 </style></head><body>${kop}${body}<script>window.onload=()=>setTimeout(()=>window.print(),350)<\/script></body></html>`);
   w.document.close();
 }
