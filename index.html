@@ -58,6 +58,8 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
 }
 .brand h2{font-size:1.08rem;margin:0;font-weight:850;color:var(--navy);letter-spacing:-.35px}
 .brand small{color:var(--muted);font-size:.78rem;font-weight:600}
+.brand-gold-title{color:#D4AF37!important;font-weight:850!important;letter-spacing:-.25px}
+.brand-gold-subtitle{color:#E6C96A!important;font-weight:650!important;letter-spacing:.1px}
 
 /* ================= LOADING / WELCOME ================= */
 /* FINAL28: loading sederhana, independen dari logo. */
@@ -703,7 +705,7 @@ body:before{background:linear-gradient(180deg,rgba(255,253,248,.86),rgba(245,242
 }
 body{background:linear-gradient(180deg,#fbfaf6 0,#f4f2eb 100%)!important;color:var(--ux-ink)!important}
 .topbar{height:72px!important;background:rgba(255,254,250,.96)!important;border-bottom:1px solid var(--ux-line)!important;box-shadow:0 5px 24px rgba(38,52,44,.055)!important}
-.brand h2{letter-spacing:-.045em!important;color:var(--ux-ink)!important}.brand small{color:var(--ux-muted)!important}
+.brand h2:not(.brand-gold-title){letter-spacing:-.045em!important;color:var(--ux-ink)!important}.brand small{color:var(--ux-muted)!important}
 .top-search-wrap{background:#f5f3ed!important;border:1px solid #e2ded4!important;border-radius:14px!important;min-height:44px!important}
 .top-search-wrap:focus-within{background:#fff!important;border-color:#b8c8be!important;box-shadow:0 0 0 4px rgba(46,115,88,.08)!important}
 .top-search-icon{color:var(--ux-green)!important}.top-search-kbd{background:#fff!important;border-color:#ddd8cc!important;color:#7a817c!important}
@@ -758,7 +760,7 @@ body{background:linear-gradient(180deg,#fbfaf6 0,#f4f2eb 100%)!important;color:v
 <script>
 'use strict';
 
-const V10_VERSION = 'V10-DRIVE-GITHUB';
+const V10_VERSION = 'V17.3-PENGAWAS-SIMPLE-LOGIN-FIX';
 
 const API_URL = 'https://script.google.com/macros/s/AKfycbyWvJXKr1QZ1zwbeJDoULTUihycj1771SsDlGFy8jnuF4i3DsEbHXlcJU48VDAg17fqDA/exec';
 
@@ -789,31 +791,29 @@ const ROLE_MENUS = {
   ],
   PENGAWAS: [
     { id: 'home', label: 'Beranda' },
-    { group: 'PENUGASAN', items: [
+    { group: '1. SEKOLAH BINAAN', items: [
       { id: 'penugasan', label: 'Sekolah Binaan' }
     ]},
-    { group: 'ANGGARAN & REALISASI', items: [
+    { group: '2. PEMERIKSAAN SPJ', items: [
       { id: 'rkasReview', label: 'RKAS & Realisasi' },
-      { id: 'transaksi', label: 'Realisasi SPJ' }
+      { id: 'transaksi', label: 'Transaksi & BKU' },
+      { id: 'pdfInteraktif', label: 'Bukti & Pemeriksaan PDF' },
+      { id: 'crosscheck', label: 'Pemeriksaan & Cross-check' }
     ]},
-    { group: 'PEMERIKSAAN', items: [
-      { id: 'crosscheck', label: 'Pemeriksaan SPJ' },
-      { id: 'temuan', label: 'Temuan SPJ' }
-    ]},
-    { group: 'PENILAIAN', items: [
-      { id: 'asesmen', label: 'Penilaian SPJ' },
-      { id: 'pdfInteraktif', label: '📄 Pemeriksaan PDF Interaktif' },
-      { id: 'keberatan', label: 'Keberatan Penilaian' }
-    ]},
-    { group: 'KOMUNIKASI', items: [
+    { group: '3. TEMUAN & TINDAK LANJUT', items: [
+      { id: 'temuan', label: 'Temuan SPJ' },
       { id: 'pesan', label: 'Pesan & Koordinasi' }
     ]},
-    { group: 'DOKUMEN', items: [
-      { id: 'tutorialV5', label: '📖 Tutorial SIMPEL SPJ' },
-      { id: 'arsipPenilaianV5', label: '🖨️ Arsip Penilaian' }
+    { group: '4. PENILAIAN', items: [
+      { id: 'asesmen', label: 'Penilaian SPJ' },
+      { id: 'keberatan', label: 'Kaji Ulang / Keberatan' }
+    ]},
+    { group: '5. HASIL & BANTUAN', items: [
+      { id: 'arsipPenilaianV5', label: 'Arsip Penilaian' },
+      { id: 'tutorialV5', label: 'Panduan SIMPEL SPJ' }
     ]},
     { group: 'AKUN', items: [
-      { id: 'ubahPassword', label: '🔐 Ubah Password' }
+      { id: 'ubahPassword', label: 'Ubah Password' }
     ]}
   ],
   SEKOLAH: [
@@ -1020,7 +1020,7 @@ async function api(action, payload={}){
   if(!data.success) throw new Error(data.message || 'Permintaan gagal.');
   return data;
 }
-async function safeApi(action,payload={},fallback=null){ try{return await api(action,payload);}catch(e){return fallback;} }
+async function safeApi(action,payload={},fallback=null){ try{return await api(action,payload);}catch(e){ console.error('[SIMPEL SPJ API]',action,e); if(fallback && typeof fallback==='object' && !Array.isArray(fallback)) return Object.assign({},fallback,{_error:e.message||String(e)}); return fallback; } }
 
 function generateMathCaptcha(){
   // CAPTCHA tetap mudah dihitung manusia, tetapi tidak lagi selalu penjumlahan.
@@ -1057,7 +1057,7 @@ function authView(notice=''){
       <section class="auth-side"><div class="auth-side-inner">
         <div class="brand">
           <img src="bidangsd.png" class="app-logo" alt="Logo">
-          <div><h2 style="color:#fff">SIMPEL SPJ</h2><small style="color:#cbd5e1">Kabupaten Rembang</small></div>
+          <div><h2 class="brand-gold-title">SIMPEL SPJ</h2><small class="brand-gold-subtitle">Kabupaten Rembang</small></div>
         </div>
         <h1>Sistem Penilaian SPJ BOS SD Kabupaten Rembang.</h1>
         <p>Sistem terintegrasi tingkat lanjut untuk pencatatan BKU harian, pemeriksaan otomatis, hingga asesmen tata kelola keuangan berbasis RKAS.</p>
@@ -1077,7 +1077,7 @@ function authView(notice=''){
       <section class="auth-panel"><div class="auth-card">
         <div class="brand" style="margin-bottom:20px">
           <img src="bidangsd.png" class="app-logo" alt="Logo">
-          <div><h2>SIMPEL SPJ</h2><small>Silakan masuk ke akun Anda</small></div>
+          <div><h2 class="brand-gold-title">SIMPEL SPJ</h2><small>Silakan masuk ke akun Anda</small></div>
         </div>
         ${notice}
         <form id="loginForm">
@@ -1136,7 +1136,7 @@ window.showRegisterView = function(e) {
   card.innerHTML = `
     <div class="brand" style="margin-bottom:16px">
       <img src="bidangsd.png" class="app-logo" alt="Logo">
-      <div><h2>SIMPEL SPJ</h2><small>Pendaftaran Akun Baru (Sekolah / Pengawas)</small></div>
+      <div><h2 class="brand-gold-title">SIMPEL SPJ</h2><small>Pendaftaran Akun Baru (Sekolah / Pengawas)</small></div>
     </div>
     <form id="registerForm">
       <div class="field">
@@ -1359,7 +1359,7 @@ function renderShell(){
           <button class="btn btn-light mobile-menu" id="menuBtn" aria-label="Menu">☰</button>
           <div class="brand">
             <img src="bidangsd.png" class="app-logo" alt="Logo">
-            <div><h2>SIMPEL SPJ</h2><small>Peran: <b>${esc(currentRole)}</b></small></div>
+            <div><h2 class="brand-gold-title">SIMPEL SPJ</h2><small>Peran: <b>${esc(currentRole)}</b></small></div>
           </div>
         </div>
         <div class="top-search" id="globalSearchBox">
@@ -1858,7 +1858,8 @@ async function renderDokumenTable(){
         <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;justify-content:flex-end">
           ${badge(status,statusClass)}
           ${pdfReady ? `<button class="btn btn-light instrument-view-pdf-btn" type="button"
-              data-pdf-url="${esc(d.file_url)}"
+              data-file-id="${esc(d.file_id||'')}"
+              data-pdf-url="${esc(d.file_url||'')}"
               data-pdf-name="${esc(d.nama_file || m.nama_spj || 'Dokumen SPJ')}"
               data-target="${esc(viewerId)}"
               onclick="showInstrumentPdf(this)">👁️ Lihat</button>` : ''}
@@ -1874,7 +1875,7 @@ async function renderDokumenTable(){
           </div>
           <button type="button" class="btn btn-light btn-sm" onclick="closeInstrumentPdf('${esc(viewerId)}')">✕ Tutup</button>
         </div>
-        <iframe class="instrument-pdf-inline-frame" title="${esc(d.nama_file || m.nama_spj || 'Dokumen SPJ')}" src="about:blank" data-pdf-src="${esc(pdfPageUrl(d.file_url,1))}" loading="lazy"></iframe>
+        <div class="instrument-pdf-inline-frame" data-file-id="${esc(d.file_id||'')}" data-pdf-name="${esc(d.nama_file || m.nama_spj || 'Dokumen SPJ')}"><div class="muted" style="padding:24px;text-align:center">Klik <b>Lihat</b> untuk memuat PDF secara aman.</div></div>
       </div>` : ''}`;
     }).join('');
 
@@ -1904,34 +1905,36 @@ async function renderDokumenTable(){
   }
 }
 
-window.showInstrumentPdf=function(btn){
+window.showInstrumentPdf=async function(btn){
   const targetId=btn?.dataset?.target||'';
-  const url=btn?.dataset?.pdfUrl||'';
   const name=btn?.dataset?.pdfName||'Dokumen SPJ';
-  if(!targetId || !url){
-    toast('Berkas PDF tidak tersedia.','warning');
-    return;
-  }
-
-  // Hanya satu viewer instrumen dibuka pada satu waktu agar halaman tetap ringkas.
-  $$('.instrument-pdf-inline').forEach(v=>{
-    if(v.id!==targetId) v.hidden=true;
-  });
-  $$('.instrument-view-pdf-btn').forEach(b=>{
-    if(b!==btn) b.classList.remove('btn-primary');
-  });
-
-  const viewer=document.getElementById(targetId);
-  if(!viewer) return;
-
-  const wasHidden=viewer.hidden;
-  viewer.hidden=!wasHidden;
-  btn.textContent=viewer.hidden?'👁️ Lihat':'✕ Tutup';
-  if(!viewer.hidden){
-    const frame=viewer.querySelector('.instrument-pdf-inline-frame');
-    if(frame && (!frame.src || frame.src==='about:blank')) frame.src=frame.dataset.pdfSrc||pdfPageUrl(url,1);
-    viewer.scrollIntoView({behavior:'smooth',block:'nearest'});
-  }
+  const fileId=btn?.closest('.doc-row')?.querySelector('[data-file-id]')?.dataset?.fileId || btn?.dataset?.fileId || '';
+  if(!targetId || !fileId){ toast('Berkas PDF tidak memiliki file_id yang valid.','warning'); return; }
+  $$('.instrument-pdf-inline').forEach(v=>{ if(v.id!==targetId) v.hidden=true; });
+  $$('.instrument-view-pdf-btn').forEach(b=>{ if(b!==btn) b.classList.remove('btn-primary'); });
+  const viewer=document.getElementById(targetId); if(!viewer) return;
+  const wasHidden=viewer.hidden; viewer.hidden=!wasHidden; btn.textContent=viewer.hidden?'👁️ Lihat':'✕ Tutup';
+  if(viewer.hidden) return;
+  viewer.scrollIntoView({behavior:'smooth',block:'nearest'});
+  const wrap=viewer.querySelector('.instrument-pdf-inline-frame');
+  if(!wrap) return;
+  if(wrap.dataset.loaded==='1') return;
+  wrap.innerHTML=loading('Memuat PDF secara aman...');
+  try{
+    const doc={file_id:fileId,nama_file:name};
+    const pdf=await getProtectedPdfDocument_(doc);
+    const page=await pdf.getPage(1);
+    const base=page.getViewport({scale:1});
+    const maxWidth=Math.max(320,Math.min(wrap.clientWidth-24,1000));
+    const scale=Math.min(maxWidth/base.width,1.5);
+    const vp=page.getViewport({scale});
+    const canvas=document.createElement('canvas');
+    canvas.style.display='block';canvas.style.maxWidth='100%';canvas.style.height='auto';canvas.style.margin='0 auto';canvas.style.background='#fff';canvas.style.boxShadow='0 8px 25px rgba(16,42,67,.12)';
+    canvas.width=Math.ceil(vp.width);canvas.height=Math.ceil(vp.height);
+    wrap.innerHTML='';wrap.appendChild(canvas);
+    await page.render({canvasContext:canvas.getContext('2d'),viewport:vp}).promise;
+    wrap.dataset.loaded='1';
+  }catch(e){ wrap.innerHTML=msg('PDF tidak dapat ditampilkan: '+errorText(e),'error'); }
 };
 
 window.closeInstrumentPdf=function(id){
@@ -4117,13 +4120,61 @@ window.openAssessment=async function(){
 };
 
 
-function drivePreviewUrl(url){
-  const u=String(url||'');
-  const m=u.match(/drive\.google\.com\/file\/d\/([^/]+)/i);
-  if(m) return `https://drive.google.com/file/d/${m[1]}/preview`;
-  if(/docs\.google\.com/i.test(u)) return u;
-  return u;
+/* ============================================================================
+ * PROTECTED PDF VIEWER
+ * PDF pemeriksaan tidak lagi membuka URL Google Drive langsung.
+ * Alur: file_id -> API Base64 -> Uint8Array -> PDF.js -> Canvas.
+ * ========================================================================== */
+function drivePreviewUrl(url){ return ''; }
+
+let __pdfJsPromise=null;
+const __protectedPdfCache=new Map();
+
+async function ensurePdfJs(){
+  if(window.pdfjsLib) {
+    window.pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    return window.pdfjsLib;
+  }
+  if(!__pdfJsPromise){
+    __pdfJsPromise=new Promise((resolve,reject)=>{
+      const existing=document.querySelector('script[data-simpel-pdfjs]');
+      if(existing){ existing.addEventListener('load',()=>resolve(window.pdfjsLib)); existing.addEventListener('error',()=>reject(new Error('Library PDF.js gagal dimuat.'))); return; }
+      const sc=document.createElement('script');
+      sc.src='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+      sc.dataset.simpelPdfjs='1';
+      sc.onload=()=>resolve(window.pdfjsLib);
+      sc.onerror=()=>reject(new Error('Library PDF.js gagal dimuat.'));
+      document.head.appendChild(sc);
+    });
+  }
+  const lib=await __pdfJsPromise;
+  if(!lib) throw new Error('PDF.js tidak tersedia.');
+  lib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  return lib;
 }
+
+function base64ToUint8Array_(base64){
+  const raw=atob(String(base64||''));
+  const out=new Uint8Array(raw.length);
+  for(let i=0;i<raw.length;i++) out[i]=raw.charCodeAt(i);
+  return out;
+}
+
+async function getProtectedPdfDocument_(doc){
+  const fileId=String(doc?.file_id||'');
+  const period=String(window.__pdfInteractiveContext?.p||state.selectedPeriode||'');
+  const npsn=String(window.__pdfInteractiveContext?.n||state.selectedNpsn||ownNpsn()||'');
+  if(!fileId) throw new Error('Dokumen ini tidak memiliki file_id Drive yang dapat dibaca oleh viewer aman.');
+  const lib=await ensurePdfJs();
+  if(__protectedPdfCache.has(fileId)) return __protectedPdfCache.get(fileId);
+  const r=await api('getDokumenPdfBase64',{fileId,idPeriode:period,npsn});
+  if(!r?.base64) throw new Error('Server tidak mengembalikan data PDF.');
+  const loadingTask=lib.getDocument({data:base64ToUint8Array_(r.base64)});
+  const pdf=await loadingTask.promise;
+  __protectedPdfCache.set(fileId,pdf);
+  return pdf;
+}
+
 
 async function ubahPasswordView(){
   if(!isSchool() && !isPengawas()){ $('#mainContent').innerHTML=msg('Menu ubah password ini tersedia untuk SEKOLAH dan PENGAWAS.','warning'); return; }
@@ -4146,10 +4197,17 @@ window.submitPasswordChangeV10=async function(){
   catch(e){toast(errorText(e),'error',5000);}
 };
 
-function pdfPageUrl(url,page){
-  const base=drivePreviewUrl(url); const p=parseInt(page,10);
-  return base + (p>0 ? `#page=${p}` : '');
-}
+window.ocrCurrentInteractivePdf=async function(){
+  const c=window.__pdfInteractiveContext||{}; const select=$('#interactiveDocSelect');
+  const doc=(c.docs||[]).find(d=>String(d.file_id||d.id_dokumen)===String(select?.value||''))||c.docs?.[0];
+  if(!doc?.file_id){toast('Dokumen tidak memiliki file_id.','warning');return;}
+  const box=$('#pageEvidenceSummary'); if(box) box.innerHTML=loading('OCR sedang diproses...');
+  try{
+    const r=await api('ocrDokumenPdf',{fileId:doc.file_id,idPeriode:c.p,npsn:c.n});
+    const textOcr=String(r.text||'').trim();
+    const modal=document.createElement('div'); modal.className='simple-modal'; modal.innerHTML=`<div class="simple-modal-card" style="width:min(900px,96vw)"><h3>Hasil OCR — ${esc(doc.nama_file||'Dokumen PDF')}</h3><p class="muted">${fmtNum(r.characters||textOcr.length)} karakter berhasil diekstrak.</p><textarea style="width:100%;min-height:420px;font-family:ui-monospace,monospace;font-size:.85rem">${esc(textOcr||'Tidak ada teks yang terdeteksi.')}</textarea><div class="simple-modal-actions"><button class="btn btn-primary" onclick="this.closest('.simple-modal').remove()">Tutup</button></div></div>`; document.body.appendChild(modal);
+  }catch(e){toast(errorText(e),'error',6000);}
+};
 
 async function pdfInteraktifView(){
   const periods=await periodeSelect('pdfInteractivePeriod', true, 'bulan');
@@ -4159,7 +4217,7 @@ async function pdfInteraktifView(){
     schoolOptions=`<div class="field"><label>Pilih Sekolah</label><select id="pdfInteractiveNpsn"><option value="">-- Pilih --</option>${(r.data||[]).map(x=>`<option value="${esc(x.npsn)}" ${state.selectedNpsn===x.npsn?'selected':''}>${esc(x.npsn)} - ${esc(x.nama_sekolah)}</option>`).join('')}</select></div>`;
   }
   $('#mainContent').innerHTML=head(isPengawas()?'Pemeriksaan PDF Interaktif':'Dokumen & Nilai SPJ','Baca bukti dan lihat penilaian pada konteks dokumen yang sama.')+
-    `<div class="panel"><div class="form-grid"><div class="field"><label>Periode</label>${periods}</div>${schoolOptions}</div><div class="toolbar"><button class="btn btn-primary" onclick="openPdfInteractive()">📄 Buka Dokumen & Penilaian</button></div><div id="pdfInteractiveArea">${msg('Pilih periode dan sekolah untuk membuka feed dokumen.','ok')}</div></div>`;
+    `<div class="panel"><div class="form-grid"><div class="field"><label>Periode</label>${periods}</div>${schoolOptions}</div><div class="toolbar"><button class="btn btn-primary" onclick="openPdfInteractive()">📄 Buka Dokumen & Penilaian</button><button class="btn btn-light" onclick="ocrCurrentInteractivePdf()">🔎 OCR PDF</button></div><div id="pdfInteractiveArea">${msg('Pilih periode dan sekolah untuk membuka feed dokumen.','ok')}</div></div>`;
   $('#pdfInteractivePeriod').value=state.selectedPeriode||'';
   if(state.selectedNpsn && $('#pdfInteractiveNpsn')) $('#pdfInteractiveNpsn').value=state.selectedNpsn;
 }
@@ -4193,7 +4251,7 @@ function renderPdfInteractive(x){
   const activeDoc=docs[0];
   const pageByIndicator={}; details.forEach(d=>{pageByIndicator[String(d.id_indikator)]=d.halaman_bukti||'';});
   const findingsByTx={}; findings.forEach(f=>{const k=String(f.id_transaksi||''); if(k){(findingsByTx[k] ||= []).push(f);}});
-  const docOptions=docs.map((d,i)=>`<option value="${esc(d.file_url||'')}" data-id="${esc(d.id_dokumen||'')}">${esc(d.nama_file||'Dokumen '+(i+1))}${d.id_spj?' • '+esc(d.id_spj):''}</option>`).join('');
+  const docOptions=docs.map((d,i)=>`<option value="${esc(d.file_id||d.id_dokumen||'')}" data-id="${esc(d.id_dokumen||'')}">${esc(d.nama_file||'Dokumen '+(i+1))}${d.id_spj?' • '+esc(d.id_spj):''}</option>`).join('');
   const txRows=tx.slice(0,250).map(t=>{
     const fs=findingsByTx[String(t.id_transaksi)]||[];
     return `<tr><td>${esc(t.tanggal_transaksi||'-')}</td><td><b>${esc(t.nomor_bukti||'-')}</b></td><td>${esc(t.kode_rekening||'-')}</td><td>${esc(t.uraian_transaksi||'-')}</td><td>${Number(t.nilai_transaksi||0).toLocaleString('id-ID')}</td><td>${fs.length?fs.map(f=>`<span class="badge badge-warning" style="display:inline-block;margin:2px">${esc(f.kode_temuan||'TEMUAN')} • ${esc(f.hasil_verifikasi||'BELUM')}</span>`).join(''):'<span class="badge badge-success">OK</span>'}</td><td><button class="btn btn-sm btn-light" onclick="jumpPdfPageFromTx('${esc(t.id_transaksi||'')}')">Lihat</button></td></tr>`;
@@ -4205,7 +4263,7 @@ function renderPdfInteractive(x){
       <select id="interactiveDocSelect" style="min-width:280px" onchange="changeInteractivePdf()">${docOptions}</select>
     </div>
     <div class="pdf-interactive-grid" style="display:grid;grid-template-columns:minmax(0,1.65fr) minmax(320px,.9fr);min-height:72vh">
-      <div style="background:#eef1f3;min-width:0"><iframe id="interactivePdfFrame" title="Dokumen SPJ" src="${esc(pdfPageUrl(activeDoc.file_url,1))}" style="width:100%;height:72vh;border:0;background:#fff"></iframe></div>
+      <div style="background:#eef1f3;min-width:0;padding:10px"><div id="interactivePdfFrame" style="width:100%;height:72vh;overflow:auto;background:#dfe5e8;border:1px solid #d4dde1;display:flex;align-items:flex-start;justify-content:center;padding:14px"><div class="muted" style="padding:40px;text-align:center">Memuat PDF secara aman...</div></div></div>
       <aside style="padding:16px;overflow:auto;max-height:72vh">
         <div class="cards" style="grid-template-columns:1fr 1fr"><div class="stat"><small>Status</small><strong>${esc(a.status_asesmen||'DRAFT')}</strong></div><div class="stat"><small>Nilai akhir</small><strong>${esc(a.nilai_akhir??'-')}</strong></div></div>
         ${isPengawas()?`<div class="message ok" style="margin-top:12px"><b>Mode pemeriksaan.</b> Pilih halaman bukti, lalu beri keputusan. Nomor halaman disimpan pada rincian asesmen.</div>`:`<div class="message ok" style="margin-top:12px"><b>Mode baca hasil.</b> Hasil penilaian ditampilkan di samping PDF agar sekolah dapat melihat bukti dan nilainya bersamaan.</div>`}
@@ -4218,11 +4276,39 @@ function renderPdfInteractive(x){
     </div>
   </div>`;
   window.__pdfInteractiveContext=x;
+  renderInteractivePdfPage(1);
   loadInteractiveIndicators();
 }
 
-window.changeInteractivePdf=function(){const u=$('#interactiveDocSelect')?.value||''; const p=$('#interactivePage')?.value||1; const fr=$('#interactivePdfFrame'); if(fr)fr.src=pdfPageUrl(u,p);};
-window.goInteractivePage=function(){const u=$('#interactiveDocSelect')?.value||''; const p=$('#interactivePage')?.value||1; const fr=$('#interactivePdfFrame'); if(fr)fr.src=pdfPageUrl(u,p); const c=window.__pdfInteractiveContext||{}; const hits=(c.details||[]).filter(d=>String(d.halaman_bukti)===String(p)); const box=$('#pageEvidenceSummary'); if(box) box.innerHTML=hits.length?hits.map(d=>`<div style="padding:5px 0"><b>${esc(d.id_temuan||'Indikator')}</b> • ${esc(d.id_indikator||'-')} • Skor ${esc(d.skor??d.hasil_otomatis??'-')}/4</div>`).join(''):'Tidak ada bukti penilaian yang ditautkan pada halaman ini.';};
+window.renderInteractivePdfPage=async function(pageNo){
+  const c=window.__pdfInteractiveContext||{};
+  const docs=c.docs||[];
+  const select=$('#interactiveDocSelect');
+  const doc=docs.find(d=>String(d.file_id||d.id_dokumen)===String(select?.value||''))||docs[0];
+  const wrap=$('#interactivePdfFrame'); if(!wrap||!doc)return;
+  const p=Math.max(1,Number(pageNo)||1); $('#interactivePage').value=p;
+  wrap.innerHTML=loading(`Memuat halaman ${p}...`);
+  try{
+    const pdf=await getProtectedPdfDocument_(doc);
+    const safePage=Math.min(p,pdf.numPages); $('#interactivePage').value=safePage;
+    const page=await pdf.getPage(safePage);
+    const base=page.getViewport({scale:1});
+    const maxWidth=Math.max(320,Math.min(wrap.clientWidth-28,1100));
+    const scale=Math.min(maxWidth/base.width,1.55);
+    const vp=page.getViewport({scale});
+    const canvas=document.createElement('canvas');
+    canvas.style.display='block';canvas.style.maxWidth='100%';canvas.style.height='auto';canvas.style.background='#fff';canvas.style.boxShadow='0 8px 25px rgba(16,42,67,.14)';
+    canvas.width=Math.ceil(vp.width);canvas.height=Math.ceil(vp.height);
+    wrap.innerHTML='';wrap.appendChild(canvas);
+    await page.render({canvasContext:canvas.getContext('2d'),viewport:vp}).promise;
+    wrap.dataset.page=String(safePage); wrap.dataset.fileId=String(doc.file_id||'');
+    const c2=window.__pdfInteractiveContext||{};
+    const hits=(c2.details||[]).filter(d=>String(d.halaman_bukti)===String(safePage));
+    const box=$('#pageEvidenceSummary'); if(box) box.innerHTML=hits.length?hits.map(d=>`<div style="padding:5px 0"><b>${esc(d.id_temuan||'Indikator')}</b> • ${esc(d.id_indikator||'-')} • Skor ${esc(d.skor??d.hasil_otomatis??'-')}/4</div>`).join(''):'Tidak ada bukti penilaian yang ditautkan pada halaman ini.';
+  }catch(e){wrap.innerHTML=msg('PDF tidak dapat ditampilkan: '+errorText(e),'error');}
+};
+window.changeInteractivePdf=async function(){ $('#interactivePage').value=1; await renderInteractivePdfPage(1); };
+window.goInteractivePage=async function(){ await renderInteractivePdfPage($('#interactivePage')?.value||1); };
 window.jumpPdfPageFromTx=function(idTx){
   const c=window.__pdfInteractiveContext; const t=(c?.tx||[]).find(x=>String(x.id_transaksi)===String(idTx));
   const fs=(c?.findings||[]).filter(x=>String(x.id_transaksi)===String(idTx));
@@ -5848,10 +5934,11 @@ window.executeRkasReplace=async function(){
     return `<div class="v16-breadcrumb"><button class="v16-back" type="button" onclick="schoolGoBack()">← Kembali ke ${esc(labels[parent]||'sebelumnya')}</button><span>•</span><span>${esc(labels[state.view]||title)}</span></div>` + base;
   };
 
+  const baseHomeView = window.homeView;
   window.homeView = async function(){
     const isS=String(state?.user?.role||'').toUpperCase()==='SEKOLAH';
     if(!isS){
-      return oldHomeView ? oldHomeView() : undefined;
+      return baseHomeView ? baseHomeView() : undefined;
     }
     const name=state.user?.nama_pengguna||state.user?.nama||state.user?.nama_sekolah||state.user?.username||'Sekolah';
     const npsn=state.user?.npsn||state.user?.username||'-';
@@ -5891,8 +5978,6 @@ window.executeRkasReplace=async function(){
         <div class="v16-tip">💡 <span><b>Satu prinsip:</b> kerjakan hanya langkah yang ditunjukkan sistem. Setelah SPJ lengkap, Anda tinggal menunggu pemeriksaan Pengawas.</span></div>
       </div>`;
   };
-  const oldHomeView = window.homeView;
-
   window.schoolChoosePeriod = async function(){
     const r=await safeApi('getPeriodeSPJ',{status:'AKTIF'},{data:[]});
     const rows=(r.data||[]).map(x=>{const id=x.id_periode||x.id;return `<button class="v16-period-choice ${String(id)===String(state.selectedPeriode)?'active':''}" onclick="state.selectedPeriode='${esc(String(id))}';document.getElementById('v16PeriodModal')?.remove();schoolGoHome();"><b>${esc(x.nama_periode||id)}</b><small>${esc(x.tahun||'')}</small></button>`;}).join('');
