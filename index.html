@@ -1781,12 +1781,26 @@ async function initV11TutorialFeed(){
   $('#v11PdfZoomIn').onclick=()=>{zoom=Math.min(1.8,zoom+.1);render();};
   await render();
 }
-async function ensureMasters(){
-  if(!state.masterSpj.length){ const r=await safeApi('getMasterSPJ',{},null); state.masterSpj=r?.data||[]; }
-}
-let cachedPeriodeList = [];
 
-async function ensurePeriodeMaster() {
+async function ensureMasters(){
+  // Jika data sudah ada di state frontend, langsung gunakan tanpa panggil API lagi
+  if(state.masterSpj && state.masterSpj.length > 0) {
+    return state.masterSpj;
+  }
+  const r = await safeApi('getMasterSPJ', {}, null);
+  state.masterSpj = r?.data || [];
+  return state.masterSpj;
+}
+
+let cachedPeriodeList = [];
+let isPeriodeFetching_ = false;
+
+async function ensurePeriodeMaster(force = false) {
+  // Jika list periode sudah ada dan tidak dipaksa (force), kembalikan langsung dari memori
+  if(!force && cachedPeriodeList && cachedPeriodeList.length > 0) {
+    return cachedPeriodeList;
+  }
+  
   const res = await safeApi('getPeriodeSPJ', {}, null);
   cachedPeriodeList = Array.isArray(res?.data) ? res.data : [];
   return cachedPeriodeList;
