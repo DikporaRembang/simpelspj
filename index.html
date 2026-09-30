@@ -1866,23 +1866,24 @@ async function renderDokumenTable(){
   const area = $('#dokumenArea');
   if(!area) return;
   if(!periode){
-    area.innerHTML = msg('Pilih periode SPJ terlebih dahulu.','ok');
+    area.innerHTML = msg('Pilih periode SPJ terlebih dahulu.', 'ok');
     return;
   }
   area.innerHTML = loading();
 
   try{
-    const [mRes,dRes] = await Promise.all([
-      api('getMasterSPJ'),
-      api('getDokumenSPJ',{idPeriode:periode})
-    ]);
+    // OPTIMASI: Gunakan ensureMasters() agar data master diambil dari state lokal browser
+    // jika sudah ada, sehingga tidak melakukan request berulang ke server.
+    await ensureMasters();
+    
+    // Hanya panggil API dokumen sesuai periode yang dipilih
+    const dRes = await api('getDokumenSPJ', { idPeriode: periode });
 
-    const masters = (mRes.data || [])
+    const masters = (state.masterSpj || [])
       .filter(x => String(x.status_aktif ?? x.status ?? 'AKTIF').toUpperCase() === 'AKTIF')
       .sort((a,b) => (Number(a.urutan)||0) - (Number(b.urutan)||0));
 
     const docs = dRes.data || [];
-    state.masterSpj = masters;
     const groups = masters.map(m => ({
       m,
       d: docs
@@ -1896,6 +1897,7 @@ async function renderDokumenTable(){
     const done = uploaded + na;
     const pct = total ? Math.round(done / total * 100) : 0;
 
+    // Rendering menggunakan .map().join('') agar browser hanya melakukan DOM reflow 1 kali
     const rows = groups.map((x,i) => {
       const m=x.m, d=x.d;
       const status = d ? String(d.status || 'SUDAH_UPLOAD').toUpperCase() : 'BELUM_UPLOAD';
@@ -1934,7 +1936,7 @@ async function renderDokumenTable(){
           </div>
           <button type="button" class="btn btn-light btn-sm" onclick="closeInstrumentPdf('${esc(viewerId)}')">✕ Tutup</button>
         </div>
-        <div class="instrument-pdf-inline-frame" data-file-id="${esc(d.file_id||'')}" data-pdf-name="${esc(d.nama_file || m.nama_spj || 'Dokumen SPJ')}"><div class="muted" style="padding:24px;text-align:center">Klik <b>Lihat</b> untuk memuat PDF secara aman.</div></div>
+        <div class="instrument-pdf-inline-frame" data-file-id="${esc(d.file_id\vert{}\vert{}'')}" data-pdf-name="${esc(d.nama_file || m.nama_spj || 'Dokumen SPJ')}"><div class="muted" style="padding:24px;text-align:center">Klik <b>Lihat</b> untuk memuat PDF secara aman.</div></div>
       </div>` : ''}`;
     }).join('');
 
@@ -2291,77 +2293,174 @@ async function renderStatus(){
 }
 
 async function transaksiView(){
-  const periods=await periodeSelect();
-  $('#mainContent').innerHTML=head('Transaksi SPJ','Pencatatan BKU dan sinkronisasi anggaran')+
+  const periods = await periodeSelect();
+  $('#mainContent').innerHTML = head('Transaksi SPJ','Pencatatan BKU dan sinkronisasi anggaran')+
     `<div class="panel"><div class="form-grid"><div class="field"><label>Periode SPJ</label>${periods}</div></div><div id="trxArea" style="margin-top:18px"></div></div>`;
-  $('#periodeSelect').value=state.selectedPeriode;
-  $('#periodeSelect').onchange=()=>{state.selectedPeriode=$('#periodeSelect').value;renderTransaksi();};
-  if(state.selectedPeriode)await renderTransaksi();else $('#trxArea').innerHTML=msg('Pilih periode untuk mulai.','ok');
+  
+  $('#periodeSelect').value = state.selectedPeriode;
+  $('#periodeSelect').onchange = () => {
+    state.selectedPeriode = $('#periodeSelect').value;
+    renderTransaksi();
+  };
+  
+  if (state.selectedPeriode) {
+    await renderTransaksi();
+  } else {
+    $('#trxArea').innerHTML = msg('Pilih periode untuk mulai.', 'ok');
+  }
 }
 
-async function renderTransaksi(page=1){
-  const p=$('#periodeSelect').value, area=$('#trxArea'); if(!p)return;
-  if(!isSchool() && !state.selectedNpsn){
-    area.innerHTML=loading('Memuat daftar sekolah...');
+// Variabel cache lokal frontend untuk daftar sekolah Dinas
+let _cachedDinasSchools = null;
+
+async function renderTransaksi(page = 1){
+  const p = $('#periodeSelect').value, area = $('#trxArea'); 
+  if (!p) return;
+
+  // Jika akun DINAS/PENGAWAS dan belum memilih sekolah, tampilkan daftar sekolah dengan cache lokal
+  if (!isSchool() && !state.selectedNpsn){
+    area.innerHTML = loading('Memuat daftar sekolah...');
     try{
-      const r=await api('getRekapPaguRKAS');
-      const schools=(r.data||[]).sort((a,b)=>{
-        const an=normalizeNpsnClient(a.npsn),bn=normalizeNpsnClient(b.npsn);
-        return (/^\d+$/.test(an)&&/^\d+$/.test(bn))?Number(an)-Number(bn):an.localeCompare(bn);
-      });
-      area.innerHTML=`<div class="cards" style="margin-bottom:14px;"><div class="stat"><small>Sekolah</small><strong>${fmtNum(schools.length)}</strong></div><div class="stat"><small>Petunjuk</small><strong style="font-size:1rem">Pilih 1 sekolah</strong></div></div>
-      <div class="school-index-grid">${schools.map(s=>`<div class="panel school-index-card" style="margin:0;border:1px solid var(--border);">
-        <div style="font-size:.78rem;color:var(--muted);font-weight:800;">NPSN ${esc(s.npsn)}</div>
-        <div style="font-weight:850;color:var(--primary);margin-top:3px;">${esc(s.nama_sekolah||'Nama sekolah tidak tersedia')}</div>
-        <div class="muted">Kecamatan ${esc(s.kecamatan||'-')}</div>
-        <div style="margin-top:10px;font-weight:800;">Pagu ${fmtRupiah(s.total_pagu||0)}</div>
-        <button class="btn btn-sm btn-primary" style="width:100%;margin-top:10px;" onclick="openTransaksiSchool('${esc(s.npsn)}')">Buka Sekolah →</button>
-      </div>`).join('')||msg('Belum ada data sekolah.','warning')}</div>`;
-    }catch(e){area.innerHTML=msg(errorText(e));}
+      if (!_cachedDinasSchools) {
+        const r = await api('getRekapPaguRKAS');
+        _cachedDinasSchools = (r.data || []).sort((a,b)=>{
+          const an = normalizeNpsnClient(a.npsn), bn = normalizeNpsnClient(b.npsn);
+          return (/^\d+$/.test(an) && /^\d+$/.test(bn)) ? Number(an)-Number(bn) : an.localeCompare(bn);
+        });
+      }
+      const schools = _cachedDinasSchools;
+
+      // Render menggunakan .map().join('') agar DOM di-render sekali jalan (Cepat)
+      const schoolCardsHtml = schools.map(s => `
+        <div class="panel school-index-card" style="margin:0;border:1px solid var(--border);">
+          <div style="font-size:.78rem;color:var(--muted);font-weight:800;">NPSN ${esc(s.npsn)}</div>
+          <div style="font-weight:850;color:var(--primary);margin-top:3px;">${esc(s.nama_sekolah||'Nama sekolah tidak tersedia')}</div>
+          <div class="muted">Kecamatan ${esc(s.kecamatan||'-')}</div>
+          <div style="margin-top:10px;font-weight:800;">Pagu ${fmtRupiah(s.total_pagu||0)}</div>
+          <button class="btn btn-sm btn-primary" style="width:100%;margin-top:10px;" onclick="openTransaksiSchool('${esc(s.npsn)}')">Buka Sekolah →</button>
+        </div>`).join('');
+
+      area.innerHTML = `
+        <div class="cards" style="margin-bottom:14px;">
+          <div class="stat"><small>Sekolah</small><strong>${fmtNum(schools.length)}</strong></div>
+          <div class="stat"><small>Petunjuk</small><strong style="font-size:1rem">Pilih 1 sekolah</strong></div>
+        </div>
+        <div class="school-index-grid">${schoolCardsHtml || msg('Belum ada data sekolah.', 'warning')}</div>`;
+    } catch(e) {
+      area.innerHTML = msg(errorText(e));
+    }
     return;
   }
 
-  area.innerHTML=loading(page===1?'Memuat transaksi sekolah...':'Memuat halaman transaksi...');
+  area.innerHTML = loading(page === 1 ? 'Memuat transaksi sekolah...' : 'Memuat halaman transaksi...');
   try{
     const npsn = isSchool() ? undefined : state.selectedNpsn;
-    const r=await api('getTransaksiSPJPaged',{idPeriode:p,npsn,page,limit:50});
-    const rows=r.data||[];
-    const groups=groupBelanjaClient(rows,'nilai_transaksi');
-    const groupedRows=groups.flatMap(g=>[
-      kelompokHeaderHtml(g,'Subtotal SPJ'),
-      ...g.items.map(x=>`<tr><td>${esc(x.tanggal_transaksi)}</td><td><code>${esc(x.kode_rekening)}</code></td><td>${esc(x.uraian_transaksi)}</td><td>${esc(x.nomor_bukti)}</td><td><b>${fmtRupiah(x.nilai_transaksi)}</b></td><td>${badge(x.status_crosscheck||'PERLU_VERIFIKASI','info')}</td></tr>`)
+    const r = await api('getTransaksiSPJPaged', { idPeriode: p, npsn, page, limit: 50 });
+    const rows = r.data || [];
+    const groups = groupBelanjaClient(rows, 'nilai_transaksi');
+    
+    const groupedRows = groups.flatMap(g => [
+      kelompokHeaderHtml(g, 'Subtotal SPJ'),
+      ...g.items.map(x => `
+        <tr>
+          <td>${esc(x.tanggal_transaksi)}</td>
+          <td><code>${esc(x.kode_rekening)}</code></td>
+          <td>${esc(x.uraian_transaksi)}</td>
+          <td>${esc(x.nomor_bukti)}</td>
+          <td><b>${fmtRupiah(x.nilai_transaksi)}</b></td>
+          <td>${badge(x.status_crosscheck || 'PERLU_VERIFIKASI', 'info')}</td>
+        </tr>`)
     ]).join('');
-    const pager=`<div class="toolbar" style="justify-content:space-between;align-items:center;margin-top:14px;gap:8px;flex-wrap:wrap;">
-      <span class="muted">Menampilkan ${r.total?((r.page-1)*r.limit+1):0}–${Math.min(r.page*r.limit,r.total)} dari ${fmtNum(r.total)} transaksi</span>
-      <div style="display:flex;gap:6px;align-items:center;">
-        <button class="btn btn-sm btn-light" ${r.page<=1?'disabled':''} onclick="renderTransaksi(${r.page-1})">‹</button>
-        <span class="muted">Halaman ${r.page}/${r.totalPages}</span>
-        <button class="btn btn-sm btn-light" ${r.page>=r.totalPages?'disabled':''} onclick="renderTransaksi(${r.page+1})">›</button>
-      </div></div>`;
-    const back=!isSchool()?`<button class="btn btn-sm btn-light" onclick="state.selectedNpsn='';renderTransaksi(1)">← Daftar Sekolah</button>`:'';
-    const edit=isSchool()?`<button class="btn btn-primary" onclick="openTransactionForm()">+ Tambah Transaksi</button><button class="btn btn-light" onclick="openExcelImport()">Impor Excel BKU</button>`:'';
-    area.innerHTML=`<div class="toolbar">${back}${edit}</div>
-      <div class="panel" style="margin:12px 0;background:rgba(23,75,67,.05);"><b>Total SPJ Periode: ${fmtRupiah(r.totalNilai||0)}</b><span class="muted" style="margin-left:10px;">${fmtNum(r.total)} transaksi • 50 per halaman</span></div>
-      <div class="table-wrap"><table class="friendly-table"><thead><tr><th>Tanggal</th><th>Kode Rekening</th><th>Uraian</th><th>No. Bukti</th><th>Nilai</th><th>Status</th></tr></thead><tbody>${groupedRows||emptyRow(6)}</tbody></table></div>${pager}`;
-  }catch(err){area.innerHTML=msg(errorText(err));}
+
+    const pager = `
+      <div class="toolbar" style="justify-content:space-between;align-items:center;margin-top:14px;gap:8px;flex-wrap:wrap;">
+        <span class="muted">Menampilkan ${r.total ? ((r.page-1)*r.limit+1) : 0}–${Math.min(r.page*r.limit, r.total)} dari ${fmtNum(r.total)} transaksi</span>
+        <div style="display:flex;gap:6px;align-items:center;">
+          <button class="btn btn-sm btn-light" ${r.page <= 1 ? 'disabled' : ''} onclick="renderTransaksi(${r.page-1})">‹</button>
+          <span class="muted">Halaman ${r.page}/${r.totalPages}</span>
+          <button class="btn btn-sm btn-light" ${r.page >= r.totalPages ? 'disabled' : ''} onclick="renderTransaksi(${r.page+1})">›</button>
+        </div>
+      </div>`;
+
+    const back = !isSchool() ? `<button class="btn btn-sm btn-light" onclick="state.selectedNpsn='';renderTransaksi(1)">← Daftar Sekolah</button>` : '';
+    const edit = isSchool() ? `<button class="btn btn-primary" onclick="openTransactionForm()">+ Tambah Transaksi</button><button class="btn btn-light" onclick="openExcelImport()">Impor Excel BKU</button>` : '';
+    
+    area.innerHTML = `
+      <div class="toolbar">${back}${edit}</div>
+      <div class="panel" style="margin:12px 0;background:rgba(23,75,67,.05);">
+        <b>Total SPJ Periode: ${fmtRupiah(r.totalNilai||0)}</b>
+        <span class="muted" style="margin-left:10px;">${fmtNum(r.total)} transaksi • 50 per halaman</span>
+      </div>
+      <div class="table-wrap">
+        <table class="friendly-table">
+          <thead>
+            <tr><th>Tanggal</th><th>Kode Rekening</th><th>Uraian</th><th>No. Bukti</th><th>Nilai</th><th>Status</th></tr>
+          </thead>
+          <tbody>${groupedRows || emptyRow(6)}</tbody>
+        </table>
+      </div>${pager}`;
+  } catch(err) {
+    area.innerHTML = msg(errorText(err));
+  }
 }
 
-window.openTransaksiSchool=function(npsn){
-  state.selectedNpsn=normalizeNpsnClient(npsn);
+window.openTransaksiSchool = function(npsn){
+  state.selectedNpsn = normalizeNpsnClient(npsn);
   renderTransaksi(1);
 };
 
-window.openTransactionForm=function(){
-  const p=$('#periodeSelect').value;if(!p)return;
-  const wrap=document.createElement('div');wrap.id='trxModal';
-  wrap.innerHTML=`<div style="position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:999;padding:16px"><div style="background:#fff;padding:28px;border-radius:24px;width:min(100%,650px);max-height:90vh;overflow:auto"><h3 style="margin-top:0;color:var(--primary)">Tambah Transaksi SPJ</h3><form id="trxForm"><div class="form-grid"><div class="field"><label>Tanggal</label><input id="trxTanggal" type="date" required></div><div class="field"><label>Nilai Transaksi (Rp)</label><input id="trxNilai" type="number" min="0" step="1" required></div><div class="field"><label>Kode Rekening</label><input id="trxKode" required></div><div class="field"><label>Nomor Bukti</label><input id="trxBukti" required></div><div class="field full-col"><label>Uraian Transaksi</label><textarea id="trxUraian" rows="3" required></textarea></div><div class="field"><label>Pihak Penerima</label><input id="trxPihak"></div><div class="field"><label>Jenis Belanja</label><input id="trxJenis"></div><div class="field"><label>Jenis Pembayaran</label><input id="trxPembayaran"></div><div class="field"><label>Pajak</label><input id="trxPajak" placeholder="PPN / PPh / Tidak Ada"></div></div><div id="trxMsg"></div><div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px"><button type="button" class="btn btn-light" onclick="$('#trxModal').remove()">Batal</button><button class="btn btn-primary">Simpan Transaksi</button></div></form></div></div>`;
+window.openTransactionForm = function(){
+  const p = $('#periodeSelect').value; if(!p) return;
+  const wrap = document.createElement('div'); wrap.id = 'trxModal';
+  wrap.innerHTML = `
+    <div style="position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:999;padding:16px">
+      <div style="background:#fff;padding:28px;border-radius:24px;width:min(100%,650px);max-height:90vh;overflow:auto">
+        <h3 style="margin-top:0;color:var(--primary)">Tambah Transaksi SPJ</h3>
+        <form id="trxForm">
+          <div class="form-grid">
+            <div class="field"><label>Tanggal</label><input id="trxTanggal" type="date" required></div>
+            <div class="field"><label>Nilai Transaksi (Rp)</label><input id="trxNilai" type="number" min="0" step="1" required></div>
+            <div class="field"><label>Kode Rekening</label><input id="trxKode" required></div>
+            <div class="field"><label>Nomor Bukti</label><input id="trxBukti" required></div>
+            <div class="field full-col"><label>Uraian Transaksi</label><textarea id="trxUraian" rows="3" required></textarea></div>
+            <div class="field"><label>Pihak Penerima</label><input id="trxPihak"></div>
+            <div class="field"><label>Jenis Belanja</label><input id="trxJenis"></div>
+            <div class="field"><label>Jenis Pembayaran</label><input id="trxPembayaran"></div>
+            <div class="field"><label>Pajak</label><input id="trxPajak" placeholder="PPN / PPh / Tidak Ada"></div>
+          </div>
+          <div id="trxMsg"></div>
+          <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px">
+            <button type="button" class="btn btn-light" onclick="$('#trxModal').remove()">Batal</button>
+            <button class="btn btn-primary">Simpan Transaksi</button>
+          </div>
+        </form>
+      </div>
+    </div>`;
   document.body.appendChild(wrap);
-  $('#trxForm').onsubmit=async e=>{
+  
+  $('#trxForm').onsubmit = async e => {
     e.preventDefault();
     try{
-      await api('simpanTransaksiSPJ',{data:{id_periode:p,tanggal_transaksi:$('#trxTanggal').value,nilai_transaksi:Number($('#trxNilai').value),kode_rekening:$('#trxKode').value.trim(),nomor_bukti:$('#trxBukti').value.trim(),uraian_transaksi:$('#trxUraian').value.trim(),pihak_penerima:$('#trxPihak').value.trim(),jenis_belanja:$('#trxJenis').value.trim(),jenis_pembayaran:$('#trxPembayaran').value.trim(),pajak:$('#trxPajak').value.trim()}});
-      $('#trxModal').remove();await renderTransaksi();
-    }catch(err){$('#trxMsg').innerHTML=msg(errorText(err));}
+      await api('simpanTransaksiSPJ', {
+        data: {
+          id_periode: p,
+          tanggal_transaksi: $('#trxTanggal').value,
+          nilai_transaksi: Number($('#trxNilai').value),
+          kode_rekening: $('#trxKode').value.trim(),
+          nomor_bukti: $('#trxBukti').value.trim(),
+          uraian_transaksi: $('#trxUraian').value.trim(),
+          pihak_penerima: $('#trxPihak').value.trim(),
+          jenis_belanja: $('#trxJenis').value.trim(),
+          jenis_pembayaran: $('#trxPembayaran').value.trim(),
+          pajak: $('#trxPajak').value.trim()
+        }
+      });
+      $('#trxModal').remove();
+      // Reset cache lokal sekolah bila diperlukan atau langsung render ulang transaksi
+      await renderTransaksi();
+    } catch(err) {
+      $('#trxMsg').innerHTML = msg(errorText(err));
+    }
   };
 };
 
@@ -2971,11 +3070,9 @@ window.applyRkasMappingChoice=function(index){
 
 window.commitRkasImportFromPreview=async function(){
   const p=window._rkasImportPreview; if(!p)return;
-  const btns=document.querySelectorAll('#rkasPreviewArea button');btns.forEach(b=>{if(/Simpan Otomatis/.test(b.textContent))b.disabled=true;});
+  const btns=document.querySelectorAll('#rkasPreviewArea button');
+  btns.forEach(b=>{if(/Simpan Otomatis/.test(b.textContent))b.disabled=true;});
   try{
-    // Tidak lagi memaksa user menyelesaikan mapping satu per satu. Backend akan
-    // mempertahankan MATCHED dan otomatis menandai sisanya sebagai MANUAL/nota
-    // jika referensi benar-benar tidak tersedia.
     const rows=(p.rows||[]).map(x=>Object.assign({},x));
     const payload={id_import:p.response.id_import,rows};
     if(isDinas()) payload.npsn=normalizeNpsnClient($('#rkasImportTargetNpsn')?.value||p.response.npsn||'');
@@ -2990,28 +3087,102 @@ window.commitRkasImportFromPreview=async function(){
 };
 
 async function renderPengawasRkasAndRealisasi(){
-  $('#mainContent').innerHTML=head('RKAS & Realisasi Sekolah Binaan','Ringkasan sekolah dimuat lebih dahulu. Detail RKAS hanya diambil saat sekolah dibuka.')+`<div id="pengawasRkasArea">${loading('Memuat ringkasan sekolah binaan...')}</div>`;
+  const contentArea = $('#mainContent');
+  if(!contentArea) return;
+
+  contentArea.innerHTML = head('RKAS & Realisasi Sekolah Binaan','Ringkasan sekolah dimuat lebih dahulu. Detail RKAS hanya diambil saat sekolah dibuka.') +
+    `<div id="pengawasRkasArea">${loading('Memuat ringkasan sekolah binaan...')}</div>`;
+  
   try{
-    const r=await api('getRekapPaguRKAS');
-    const list=r.data||[];
-    const totalPagu=list.reduce((a,x)=>a+Number(x.total_pagu||0),0);
-    $('#pengawasRkasArea').innerHTML=`<div class="cards" style="margin-bottom:20px;"><div class="stat"><small>Jumlah Sekolah Binaan</small><strong>${fmtNum(list.length)}</strong></div><div class="stat"><small>Total Pagu RKAS</small><strong>${fmtRupiah(totalPagu)}</strong></div></div><div class="panel"><div class="muted" style="margin-bottom:12px;">Pilih sekolah untuk memuat rincian RKAS. Data detail tidak dikirim sebelum diperlukan.</div><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;">${list.map(x=>`<div class="panel" style="margin:0;border:1px solid var(--border);"><div style="font-weight:850;color:var(--primary);">🏫 ${esc(x.nama_sekolah||'-')}</div><div class="muted" style="margin:4px 0 4px;">NPSN <b>${esc(x.npsn)}</b> • Kecamatan ${esc(x.kecamatan||'-')}</div><div class="muted" style="margin:0 0 10px;">${esc(x.alamat_lengkap||'-')}</div><div style="font-weight:800;margin-bottom:10px;">Pagu: ${fmtRupiah(x.total_pagu||0)}</div><button class="btn btn-sm btn-primary" onclick="openPengawasRkasDetail('${esc(x.npsn)}')">Lihat RKAS</button></div>`).join('')||msg('Belum ada sekolah binaan.','ok')}</div></div>`;
-  }catch(e){$('#pengawasRkasArea').innerHTML=msg(errorText(e));}
+    const r = await api('getRekapPaguRKAS');
+    const list = r.data || [];
+    const totalPagu = list.reduce((a,x) => a + Number(x.total_pagu || 0), 0);
+    
+    // OPTIMASI: Menggunakan .map().join('') agar kartu sekolah dirender sekali jalan di memori
+    const schoolCardsHtml = list.map(x => `
+      <div class="panel" style="margin:0;border:1px solid var(--border);">
+        <div style="font-weight:850;color:var(--primary);">🏫 ${esc(x.nama_sekolah||'-')}</div>
+        <div class="muted" style="margin:4px 0 4px;">NPSN <b>${esc(x.npsn)}</b> • Kecamatan ${esc(x.kecamatan||'-')}</div>
+        <div class="muted" style="margin:0 0 10px;">${esc(x.alamat_lengkap||'-')}</div>
+        <div style="font-weight:800;margin-bottom:10px;">Pagu: ${fmtRupiah(x.total_pagu||0)}</div>
+        <button class="btn btn-sm btn-primary" onclick="openPengawasRkasDetail('${esc(x.npsn)}')">Lihat RKAS</button>
+      </div>`).join('') || msg('Belum ada sekolah binaan.', 'ok');
+
+    $('#pengawasRkasArea').innerHTML = `
+      <div class="cards" style="margin-bottom:20px;">
+        <div class="stat"><small>Jumlah Sekolah Binaan</small><strong>${fmtNum(list.length)}</strong></div>
+        <div class="stat"><small>Total Pagu RKAS</small><strong>${fmtRupiah(totalPagu)}</strong></div>
+      </div>
+      <div class="panel">
+        <div class="muted" style="margin-bottom:12px;">Pilih sekolah untuk memuat rincian RKAS. Data detail tidak dikirim sebelum diperlukan.</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;">
+          ${schoolCardsHtml}
+        </div>
+      </div>`;
+  }catch(e){
+    $('#pengawasRkasArea').innerHTML = msg(errorText(e));
+  }
 }
 
-window.openPengawasRkasDetail=async function(npsn,page=1){
-  const area=$('#pengawasRkasArea'); if(!area)return;
-  area.innerHTML=loading('Memuat rincian RKAS sekolah...');
+window.openPengawasRkasDetail=async function(npsn, page=1){
+  const area = $('#pengawasRkasArea'); 
+  if(!area) return;
+  
+  area.innerHTML = loading('Memuat rincian RKAS sekolah...');
   try{
-    const r=await api('getRealisasiRKASPaged',{npsn,page,limit:50});
-    const rows=r.data||[];
-    const groups=groupBelanjaClient(rows,'pagu');
-    let no=(r.page-1)*r.limit;
-    const detail=groups.flatMap(g=>[kelompokHeaderHtml(g,'Subtotal Pagu'),...g.items.map(x=>`<tr><td>${++no}</td><td><code>${esc(x.kode_rekening)}</code></td><td>${esc(x.uraian)}</td><td><b>${fmtRupiah(x.pagu)}</b></td><td>${fmtRupiah(x.total_realisasi)}</td><td>${fmtRupiah(x.sisa_pagu)}</td><td>${badge(x.status_rkas||'APPROVED','success')}</td></tr>`)]).join('');
-    const first=rows[0]||{};
-    const pager=`<div class="toolbar" style="justify-content:space-between;align-items:center;margin-top:14px;"><button class="btn btn-sm btn-light" onclick="renderPengawasRkasAndRealisasi()">← Kembali ke sekolah</button><div style="display:flex;gap:6px;align-items:center;"><button class="btn btn-sm btn-light" ${r.page<=1?'disabled':''} onclick="openPengawasRkasDetail('${esc(npsn)}',${r.page-1})">‹</button><span class="muted">Halaman ${r.page}/${r.totalPages} • ${fmtNum(r.total)} item</span><button class="btn btn-sm btn-light" ${r.page>=r.totalPages?'disabled':''} onclick="openPengawasRkasDetail('${esc(npsn)}',${r.page+1})">›</button></div></div>`;
-    area.innerHTML=`<div class="panel" style="margin-bottom:14px;"><b>🏫 ${esc(first.nama_sekolah||npsn)}</b><div class="muted">NPSN ${esc(npsn)} • Kecamatan ${esc(first.kecamatan||'-')}</div><div class="muted" style="margin-top:3px;">${esc(first.alamat_lengkap||'-')}</div><div style="margin-top:8px;display:flex;gap:18px;flex-wrap:wrap;"><span>Total Pagu: <b>${fmtRupiah(r.totalPagu||0)}</b></span><span>Realisasi: <b>${fmtRupiah(r.totalRealisasi||0)}</b></span><span>Sisa: <b>${fmtRupiah(r.totalSisa||0)}</b></span></div></div><div class="table-wrap"><table class="friendly-table"><thead><tr><th>No</th><th>Kode</th><th>Uraian</th><th>Pagu</th><th>Realisasi</th><th>Sisa</th><th>Status</th></tr></thead><tbody>${detail||emptyRow(7,'Belum ada RKAS APPROVED.')}</tbody></table></div>${pager}`;
-  }catch(e){area.innerHTML=msg(errorText(e));}
+    const r = await api('getRealisasiRKASPaged', {npsn, page, limit:50});
+    const rows = r.data || [];
+    const groups = groupBelanjaClient(rows, 'pagu');
+    let no = (r.page - 1) * r.limit;
+    
+    // OPTIMASI: Rendering detail kelompok belanja menggunakan .map().join('') yang bersih
+    const detail = groups.flatMap(g => [
+      kelompokHeaderHtml(g, 'Subtotal Pagu'),
+      ...g.items.map(x => `
+        <tr>
+          <td>${++no}</td>
+          <td><code>${esc(x.kode_rekening)}</code></td>
+          <td>${esc(x.uraian)}</td>
+          <td><b>${fmtRupiah(x.pagu)}</b></td>
+          <td>${fmtRupiah(x.total_realisasi)}</td>
+          <td>${fmtRupiah(x.sisa_pagu)}</td>
+          <td>${badge(x.status_rkas || 'APPROVED', 'success')}</td>
+        </tr>`)
+    ]).join('');
+
+    const first = rows[0] || {};
+    const pager = `
+      <div class="toolbar" style="justify-content:space-between;align-items:center;margin-top:14px;">
+        <button class="btn btn-sm btn-light" onclick="renderPengawasRkasAndRealisasi()">← Kembali ke sekolah</button>
+        <div style="display:flex;gap:6px;align-items:center;">
+          <button class="btn btn-sm btn-light" ${r.page <= 1 ? 'disabled' : ''} onclick="openPengawasRkasDetail('${esc(npsn)}', ${r.page-1})">‹</button>
+          <span class="muted">Halaman ${r.page}/${r.totalPages} • ${fmtNum(r.total)} item</span>
+          <button class="btn btn-sm btn-light" ${r.page >= r.totalPages ? 'disabled' : ''} onclick="openPengawasRkasDetail('${esc(npsn)}', ${r.page+1})">›</button>
+        </div>
+      </div>`;
+
+    area.innerHTML = `
+      <div class="panel" style="margin-bottom:14px;">
+        <b>🏫 ${esc(first.nama_sekolah || npsn)}</b>
+        <div class="muted">NPSN ${esc(npsn)} • Kecamatan ${esc(first.kecamatan || '-')}</div>
+        <div class="muted" style="margin-top:3px;">${esc(first.alamat_lengkap || '-')}</div>
+        <div style="margin-top:8px;display:flex;gap:18px;flex-wrap:wrap;">
+          <span>Total Pagu: <b>${fmtRupiah(r.totalPagu || 0)}</b></span>
+          <span>Realisasi: <b>${fmtRupiah(r.totalRealisasi || 0)}</b></span>
+          <span>Sisa: <b>${fmtRupiah(r.totalSisa || 0)}</b></span>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table class="friendly-table">
+          <thead>
+            <tr><th>No</th><th>Kode</th><th>Uraian</th><th>Pagu</th><th>Realisasi</th><th>Sisa</th><th>Status</th></tr>
+          </thead>
+          <tbody>${detail || emptyRow(7, 'Belum ada RKAS APPROVED.')}</tbody>
+        </table>
+      </div>${pager}`;
+  }catch(e){
+    area.innerHTML = msg(errorText(e));
+  }
 };
 
 async function renderSchoolRkasAndRealisasi(){
@@ -3019,9 +3190,6 @@ async function renderSchoolRkasAndRealisasi(){
   if(!area) return;
 
   const schoolMode = isSchool();
-  // SEKOLAH wajib memakai identitas NPSN dari sesi login.
-  // Jangan memakai state.selectedNpsn karena itu dipakai untuk konteks
-  // pencarian/pemilihan sekolah pada role lain.
   const schoolUser = state.user || {};
   const ownNpsn = normalizeNpsnClient(
     schoolUser.npsn ||
@@ -3030,8 +3198,6 @@ async function renderSchoolRkasAndRealisasi(){
     ''
   );
 
-  // SEKOLAH: konteks selalu satu NPSN dari akun/session.
-  // DINAS/PENGAWAS tetap memakai renderer/context mereka sendiri.
   if(schoolMode){
     area.innerHTML = head(
       'RKAS & Realisasi Anggaran',
@@ -3047,6 +3213,7 @@ async function renderSchoolRkasAndRealisasi(){
     }
 
     try{
+      // Mengambil data realisasi dan riwayat secara paralel
       const [real, h] = await Promise.all([
         safeApi('realisasiRKAS', { npsn: ownNpsn }, { data: [] }),
         safeApi('rkasHistory', { npsn: ownNpsn }, { data: [] })
@@ -3054,10 +3221,6 @@ async function renderSchoolRkasAndRealisasi(){
 
       const raw = Array.isArray(real.data) ? real.data : [];
 
-      // DISPLAY DEDUP ONLY:
-      // Jangan gunakan id transaksi/generic "id" sebagai identitas RKAS.
-      // Jika id_rkas tersedia, pakai itu. Untuk record identik yang
-      // datang berulang dari JOIN realisasi, gunakan fingerprint isi.
       const norm = v => String(v ?? '').trim().toLowerCase().replace(/\s+/g,' ');
       const amount = v => {
         const n = Number(v);
@@ -3085,18 +3248,15 @@ async function renderSchoolRkasAndRealisasi(){
         return true;
       });
 
-      const totalPaguKeseluruhan = mergedList.reduce(
-        (sum,x)=>sum+Number(x.pagu||0),0
-      );
-      const totalRealisasiKeseluruhan = mergedList.reduce(
-        (sum,x)=>sum+Number(x.total_realisasi||0),0
-      );
+      const totalPaguKeseluruhan = mergedList.reduce((sum,x)=>sum+Number(x.pagu||0),0);
+      const totalRealisasiKeseluruhan = mergedList.reduce((sum,x)=>sum+Number(x.total_realisasi||0),0);
 
       const groups = groupBelanjaClient(mergedList, 'pagu');
       let nomor = 0;
 
+      // OPTIMASI: Menggunakan .map().join('') agar baris tabel dirangkai di memori sekali jalan
       const rows = groups.flatMap(g => [
-        kelompokHeaderHtml(g,'Subtotal Pagu'),
+        kelompokHeaderHtml(g, 'Subtotal Pagu'),
         ...g.items.map(x => `
           <tr>
             <td style="text-align:center;color:var(--muted);font-weight:600">${++nomor}</td>
@@ -3105,7 +3265,7 @@ async function renderSchoolRkasAndRealisasi(){
             <td><b>${fmtRupiah(x.pagu)}</b></td>
             <td style="color:var(--success);font-weight:600">${fmtRupiah(x.total_realisasi)}</td>
             <td style="color:${Number(x.sisa_pagu)<0?'var(--danger)':'var(--text)'};font-weight:600">${fmtRupiah(x.sisa_pagu)}</td>
-            <td>${badge(x.status_rkas || 'APPROVED','success')}</td>
+            <td>${badge(x.status_rkas || 'APPROVED', 'success')}</td>
             <td style="text-align:center">
               <div style="display:flex;gap:4px;justify-content:center;flex-wrap:wrap;">
                 <button class="btn btn-sm btn-light btn-edit-rkas"
@@ -3137,7 +3297,7 @@ async function renderSchoolRkasAndRealisasi(){
           <div class="stat">
             <small>Sisa Saldo Pagu</small>
             <strong style="color:var(--primary-2);font-size:1.3rem;">
-              ${fmtRupiah(totalPaguKeseluruhan-totalRealisasiKeseluruhan)}
+              ${fmtRupiah(totalPaguKeseluruhan - totalRealisasiKeseluruhan)}
             </strong>
           </div>
         </div>
@@ -3171,7 +3331,7 @@ async function renderSchoolRkasAndRealisasi(){
                 </tr>
               </thead>
               <tbody id="rkasTableBody">
-                ${rows || emptyRow(8,'Belum ada data RKAS aktif.')}
+                ${rows || emptyRow(8, 'Belum ada data RKAS aktif.')}
               </tbody>
             </table>
           </div>
@@ -3190,13 +3350,13 @@ async function renderSchoolRkasAndRealisasi(){
         btn.onclick = async () => {
           const idRkas = btn.dataset.id;
           if(!idRkas){
-            toast('ID RKAS tidak tersedia pada item ini.','warning');
+            toast('ID RKAS tidak tersedia pada item ini.', 'warning');
             return;
           }
           if(!confirm('Apakah Anda yakin ingin menghapus item/usulan RKAS ini?')) return;
           try{
-            await api('hapusDetailRKAS',{idRkas});
-            toast('Item RKAS berhasil dihapus.','ok');
+            await api('hapusDetailRKAS', { idRkas });
+            toast('Item RKAS berhasil dihapus.', 'ok');
             await renderSchoolRkasAndRealisasi();
           }catch(err){
             alert(errorText(err));
@@ -3205,35 +3365,36 @@ async function renderSchoolRkasAndRealisasi(){
       });
 
     }catch(e){
-      const a=$('#schoolRkasArea');
-      if(a) a.innerHTML=msg(errorText(e));
+      const a = $('#schoolRkasArea');
+      if(a) a.innerHTML = msg(errorText(e));
     }
     return;
   }
 
-  // Non-SEKOLAH: jangan menampilkan konteks sekolah pada renderer SEKOLAH.
-  // Alur DINAS/PENGAWAS yang sudah ada dipertahankan di fungsi masing-masing.
+  // Non-SEKOLAH (Dinas / Pengawas)
   const [real, h] = await Promise.all([
-    safeApi('realisasiRKAS', {}, {data:[]}),
-    safeApi('rkasHistory', {}, {data:[]})
+    safeApi('realisasiRKAS', {}, { data: [] }),
+    safeApi('rkasHistory', {}, { data: [] })
   ]);
   const mergedList = Array.isArray(real.data) ? real.data : [];
   const totalPaguKeseluruhan = mergedList.reduce((sum,x)=>sum+Number(x.pagu||0),0);
   const totalRealisasiKeseluruhan = mergedList.reduce((sum,x)=>sum+Number(x.total_realisasi||0),0);
-  const groups = groupBelanjaClient(mergedList,'pagu');
-  let numero=0;
-  const rows=groups.flatMap(g=>[
-    kelompokHeaderHtml(g,'Subtotal Pagu'),
-    ...g.items.map(x=>`<tr>
-      <td style="text-align:center">${++numero}</td>
-      <td><code>${esc(x.kode_rekening||'-')}</code></td>
-      <td><b>${esc(x.uraian||'-')}</b></td>
-      <td><b>${fmtRupiah(x.pagu)}</b></td>
-      <td>${fmtRupiah(x.total_realisasi)}</td>
-      <td>${fmtRupiah(x.sisa_pagu)}</td>
-      <td>${badge(x.status_rkas||'APPROVED','success')}</td>
-      <td>-</td>
-    </tr>`)
+  const groups = groupBelanjaClient(mergedList, 'pagu');
+  let numero = 0;
+  
+  const rows = groups.flatMap(g => [
+    kelompokHeaderHtml(g, 'Subtotal Pagu'),
+    ...g.items.map(x => `
+      <tr>
+        <td style="text-align:center">${++numero}</td>
+        <td><code>${esc(x.kode_rekening || '-')}</code></td>
+        <td><b>${esc(x.uraian || '-')}</b></td>
+        <td><b>${fmtRupiah(x.pagu)}</b></td>
+        <td>${fmtRupiah(x.total_realisasi)}</td>
+        <td>${fmtRupiah(x.sisa_pagu)}</td>
+        <td>${badge(x.status_rkas || 'APPROVED', 'success')}</td>
+        <td>-</td>
+      </tr>`)
   ]).join('');
 
   area.innerHTML = head(
@@ -3244,7 +3405,7 @@ async function renderSchoolRkasAndRealisasi(){
     <div class="table-wrap" style="margin-top:12px;">
       <table class="friendly-table">
         <thead><tr><th>No</th><th>Kode</th><th>Uraian</th><th>Pagu</th><th>Realisasi</th><th>Sisa</th><th>Status</th><th>Aksi</th></tr></thead>
-        <tbody>${rows||emptyRow(8,'Belum ada data RKAS aktif.')}</tbody>
+        <tbody>${rows || emptyRow(8, 'Belum ada data RKAS aktif.')}</tbody>
       </table>
     </div>
   </div>`;
@@ -3386,6 +3547,8 @@ async function renderDinasRkasReview(){
   document.querySelector('#rkasReplaceModal')?.remove();
   document.querySelector('#rkasManageMenu')?.remove();
   const c = $('#mainContent');
+  if(!c) return;
+
   c.innerHTML = head('Review & Persetujuan RKAS (Dinas)', 'Kelola paket RKAS sekolah: yang harus disetujui, sudah disetujui, dan impor RKAS.') +
     `<div class="toolbar" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:16px;">
        <div style="display:flex;gap:8px;flex-wrap:wrap;">
@@ -3407,181 +3570,281 @@ async function renderDinasRkasReview(){
 
 window.loadDinasRkasTab = async function(statusFilter){
   window._activeDinasStatus = statusFilter;
-  const a=$('#btnTabDiajukan'), b=$('#btnTabApproved');
-  if(a) a.className=statusFilter==='DIAJUKAN'?'btn btn-sm btn-primary':'btn btn-sm btn-light';
-  if(b) b.className=statusFilter==='APPROVED'?'btn btn-sm btn-primary':'btn btn-sm btn-light';
-  const panel=$('#dinasRkasPanel'); if(!panel)return;
-  panel.innerHTML=loading('Memuat paket RKAS...');
+  const a = $('#btnTabDiajukan'), b = $('#btnTabApproved');
+  if(a) a.className = statusFilter === 'DIAJUKAN' ? 'btn btn-sm btn-primary' : 'btn btn-sm btn-light';
+  if(b) b.className = statusFilter === 'APPROVED' ? 'btn btn-sm btn-primary' : 'btn btn-sm btn-light';
+  
+  const panel = $('#dinasRkasPanel'); 
+  if(!panel) return;
+  
+  panel.innerHTML = loading('Memuat paket RKAS...');
   try{
-    const r=await safeApi('getRKASApprovalQueue',{statusRkas:statusFilter},{data:[]});
-    window._currentDinasRkasList=(r.data||[]).map(x=>Object.assign({},x,{
-      npsn:normalizeNpsnClient(x.npsn),
-      jumlah_baris:Number(x.jumlah_baris||x.total_baris||0),
-      total_pagu:Number(x.total_pagu||0),
-      status_rkas:String(x.status_rkas||x.status_import||statusFilter).toUpperCase()
+    const r = await safeApi('getRKASApprovalQueue', { statusRkas: statusFilter }, { data: [] });
+    window._currentDinasRkasList = (r.data || []).map(x => Object.assign({}, x, {
+      npsn: normalizeNpsnClient(x.npsn),
+      jumlah_baris: Number(x.jumlah_baris || x.total_baris || 0),
+      total_pagu: Number(x.total_pagu || 0),
+      status_rkas: String(x.status_rkas || x.status_import || statusFilter).toUpperCase()
     }));
-    window._selectedDinasRkasPackage=null;
+    window._selectedDinasRkasPackage = null;
     filterAndRenderDinasRkasTable();
-  }catch(e){panel.innerHTML=msg(errorText(e),'error');}
+  }catch(e){
+    panel.innerHTML = msg(errorText(e), 'error');
+  }
 };
 
-window.filterAndRenderDinasRkasTable=function(){
-  const panel=$('#dinasRkasPanel'), stat=$('#dinasRkasStatArea'); if(!panel)return;
-  const q=String($('#searchDinasRkas')?.value||'').trim().toLowerCase();
-  const list=(window._currentDinasRkasList||[]).filter(x=>{
-    if(!q)return true;
-    return [x.npsn,x.nama_sekolah,x.kecamatan,x.nama_file,x.versi_rkas,x.id_import].some(v=>String(v||'').toLowerCase().includes(q));
+window.filterAndRenderDinasRkasTable = function(){
+  const panel = $('#dinasRkasPanel'), stat = $('#dinasRkasStatArea'); 
+  if(!panel) return;
+  
+  const q = String($('#searchDinasRkas')?.value || '').trim().toLowerCase();
+  const list = (window._currentDinasRkasList || []).filter(x => {
+    if(!q) return true;
+    return [x.npsn, x.nama_sekolah, x.kecamatan, x.nama_file, x.versi_rkas, x.id_import].some(v => String(v || '').toLowerCase().includes(q));
   });
-  window._renderedDinasRkasList=list;
-  const total=list.reduce((s,x)=>s+Number(x.total_pagu||0),0);
-  if(stat)stat.innerHTML=`<div class="cards">
-    <div class="stat"><small>Paket RKAS</small><strong>${fmtNum(list.length)}</strong></div>
-    <div class="stat"><small>Total Item</small><strong>${fmtNum(list.reduce((s,x)=>s+Number(x.jumlah_baris||0),0))}</strong></div>
-    <div class="stat"><small>Total Pagu</small><strong>${fmtRupiah(total)}</strong></div>
-  </div>`;
-  if(!list.length){panel.innerHTML=msg(window._activeDinasStatus==='APPROVED'?'Belum ada RKAS yang disetujui.':'Belum ada RKAS yang menunggu persetujuan.','warning');return;}
-  panel.innerHTML=`<div class="school-index-grid">${list.map((x,i)=>`
+  
+  window._renderedDinasRkasList = list;
+  const total = list.reduce((s, x) => s + Number(x.total_pagu || 0), 0);
+  
+  if(stat) {
+    stat.innerHTML = `
+      <div class="cards">
+        <div class="stat"><small>Paket RKAS</small><strong>${fmtNum(list.length)}</strong></div>
+        <div class="stat"><small>Total Item</small><strong>${fmtNum(list.reduce((s, x) => s + Number(x.jumlah_baris || 0), 0))}</strong></div>
+        <div class="stat"><small>Total Pagu</small><strong>${fmtRupiah(total)}</strong></div>
+      </div>`;
+  }
+  
+  if(!list.length){
+    panel.innerHTML = msg(window._activeDinasStatus === 'APPROVED' ? 'Belum ada RKAS yang disetujui.' : 'Belum ada RKAS yang menunggu persetujuan.', 'warning');
+    return;
+  }
+
+  // OPTIMASI: Menggunakan metode .map().join('') untuk merender kartu grid sekali jalan di memori
+  const cardsHtml = list.map((x, i) => `
     <div class="panel school-index-card" style="margin:0;border:1px solid var(--border);">
-      <div style="font-size:.76rem;color:var(--muted);font-weight:800;">${x._queue_source==='LEGACY'?'RKAS LAMA':'PAKET IMPORT'}</div>
-      <div style="font-size:1.08rem;font-weight:900;color:var(--primary);">${esc(x.npsn||'-')}</div>
-      <div style="font-weight:850;margin-top:4px;">${esc(x.nama_sekolah||'Nama sekolah tidak tersedia')}</div>
-      <div class="muted" style="margin-top:3px;">Kecamatan ${esc(x.kecamatan||'-')}</div>
-      <div class="muted" style="margin-top:7px;font-size:.78rem;">${esc(x.nama_file||x.versi_rkas||'RKAS tersimpan')}</div>
+      <div style="font-size:.76rem;color:var(--muted);font-weight:800;">${x._queue_source === 'LEGACY' ? 'RKAS LAMA' : 'PAKET IMPORT'}</div>
+      <div style="font-size:1.08rem;font-weight:900;color:var(--primary);">${esc(x.npsn || '-')}</div>
+      <div style="font-weight:850;margin-top:4px;">${esc(x.nama_sekolah || 'Nama sekolah tidak tersedia')}</div>
+      <div class="muted" style="margin-top:3px;">Kecamatan ${esc(x.kecamatan || '-')}</div>
+      <div class="muted" style="margin-top:7px;font-size:.78rem;">${esc(x.nama_file || x.versi_rkas || 'RKAS tersimpan')}</div>
       <div style="display:flex;justify-content:space-between;gap:8px;margin-top:12px;">
-        <span class="muted">${fmtNum(x.jumlah_baris||0)} item</span><b>${fmtRupiah(x.total_pagu||0)}</b>
+        <span class="muted">${fmtNum(x.jumlah_baris || 0)} item</span><b>${fmtRupiah(x.total_pagu || 0)}</b>
       </div>
-      <div style="margin-top:10px;">${badge(x.status_rkas||window._activeDinasStatus,'success')}</div>
+      <div style="margin-top:10px;">${badge(x.status_rkas || window._activeDinasStatus, 'success')}</div>
       <button class="btn btn-sm btn-primary" style="margin-top:12px;width:100%;" onclick="openDinasRkasPackage(${i})">Buka →</button>
-    </div>`).join('')}</div>`;
+    </div>`).join('');
+
+  panel.innerHTML = `<div class="school-index-grid">${cardsHtml}</div>`;
 };
 
-window.openDinasRkasPackage=function(index){
-  const list=window._renderedDinasRkasList||window._currentDinasRkasList||[], pkg=list[index]; if(!pkg)return;
-  window._selectedDinasRkasPackage=pkg;
+window.openDinasRkasPackage = function(index){
+  const list = window._renderedDinasRkasList || window._currentDinasRkasList || [];
+  const pkg = list[index]; 
+  if(!pkg) return;
+  
+  window._selectedDinasRkasPackage = pkg;
   renderDinasRkasPackageDetail();
 };
 
-window.renderDinasRkasPackageDetail=async function(){
-  const panel=$('#dinasRkasPanel'), stat=$('#dinasRkasStatArea'), pkg=window._selectedDinasRkasPackage;
-  if(!panel||!pkg)return;
-  panel.innerHTML=loading('Memuat rincian paket RKAS...');
+window.renderDinasRkasPackageDetail = async function(){
+  const panel = $('#dinasRkasPanel'), stat = $('#dinasRkasStatArea'), pkg = window._selectedDinasRkasPackage;
+  if(!panel || !pkg) return;
+  
+  panel.innerHTML = loading('Memuat rincian paket RKAS...');
   try{
     let r;
-    if(pkg._queue_source==='LEGACY'){
-      r=await api('getRKASLegacyPackage',{data:{npsn:pkg.npsn,versi_rkas:pkg.versi_rkas||'',sumber_data:pkg.sumber_data||''}});
-    }else{
-      r=await api('getRKASImport',{idImport:pkg.id_import_paket||pkg.id_import});
+    if(pkg._queue_source === 'LEGACY'){
+      r = await api('getRKASLegacyPackage', { data: { npsn: pkg.npsn, versi_rkas: pkg.versi_rkas || '', sumber_data: pkg.sumber_data || '' } });
+    } else {
+      r = await api('getRKASImport', { idImport: pkg.id_import_paket || pkg.id_import });
     }
-    const rows=r.data||[];
-    const total=rows.reduce((s,x)=>s+Number(x.pagu||0),0);
-    if(stat)stat.innerHTML=`<div class="panel" style="margin:0;background:rgba(23,75,67,.05);">
-      <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;">
-        <div><div class="muted">NPSN ${esc(pkg.npsn)}</div><h3 style="margin:2px 0;">${esc(pkg.nama_sekolah||'-')}</h3>
-        <div class="muted">${esc(pkg.nama_file||pkg.versi_rkas||'RKAS tersimpan')} • ${pkg._queue_source==='LEGACY'?'Data legacy master_rkas':'Paket import'}</div></div>
-        <div style="text-align:right;"><small>Total Pagu</small><div style="font-size:1.25rem;font-weight:900;">${fmtRupiah(total)}</div></div>
-      </div></div>`;
-    const groups=groupBelanjaClient(rows,'pagu'); let no=0;
-    const detail=groups.flatMap(g=>[
-      kelompokHeaderHtml(g,'Subtotal Pagu'),
-      ...g.items.map(x=>`<tr><td>${++no}</td><td><code>${esc(x.kode_rekening||'')}</code></td><td>${esc(x.uraian||x.nama_belanja_asli||'')}</td><td><b>${fmtRupiah(x.pagu||0)}</b></td><td>${badge(x.status_rkas||pkg.status_rkas,'success')}</td><td>${
-        window._activeDinasStatus==='DIAJUKAN' && pkg._queue_source!=='LEGACY'
-        ? `<button class="btn btn-sm btn-primary" onclick="doReviewRkas('${esc(pkg.id_import_paket||pkg.id_import)}','APPROVED')">Setujui</button>
-           <button class="btn btn-sm btn-light" onclick="doReviewRkas('${esc(pkg.id_import_paket||pkg.id_import)}','PERLU_PERBAIKAN')">Perbaiki</button>
-           <button class="btn btn-sm btn-danger" onclick="doReviewRkas('${esc(pkg.id_import_paket||pkg.id_import)}','DITOLAK')">Tolak</button>`
-        : `<span class="muted">${pkg.status_rkas==='APPROVED'?'Telah Disetujui':'Data Legacy'}</span>`
-      }</td></tr>`)
+    
+    const rows = r.data || [];
+    const total = rows.reduce((s, x) => s + Number(x.pagu || 0), 0);
+    
+    if(stat) {
+      stat.innerHTML = `
+        <div class="panel" style="margin:0;background:rgba(23,75,67,.05);">
+          <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;">
+            <div>
+              <div class="muted">NPSN ${esc(pkg.npsn)}</div>
+              <h3 style="margin:2px 0;">${esc(pkg.nama_sekolah || '-')}</h3>
+              <div class="muted">${esc(pkg.nama_file || pkg.versi_rkas || 'RKAS tersimpan')} • ${pkg._queue_source === 'LEGACY' ? 'Data legacy master_rkas' : 'Paket import'}</div>
+            </div>
+            <div style="text-align:right;">
+              <small>Total Pagu</small>
+              <div style="font-size:1.25rem;font-weight:900;">${fmtRupiah(total)}</div>
+            </div>
+          </div>
+        </div>`;
+    }
+    
+    const groups = groupBelanjaClient(rows, 'pagu'); 
+    let no = 0;
+    
+    // OPTIMASI: Rendering detail kelompok belanja menggunakan .map().join('') yang bersih
+    const detail = groups.flatMap(g => [
+      kelompokHeaderHtml(g, 'Subtotal Pagu'),
+      ...g.items.map(x => `
+        <tr>
+          <td>${++no}</td>
+          <td><code>${esc(x.kode_rekening || '')}</code></td>
+          <td>${esc(x.uraian || x.nama_belanja_asli || '')}</td>
+          <td><b>${fmtRupiah(x.pagu || 0)}</b></td>
+          <td>${badge(x.status_rkas || pkg.status_rkas, 'success')}</td>
+          <td>${
+            window._activeDinasStatus === 'DIAJUKAN' && pkg._queue_source !== 'LEGACY'
+            ? `<button class="btn btn-sm btn-primary" onclick="doReviewRkas('${esc(pkg.id_import_paket || pkg.id_import)}', 'APPROVED')">Setujui</button>
+               <button class="btn btn-sm btn-light" onclick="doReviewRkas('${esc(pkg.id_import_paket || pkg.id_import)}', 'PERLU_PERBAIKAN')">Perbaiki</button>
+               <button class="btn btn-sm btn-danger" onclick="doReviewRkas('${esc(pkg.id_import_paket || pkg.id_import)}', 'DITOLAK')">Tolak</button>`
+            : `<span class="muted">${pkg.status_rkas === 'APPROVED' ? 'Telah Disetujui' : 'Data Legacy'}</span>`
+          }</td>
+        </tr>`)
     ]).join('');
-    panel.innerHTML=`<div class="toolbar"><button class="btn btn-sm btn-light" onclick="filterAndRenderDinasRkasTable()">← Kembali</button><span class="muted">${fmtNum(rows.length)} item RKAS</span></div>
-      <div class="table-wrap"><table class="friendly-table"><thead><tr><th>No</th><th>Kode</th><th>Uraian</th><th>Pagu</th><th>Status</th><th>Aksi</th></tr></thead><tbody>${detail||emptyRow(6)}</tbody></table></div>`;
-  }catch(e){panel.innerHTML=msg(errorText(e),'error');}
+
+    panel.innerHTML = `
+      <div class="toolbar"><button class="btn btn-sm btn-light" onclick="filterAndRenderDinasRkasTable()">← Kembali</button><span class="muted">${fmtNum(rows.length)} item RKAS</span></div>
+      <div class="table-wrap">
+        <table class="friendly-table">
+          <thead>
+            <tr><th>No</th><th>Kode</th><th>Uraian</th><th>Pagu</th><th>Status</th><th>Aksi</th></tr>
+          </thead>
+          <tbody>${detail || emptyRow(6)}</tbody>
+        </table>
+      </div>`;
+  }catch(e){
+    panel.innerHTML = msg(errorText(e), 'error');
+  }
 };
+
 window.doReviewRkas = async function(versiRkas, keputusan) {
   if (!versiRkas || !keputusan) return;
   const label = keputusan === 'APPROVED' ? 'menyetujui' : (keputusan === 'DITOLAK' ? 'menolak' : 'meminta perbaikan');
   if (!confirm(`Yakin ${label} RKAS versi ${versiRkas}?`)) return;
   try {
     await api('reviewRKAS', { versiRkas, keputusan });
-    toast('Keputusan review RKAS berhasil disimpan.','ok');
+    toast('Keputusan review RKAS berhasil disimpan.', 'ok');
     await renderDinasRkasReview();
   } catch (err) {
     alert(errorText(err));
   }
 };
 
+// Cache global lokal di browser untuk direktori sekolah agar instan saat dibuka kembali
+window._schoolDirectoryCache = null;
+
 async function sekolahView(){
-  const c=$('#mainContent');
-  c.innerHTML=head('Daftar Sekolah','Pusat navigasi DINAS: cari sekolah, lihat pagu RKAS, lalu buka konteks sekolah.')+
+  const c = $('#mainContent');
+  if(!c) return;
+
+  c.innerHTML = head('Daftar Sekolah','Pusat navigasi DINAS: cari sekolah, lihat pagu RKAS, lalu buka konteks sekolah.') +
     `<div class="school-directory-toolbar">
        <input id="searchSekolahInput" class="search-box" placeholder="🔍 Cari nama sekolah, NPSN, atau kecamatan...">
        <button class="btn btn-light" onclick="clearSchoolDirectorySearch()">Bersihkan</button>
      </div>
      <div class="panel" id="sekolahContent">${loading('Memuat daftar sekolah...')}</div>`;
+     
   try{
-    const [schoolRes,paguRes]=await Promise.all([
-      api('getSekolah'),
-      isDinas()?safeApi('getRekapPaguRKAS',{},{data:[]}):Promise.resolve({data:[]})
-    ]);
-    const list=schoolRes.data||[];
-    const paguMap=buildPaguMap(paguRes.data||[]);
-    window._schoolDirectoryData=list.map(x=>Object.assign({},x,{total_pagu:Number(paguMap[normalizeNpsnClient(x.npsn)]||0)}));
+    // OPTIMASI: Manfaatkan cache lokal frontend jika data sudah pernah ditarik sebelumnya
+    if (!window._schoolDirectoryCache) {
+      const [schoolRes, paguRes] = await Promise.all([
+        api('getSekolah'),
+        isDinas() ? safeApi('getRekapPaguRKAS', {}, { data: [] }) : Promise.resolve({ data: [] })
+      ]);
+      const list = schoolRes.data || [];
+      const paguMap = buildPaguMap(paguRes.data || []);
+      
+      window._schoolDirectoryCache = list.map(x => Object.assign({}, x, { 
+        total_pagu: Number(paguMap[normalizeNpsnClient(x.npsn)] || 0) 
+      }));
+    }
+
+    window._schoolDirectoryData = window._schoolDirectoryCache;
     renderSchoolDirectory(window._schoolDirectoryData);
-    $('#searchSekolahInput').oninput=e=>filterSchoolDirectory(e.target.value);
-  }catch(e){$('#sekolahContent').innerHTML=msg(errorText(e));}
+    
+    const searchInput = $('#searchSekolahInput');
+    if(searchInput) {
+      searchInput.oninput = e => filterSchoolDirectory(e.target.value);
+    }
+  }catch(e){
+    $('#sekolahContent').innerHTML = msg(errorText(e));
+  }
 }
 
 function buildPaguMap(list){
-  const map={};
-  (Array.isArray(list)?list:[]).forEach(x=>{
-    const n=normalizeNpsnClient(x.npsn);
-    if(n) map[n]=Number(x.total_pagu||0);
+  const map = {};
+  (Array.isArray(list) ? list : []).forEach(x => {
+    const n = normalizeNpsnClient(x.npsn);
+    if(n) map[n] = Number(x.total_pagu || 0);
   });
   return map;
 }
 
 function filterSchoolDirectory(query){
-  const q=String(query||'').trim().toLowerCase();
-  const source=window._schoolDirectoryData||[];
-  renderSchoolDirectory(!q?source:source.filter(x=>
-    String(x.npsn||'').toLowerCase().includes(q)||
-    String(x.nama_sekolah||'').toLowerCase().includes(q)||
-    String(x.kecamatan||'').toLowerCase().includes(q)
+  const q = String(query || '').trim().toLowerCase();
+  const source = window._schoolDirectoryData || [];
+  renderSchoolDirectory(!q ? source : source.filter(x =>
+    String(x.npsn || '').toLowerCase().includes(q) ||
+    String(x.nama_sekolah || '').toLowerCase().includes(q) ||
+    String(x.kecamatan || '').toLowerCase().includes(q)
   ));
 }
-window.clearSchoolDirectorySearch=function(){const i=$('#searchSekolahInput');if(i)i.value='';filterSchoolDirectory('');};
+
+window.clearSchoolDirectorySearch = function(){
+  const i = $('#searchSekolahInput');
+  if(i) i.value = '';
+  filterSchoolDirectory('');
+};
 
 function renderSchoolDirectory(list){
-  const area=$('#sekolahContent');if(!area)return;
-  const rows=Array.isArray(list)?list:[];
-  const totalPagu=rows.reduce((a,x)=>a+Number(x.total_pagu||0),0);
-  const assigned=rows.filter(x=>x.id_pengawas||x.nama_pengawas).length;
-  area.innerHTML=`
+  const area = $('#sekolahContent'); 
+  if(!area) return;
+  
+  const rows = Array.isArray(list) ? list : [];
+  const totalPagu = rows.reduce((a, x) => a + Number(x.total_pagu || 0), 0);
+  
+  // OPTIMASI: Menggunakan metode .map().join('') agar seluruh kartu sekolah dirangkai sekaligus di memori
+  const cardsHtml = rows.map(x => `
+    <article class="school-directory-card">
+      <div class="school-name">🏫 ${esc(x.nama_sekolah || 'Nama sekolah belum tersedia')}</div>
+      <div class="school-meta">NPSN ${esc(x.npsn || '-')} • Kecamatan ${esc(x.kecamatan || '-')}</div>
+      <div class="school-meta">${esc(x.alamat_lengkap || 'Alamat belum tersedia')}</div>
+      <div class="school-pagu">
+        <span class="muted">Pagu RKAS Approved</span>
+        <b>${fmtRupiah(x.total_pagu || 0)}</b>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+        <button class="btn btn-sm btn-primary" onclick="openDinasSchoolContext('${esc(x.npsn)}')">Buka Sekolah →</button>
+        <button class="btn btn-sm btn-light" onclick="openDinasSchoolRkas('${esc(x.npsn)}')">Lihat RKAS</button>
+      </div>
+    </article>`).join('') || msg('Sekolah tidak ditemukan.', 'warning');
+
+  area.innerHTML = `
     <div class="school-summary-grid">
       <div class="school-summary-card"><small>Sekolah</small><strong>${fmtNum(rows.length)}</strong></div>
       <div class="school-summary-card"><small>Total Pagu RKAS</small><strong>${fmtRupiah(totalPagu)}</strong></div>
-      <div class="school-summary-card"><small>Rata-rata Pagu</small><strong>${fmtRupiah(rows.length?totalPagu/rows.length:0)}</strong></div>
-      <div class="school-summary-card"><small>Konteks Kerja</small><strong style="font-size:1rem;margin-top:8px;">${isDinas()?'Pusat Kendali DINAS':'Sekolah Saya'}</strong></div>
+      <div class="school-summary-card"><small>Rata-rata Pagu</small><strong>${fmtRupiah(rows.length ? totalPagu/rows.length : 0)}</strong></div>
+      <div class="school-summary-card"><small>Konteks Kerja</small><strong style="font-size:1rem;margin-top:8px;">${isDinas() ? 'Pusat Kendali DINAS' : 'Sekolah Saya'}</strong></div>
     </div>
     <div class="panel" style="margin:0 0 14px;background:rgba(31,85,62,.035)">
       <b>${fmtNum(rows.length)} sekolah ditampilkan</b>
       <span class="muted"> • Pilih sekolah untuk masuk ke konteks kerja sekolah tanpa memuat semua detail sekaligus.</span>
     </div>
     <div class="school-directory-grid">
-      ${rows.map(x=>`<article class="school-directory-card">
-        <div class="school-name">🏫 ${esc(x.nama_sekolah||'Nama sekolah belum tersedia')}</div>
-        <div class="school-meta">NPSN ${esc(x.npsn||'-')} • Kecamatan ${esc(x.kecamatan||'-')}</div>
-        <div class="school-meta">${esc(x.alamat_lengkap||'Alamat belum tersedia')}</div>
-        <div class="school-pagu"><span class="muted">Pagu RKAS Approved</span><b>${fmtRupiah(x.total_pagu||0)}</b></div>
-        <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
-          <button class="btn btn-sm btn-primary" onclick="openDinasSchoolContext('${esc(x.npsn)}')">Buka Sekolah →</button>
-          <button class="btn btn-sm btn-light" onclick="openDinasSchoolRkas('${esc(x.npsn)}')">Lihat RKAS</button>
-        </div>
-      </article>`).join('')||msg('Sekolah tidak ditemukan.','warning')}
+      ${cardsHtml}
     </div>`;
 }
 
-window.openDinasSchoolContext=function(npsn){state.selectedNpsn=normalizeNpsnClient(npsn);loadView('monitoringGlobal');};
-window.openDinasSchoolRkas=function(npsn){state.selectedNpsn=normalizeNpsnClient(npsn);loadView('rkasReview');};
+window.openDinasSchoolContext = function(npsn){
+  state.selectedNpsn = normalizeNpsnClient(npsn);
+  loadView('monitoringGlobal');
+};
 
+window.openDinasSchoolRkas = function(npsn){
+  state.selectedNpsn = normalizeNpsnClient(npsn);
+  loadView('rkasReview');
+};
 
 function formatTanggalPenugasan(v){
   if(v==null || v==='') return '-';
@@ -3594,8 +3857,12 @@ function formatTanggalPenugasan(v){
   return raw;
 }
 
+// Cache lokal frontend untuk penugasan pengawas
+window._cachedPenugasanGlobal = null;
+
 async function penugasanView() {
   const c = $('#mainContent');
+  if(!c) return;
 
   if (isPengawas()) {
     c.innerHTML = head('Sekolah Binaan Saya', 'Pilih sekolah binaan untuk langsung melakukan audit') + 
@@ -3647,21 +3914,24 @@ async function penugasanView() {
        </div>`;
        
     try {
-      // V12.6: gunakan action lama getPenugasanPengawas sebagai satu-satunya
-      // sumber data halaman ini. Backend sudah mengembalikan pagu_rkas/total_pagu
-      // dari master_rkas, sehingga tidak ada action tambahan yang dapat gagal.
-      const res = await api('getPenugasanPengawas');
-      const list = (res.data || []).map(x => {
-        const direct = Number(x.pagu_rkas ?? x.total_pagu ?? 0);
-        return Object.assign({}, x, {
-          pagu_rkas: Number.isFinite(direct) ? direct : 0,
-          total_pagu: Number.isFinite(direct) ? direct : 0
+      // OPTIMASI: Gunakan cache memori lokal jika sudah ada untuk menghindari request berulang
+      if (!window._cachedPenugasanGlobal) {
+        const res = await api('getPenugasanPengawas');
+        const list = (res.data || []).map(x => {
+          const direct = Number(x.pagu_rkas ?? x.total_pagu ?? 0);
+          return Object.assign({}, x, {
+            pagu_rkas: Number.isFinite(direct) ? direct : 0,
+            total_pagu: Number.isFinite(direct) ? direct : 0
+          });
         });
-      });
-      window._cachedPenugasan = list;
-      window._cachedPaguSekolah = list;
-      window._paguRkasMeta = res.meta || {};
-      renderPenugasanTable(list);
+        window._cachedPenugasanGlobal = list;
+        window._paguRkasMeta = res.meta || {};
+      }
+
+      window._cachedPenugasan = window._cachedPenugasanGlobal;
+      window._cachedPaguSekolah = window._cachedPenugasanGlobal;
+      
+      renderPenugasanTable(window._cachedPenugasan);
       
       const searchP = $('#searchPenugasanInput');
       if(searchP) {
@@ -3682,10 +3952,25 @@ async function penugasanView() {
                   `<div class="panel" id="penugasanContent">${loading()}</div>`;
     try {
       const r = await api('getPenugasanPengawas');
-      const rows = (r.data||[]).map(x=>`<tr><td>${formatUserLabel ? formatUserLabel(x.id_pengawas, x.nama_pengawas) : (x.nama_pengawas || x.id_pengawas)}</td><td>${esc(x.npsn)}</td><td>${esc(formatTanggalPenugasan(x.tanggal_mulai))}</td><td>${badge(x.status,'info')}</td></tr>`).join('');
+      const rows = (r.data||[]).map(x => `
+        <tr>
+          <td>${formatUserLabel ? formatUserLabel(x.id_pengawas, x.nama_pengawas) : (x.nama_pengawas || x.id_pengawas)}</td>
+          <td>${esc(x.npsn)}</td>
+          <td>${esc(formatTanggalPenugasan(x.tanggal_mulai))}</td>
+          <td>${badge(x.status, 'info')}</td>
+        </tr>`).join('');
+        
       const pContent = $('#penugasanContent');
       if(pContent) {
-        pContent.innerHTML = `<div class="table-wrap"><table class="friendly-table"><thead><tr><th>Pengawas Pembina</th><th>NPSN</th><th>Mulai</th><th>Status</th></tr></thead><tbody>${rows||emptyRow(4)}</tbody></table></div>`;
+        pContent.innerHTML = `
+          <div class="table-wrap">
+            <table class="friendly-table">
+              <thead>
+                <tr><th>Pengawas Pembina</th><th>NPSN</th><th>Mulai</th><th>Status</th></tr>
+              </thead>
+              <tbody>${rows || emptyRow(4)}</tbody>
+            </table>
+          </div>`;
       }
     } catch(e) { 
       const pContent = $('#penugasanContent');
@@ -3694,6 +3979,7 @@ async function penugasanView() {
   }
 }
 
+// Fungsi bantu tambahan untuk merender kartu binaan secara bersih
 function renderBinaanCards(list) {
   const area = $('#binaanArea');
   if (!area) return;
@@ -3728,95 +4014,170 @@ function renderBinaanCards(list) {
 
 window.pilihSekolahBinaan = function(npsn) {
   state.selectedNpsn = npsn;
-  alert(`Sekolah binaan dengan NPSN ${npsn} dipilih. Anda sekarang dapat melanjutkan ke menu Cross-check atau Asesmen.`);
+  toast(`Sekolah binaan dengan NPSN ${npsn} dipilih.`, 'ok');
+  loadView('crosscheck');
+};
+
+function renderBinaanCards(list) {
+  const area = $('#binaanArea');
+  if (!area) return;
+  
+  if (!list || list.length === 0) {
+    area.innerHTML = msg('Belum ada sekolah binaan yang ditugaskan kepada Anda di sistem. Silakan hubungi Dinas.', 'warning');
+    return;
+  }
+
+  // OPTIMASI: Menggunakan .map().join('') agar kartu binaan dirangkai sekali jalan di memori
+  const cardsHtml = list.map(x => {
+    const npsnVal = esc(x.npsn || x.NPSN || '');
+    const namaSekolahVal = esc(x.nama_sekolah || x.nama || 'Sekolah Binaan');
+    const kecamatanVal = esc(x.kecamatan || '-');
+
+    return `
+      <div class="panel" style="margin-top:12px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;">
+        <div>
+          <h3 style="margin:0 0 4px; color:var(--primary); font-size:1.1rem;">${namaSekolahVal}</h3>
+          <p class="muted" style="margin:0">NPSN: <b>${npsnVal}</b> | Kecamatan: ${kecamatanVal}</p>
+        </div>
+        <div>
+          <button class="btn btn-sm btn-primary" onclick="pilihSekolahBinaan('${npsnVal}')">
+            Pilih Sekolah Ini
+          </button>
+        </div>
+      </div>`;
+  }).join('');
+
+  area.innerHTML = cardsHtml;
+}
+
+window.pilihSekolahBinaan = function(npsn) {
+  state.selectedNpsn = npsn;
+  toast(`Sekolah binaan dengan NPSN ${npsn} dipilih.`, 'ok');
   loadView('crosscheck');
 };
 
 function renderPenugasanTable(list){
-  const content=$('#penugasanContent');if(!content)return;
-  const rows=Array.isArray(list)?list:[];
-  const groupsMap=new Map();
-  rows.forEach(x=>{
-    const id=String(x.id_pengawas||'').trim();
-    const nama=String(x.nama_pengawas||'').trim();
-    const key=id||nama||'TANPA_PENGAWAS';
-    if(!groupsMap.has(key))groupsMap.set(key,{id,nama:nama||id||'Tanpa Pengawas',items:[]});
-    const item=Object.assign({},x,{total_pagu:Number(x.pagu_rkas ?? x.total_pagu ?? 0)});
+  const content = $('#penugasanContent'); 
+  if(!content) return;
+  
+  const rows = Array.isArray(list) ? list : [];
+  const groupsMap = new Map();
+  
+  rows.forEach(x => {
+    const id = String(x.id_pengawas || '').trim();
+    const nama = String(x.nama_pengawas || '').trim();
+    const key = id || nama || 'TANPA_PENGAWAS';
+    if(!groupsMap.has(key)) groupsMap.set(key, { id, nama: nama || id || 'Tanpa Pengawas', items: [] });
+    const item = Object.assign({}, x, { total_pagu: Number(x.pagu_rkas ?? x.total_pagu ?? 0) });
     groupsMap.get(key).items.push(item);
   });
-  const groups=Array.from(groupsMap.values()).sort((a,b)=>String(a.nama).localeCompare(String(b.nama),'id',{sensitivity:'base'}));
-  const totalPenugasan=rows.length;
-  const totalPengawas=groups.length;
-  const uniqueSchools=new Set(rows.map(x=>normalizeNpsnClient(x.npsn)).filter(Boolean)).size;
-  const aktif=rows.filter(x=>upper(x.status||'')==='AKTIF').length;
-  const totalPagu=rows.reduce((sum,x)=>sum+Number(x.pagu_rkas ?? x.total_pagu ?? 0),0);
+  
+  const groups = Array.from(groupsMap.values()).sort((a, b) => String(a.nama).localeCompare(String(b.nama), 'id', { sensitivity: 'base' }));
+  const totalPenugasan = rows.length;
+  const totalPengawas = groups.length;
+  const uniqueSchools = new Set(rows.map(x => normalizeNpsnClient(x.npsn)).filter(Boolean)).size;
+  const aktif = rows.filter(x => upper(x.status || '') === 'AKTIF').length;
+  const totalPagu = rows.reduce((sum, x) => sum + Number(x.pagu_rkas ?? x.total_pagu ?? 0), 0);
 
-  if(!rows.length){content.innerHTML=`<div class="panel" style="text-align:center;padding:36px 20px"><div style="font-size:2rem">👥</div><h3>Belum ada penugasan</h3><p class="muted">Belum terdapat data penugasan pengawas yang sesuai dengan pencarian.</p></div>`;return;}
+  if(!rows.length){
+    content.innerHTML = `<div class="panel" style="text-align:center;padding:36px 20px"><div style="font-size:2rem">👥</div><h3>Belum ada penugasan</h3><p class="muted">Belum terdapat data penugasan pengawas yang sesuai dengan pencarian.</p></div>`;
+    return;
+  }
 
   const paguMeta = window._paguRkasMeta || {};
-  const summary=`<div class="school-summary-grid">
-    <div class="school-summary-card"><small>Pengawas</small><strong>${fmtNum(totalPengawas)}</strong></div>
-    <div class="school-summary-card"><small>Sekolah</small><strong>${fmtNum(uniqueSchools)}</strong></div>
-    <div class="school-summary-card"><small>Penugasan Aktif</small><strong>${fmtNum(aktif)}</strong></div>
-    <div class="school-summary-card"><small>Total Pagu RKAS</small><strong>${fmtRupiah(totalPagu)}</strong></div>
-  </div>
-  <div class="muted" style="margin:8px 2px 14px;font-size:.76rem">
-    Sumber pagu: <b>${esc(paguMeta.pagu_source || 'master_rkas')}</b>
-    · ${fmtNum(Number(paguMeta.approved_rows || 0))} baris RKAS APPROVED
-    · ${fmtNum(Number(paguMeta.matched_npsn || 0))} NPSN memiliki pagu
-  </div>
-  <div style="display:flex;justify-content:flex-end;gap:8px;margin:0 0 14px;flex-wrap:wrap"><button class="btn btn-sm btn-light" onclick="diagnoseSelectedPagu()">🔎 Diagnostik NPSN / Pagu</button><button class="btn btn-sm btn-light" onclick="diagnosePaguSource()">🧪 Cek Sumber Master RKAS</button></div>`;
+  const summary = `
+    <div class="school-summary-grid">
+      <div class="school-summary-card"><small>Pengawas</small><strong>${fmtNum(totalPengawas)}</strong></div>
+      <div class="school-summary-card"><small>Sekolah</small><strong>${fmtNum(uniqueSchools)}</strong></div>
+      <div class="school-summary-card"><small>Penugasan Aktif</small><strong>${fmtNum(aktif)}</strong></div>
+      <div class="school-summary-card"><small>Total Pagu RKAS</small><strong>${fmtRupiah(totalPagu)}</strong></div>
+    </div>
+    <div class="muted" style="margin:8px 2px 14px;font-size:.76rem">
+      Sumber pagu: <b>${esc(paguMeta.pagu_source || 'master_rkas')}</b>
+      · ${fmtNum(Number(paguMeta.approved_rows || 0))} baris RKAS APPROVED
+      · ${fmtNum(Number(paguMeta.matched_npsn || 0))} NPSN memiliki pagu
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin:0 0 14px;flex-wrap:wrap">
+      <button class="btn btn-sm btn-light" onclick="diagnoseSelectedPagu()">🔎 Diagnostik NPSN / Pagu</button>
+      <button class="btn btn-sm btn-light" onclick="diagnosePaguSource()">🧪 Cek Sumber Master RKAS</button>
+    </div>`;
 
-  const groupsHtml=groups.map((g,index)=>{
-    const items=g.items.slice().sort((a,b)=>String(a.nama_sekolah||a.npsn||'').localeCompare(String(b.nama_sekolah||b.npsn||''),'id',{sensitivity:'base'}));
-    const subtotalSekolah=new Set(items.map(x=>normalizeNpsnClient(x.npsn)).filter(Boolean)).size;
-    const subtotalAktif=items.filter(x=>upper(x.status||'')==='AKTIF').length;
-    const subtotalPagu=items.reduce((sum,x)=>sum+Number(x.total_pagu||0),0);
-    const gid='assignmentGroup_'+index;
-    const rowsHtml=items.map((x,i)=>`<tr>
-      <td style="width:48px;text-align:center;color:#87928b;font-weight:700">${i+1}</td>
-      <td>${formatSekolahLabel(x.npsn,x.nama_sekolah,x.kecamatan)}</td>
-      <td><b class="assignment-pagu">${fmtRupiah(x.total_pagu||0)}</b><div class="muted" style="font-size:.68rem">RKAS: ${Number(x.pagu_rkas_rows||0) ? fmtNum(x.pagu_rkas_rows)+' baris cocok' : 'tidak cocok'}${x.npsn_raw && x.npsn_raw!==x.npsn_key ? ' · key: '+esc(x.npsn_key) : ''}</div></td>
-      <td>${esc(formatTanggalPenugasan(x.tanggal_mulai))}</td><td>${esc(formatTanggalPenugasan(x.tanggal_selesai))}</td><td>${badge(x.status||'AKTIF','success')}</td>
-    </tr>`).join('');
-    return `<section class="assignment-group" id="${gid}">
-      <div class="assignment-group-head" onclick="toggleAssignmentGroup('${gid}')">
-        <div class="assignment-group-title"><div class="assignment-group-icon">👤</div><div style="min-width:0"><div style="font-size:1rem;font-weight:900;color:var(--primary)">${formatPengawasLabel(g.id,g.nama)}</div><div class="muted" style="font-size:.76rem">${g.id?'ID Pengawas: '+esc(g.id):'Identitas pengawas belum tersedia'}</div></div></div>
-        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end">
-          <span class="assignment-total">${fmtNum(subtotalSekolah)} sekolah</span>
-          <span class="assignment-pagu">${fmtRupiah(subtotalPagu)}</span>
-          <span class="assignment-group-chevron">⌄</span>
+  // OPTIMASI: Rendering grup pengawas menggunakan .map().join('')
+  const groupsHtml = groups.map((g, index) => {
+    const items = g.items.slice().sort((a, b) => String(a.nama_sekolah || a.npsn || '').localeCompare(String(b.nama_sekolah || b.npsn || ''), 'id', { sensitivity: 'base' }));
+    const subtotalSekolah = new Set(items.map(x => normalizeNpsnClient(x.npsn)).filter(Boolean)).size;
+    const subtotalAktif = items.filter(x => upper(x.status || '') === 'AKTIF').length;
+    const subtotalPagu = items.reduce((sum, x) => sum + Number(x.total_pagu || 0), 0);
+    const gid = 'assignmentGroup_' + index;
+    
+    const rowsHtml = items.map((x, i) => `
+      <tr>
+        <td style="width:48px;text-align:center;color:#87928b;font-weight:700">${i+1}</td>
+        <td>${formatSekolahLabel(x.npsn, x.nama_sekolah, x.kecamatan)}</td>
+        <td><b class="assignment-pagu">${fmtRupiah(x.total_pagu || 0)}</b><div class="muted" style="font-size:.68rem">RKAS: ${Number(x.pagu_rkas_rows || 0) ? fmtNum(x.pagu_rkas_rows) + ' baris cocok' : 'tidak cocok'}${x.npsn_raw && x.npsn_raw !== x.npsn_key ? ' · key: ' + esc(x.npsn_key) : ''}</div></td>
+        <td>${esc(formatTanggalPenugasan(x.tanggal_mulai))}</td>
+        <td>${esc(formatTanggalPenugasan(x.tanggal_selesai))}</td>
+        <td>${badge(x.status || 'AKTIF', 'success')}</td>
+      </tr>`).join('');
+
+    return `
+      <section class="assignment-group" id="${gid}">
+        <div class="assignment-group-head" onclick="toggleAssignmentGroup('${gid}')">
+          <div class="assignment-group-title">
+            <div class="assignment-group-icon">👤</div>
+            <div style="min-width:0">
+              <div style="font-size:1rem;font-weight:900;color:var(--primary)">${formatPengawasLabel(g.id, g.nama)}</div>
+              <div class="muted" style="font-size:.76rem">${g.id ? 'ID Pengawas: ' + esc(g.id) : 'Identitas pengawas belum tersedia'}</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end">
+            <span class="assignment-total">${fmtNum(subtotalSekolah)} sekolah</span>
+            <span class="assignment-pagu">${fmtRupiah(subtotalPagu)}</span>
+            <span class="assignment-group-chevron">⌄</span>
+          </div>
         </div>
-      </div>
-      <div class="assignment-group-body">
-        <div class="table-wrap" style="margin:0"><table class="friendly-table"><thead><tr><th>No.</th><th>Satuan Pendidikan & Kecamatan</th><th>Pagu RKAS</th><th>Mulai</th><th>Selesai</th><th>Status</th></tr></thead><tbody>${rowsHtml}</tbody><tfoot><tr style="background:#fafcfb;font-weight:800"><td colspan="2" style="text-align:right">Subtotal ${esc(g.nama)}:</td><td>${fmtRupiah(subtotalPagu)}</td><td colspan="3">${fmtNum(subtotalSekolah)} sekolah • ${fmtNum(subtotalAktif)} aktif</td></tr></tfoot></table></div>
-      </div>
-    </section>`;
+        <div class="assignment-group-body">
+          <div class="table-wrap" style="margin:0">
+            <table class="friendly-table">
+              <thead>
+                <tr><th>No.</th><th>Satuan Pendidikan & Kecamatan</th><th>Pagu RKAS</th><th>Mulai</th><th>Selesai</th><th>Status</th></tr>
+              </thead>
+              <tbody>${rowsHtml}</tbody>
+              <tfoot>
+                <tr style="background:#fafcfb;font-weight:800">
+                  <td colspan="2" style="text-align:right">Subtotal ${esc(g.nama)}:</td>
+                  <td>${fmtRupiah(subtotalPagu)}</td>
+                  <td colspan="3">${fmtNum(subtotalSekolah)} sekolah • ${fmtNum(subtotalAktif)} aktif</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+      </section>`;
   }).join('');
-  content.innerHTML=summary+groupsHtml+`<div class="assignment-grand-total"><div><div style="font-weight:900">Total seluruh penugasan</div><div class="muted">${fmtNum(totalPengawas)} pengawas • ${fmtNum(uniqueSchools)} sekolah • ${fmtNum(aktif)} aktif</div></div><div style="font-size:1.15rem;font-weight:900">${fmtRupiah(totalPagu)}</div></div>`;
+
+  content.innerHTML = summary + groupsHtml + `
+    <div class="assignment-grand-total">
+      <div>
+        <div style="font-weight:900">Total seluruh penugasan</div>
+        <div class="muted">${fmtNum(totalPengawas)} pengawas • ${fmtNum(uniqueSchools)} sekolah • ${fmtNum(aktif)} aktif</div>
+      </div>
+      <div style="font-size:1.15rem;font-weight:900">${fmtRupiah(totalPagu)}</div>
+    </div>`;
 }
+
 window.diagnosePaguSource = async function(){
   try {
     const r = await api('getDiagnostikSumberPagu');
     const d = r.data || {};
-    const statuses = Object.entries(d.status_counts_sample || {}).map(([k,v]) => `${k}: ${v}`).join(' | ') || '-';
-    alert([
-      'DIAGNOSTIK SUMBER MASTER RKAS',
-      'Spreadsheet : ' + (d.spreadsheet_name || '-'),
-      'Spreadsheet ID: ' + (d.spreadsheet_id || '-'),
-      'Sheet       : ' + (d.master_rkas_sheet || '-'),
-      'Baris data  : ' + Number(d.data_rows || 0).toLocaleString('id-ID'),
-      'Kolom       : ' + Number(d.last_column || 0).toLocaleString('id-ID'),
-      'Kolom NPSN  : ' + Number(d.npsn_column_index ?? -1),
-      'Kolom Pagu  : ' + Number(d.pagu_column_index ?? -1),
-      'Kolom Status: ' + Number(d.status_column_index ?? -1),
-      'Status (sampel): ' + statuses,
-      'Contoh NPSN: ' + ((d.sample_npsn || []).join(', ') || '-'),
-      '',
-      'TARGET 20315823 = 97 baris / Rp120.650.000',
-      'TARGET 20315874 = 53 baris / Rp64.600.000'
-    ].join('\n'));
-  } catch(e) { alert(errorText(e)); }
+    const statuses = Object.entries(d.status_counts_sample || {}).map(([k, v]) => `${k}: ${v}`).join(' | ') || '-';
+    
+    // Menggunakan modal kustom atau toast ketimbang alert() agar serasi dengan UI aplikasi
+    toast(`Diagnostik Master RKAS: ${d.spreadsheet_name || '-'} (${fmtNum(d.data_rows || 0)} baris)`, 'ok', 6000);
+    console.log('Diagnostik Sumber Pagu:', d);
+  } catch(e) { 
+    toast(errorText(e), 'error'); 
+  }
 };
 
 window.diagnoseSelectedPagu = async function(){
@@ -3825,16 +4186,11 @@ window.diagnoseSelectedPagu = async function(){
   try {
     const r = await api('getDiagnostikPaguPenugasan', { npsn: String(npsn).trim() });
     const d = r.data || {};
-    alert([
-      'DIAGNOSTIK PAGU RKAS',
-      'NPSN mentah : ' + (d.npsn_raw || '-'),
-      'NPSN key    : ' + (d.npsn_key || '-'),
-      'Cocok       : ' + (d.matched ? 'YA' : 'TIDAK'),
-      'Baris RKAS  : ' + Number(d.rkas_rows || 0).toLocaleString('id-ID'),
-      'Total pagu  : ' + fmtRupiah(d.pagu || 0),
-      'Sumber      : ' + (d.source || 'master_rkas')
-    ].join('\n'));
-  } catch(e) { alert(errorText(e)); }
+    toast(`NPSN ${d.npsn_raw || npsn}: Pagu ${fmtRupiah(d.pagu || 0)} (${d.matched ? 'Cocok' : 'Tidak cocok'})`, d.matched ? 'ok' : 'warning', 6000);
+    console.log('Diagnostik Pagu NPSN:', d);
+  } catch(e) { 
+    toast(errorText(e), 'error'); 
+  }
 };
 
 window.toggleAssignmentGroup=function(id){const el=document.getElementById(id);if(el)el.classList.toggle('collapsed');};
@@ -3899,30 +4255,104 @@ window.openTambahPenugasanModal = function() {
   };
 };
 
+// Cache lokal frontend untuk Command Center Dinas
+window._cachedDinasCenterGlobal = null;
+
 async function dinasMonitoringView(){
   const c = $('#mainContent');
-  c.innerHTML = head('Command Center Dinas', 'Pusat pemantauan kinerja sekolah dan pengawas') + `<div class="toolbar"><input id="searchDinasCenter" placeholder="🔍 Cari Sekolah atau NPSN..." style="max-width:350px"></div><div id="dinasCenterArea" style="margin-top:16px">${loading()}</div>`;
+  if(!c) return;
+
+  c.innerHTML = head('Command Center Dinas', 'Pusat pemantauan kinerja sekolah dan pengawas') + 
+    `<div class="toolbar">
+       <input id="searchDinasCenter" placeholder="🔍 Cari Sekolah atau NPSN..." style="max-width:350px">
+     </div>
+     <div id="dinasCenterArea" style="margin-top:16px">${loading()}</div>`;
+     
   try {
-    const [sekolahRes, penugasanRes] = await Promise.all([safeApi('getSekolah', {}, {data:[]}), safeApi('getPenugasanPengawas', {}, {data:[]})]);
-    window._cachedDinasSekolah = sekolahRes.data || []; window._cachedDinasPenugasan = penugasanRes.data || [];
-    renderDinasCenterTable(window._cachedDinasSekolah, window._cachedDinasPenugasan);
-    $('#searchDinasCenter').oninput = e => {
-      const q = e.target.value.toLowerCase();
-      renderDinasCenterTable(window._cachedDinasSekolah.filter(s => String(s.npsn).toLowerCase().includes(q) || String(s.nama_sekolah||'').toLowerCase().includes(q) || String(s.kecamatan||'').toLowerCase().includes(q)), window._cachedDinasPenugasan);
-    };
-  } catch(e) { $('#dinasCenterArea').innerHTML = msg(errorText(e)); }
+    // OPTIMASI: Gunakan cache memori lokal jika sudah ada untuk menghindari request ganda
+    if (!window._cachedDinasCenterGlobal) {
+      const [sekolahRes, penugasanRes] = await Promise.all([
+        safeApi('getSekolah', {}, { data: [] }), 
+        safeApi('getPenugasanPengawas', {}, { data: [] })
+      ]);
+      window._cachedDinasCenterGlobal = {
+        sekolah: sekolahRes.data || [],
+        penugasan: penugasanRes.data || []
+      };
+    }
+
+    const { sekolah, penugasan } = window._cachedDinasCenterGlobal;
+    window._cachedDinasSekolah = sekolah; 
+    window._cachedDinasPenugasan = penugasan;
+
+    renderDinasCenterTable(sekolah, penugasan);
+    
+    const searchInput = $('#searchDinasCenter');
+    if(searchInput) {
+      searchInput.oninput = e => {
+        const q = e.target.value.toLowerCase();
+        renderDinasCenterTable(
+          window._cachedDinasSekolah.filter(s => 
+            String(s.npsn).toLowerCase().includes(q) || 
+            String(s.nama_sekolah || '').toLowerCase().includes(q) || 
+            String(s.kecamatan || '').toLowerCase().includes(q)
+          ), 
+          window._cachedDinasPenugasan
+        );
+      };
+    }
+  } catch(e) { 
+    $('#dinasCenterArea').innerHTML = msg(errorText(e)); 
+  }
 }
 
 function renderDinasCenterTable(listSekolah, listPenugasan){
-  const area = $('#dinasCenterArea'); if(!area) return;
-  let html = `<div class="cards" style="margin-bottom:20px"><div class="stat"><small>Total Sekolah</small><strong>${fmtNum(listSekolah.length)}</strong></div><div class="stat"><small>Penugasan Aktif</small><strong>${fmtNum(listPenugasan.length)}</strong></div><div class="stat"><small>Status Sistem</small><strong style="font-size:1.1rem;color:var(--success)">Optimal</strong></div><div class="stat"><small>Wilayah</small><strong style="font-size:1.1rem">Rembang</strong></div></div><div class="panel"><div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:14px"><h3 class="section-title" style="margin:0">Monitoring Sekolah & Aksi Cepat</h3></div><div class="table-wrap"><table class="friendly-table"><thead><tr><th>NPSN</th><th>Nama Sekolah</th><th>Kecamatan</th><th>Pengawas Binaan</th><th>Aksi Teguran / Pesan</th></tr></thead><tbody>`;
-  if(!listSekolah.length){ html += emptyRow(5); } else {
-    listSekolah.forEach(s => {
-      const p = listPenugasan.find(x => String(x.npsn).trim() === String(s.npsn).trim());
-      html += `<tr><td><b>${esc(s.npsn)}</b></td><td>${esc(s.nama_sekolah)}</td><td>${esc(s.kecamatan || '-')}</td><td>${badge(p?'Binaan':'Belum',p?'success':'warning')} ${formatUserLabel(p?.id_pengawas, p?.nama_pengawas)}</td><td><button class="btn btn-sm btn-primary" onclick="openPeringatanModal('${esc(s.npsn)}','${esc(s.nama_sekolah)}')">✉️ Kirim Pesan</button></td></tr>`;
-    });
-  }
-  html += `</tbody></table></div></div>`; area.innerHTML = html;
+  const area = $('#dinasCenterArea'); 
+  if(!area) return;
+
+  // OPTIMASI: Rendering baris tabel menggunakan .map().join('') secara bersih dan cepat di memori
+  const rowsHtml = listSekolah.length ? listSekolah.map(s => {
+    const p = listPenugasan.find(x => String(x.npsn).trim() === String(s.npsn).trim());
+    return `
+      <tr>
+        <td><b>${esc(s.npsn)}</b></td>
+        <td>${esc(s.nama_sekolah)}</td>
+        <td>${esc(s.kecamatan || '-')}</td>
+        <td>${badge(p ? 'Binaan' : 'Belum', p ? 'success' : 'warning')} ${formatUserLabel(p?.id_pengawas, p?.nama_pengawas)}</td>
+        <td>
+          <button class="btn btn-sm btn-primary" onclick="openPeringatanModal('${esc(s.npsn)}','${esc(s.nama_sekolah)}')">✉️ Kirim Pesan</button>
+        </td>
+      </tr>`;
+  }).join('') : emptyRow(5);
+
+  area.innerHTML = `
+    <div class="cards" style="margin-bottom:20px">
+      <div class="stat"><small>Total Sekolah</small><strong>${fmtNum(listSekolah.length)}</strong></div>
+      <div class="stat"><small>Penugasan Aktif</small><strong>${fmtNum(listPenugasan.length)}</strong></div>
+      <div class="stat"><small>Status Sistem</small><strong style="font-size:1.1rem;color:var(--success)">Optimal</strong></div>
+      <div class="stat"><small>Wilayah</small><strong style="font-size:1.1rem">Rembang</strong></div>
+    </div>
+    <div class="panel">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:14px">
+        <h3 class="section-title" style="margin:0">Monitoring Sekolah & Aksi Cepat</h3>
+      </div>
+      <div class="table-wrap">
+        <table class="friendly-table">
+          <thead>
+            <tr>
+              <th>NPSN</th>
+              <th>Nama Sekolah</th>
+              <th>Kecamatan</th>
+              <th>Pengawas Binaan</th>
+              <th>Aksi Teguran / Pesan</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsHtml}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
 }
 
 window.openPeringatanModal = function(targetId, targetName) {
@@ -4064,31 +4494,117 @@ async function updateUnreadMessageBadge() {
   }
 }
 
-async function crosscheckView(){
-  const periods=await periodeSelect('periodeSelect', true, 'bulan'); let schoolOptions='';
-  if(isDinas()||isPengawas()){
-    const r=await safeApi('getSekolah',{}, {data:[]});
-    schoolOptions=`<div class="field"><label>Pilih Sekolah Target</label><select id="npsnSelect"><option value="">-- Pilih --</option>${(r.data||[]).map(x=>`<option value="${esc(x.npsn)}" ${state.selectedNpsn===x.npsn?'selected':''}>${esc(x.npsn)} -${esc(x.nama_sekolah)}</option>`).join('')}</select></div>`;
+// Cache lokal frontend untuk opsi target sekolah pada modul audit/cross-check
+window._cachedAuditSchoolsGlobal = null;
+
+async function getCachedAuditSchools_() {
+  if (!window._cachedAuditSchoolsGlobal) {
+    const r = await safeApi('getSekolah', {}, { data: [] });
+    window._cachedAuditSchoolsGlobal = r.data || [];
   }
-  $('#mainContent').innerHTML=head('Pemeriksaan SPJ','Jalankan cross-check sistem otomatis')+`<div class="panel"><div class="form-grid"><div class="field"><label>Periode SPJ</label>${periods}</div>${schoolOptions}</div><div class="toolbar"><button class="btn btn-primary" onclick="runCrossCheck()">Jalankan Cross-check</button></div><div id="crossResult"></div></div>`;
-  $('#periodeSelect').value=state.selectedPeriode;
+  return window._cachedAuditSchoolsGlobal;
 }
-window.runCrossCheck=async function(){
-  const p=$('#periodeSelect').value,n=isSchool()?ownNpsn():$('#npsnSelect')?.value;if(!p||!n){alert('Periode & sekolah wajib dipilih.');return;}
-  state.selectedPeriode=p;state.selectedNpsn=n;const out=$('#crossResult');out.innerHTML=loading();
-  try{const r=await api('jalankanCrossCheckSPJ',{idPeriode:p,npsn:n});out.innerHTML=msg(`Cross-check selesai. ${r.jumlah_baru||r.count||0} temuan baru.`,'ok');}catch(e){out.innerHTML=msg(errorText(e));}
+
+async function crosscheckView(){
+  const periods = await periodeSelect('periodeSelect', true, 'bulan'); 
+  let schoolOptions = '';
+  
+  if(isDinas() || isPengawas()){
+    const schools = await getCachedAuditSchools_();
+    // OPTIMASI: Rendering opsi dropdown sekolah menggunakan .map().join('') secara bersih di memori
+    const optionsHtml = schools.map(x => `
+      <option value="${esc(x.npsn)}" ${state.selectedNpsn === x.npsn ? 'selected' : ''}>
+        ${esc(x.npsn)} - ${esc(x.nama_sekolah)}
+      </option>`).join('');
+
+    schoolOptions = `
+      <div class="field">
+        <label>Pilih Sekolah Target</label>
+        <select id="npsnSelect">
+          <option value="">-- Pilih Sekolah --</option>
+          ${optionsHtml}
+        </select>
+      </div>`;
+  }
+
+  $('#mainContent').innerHTML = head('Pemeriksaan SPJ', 'Jalankan cross-check sistem otomatis') + `
+    <div class="panel">
+      <div class="form-grid">
+        <div class="field"><label>Periode SPJ</label>${periods}</div>
+        ${schoolOptions}
+      </div>
+      <div class="toolbar">
+        <button class="btn btn-primary" onclick="runCrossCheck()">Jalankan Cross-check</button>
+      </div>
+      <div id="crossResult"></div>
+    </div>`;
+
+  $('#periodeSelect').value = state.selectedPeriode;
+}
+
+window.runCrossCheck = async function(){
+  const p = $('#periodeSelect').value;
+  const n = isSchool() ? ownNpsn() : $('#npsnSelect')?.value;
+  
+  if(!p || !n){
+    toast('Periode dan sekolah wajib dipilih terlebih dahulu.', 'warning');
+    return;
+  }
+  
+  state.selectedPeriode = p;
+  state.selectedNpsn = n;
+  const out = $('#crossResult'); 
+  out.innerHTML = loading('Menjalankan pemeriksaan cross-check...');
+  
+  try {
+    const r = await api('jalankanCrossCheckSPJ', { idPeriode: p, npsn: n });
+    out.innerHTML = msg(`Cross-check selesai. ${fmtNum(r.jumlah_baru || r.count || 0)} temuan baru berhasil diidentifikasi.`, 'ok');
+  } catch(e) {
+    out.innerHTML = msg(errorText(e));
+  }
 };
 
 async function temuanView(){
-  const periods=await periodeSelect('periodeSelect', true, 'bulan'); let schoolOptions='';
-  if(isDinas()||isPengawas()){
-    const r=await safeApi('getSekolah',{}, {data:[]});
-    schoolOptions=`<div class="field"><label>Pilih Sekolah Target</label><select id="npsnSelect"><option value="">-- Pilih --</option>${(r.data||[]).map(x=>`<option value="${esc(x.npsn)}" ${state.selectedNpsn===x.npsn?'selected':''}>${esc(x.npsn)} -${esc(x.nama_sekolah)}</option>`).join('')}</select></div>`;
+  const periods = await periodeSelect('periodeSelect', true, 'bulan'); 
+  let schoolOptions = '';
+  
+  if(isDinas() || isPengawas()){
+    const schools = await getCachedAuditSchools_();
+    // OPTIMASI: Rendering opsi dropdown sekolah menggunakan .map().join('') secara bersih di memori
+    const optionsHtml = schools.map(x => `
+      <option value="${esc(x.npsn)}" ${state.selectedNpsn === x.npsn ? 'selected' : ''}>
+        ${esc(x.npsn)} - ${esc(x.nama_sekolah)}
+      </option>`).join('');
+
+    schoolOptions = `
+      <div class="field">
+        <label>Pilih Sekolah Target</label>
+        <select id="npsnSelect">
+          <option value="">-- Pilih Sekolah --</option>
+          ${optionsHtml}
+        </select>
+      </div>`;
   }
-  $('#mainContent').innerHTML=head('Temuan & Verifikasi','Kelola catatan hasil temuan audit')+`<div class="panel"><div class="form-grid"><div class="field"><label>Periode SPJ</label>${periods}</div>${schoolOptions}</div><div class="toolbar"><button class="btn btn-primary" onclick="loadFindings()">Tampilkan Temuan</button></div><div id="findingArea">${msg('Pilih periode dan sekolah.','ok')}</div></div>`;
-  $('#periodeSelect').value=state.selectedPeriode;
-  if(state.selectedNpsn && $('#npsnSelect')) loadFindings();
+
+  $('#mainContent').innerHTML = head('Temuan & Verifikasi', 'Kelola catatan hasil temuan audit') + `
+    <div class="panel">
+      <div class="form-grid">
+        <div class="field"><label>Periode SPJ</label>${periods}</div>
+        ${schoolOptions}
+      </div>
+      <div class="toolbar">
+        <button class="btn btn-primary" onclick="loadFindings()">Tampilkan Temuan</button>
+      </div>
+      <div id="findingArea">${msg('Pilih periode dan sekolah target untuk menampilkan temuan.', 'ok')}</div>
+    </div>`;
+
+  $('#periodeSelect').value = state.selectedPeriode;
+  if(state.selectedNpsn && $('#npsnSelect')) {
+    $('#npsnSelect').value = state.selectedNpsn;
+    loadFindings();
+  }
 }
+
 window.loadFindings=async function(){
   const p=$('#periodeSelect').value,n=isSchool()?ownNpsn():$('#npsnSelect')?.value;if(!p||!n)return;
   state.selectedPeriode=p;state.selectedNpsn=n;const area=$('#findingArea');area.innerHTML=loading();
@@ -4101,83 +4617,211 @@ window.verifyFinding=async function(id){
 
 
 async function masterSpjView(){
-  if(!isDinas()){ $('#mainContent').innerHTML=msg('Modul ini hanya dapat digunakan oleh DINAS.'); return; }
-  const [cfg, spjRes, indRes, perRes] = await Promise.all([
-    api('getFrekuensiPenilaianSPJ').catch(()=>({frekuensi:'',tahun:new Date().getFullYear()})),
-    api('getMasterSPJ'), api('getMasterIndikator'), api('getPeriodeSPJ')
+  if(!isDinas()){ 
+    $('#mainContent').innerHTML = msg('Modul ini hanya dapat digunakan oleh DINAS.'); 
+    return; 
+  }
+  
+  // OPTIMASI: Manfaatkan cache master lokal untuk komponen SPJ
+  const [cfg, indRes, perRes] = await Promise.all([
+    api('getFrekuensiPenilaianSPJ').catch(() => ({ frekuensi: '', tahun: new Date().getFullYear() })),
+    api('getMasterIndikator'), 
+    api('getPeriodeSPJ')
   ]);
-  const spj=spjRes.data||[], inds=indRes.data||[], pers=perRes.data||[];
-  const freq=String(cfg.frekuensi||perRes.frekuensi||'').toUpperCase();
-  const year=Number(cfg.tahun||perRes.tahun||new Date().getFullYear());
-  const freqLabel=freq==='BULANAN'?'Bulanan':freq==='TRIWULANAN'?'Triwulanan':freq==='SEMESTERAN'?'Semesteran':'Belum dipilih';
-  const activePeriods=pers.filter(x=>Number(x.tahun)===year && String(x.frekuensi||'').toUpperCase()===freq);
-  const spjRows=spj.map(x=>`<tr><td>${esc(x.kode_spj)}</td><td>${esc(x.nama_spj)}</td><td>${esc(x.urutan)}</td><td>${badge(x.status_aktif,x.status_aktif==='AKTIF'?'success':'warning')}</td></tr>`).join('');
-  const indRows=inds.map(x=>`<tr><td>${esc(x.kode_indikator)}</td><td>${esc(x.nama_indikator)}</td><td>${esc(spj.find(s=>String(s.id_spj)===String(x.id_spj))?.nama_spj||x.id_spj)}</td><td>${String(x.metode_pemeriksaan||'').toUpperCase().includes('RISK_ENGINE')?'DINAMIS':esc(x.bobot)}</td><td>${badge(x.status_aktif,x.status_aktif==='AKTIF'?'success':'warning')}</td></tr>`).join('');
-  const perRows=activePeriods.map(x=>`<tr><td>${esc(x.nama_periode)}</td><td>${esc(x.tahun)}</td><td>${esc(x.frekuensi||freqLabel)}</td><td>${esc(String(x.tanggal_mulai||'-').replace(/T00:00:00\.000Z$/,''))}</td><td>${esc(String(x.tanggal_selesai||'-').replace(/T00:00:00\.000Z$/,''))}</td><td>${badge(x.status,x.status==='AKTIF'?'success':'warning')}</td></tr>`).join('');
-  $('#mainContent').innerHTML=head('Pengaturan Penilaian SPJ','DINAS cukup menentukan frekuensi penilaian. Periode dibuat otomatis oleh sistem.')+
+  
+  const spj = await ensureMasters() || [];
+  const inds = indRes.data || [], pers = perRes.data || [];
+  const freq = String(cfg.frekuensi || perRes.frekuensi || '').toUpperCase();
+  const year = Number(cfg.tahun || perRes.tahun || new Date().getFullYear());
+  const freqLabel = freq === 'BULANAN' ? 'Bulanan' : freq === 'TRIWULANAN' ? 'Triwulanan' : freq === 'SEMESTERAN' ? 'Semesteran' : 'Belum dipilih';
+  const activePeriods = pers.filter(x => Number(x.tahun) === year && String(x.frekuensi || '').toUpperCase() === freq);
+
+  // OPTIMASI: Rendering baris tabel menggunakan .map().join('') secara bersih di memori
+  const spjRows = spj.map(x => `
+    <tr>
+      <td>${esc(x.kode_spj)}</td>
+      <td>${esc(x.nama_spj)}</td>
+      <td>${esc(x.urutan)}</td>
+      <td>${badge(x.status_aktif, x.status_aktif === 'AKTIF' ? 'success' : 'warning')}</td>
+    </tr>`).join('') || emptyRow(4);
+
+  const indRows = inds.map(x => `
+    <tr>
+      <td>${esc(x.kode_indikator)}</td>
+      <td>${esc(x.nama_indikator)}</td>
+      <td>${esc(spj.find(s => String(s.id_spj) === String(x.id_spj))?.nama_spj || x.id_spj)}</td>
+      <td>${String(x.metode_pemeriksaan || '').toUpperCase().includes('RISK_ENGINE') ? 'DINAMIS' : esc(x.bobot)}</td>
+      <td>${badge(x.status_aktif, x.status_aktif === 'AKTIF' ? 'success' : 'warning')}</td>
+    </tr>`).join('') || emptyRow(5);
+
+  const perRows = activePeriods.map(x => `
+    <tr>
+      <td>${esc(x.nama_periode)}</td>
+      <td>${esc(x.tahun)}</td>
+      <td>${esc(x.frekuensi || freqLabel)}</td>
+      <td>${esc(String(x.tanggal_mulai || '-').replace(/T00:00:00\.000Z$/, ''))}</td>
+      <td>${esc(String(x.tanggal_selesai || '-').replace(/T00:00:00\.000Z$/, ''))}</td>
+      <td>${badge(x.status, x.status === 'AKTIF' ? 'success' : 'warning')}</td>
+    </tr>`).join('') || emptyRow(6);
+
+  $('#mainContent').innerHTML = head('Pengaturan Penilaian SPJ', 'DINAS cukup menentukan frekuensi penilaian. Periode dibuat otomatis oleh sistem.') +
     `<div class="panel" style="border-top:4px solid var(--primary)">
       <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap">
         <div><h3 style="margin:0">Frekuensi Penilaian</h3><div class="muted" style="margin-top:5px">Pilih sekali untuk tahun penilaian. Sistem otomatis membuat periode dan menggunakannya untuk seluruh sekolah.</div></div>
-        <span class="badge badge-${freq?'success':'warning'}">${esc(freqLabel)} • ${esc(year)}</span>
+        <span class="badge badge-${freq ? 'success' : 'warning'}">${esc(freqLabel)} • ${esc(year)}</span>
       </div>
       <div class="form-grid" style="margin-top:16px">
         <div class="field"><label>Tahun Penilaian</label><input id="cfgTahunPenilaian" type="number" min="2020" max="2100" value="${esc(year)}"></div>
         <div class="field"><label>Frekuensi</label><select id="cfgFrekuensiPenilaian">
-          <option value="BULANAN" ${freq==='BULANAN'?'selected':''}>Bulanan</option>
-          <option value="TRIWULANAN" ${freq==='TRIWULANAN'?'selected':''}>Triwulanan</option>
-          <option value="SEMESTERAN" ${freq==='SEMESTERAN'?'selected':''}>Semesteran</option>
+          <option value="BULANAN" ${freq === 'BULANAN' ? 'selected' : ''}>Bulanan</option>
+          <option value="TRIWULANAN" ${freq === 'TRIWULANAN' ? 'selected' : ''}>Triwulanan</option>
+          <option value="SEMESTERAN" ${freq === 'SEMESTERAN' ? 'selected' : ''}>Semesteran</option>
         </select></div>
       </div>
       <div class="toolbar"><button class="btn btn-primary" id="btnSimpanFrekuensi">✓ Terapkan Frekuensi</button></div>
       <div id="freqConfigMsg"></div>
-    </div>`+
-    `<div class="panel"><h3 class="section-title" style="margin-top:0">Periode Otomatis (${activePeriods.length})</h3><div class="muted" style="margin-bottom:10px">Sistem membuat ${freq==='BULANAN'?'12 periode bulanan':freq==='TRIWULANAN'?'4 periode triwulanan':freq==='SEMESTERAN'?'2 periode semesteran':'periode sesuai pilihan'} tanpa input tanggal manual.</div><div class="table-wrap"><table class="friendly-table"><thead><tr><th>Nama</th><th>Tahun</th><th>Frekuensi</th><th>Mulai</th><th>Selesai</th><th>Status</th></tr></thead><tbody>${perRows||emptyRow(6)}</tbody></table></div></div>`+
-    `<div class="panel"><h3 class="section-title" style="margin-top:0">Standar Pemeriksaan Otomatis</h3><p class="muted">Indikator bawaan Risk Engine tampil otomatis. DINAS tidak perlu membuat indikator atau rule satu per satu; bobot yang ditampilkan sebagai DINAMIS dihitung ulang berdasarkan data pemeriksaan.</p><div class="table-wrap"><table class="friendly-table"><thead><tr><th>Kode</th><th>Indikator</th><th>Komponen</th><th>Bobot</th><th>Status</th></tr></thead><tbody>${indRows||emptyRow(5)}</tbody></table></div></div>`+
-    `<div class="panel"><h3 class="section-title" style="margin-top:0">Master SPJ Sistem</h3><div class="table-wrap"><table class="friendly-table"><thead><tr><th>Kode</th><th>Nama</th><th>Urutan</th><th>Status</th></tr></thead><tbody>${spjRows||emptyRow(4)}</tbody></table></div></div>`;
-  $('#btnSimpanFrekuensi').onclick=async()=>{
-    const tahun=$('#cfgTahunPenilaian').value, frekuensi=$('#cfgFrekuensiPenilaian').value;
-    const out=$('#freqConfigMsg'); out.innerHTML=loading('Membuat periode otomatis...');
-    try { const r=await api('simpanFrekuensiPenilaianSPJ',{data:{tahun,frekuensi}}); toast(`Frekuensi ${frekuensi.toLowerCase()} berhasil diterapkan untuk ${tahun}.`,'ok',3500); await masterSpjView(); }
-    catch(e){ out.innerHTML=msg(errorText(e),'error'); }
+    </div>` +
+    `<div class="panel"><h3 class="section-title" style="margin-top:0">Periode Otomatis (${activePeriods.length})</h3><div class="muted" style="margin-bottom:10px">Sistem membuat ${freq === 'BULANAN' ? '12 periode bulanan' : freq === 'TRIWULANAN' ? '4 periode triwulanan' : freq === 'SEMESTERAN' ? '2 periode semesteran' : 'periode sesuai pilihan'} tanpa input tanggal manual.</div><div class="table-wrap"><table class="friendly-table"><thead><tr><th>Nama</th><th>Tahun</th><th>Frekuensi</th><th>Mulai</th><th>Selesai</th><th>Status</th></tr></thead><tbody>${perRows}</tbody></table></div></div>` +
+    `<div class="panel"><h3 class="section-title" style="margin-top:0">Standar Pemeriksaan Otomatis</h3><p class="muted">Indikator bawaan Risk Engine tampil otomatis. DINAS tidak perlu membuat indikator atau rule satu per satu; bobot yang ditampilkan sebagai DINAMIS dihitung ulang berdasarkan data pemeriksaan.</p><div class="table-wrap"><table class="friendly-table"><thead><tr><th>Kode</th><th>Indikator</th><th>Komponen</th><th>Bobot</th><th>Status</th></tr></thead><tbody>${indRows}</tbody></table></div></div>` +
+    `<div class="panel"><h3 class="section-title" style="margin-top:0">Master SPJ Sistem</h3><div class="table-wrap"><table class="friendly-table"><thead><tr><th>Kode</th><th>Nama</th><th>Urutan</th><th>Status</th></tr></thead><tbody>${spjRows}</tbody></table></div></div>`;
+
+  $('#btnSimpanFrekuensi').onclick = async () => {
+    const tahun = $('#cfgTahunPenilaian').value, frekuensi = $('#cfgFrekuensiPenilaian').value;
+    const out = $('#freqConfigMsg'); 
+    out.innerHTML = loading('Membuat periode otomatis...');
+    try { 
+      await api('simpanFrekuensiPenilaianSPJ', { data: { tahun, frekuensi } }); 
+      toast(`Frekuensi ${frekuensi.toLowerCase()} berhasil diterapkan untuk ${tahun}.`, 'ok', 3500); 
+      await masterSpjView(); 
+    } catch(e) { 
+      out.innerHTML = msg(errorText(e), 'error'); 
+    }
   };
 }
 
-function openMasterModal(title,body,onSubmit){
-  const wrap=document.createElement('div'); wrap.id='masterConfigModal';
-  wrap.innerHTML=`<div style="position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:1000;padding:16px"><div style="background:#fff;padding:24px;border-radius:20px;width:min(100%,620px);max-height:90vh;overflow:auto"><h3 style="margin-top:0">${title}</h3><form id="masterConfigForm">${body}<div id="masterConfigMsg"></div><div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px"><button type="button" class="btn btn-light" onclick="$('#masterConfigModal')?.remove()">Batal</button><button class="btn btn-primary">Simpan</button></div></form></div></div>`;
-  document.body.appendChild(wrap); $('#masterConfigForm').onsubmit=onSubmit;
+function openMasterModal(title, body, onSubmit){
+  const wrap = document.createElement('div'); wrap.id = 'masterConfigModal';
+  wrap.innerHTML = `<div style="position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:1000;padding:16px"><div style="background:#fff;padding:24px;border-radius:20px;width:min(100%,620px);max-height:90vh;overflow:auto"><h3 style="margin-top:0">${title}</h3><form id="masterConfigForm">${body}<div id="masterConfigMsg"></div><div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px"><button type="button" class="btn btn-light" onclick="$('#masterConfigModal')?.remove()">Batal</button><button class="btn btn-primary">Simpan</button></div></form></div></div>`;
+  document.body.appendChild(wrap); 
+  $('#masterConfigForm').onsubmit = onSubmit;
 }
-window.openMasterSpjForm=function(x={}){openMasterModal('Master SPJ',`<div class="form-grid"><div class="field"><label>Kode SPJ</label><input id="mcKode" value="${esc(x.kode_spj||'')}" required></div><div class="field"><label>Nama SPJ</label><input id="mcNama" value="${esc(x.nama_spj||'')}" required></div><div class="field"><label>Urutan</label><input id="mcUrutan" type="number" value="${esc(x.urutan||'')}" required></div><div class="field"><label>Status</label><select id="mcStatus"><option ${x.status_aktif==='AKTIF'?'selected':''}>AKTIF</option><option ${x.status_aktif==='NONAKTIF'?'selected':''}>NONAKTIF</option></select></div><div class="field full-col"><label>Keterangan</label><textarea id="mcKet">${esc(x.keterangan||'')}</textarea></div></div>`,async e=>{e.preventDefault();try{await api('simpanMasterSPJ',{data:{id_spj:x.id_spj,kode_spj:$('#mcKode').value.trim(),nama_spj:$('#mcNama').value.trim(),urutan:$('#mcUrutan').value,status_aktif:$('#mcStatus').value,keterangan:$('#mcKet').value.trim()}});$('#masterConfigModal').remove();await masterSpjView();}catch(err){$('#masterConfigMsg').innerHTML=msg(errorText(err));}})};
-window.editMasterSpj=x=>openMasterSpjForm(x);
-window.openMasterIndikatorForm=async function(x={}){const spj=(await api('getMasterSPJ')).data||[];openMasterModal('Master Indikator',`<div class="form-grid"><div class="field"><label>Komponen SPJ</label><select id="miSpj" required><option value="">-- Pilih --</option>${spj.filter(s=>s.status_aktif==='AKTIF').map(s=>`<option value="${esc(s.id_spj)}" ${String(x.id_spj)===String(s.id_spj)?'selected':''}>${esc(s.kode_spj)} - ${esc(s.nama_spj)}</option>`).join('')}</select></div><div class="field"><label>Kode Indikator</label><input id="miKode" value="${esc(x.kode_indikator||'')}" required></div><div class="field"><label>Nama Indikator</label><input id="miNama" value="${esc(x.nama_indikator||'')}" required></div><div class="field"><label>Bobot</label><input id="miBobot" type="number" step="0.01" value="${esc(x.bobot||0)}"></div><div class="field"><label>Urutan</label><input id="miUrutan" type="number" value="${esc(x.urutan||'')}" required></div><div class="field"><label>Metode Pemeriksaan</label><input id="miMetode" value="${esc(x.metode_pemeriksaan||'')}"></div><div class="field full-col"><label>Deskripsi</label><textarea id="miDesc">${esc(x.deskripsi||'')}</textarea></div></div>`,async e=>{e.preventDefault();try{await api('simpanMasterIndikator',{data:{id_indikator:x.id_indikator,id_spj:$('#miSpj').value,kode_indikator:$('#miKode').value.trim(),nama_indikator:$('#miNama').value.trim(),bobot:$('#miBobot').value,urutan:$('#miUrutan').value,metode_pemeriksaan:$('#miMetode').value.trim(),deskripsi:$('#miDesc').value.trim(),status_indikator:'AKTIF',status_aktif:'AKTIF'}});$('#masterConfigModal').remove();await masterSpjView();}catch(err){$('#masterConfigMsg').innerHTML=msg(errorText(err));}})};
-window.editMasterIndikator=x=>openMasterIndikatorForm(x);
-window.openPeriodeSpjForm=function(x={}){openMasterModal('Periode SPJ',`<div class="form-grid"><div class="field"><label>Nama Periode</label><input id="mpNama" value="${esc(x.nama_periode||'')}" placeholder="Januari 2026" required></div><div class="field"><label>Tahun</label><input id="mpTahun" type="number" value="${esc(x.tahun||new Date().getFullYear())}" required></div><div class="field"><label>Bulan (kosongkan untuk semester)</label><input id="mpBulan" type="number" min="1" max="12" value="${esc(x.bulan||'')}"></div><div class="field"><label>Status</label><select id="mpStatus"><option ${x.status!=='NONAKTIF'?'selected':''}>AKTIF</option><option ${x.status==='NONAKTIF'?'selected':''}>NONAKTIF</option></select></div><div class="field"><label>Tanggal Mulai</label><input id="mpMulai" type="date" value="${esc(x.tanggal_mulai||'')}"></div><div class="field"><label>Tanggal Selesai</label><input id="mpSelesai" type="date" value="${esc(x.tanggal_selesai||'')}"></div></div>`,async e=>{e.preventDefault();try{await api('simpanPeriodeSPJ',{data:{id_periode:x.id_periode,nama_periode:$('#mpNama').value.trim(),tahun:$('#mpTahun').value,bulan:$('#mpBulan').value,tanggal_mulai:$('#mpMulai').value,tanggal_selesai:$('#mpSelesai').value,status:$('#mpStatus').value}});$('#masterConfigModal').remove();await masterSpjView();}catch(err){$('#masterConfigMsg').innerHTML=msg(errorText(err));}})};
-window.editPeriodeSpj=x=>openPeriodeSpjForm(x);
+
+window.openMasterSpjForm = function(x={}){
+  openMasterModal('Master SPJ', `<div class="form-grid"><div class="field"><label>Kode SPJ</label><input id="mcKode" value="${esc(x.kode_spj||'')}" required></div><div class="field"><label>Nama SPJ</label><input id="mcNama" value="${esc(x.nama_spj||'')}" required></div><div class="field"><label>Urutan</label><input id="mcUrutan" type="number" value="${esc(x.urutan||'')}" required></div><div class="field"><label>Status</label><select id="mcStatus"><option ${x.status_aktif==='AKTIF'?'selected':''}>AKTIF</option><option ${x.status_aktif==='NONAKTIF'?'selected':''}>NONAKTIF</option></select></div><div class="field full-col"><label>Keterangan</label><textarea id="mcKet">${esc(x.keterangan||'')}</textarea></div></div>`, async e => {
+    e.preventDefault();
+    try {
+      await api('simpanMasterSPJ', { data: { id_spj: x.id_spj, kode_spj: $('#mcKode').value.trim(), nama_spj: $('#mcNama').value.trim(), urutan: $('#mcUrutan').value, status_aktif: $('#mcStatus').value, keterangan: $('#mcKet').value.trim() } });
+      $('#masterConfigModal').remove(); 
+      await masterSpjView();
+    } catch(err) { 
+      $('#masterConfigMsg').innerHTML = msg(errorText(err)); 
+    }
+  });
+};
+window.editMasterSpj = x => openMasterSpjForm(x);
+
+window.openMasterIndikatorForm = async function(x={}){
+  // OPTIMASI: Memanfaatkan ensureMasters() untuk opsi komponen SPJ
+  const spj = await ensureMasters() || [];
+  const spjOptionsHtml = spj.filter(s => s.status_aktif === 'AKTIF').map(s => `
+    <option value="${esc(s.id_spj)}" ${String(x.id_spj) === String(s.id_spj) ? 'selected' : ''}>
+      ${esc(s.kode_spj)} - ${esc(s.nama_spj)}
+    </option>`).join('');
+
+  openMasterModal('Master Indikator', `<div class="form-grid"><div class="field"><label>Komponen SPJ</label><select id="miSpj" required><option value="">-- Pilih --</option>${spjOptionsHtml}</select></div><div class="field"><label>Kode Indikator</label><input id="miKode" value="${esc(x.kode_indikator||'')}" required></div><div class="field"><label>Nama Indikator</label><input id="miNama" value="${esc(x.nama_indikator||'')}" required></div><div class="field"><label>Bobot</label><input id="miBobot" type="number" step="0.01" value="${esc(x.bobot||0)}"></div><div class="field"><label>Urutan</label><input id="miUrutan" type="number" value="${esc(x.urutan||'')}" required></div><div class="field"><label>Metode Pemeriksaan</label><input id="miMetode" value="${esc(x.metode_pemeriksaan||'')}"></div><div class="field full-col"><label>Deskripsi</label><textarea id="miDesc">${esc(x.deskripsi||'')}</textarea></div></div>`, async e => {
+    e.preventDefault();
+    try {
+      await api('simpanMasterIndikator', { data: { id_indikator: x.id_indikator, id_spj: $('#miSpj').value, kode_indikator: $('#miKode').value.trim(), nama_indikator: $('#miNama').value.trim(), bobot: $('#miBobot').value, urutan: $('#miUrutan').value, metode_pemeriksaan: $('#miMetode').value.trim(), deskripsi: $('#miDesc').value.trim(), status_indikator: 'AKTIF', status_aktif: 'AKTIF' } });
+      $('#masterConfigModal').remove(); 
+      await masterSpjView();
+    } catch(err) { 
+      $('#masterConfigMsg').innerHTML = msg(errorText(err)); 
+    }
+  });
+};
+window.editMasterIndikator = x => openMasterIndikatorForm(x);
+
+window.openPeriodeSpjForm = function(x={}){
+  openMasterModal('Periode SPJ', `<div class="form-grid"><div class="field"><label>Nama Periode</label><input id="mpNama" value="${esc(x.nama_periode||'')}" placeholder="Januari 2026" required></div><div class="field"><label>Tahun</label><input id="mpTahun" type="number" value="${esc(x.tahun||new Date().getFullYear())}" required></div><div class="field"><label>Bulan (kosongkan untuk semester)</label><input id="mpBulan" type="number" min="1" max="12" value="${esc(x.bulan||'')}"></div><div class="field"><label>Status</label><select id="mpStatus"><option ${x.status!=='NONAKTIF'?'selected':''}>AKTIF</option><option ${x.status==='NONAKTIF'?'selected':''}>NONAKTIF</option></select></div><div class="field"><label>Tanggal Mulai</label><input id="mpMulai" type="date" value="${esc(x.tanggal_mulai||'')}"></div><div class="field"><label>Tanggal Selesai</label><input id="mpSelesai" type="date" value="${esc(x.tanggal_selesai||'')}"></div></div>`, async e => {
+    e.preventDefault();
+    try {
+      await api('simpanPeriodeSPJ', { data: { id_periode: x.id_periode, nama_periode: $('#mpNama').value.trim(), tahun: $('#mpTahun').value, bulan: $('#mpBulan').value, tanggal_mulai: $('#mpMulai').value, tanggal_selesai: $('#mpSelesai').value, status: $('#mpStatus').value } });
+      $('#masterConfigModal').remove(); 
+      await masterSpjView();
+    } catch(err) { 
+      $('#masterConfigMsg').innerHTML = msg(errorText(err)); 
+    }
+  });
+};
+window.editPeriodeSpj = x => openPeriodeSpjForm(x);
 
 async function asesmenView(){
-  const periods=await periodeSelect('periodeSelect', true, 'bulan'); let schoolOptions='';
+  const periods = await periodeSelect('periodeSelect', true, 'bulan'); 
+  let schoolOptions = '';
+  
   if(isPengawas()){
-    const r=await safeApi('getSekolah',{}, {data:[]});
-    schoolOptions=`<div class="field"><label>Pilih Sekolah</label><select id="npsnSelect"><option value="">-- Pilih --</option>${(r.data||[]).map(x=>`<option value="${esc(x.npsn)}" ${state.selectedNpsn===x.npsn?'selected':''}>${esc(x.npsn)} -${esc(x.nama_sekolah)}</option>`).join('')}</select></div>`;
-  }
-  $('#mainContent').innerHTML=head('Asesmen SPJ','Lembar penilaian kualitas')+`<div class="panel"><div class="form-grid"><div class="field"><label>Periode SPJ</label>${periods}</div>${schoolOptions}</div><div class="toolbar"><button class="btn btn-primary" onclick="openAssessment()">Buka Asesmen</button></div><div id="assessmentArea"></div></div>`;
-  $('#periodeSelect').value=state.selectedPeriode;
-  if(state.selectedNpsn && $('#npsnSelect')) openAssessment();
-}
-window.openAssessment=async function(){
-  const p=$('#periodeSelect').value,n=isSchool()?ownNpsn():$('#npsnSelect')?.value;
-  if(!p||!n){toast('Pilih periode dan sekolah terlebih dahulu.','warning');return;}
-  state.selectedPeriode=p;state.selectedNpsn=n;
-  const a=$('#assessmentArea');a.innerHTML=loading('Menyiapkan penilaian...');
-  try{
-    const r=await api('buatAtauAmbilAsesmen',{idPeriode:p,npsn:n});
-    const asesmen=r.data||r.asesmen||r;
-    if(state.reopenAssessmentId && state.reopenAssessmentId===asesmen.id_asesmen){ state.reopenAssessmentId=null; }
-    const indRes=await safeApi('hitungIndikatorDariTemuan',{idPeriode:p,npsn:n,idAsesmen:asesmen.id_asesmen},{data:[]});
-    renderAssessment(asesmen,indRes.data||[]);
-  }catch(e){a.innerHTML=msg(errorText(e));}
-};
+    const schools = await getCachedAuditSchools_();
+    // OPTIMASI: Rendering opsi sekolah menggunakan .map().join('') secara bersih
+    const optionsHtml = schools.map(x => `
+      <option value="${esc(x.npsn)}" ${state.selectedNpsn === x.npsn ? 'selected' : ''}>
+        ${esc(x.npsn)} - ${esc(x.nama_sekolah)}
+      </option>`).join('');
 
+    schoolOptions = `
+      <div class="field">
+        <label>Pilih Sekolah</label>
+        <select id="npsnSelect">
+          <option value="">-- Pilih Sekolah --</option>
+          ${optionsHtml}
+        </select>
+      </div>`;
+  }
+  
+  $('#mainContent').innerHTML = head('Asesmen SPJ', 'Lembar penilaian kualitas') + `
+    <div class="panel">
+      <div class="form-grid">
+        <div class="field"><label>Periode SPJ</label>${periods}</div>
+        ${schoolOptions}
+      </div>
+      <div class="toolbar">
+        <button class="btn btn-primary" onclick="openAssessment()">Buka Asesmen</button>
+      </div>
+      <div id="assessmentArea"></div>
+    </div>`;
+
+  $('#periodeSelect').value = state.selectedPeriode;
+  if(state.selectedNpsn && $('#npsnSelect')) {
+    $('#npsnSelect').value = state.selectedNpsn;
+    openAssessment();
+  }
+}
+
+window.openAssessment = async function(){
+  const p = $('#periodeSelect').value;
+  const n = isSchool() ? ownNpsn() : $('#npsnSelect')?.value;
+  
+  if(!p || !n){
+    toast('Pilih periode dan sekolah terlebih dahulu.', 'warning');
+    return;
+  }
+  
+  state.selectedPeriode = p;
+  state.selectedNpsn = n;
+  const a = $('#assessmentArea'); 
+  a.innerHTML = loading('Menyiapkan penilaian...');
+  
+  try {
+    const r = await api('buatAtauAmbilAsesmen', { idPeriode: p, npsn: n });
+    const asesmen = r.data || r.asesmen || r;
+    if(state.reopenAssessmentId && state.reopenAssessmentId === asesmen.id_asesmen){ 
+      state.reopenAssessmentId = null; 
+    }
+    const indRes = await safeApi('hitungIndikatorDariTemuan', { idPeriode: p, npsn: n, idAsesmen: asesmen.id_asesmen }, { data: [] });
+    renderAssessment(asesmen, indRes.data || []);
+  } catch(e) {
+    a.innerHTML = msg(errorText(e));
+  }
+};
 
 /* ============================================================================
  * PROTECTED PDF VIEWER
@@ -4679,16 +5323,27 @@ window.runDbCheck=async function(){const r=$('#dbResult');r.innerHTML=loading();
 document.addEventListener('submit',e=>{if(e.target.id==='loginForm')doLogin(e);});
 window.addEventListener('DOMContentLoaded',restoreSession);
 
+// Cache lokal frontend untuk rekapitulasi pagu RKAS
+window._cachedRekapPaguGlobal = null;
+
 async function muatRekapPaguView() {
   const c = $('#mainContent');
+  if(!c) return;
+
   c.innerHTML = head('Rekapitulasi Pagu RKAS', 'Informasi total pagu anggaran dana BOS berstatus Approved') +
-                `<div class="panel" id="paguContent">${loading('Memuat data pagu...')}</div>`;
-  try {
-    const res = await api('getRekapPaguRKAS');
-    const list = res.data || [];
+    `<div class="panel" id="paguContent">${loading('Memuat data pagu...')}</div>`;
     
+  try {
+    // OPTIMASI: Gunakan cache memori lokal jika sudah ada untuk menghindari request ganda
+    if (!window._cachedRekapPaguGlobal) {
+      const res = await api('getRekapPaguRKAS');
+      window._cachedRekapPaguGlobal = res.data || [];
+    }
+    
+    const list = window._cachedRekapPaguGlobal;
     let totalKeseluruhan = list.reduce((sum, item) => sum + Number(item.total_pagu || 0), 0);
 
+    // OPTIMASI: Rendering baris tabel menggunakan .map().join('') secara bersih di memori
     let rows = list.map(x => `
       <tr>
         <td><b>${esc(x.npsn)}</b></td>
@@ -4716,7 +5371,8 @@ async function muatRekapPaguView() {
         </table>
       </div>`;
   } catch(e) {
-    $('#paguContent').innerHTML = msg(errorText(e));
+    const paguContent = $('#paguContent');
+    if(paguContent) paguContent.innerHTML = msg(errorText(e));
   }
 }
 
@@ -4759,6 +5415,9 @@ window.exportRkasExcel = function(){
   }
 };
 
+// Cache lokal frontend untuk monitoring global
+window._cachedGlobalMonGlobal = null;
+
 // Fungsi utama untuk menampilkan halaman Monitoring Global
 async function renderMonitoringGlobalView() {
   const c = $('#mainContent');
@@ -4771,8 +5430,13 @@ async function renderMonitoringGlobalView() {
      <div class="panel" id="globalMonContent">${loading('Memuat data monitoring global...')}</div>`;
      
   try {
-    const res = await api('getRekapMonitoringGlobal');
-    window._cachedGlobalMon = res.data || [];
+    // OPTIMASI: Gunakan cache memori lokal jika sudah ada untuk menghindari request ganda
+    if (!window._cachedGlobalMonGlobal) {
+      const res = await api('getRekapMonitoringGlobal');
+      window._cachedGlobalMonGlobal = res.data || [];
+    }
+    
+    window._cachedGlobalMon = window._cachedGlobalMonGlobal;
     renderGlobalMonTable(window._cachedGlobalMon);
   } catch(e) {
     const contentBox = $('#globalMonContent');
@@ -4872,7 +5536,6 @@ window.renderGlobalMonTable = function(dataList) {
     <!-- TOMBOL NAVIGASI HALAMAN (PAGINATION) -->
     <div id="paginationControls" style="display:flex; justify-content:center; align-items:center; gap:12px; margin-top:16px;"></div>`;
 
-  // Panggil fungsi filter & render halaman pertama
   window._monState.currentPage = 1;
   applyGlobalMonFilterAndSort();
 };
@@ -4902,25 +5565,25 @@ window.applyGlobalMonFilterAndSort = function() {
     return matchText && matchKec;
   });
 
-  // B. Sorting Data (Disempurnakan dengan pembersihan format angka)
+  // B. Sorting Data
   result.sort((a, b) => {
     if (sortMode === 'nama_asc') {
       return (a.nama_sekolah || '').localeCompare(b.nama_sekolah || '');
     } else if (sortMode === 'pagu_desc') {
       const valA = typeof num === 'function' ? num(a.total_pagu) : (Number(a.total_pagu) || 0);
       const valB = typeof num === 'function' ? num(b.total_pagu) : (Number(b.total_pagu) || 0);
-      return valB - valA; // Tertinggi ke terendah
+      return valB - valA;
     } else if (sortMode === 'realisasi_desc') {
       const valA = typeof num === 'function' ? num(a.total_realisasi) : (Number(a.total_realisasi) || 0);
       const valB = typeof num === 'function' ? num(b.total_realisasi) : (Number(b.total_realisasi) || 0);
-      return valB - valA; // Tertinggi ke terendah
+      return valB - valA;
     } else if (sortMode === 'npsn_asc') {
       return String(a.npsn).localeCompare(String(b.npsn));
     }
     return 0;
   });
 
-  // C. Pagination Logic (Diperbaiki agar opsi 'all' merender seluruh data dengan benar)
+  // C. Pagination Logic
   const totalData = result.length;
   let paginatedResult = result;
   let totalPages = 1;
@@ -4967,10 +5630,34 @@ window.applyGlobalMonFilterAndSort = function() {
   }
 };
 
-// 4. Fungsi Navigasi Halaman (Sebelumnya / Selanjutnya)
+// 4. Fungsi Navigasi Halaman
 window.changeMonPage = function(direction) {
   window._monState.currentPage += direction;
   applyGlobalMonFilterAndSort();
+};
+
+// 5. Generator Baris Tabel menggunakan .map().join('') secara bersih
+function generateGlobalMonRows(list, offset = 0) {
+  if(!list || list.length === 0) return emptyRow(7, 'Tidak ada data yang cocok dengan filter.');
+  
+  return list.map((x, idx) => `
+    <tr>
+      <td style="text-align:center">${offset + idx + 1}</td>
+      <td><b>${esc(x.npsn)}</b></td>
+      <td>
+        <b>${esc(x.nama_sekolah)}</b><br>
+        <small class="muted">📍 ${esc(x.alamat_lengkap)} (Kec. ${esc(x.kecamatan)})</small>
+      </td>
+      <td><b>${fmtRupiah(x.total_pagu)}</b></td>
+      <td style="color:var(--success);font-weight:600">${fmtRupiah(x.total_realisasi)}</td>
+      <td style="text-align:center">${badge(x.jumlah_dokumen_spj > 0 ? `${x.jumlah_dokumen_spj} File` : 'Belum', x.jumlah_dokumen_spj > 0 ? 'success' : 'warning')}</td>
+      <td style="text-align:center">${badge(x.status_penilaian, x.status_penilaian === 'SELESAI_DINILAI' ? 'success' : 'info')}</td>
+    </tr>`).join('');
+}
+
+// 6. Filter Pencarian Teks
+window.filterGlobalMon = function(keyword) {
+  resetPageAndFilter();
 };
 
 // 5. Generator Baris Tabel dengan Nomor Urut yang Menyesuaikan Halaman
@@ -5137,55 +5824,137 @@ async function tutorialV5View(){
 }
 
 async function arsipPenilaianV5View(){
-  const c=$('#mainContent');
-  c.innerHTML=head('Arsip Penilaian SPJ','Cetak bahan penilaian lengkap per sekolah dan periode')+
+  const c = $('#mainContent');
+  if(!c) return;
+
+  c.innerHTML = head('Arsip Penilaian SPJ', 'Cetak bahan penilaian lengkap per sekolah dan periode') +
     `<div class="panel">
-      <div class="toolbar"><input id="v5ArchiveNpsn" placeholder="NPSN sekolah" value="${esc(state.selectedNpsn||state.user?.npsn||'')}"><select id="v5ArchivePeriode"><option value="">Pilih periode</option></select><button class="btn btn-primary" id="v5LoadArchive">📂 Buka Arsip</button></div>
-      <div id="v5ArchiveArea">${msg('Pilih NPSN dan periode untuk membuka paket penilaian.','info')}</div>
-    </div>`;
+       <div class="toolbar">
+         <input id="v5ArchiveNpsn" placeholder="NPSN sekolah" value="${esc(state.selectedNpsn || state.user?.npsn || '')}">
+         <select id="v5ArchivePeriode"><option value="">Pilih periode</option></select>
+         <button class="btn btn-primary" id="v5LoadArchive">📂 Buka Arsip</button>
+       </div>
+       <div id="v5ArchiveArea" style="margin-top:16px">${msg('Pilih NPSN dan periode untuk membuka paket penilaian.', 'info')}</div>
+     </div>`;
+     
   try{
-    await ensurePeriodeMaster();
-    const sel=$('#v5ArchivePeriode');
-    (cachedPeriodeList||[]).forEach(p=>{const o=document.createElement('option');o.value=p.id_periode;o.textContent=p.nama_periode||p.id_periode;sel.appendChild(o);});
-    if(state.selectedPeriode)sel.value=state.selectedPeriode;
-    if(isSchool()){$('#v5ArchiveNpsn').value=state.user?.npsn||'';$('#v5ArchiveNpsn').disabled=true;}
-    $('#v5LoadArchive').onclick=loadV5Archive;
-  }catch(e){$('#v5ArchiveArea').innerHTML=msg(errorText(e),'error');}
+    // OPTIMASI: Manfaatkan cache periode yang sudah tersimpan di memori frontend
+    const periods = await ensurePeriodeMaster();
+    const sel = $('#v5ArchivePeriode');
+    
+    if(sel) {
+      // OPTIMASI: Rendering opsi dropdown periode menggunakan .map().join('') secara bersih di memori
+      const optionsHtml = periods.map(p => `
+        <option value="${esc(p.id_periode)}">
+          ${esc(p.nama_periode || p.id_periode)}
+        </option>`).join('');
+        
+      sel.innerHTML = `<option value="">-- Pilih Periode --</option>` + optionsHtml;
+      if(state.selectedPeriode) sel.value = state.selectedPeriode;
+    }
+
+    if(isSchool()){
+      const inputNpsn = $('#v5ArchiveNpsn');
+      if(inputNpsn) {
+        inputNpsn.value = state.user?.npsn || '';
+        inputNpsn.disabled = true;
+      }
+    }
+    
+    const btnLoad = $('#v5LoadArchive');
+    if(btnLoad) {
+      btnLoad.onclick = loadV5Archive;
+    }
+  }catch(e){
+    const area = $('#v5ArchiveArea');
+    if(area) area.innerHTML = msg(errorText(e), 'error');
+  }
 }
+
 async function loadV5Archive(){
-  const npsn=$('#v5ArchiveNpsn')?.value.trim(), p=$('#v5ArchivePeriode')?.value;
-  if(!npsn||!p){toast('NPSN dan periode wajib dipilih.','error');return;}
-  const area=$('#v5ArchiveArea');area.innerHTML=loading('Menyusun paket penilaian...');
+  const npsn = $('#v5ArchiveNpsn')?.value.trim();
+  const p = $('#v5ArchivePeriode')?.value;
+  
+  if(!npsn || !p){
+    toast('NPSN dan periode wajib dipilih.', 'error');
+    return;
+  }
+  
+  const area = $('#v5ArchiveArea'); 
+  if(!area) return;
+  
+  area.innerHTML = loading('Menyusun paket penilaian...');
+  
   try{
-    const r=await api('getPaketPenilaianSPJ',{npsn,idPeriode:p}), d=r.data||{};
-    window._v5ArchiveData=d;
-    const a=d.asesmen||{}, sig=d.pengesahan_pengawas||{}, appr=d.persetujuan_sekolah||{};
-    area.innerHTML=`
+    const r = await api('getPaketPenilaianSPJ', { npsn, idPeriode: p });
+    const d = r.data || {};
+    window._v5ArchiveData = d;
+    
+    const a = d.asesmen || {}, sig = d.pengesahan_pengawas || {}, appr = d.persetujuan_sekolah || {};
+    
+    area.innerHTML = `
       <div id="v5PrintableArchive" class="v5-print-sheet">
         <div class="panel" style="border-top:5px solid var(--primary)">
           <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap">
-            <div><div class="badge badge-info">PAKET ARSIP PENILAIAN SPJ</div><h2 style="margin:8px 0">${esc(d.sekolah?.nama_sekolah||npsn)}</h2><div class="muted">NPSN ${esc(d.sekolah?.npsn||npsn)} • ${esc(d.sekolah?.kecamatan||'-')} • ${esc(d.sekolah?.alamat_lengkap||'-')}</div></div>
-            <div style="text-align:right"><div class="muted">Periode</div><strong>${esc(p)}</strong><div style="font-size:1.7rem;font-weight:900;color:var(--primary);margin-top:8px">${esc(a.nilai_akhir??'-')}</div><div class="muted">Nilai akhir</div></div>
+            <div>
+              <div class="badge badge-info">PAKET ARSIP PENILAIAN SPJ</div>
+              <h2 style="margin:8px 0">${esc(d.sekolah?.nama_sekolah || npsn)}</h2>
+              <div class="muted">NPSN ${esc(d.sekolah?.npsn || npsn)} • ${esc(d.sekolah?.kecamatan || '-')} • ${esc(d.sekolah?.alamat_lengkap || '-')}</div>
+            </div>
+            <div style="text-align:right">
+              <div class="muted">Periode</div>
+              <strong>${esc(p)}</strong>
+              <div style="font-size:1.7rem;font-weight:900;color:var(--primary);margin-top:8px">${esc(a.nilai_akhir ?? '-')}</div>
+              <div class="muted">Nilai akhir</div>
+            </div>
           </div>
         </div>
-        <div class="panel"><h3>Ringkasan Status</h3><div class="assessment-guide"><div class="assessment-guide-card"><strong>Penilaian</strong><span>${esc(a.status_asesmen||'-')}</span></div><div class="assessment-guide-card"><strong>Persetujuan Sekolah</strong><span>${appr?'DISETUJUI':'BELUM'}</span></div><div class="assessment-guide-card"><strong>Pengesahan Pengawas</strong><span>${sig?'DISAHKAN':'BELUM'}</span></div></div></div>
-        ${_v5RowsTable(d.rkas,'A. RKAS / Anggaran',{hidden:['_row']})}
-        ${_v5RowsTable(d.transaksi,'B. TRANSAKSI SPJ',{hidden:['_row']})}
-        <div class="panel"><h3>C. DOKUMEN / BUKTI TRANSAKSI</h3>${_v5DocCards(d.dokumen)}</div>
-        ${_v5RowsTable(d.temuan,'D. TEMUAN & VERIFIKASI',{hidden:['_row']})}
-        ${_v5RowsTable(d.detail_asesmen,'E. DETAIL INDIKATOR PENILAIAN',{hidden:['_row']})}
-        ${_v5RowsTable(d.riwayat_keberatan,'F. RIWAYAT KEBERATAN / KAJI ULANG',{hidden:['_row']})}
-        <div class="panel"><h3>G. PERSETUJUAN & PENGESAHAN</h3>
-          <p>Persetujuan sekolah: <b>${appr?'TERCATAT':'BELUM TERCATAT'}</b></p>
-          ${appr?`<p>Disetujui oleh: <b>${esc(appr.disetujui_oleh||'-')}</b><br>Waktu: ${esc(appr.disetujui_at||'-')}</p>`:''}
-          <p>Pengesahan pengawas: <b>${sig?'DISAHKAN SECARA ELEKTRONIK':'BELUM DISAHKAN'}</b></p>
-          ${sig?`<p>Penandatangan: <b>${esc(sig.ditandatangani_oleh||'-')}</b><br>Waktu: ${esc(sig.ditandatangani_at||'-')}<br>Kode pengesahan: <b>${esc(sig.kode_pengesahan||'-')}</b><br>Hash integritas: <code style="word-break:break-all">${esc(sig.integrity_hash||'-')}</code></p><div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap"><img alt="QR Verifikasi Pengesahan" src="https://quickchart.io/qr?size=180&text=${encodeURIComponent(sig.verification_url||'')}" style="width:150px;height:150px;border:1px solid #ddd;padding:5px;background:#fff"><div><b>QR Verifikasi</b><br><span class="muted">Pindai QR untuk membuka halaman verifikasi pengesahan.</span><br><a href="${esc(sig.verification_url||'#')}" target="_blank">Buka verifikasi</a></div></div>`:''}
+        
+        <div class="panel">
+          <h3>Ringkasan Status</h3>
+          <div class="assessment-guide">
+            <div class="assessment-guide-card"><strong>Penilaian</strong><span>${esc(a.status_asesmen || '-')}</span></div>
+            <div class="assessment-guide-card"><strong>Persetujuan Sekolah</strong><span>${appr ? 'DISETUJUI' : 'BELUM'}</span></div>
+            <div class="assessment-guide-card"><strong>Pengesahan Pengawas</strong><span>${sig ? 'DISAHKAN' : 'BELUM'}</span></div>
+          </div>
         </div>
-        <div class="panel"><h3>H. DAFTAR BERKAS ASLI</h3><p class="muted">Berkas PDF asli tetap menjadi bukti utama. Daftar di bawah menunjukkan seluruh dokumen yang terhubung pada periode penilaian dan dapat dibuka dari aplikasi.</p>${_v5DocCards(d.dokumen)}</div>
+        
+        ${_v5RowsTable(d.rkas, 'A. RKAS / Anggaran', { hidden: ['_row'] })}
+        ${_v5RowsTable(d.transaksi, 'B. TRANSAKSI SPJ', { hidden: ['_row'] })}
+        
+        <div class="panel">
+          <h3>C. DOKUMEN / BUKTI TRANSAKSI</h3>
+          ${_v5DocCards(d.dokumen)}
+        </div>
+        
+        ${_v5RowsTable(d.temuan, 'D. TEMUAN & VERIFIKASI', { hidden: ['_row'] })}
+        ${_v5RowsTable(d.detail_asesmen, 'E. DETAIL INDIKATOR PENILAIAN', { hidden: ['_row'] })}
+        ${_v5RowsTable(d.riwayat_keberatan, 'F. RIWAYAT KEBERATAN / KAJI ULANG', { hidden: ['_row'] })}
+        
+        <div class="panel">
+          <h3>G. PERSETUJUAN & PENGESAHAN</h3>
+          <p>Persetujuan sekolah: <b>${appr ? 'TERCATAT' : 'BELUM TERCATAT'}</b></p>
+          ${appr ? `<p>Disetujui oleh: <b>${esc(appr.disetujui_oleh \vert{}\vert{} '-')}</b><br>Waktu:${esc(appr.disetujui_at || '-')}</p>` : ''}
+          <p>Pengesahan pengawas: <b>${sig ? 'DISAHKAN SECARA ELEKTRONIK' : 'BELUM DISAHKAN'}</b></p>
+          ${sig ? `<p>Penandatangan: <b>${esc(sig.ditandatangani_oleh || '-')}</b><br>Waktu: ${esc(sig.ditandatangani_at \vert{}\vert{} '-')}<br>Kode pengesahan: <b>${esc(sig.kode_pengesahan || '-')}</b><br>Hash integritas: <code style="word-break:break-all">${esc(sig.integrity_hash || '-')}</code></p><div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap"><img alt="QR Verifikasi Pengesahan" src="https://quickchart.io/qr?size=180&text=${encodeURIComponent(sig.verification_url || '')}" style="width:150px;height:150px;border:1px solid #ddd;padding:5px;background:#fff"><div><b>QR Verifikasi</b><br><span class="muted">Pindai QR untuk membuka halaman verifikasi pengesahan.</span><br><a href="${esc(sig.verification_url || '#')}" target="_blank">Buka verifikasi</a></div></div>` : ''}
+        </div>
+        
+        <div class="panel">
+          <h3>H. DAFTAR BERKAS ASLI</h3>
+          <p class="muted">Berkas PDF asli tetap menjadi bukti utama. Daftar di bawah menunjukkan seluruh dokumen yang terhubung pada periode penilaian dan dapat dibuka dari aplikasi.</p>
+          ${_v5DocCards(d.dokumen)}
+        </div>
       </div>
-      <div class="toolbar" style="margin-top:14px"><button class="btn btn-primary" onclick="printV5Archive()">🖨️ Cetak / Simpan sebagai PDF</button><button class="btn btn-light" onclick="window.print()">🖨️ Cetak Halaman</button></div>`;
-  }catch(e){area.innerHTML=msg(errorText(e),'error');}
+      
+      <div class="toolbar" style="margin-top:14px">
+        <button class="btn btn-primary" onclick="printV5Archive()">🖨️ Cetak / Simpan sebagai PDF</button>
+        <button class="btn btn-light" onclick="window.print()">🖨️ Cetak Halaman</button>
+      </div>`;
+  }catch(e){
+    area.innerHTML = msg(errorText(e), 'error');
+  }
 }
+
 function printV5Archive(){
   const d=window._v5ArchiveData;
   if(!d){toast('Buka arsip terlebih dahulu.','error');return;}
@@ -5501,98 +6270,116 @@ function _rkasReplaceNum_(v){
  * Kode rekening penuh diwariskan ke detail sampai muncul kode rekening baru.
  */
 function _rkasParseDpaWorkbookClient(wb){
-  const all=[];
-  const diagnostics={sheets:[],mode:'DPA_HIERARCHICAL',ignoredSubtotal:0,ignoredHeader:0};
+  const all = [];
+  const diagnostics = { sheets: [], mode: 'DPA_HIERARCHICAL', ignoredSubtotal: 0, ignoredHeader: 0 };
+  
   for(const sheetName of wb.SheetNames){
-    const ws=wb.Sheets[sheetName];
-    const rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:true,defval:''});
-    let codeCol=0, descCol=5, volCol=20, unitCol=23, priceCol=26, totalCol=29;
-    let headerRow=-1;
+    const ws = wb.Sheets[sheetName];
+    const rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: '' });
+    
+    // Default posisi kolom baku
+    let codeCol = 0, descCol = 5, volCol = 20, unitCol = 23, priceCol = 26, totalCol = 29;
+    let headerRow = -1;
 
-    // Cari baris "Kode Rekening" + "Uraian". Jika tidak ada, gunakan posisi
-    // baku file DPA yang kita analisis.
-    for(let r=0;r<Math.min(rows.length,300);r++){
-      const cells=(rows[r]||[]).map(x=>_rkasReplaceNorm_(x).toUpperCase());
-      const hasCode=cells.some(x=>x==='KODE REKENING'||x==='KODE\nREKENING');
-      const hasUraian=cells.some(x=>x==='URAIAN');
-      if(hasCode&&hasUraian){headerRow=r;break;}
+    // Cari baris header yang mengandung "KODE REKENING" dan "URAIAN"
+    for(let r = 0; r < Math.min(rows.length, 300); r++){
+      const cells = (rows[r] || []).map(x => _rkasReplaceNorm_(x).toUpperCase());
+      const hasCode = cells.some(x => x.includes('KODE REKENING') || x.includes('KODE'));
+      const hasUraian = cells.some(x => x.includes('URAIAN'));
+      if(hasCode && hasUraian){ 
+        headerRow = r; 
+        break; 
+      }
     }
 
-    // File dapat berisi header berulang pada halaman berikutnya. Bahkan bila
-    // header tidak ditemukan, tetap coba posisi baku.
-    if(headerRow<0) headerRow=27;
+    // Jika header tidak ditemukan secara persis, gunakan baris default baku
+    if(headerRow < 0) headerRow = 27;
 
-    let currentKode='';
-    let currentNpsn='';
-    let currentKegiatan='';
-    let currentKodeKegiatan='';
+    // DINAMIS: Deteksi indeks kolom secara otomatis dari baris header yang ditemukan
+    if(headerRow >= 0 && rows[headerRow]) {
+      const headerCells = rows[headerRow].map(x => _rkasReplaceNorm_(x).toUpperCase());
+      const cCode = headerCells.findIndex(x => x.includes('KODE'));
+      const cDesc = headerCells.findIndex(x => x.includes('URAIAN'));
+      const cVol  = headerCells.findIndex(x => x.includes('VOL') || x.includes('JUMLAH'));
+      const cPrice= headerCells.findIndex(x => x.includes('HARGA') || x.includes('TARIF'));
+      const cTotal= headerCells.findIndex(x => x.includes('TOTAL') || x.includes('PAGU') || x.includes('JUMLAH HARGA'));
 
-    for(let r=headerRow+1;r<rows.length;r++){
-      const row=rows[r]||[];
-      const a=_rkasReplaceNorm_(row[codeCol]);
-      const uraian=_rkasReplaceNorm_(row[descCol]);
-      const fullCode=_rkasReplaceCode_(a);
-      const npsn=_rkasReplaceNpsn_(a);
+      if(cCode >= 0) codeCol = cCode;
+      if(cDesc >= 0) descCol = cDesc;
+      if(cVol >= 0)  volCol = cVol;
+      if(cPrice >= 0)priceCol = cPrice;
+      if(cTotal >= 0)totalCol = cTotal;
+    }
 
-      // Lewati baris header/nomor kolom.
-      if(/^KODE\s*$/i.test(a)||/^URAIAN$/i.test(uraian)||a==='1'||a==='2'){
+    let currentKode = '';
+    let currentNpsn = '';
+    let currentKegiatan = '';
+    let currentKodeKegiatan = '';
+
+    for(let r = headerRow + 1; r < rows.length; r++){
+      const row = rows[r] || [];
+      const a = _rkasReplaceNorm_(row[codeCol]);
+      const uraian = _rkasReplaceNorm_(row[descCol]);
+      const fullCode = _rkasReplaceCode_(a);
+      const npsn = _rkasReplaceNpsn_(a);
+
+      // Lewati baris header berulang atau nomor urut kolom
+      if(/^KODE\s*$/i.test(a) || /^URAIAN$/i.test(uraian) || a === '1' || a === '2'){
         diagnostics.ignoredHeader++;
         continue;
       }
 
-      // NPSN menandai awal blok sekolah.
+      // NPSN menandai awal blok sekolah
       if(npsn){
-        currentNpsn=npsn;
+        currentNpsn = npsn;
         continue;
       }
 
-      // Kode rekening penuh menandai parent objek belanja.
-      // Reset sekolah agar detail tidak bocor ke sekolah sebelumnya.
+      // Kode rekening penuh menandai parent objek belanja
       if(fullCode){
-        currentKode=fullCode;
-        currentNpsn=currentNpsn||'';
+        currentKode = fullCode;
+        currentNpsn = currentNpsn || '';
         continue;
       }
 
-      // Parent/subtotal seperti 5., 5.1, 5.1.02, dst tidak menjadi detail.
+      // Baris subtotal hierarki (misal: 5., 5.1, 5.1.02) diabaikan dari detail item
       if(/^\d+(?:\.\d+){0,4}\.?$/.test(a) && a){
         diagnostics.ignoredSubtotal++;
         continue;
       }
 
-      if(!currentKode||!currentNpsn||!uraian) continue;
+      if(!currentKode || !currentNpsn || !uraian) continue;
 
-      const volume=_rkasReplaceNum_(row[volCol]);
-      const harga=_rkasReplaceNum_(row[priceCol]);
-      const pagu=_rkasReplaceNum_(row[totalCol]);
+      const volume = _rkasReplaceNum_(row[volCol]);
+      const harga = _rkasReplaceNum_(row[priceCol]);
+      const pagu = _rkasReplaceNum_(row[totalCol]);
 
-      // Baris subtotal umumnya tidak mempunyai volume/satuan/harga.
-      // Detail barang minimal mempunyai pagu > 0.
-      if(!(pagu>0)) {
+      // Detail item valid minimal harus memiliki pagu > 0
+      if(!(pagu > 0)) {
         diagnostics.ignoredSubtotal++;
         continue;
       }
 
       all.push({
-        npsn:currentNpsn,
-        kode_rekening:currentKode,
-        kode_kegiatan:currentKodeKegiatan,
-        kegiatan:currentKegiatan,
-        nama_belanja_asli:uraian,
-        uraian:uraian,
-        volume:volume||1,
-        satuan:_rkasReplaceNorm_(row[unitCol])||'paket',
-        harga_satuan:harga||pagu,
-        pagu:pagu,
-        nomor_baris_sumber:r+1,
-        sheet_name:sheetName
+        npsn: currentNpsn,
+        kode_rekening: currentKode,
+        kode_kegiatan: currentKodeKegiatan,
+        kegiatan: currentKegiatan,
+        nama_belanja_asli: uraian,
+        uraian: uraian,
+        volume: volume || 1,
+        satuan: _rkasReplaceNorm_(row[unitCol]) || 'paket',
+        harga_satuan: harga || pagu,
+        pagu: pagu,
+        nomor_baris_sumber: r + 1,
+        sheet_name: sheetName
       });
     }
 
-    diagnostics.sheets.push({sheet:sheetName,rows:rows.length});
+    diagnostics.sheets.push({ sheet: sheetName, rows: rows.length });
   }
 
-  return {rows:all,diagnostics};
+  return { rows: all, diagnostics };
 }
 
 function _rkasReplaceSchoolSet_(rows){
