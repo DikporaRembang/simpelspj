@@ -6401,16 +6401,16 @@ window.closeRkasManageMenu=function(){ const m=$('#rkasManageMenu'); if(m)m.styl
 // Safety net: modal Reset/Ganti tidak boleh bertahan ketika halaman berpindah
 // dari RKAS ke login/beranda atau ketika sesi DINAS sudah tidak aktif.
 function _rkasReplaceGuard_(){
-  const modal=$('#rkasReplaceModal');
-  if(!modal)return;
-  const stillRkas=!!document.querySelector('#mainContent #btnTabDiajukan');
-  if(!isDinas() || !stillRkas) modal.remove();
+  // Menggunakan document.querySelector secara langsung untuk menghindari error '$ is not defined'
+  const modal = document.querySelector('#rkasReplaceModal');
+  if(!modal) return;
+  
+  const stillRkas = !!document.querySelector('#mainContent #btnTabDiajukan');
+  if(!isDinas() || !stillRkas) {
+    modal.remove();
+  }
 }
-setInterval(_rkasReplaceGuard_,1000);
-document.addEventListener('click',function(ev){
-  const m=$('#rkasManageMenu');
-  if(m && !m.parentElement.contains(ev.target)) m.style.display='none';
-});
+setInterval(_rkasReplaceGuard_, 1000);
 
 window.openRkasReplaceModal=async function(){
   // HARD GUARD: Reset/Ganti hanya boleh dipanggil dari submenu RKAS Dinas.
