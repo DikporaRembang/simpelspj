@@ -6124,29 +6124,29 @@ renderAssessment = function(a, indicators){
   renderPengesahanPanel(a.id_asesmen);
 };
 </script>
-
-<script>
-/* V12 UX — fokus DINAS & SEKOLAH. Tidak mengubah API/database/business flow. */
+  
+/* ============================================================================
+ * V12 UX — fokus DINAS & SEKOLAH. Tidak mengubah API/database/business flow.
+ * ========================================================================== */
 (function(){
   // Perapihan label navigasi agar berorientasi pekerjaan.
   if(window.ROLE_MENUS){
-    const d=ROLE_MENUS.DINAS, k=ROLE_MENUS.SEKOLAH;
-    const relabel=(arr,map)=>arr?.forEach(g=>{
-      if(g.items) g.items.forEach(i=>{ if(map[i.id]) i.label=map[i.id]; });
-      else if(map[g.id]) g.label=map[g.id];
+    const d = window.ROLE_MENUS.DINAS, k = window.ROLE_MENUS.SEKOLAH;
+    const relabel = (arr, map) => arr?.forEach(g => {
+      if(g.items) g.items.forEach(i => { if(map[i.id]) i.label = map[i.id]; });
+      else if(map[g.id]) g.label = map[g.id];
     });
-    relabel(d,{
-      home:'Beranda',masterSpj:'Periode & Master SPJ',sekolah:'Daftar Sekolah',penugasan:'Penugasan Pengawas',
-      rkasReview:'RKAS & Anggaran',transaksi:'Realisasi SPJ',monitoringGlobal:'Monitoring Sekolah',temuan:'Temuan & Tindak Lanjut',
-      pesan:'Pesan & Koordinasi',dbCheck:'Validasi Sistem',tutorialV5:'Panduan SIMPEL SPJ'
+    relabel(d, {
+      home:'Beranda', masterSpj:'Periode & Master SPJ', sekolah:'Daftar Sekolah', penugasan:'Penugasan Pengawas',
+      rkasReview:'RKAS & Anggaran', transaksi:'Realisasi SPJ', monitoringGlobal:'Monitoring Sekolah', temuan:'Temuan & Tindak Lanjut',
+      pesan:'Pesan & Koordinasi', dbCheck:'Validasi Sistem', tutorialV5:'Panduan SIMPEL SPJ'
     });
-    relabel(k,{
-      home:'Beranda',dokumenBulanan:'Dokumen SPJ',statusSpj:'Status SPJ',transaksi:'Transaksi & BKU',
-      sekolah:'Profil Sekolah',temuan:'Temuan Pemeriksaan',pesan:'Pesan dari Dinas/Pengawas',tutorialV5:'Panduan SIMPEL SPJ',
+    relabel(k, {
+      home:'Beranda', dokumenBulanan:'Dokumen SPJ', statusSpj:'Status SPJ', transaksi:'Transaksi & BKU',
+      sekolah:'Profil Sekolah', temuan:'Temuan Pemeriksaan', pesan:'Pesan dari Dinas/Pengawas', tutorialV5:'Panduan SIMPEL SPJ',
       ubahPassword:'Ubah Password'
     });
   }
-
   function roleName(){return String(window.state?.user?.role||'').toUpperCase()}
   function isD(){return roleName()==='DINAS'}
   function isS(){return roleName()==='SEKOLAH'}
