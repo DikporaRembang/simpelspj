@@ -461,6 +461,7 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
 .toolbar .btn,.toolbar input,.toolbar select{border-radius:11px}
 .table-wrap{border-radius:13px;box-shadow:0 4px 18px rgba(16,42,67,.035)}
 @media(max-width:900px){.top-search{max-width:none;margin:0 8px}.topbar .top-actions>span{display:none}.top-search-kbd{display:none}}
+.school-pdf-feed{background:linear-gradient(145deg,#fbfdfc,#f5faf7);border:1px solid #dfe9e4}.school-pdf-feed-grid{display:grid;grid-template-columns:minmax(230px,.62fr) minmax(0,1.38fr);gap:12px}.school-pdf-list{display:flex;flex-direction:column;gap:7px;max-height:58vh;overflow:auto;padding-right:2px}.school-pdf-feed-item{display:flex;align-items:center;gap:10px;text-align:left;width:100%;padding:11px 12px;border:1px solid #dfe8e3;border-radius:13px;background:#fff;color:var(--navy);cursor:pointer;transition:.18s}.school-pdf-feed-item:hover,.school-pdf-feed-item.active{border-color:var(--primary);background:#eef7f2;transform:translateY(-1px)}.school-pdf-feed-item>span:first-child{font-size:1.15rem}.school-pdf-feed-item span:nth-child(2){min-width:0;flex:1}.school-pdf-feed-item b,.school-pdf-feed-item small{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.school-pdf-feed-item small{margin-top:2px;color:var(--muted);font-size:.75rem}.school-pdf-feed-item em{font-style:normal;font-size:1.2rem;color:var(--primary)}.school-pdf-preview{min-width:0;background:#e9eeeb;border-radius:15px;padding:8px}.school-pdf-empty{padding:20px;text-align:center;color:var(--muted);border:1px dashed #cbd8d1;border-radius:13px;background:#fff}@media(max-width:800px){.school-pdf-feed-grid{grid-template-columns:1fr}.school-pdf-list{max-height:220px}.school-pdf-preview iframe{height:52vh;min-height:320px}}
 @media(max-width:700px){.top-search{margin:0 3px}.top-search-wrap{padding-left:10px}.top-search input{font-size:16px}.content{padding:14px 12px 28px}}
 
 /* ================= RESPONSIVE TABLET ================= */
@@ -1879,11 +1880,45 @@ async function renderDokumenTable(){
           <span class="muted">PDF · satu komponen satu berkas</span>
         </div>
         ${rows || msg('Master SPJ belum tersedia.')}
+      </div>
+      <div class="panel school-pdf-feed" style="margin-top:14px">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+          <div><h3 style="margin:0">📄 Feed Bukti SPJ</h3><div class="muted">PDF yang sudah diunggah dapat dilihat langsung tanpa meninggalkan halaman.</div></div>
+          <span class="badge badge-info">${uploaded} / ${total} tersedia</span>
+        </div>
+        <div class="school-pdf-feed-grid" style="margin-top:12px">
+          <div class="school-pdf-list">
+            ${groups.filter(x=>x.d && x.d.file_url && String(x.d.status||'').toUpperCase()!=='N/A').map((x,i)=>`<button type="button" class="school-pdf-feed-item ${i===0?'active':''}" data-pdf-url="${esc(x.d.file_url)}" data-pdf-name="${esc(x.d.nama_file||x.m.nama_spj||'Dokumen SPJ')}" onclick="showSchoolPdfFeed(this)"><span>📄</span><span><b>${esc(x.m.nama_spj||x.m.id_spj)}</b><small>${esc(x.d.nama_file||'PDF')}</small></span><em>›</em></button>`).join('') || `<div class="school-pdf-empty">Belum ada PDF yang dapat ditampilkan.</div>`}
+          </div>
+          <div class="school-pdf-preview">
+            <div id="schoolPdfFeedTitle" class="muted" style="margin-bottom:8px">${uploaded?'Memuat bukti pertama...':'Belum ada bukti'}</div>
+            <iframe id="schoolPdfFeedFrame" title="Preview PDF SPJ" style="width:100%;height:58vh;min-height:360px;border:0;border-radius:14px;background:#f3f5f4;"></iframe>
+          </div>
+        </div>
       </div>`;
+    const firstPdf=groups.find(x=>x.d && x.d.file_url && String(x.d.status||'').toUpperCase()!=='N/A');
+    if(firstPdf) {
+      const fr=$('#schoolPdfFeedFrame');
+      if(fr) fr.src=pdfPageUrl(firstPdf.d.file_url,1);
+      const ttl=$('#schoolPdfFeedTitle');
+      if(ttl) ttl.textContent=firstPdf.d.nama_file||firstPdf.m.nama_spj||'Dokumen SPJ';
+    }
   }catch(e){
     area.innerHTML = msg(errorText(e));
   }
 }
+
+window.showSchoolPdfFeed=function(btn){
+  const url=btn?.dataset?.pdfUrl||'';
+  const name=btn?.dataset?.pdfName||'Dokumen SPJ';
+  if(!url){toast('Berkas PDF tidak tersedia.','warning');return;}
+  $$('.school-pdf-feed-item').forEach(x=>x.classList.remove('active'));
+  btn.classList.add('active');
+  const fr=$('#schoolPdfFeedFrame');
+  const ttl=$('#schoolPdfFeedTitle');
+  if(ttl) ttl.textContent=name;
+  if(fr) fr.src=pdfPageUrl(url,1);
+};
 
 window.openImportPaketSPJ = function(){
   const periode = $('#periodeSelect')?.value || state.selectedPeriode;
