@@ -1057,7 +1057,7 @@ function authView(notice=''){
       <section class="auth-side"><div class="auth-side-inner">
         <div class="brand">
           <img src="bidangsd.png" class="app-logo" alt="Logo">
-          <div><h2 class="simpel-brand-gold">SIMPEL SPJ</h2><small class="simpel-brand-gold-sub">Kabupaten Rembang</small></div>
+          <div><h2 style="color:#fff">SIMPEL SPJ</h2><small style="color:#cbd5e1">Kabupaten Rembang</small></div>
         </div>
         <h1>Sistem Penilaian SPJ BOS SD Kabupaten Rembang.</h1>
         <p>Sistem terintegrasi tingkat lanjut untuk pencatatan BKU harian, pemeriksaan otomatis, hingga asesmen tata kelola keuangan berbasis RKAS.</p>
@@ -1874,7 +1874,7 @@ async function renderDokumenTable(){
           </div>
           <button type="button" class="btn btn-light btn-sm" onclick="closeInstrumentPdf('${esc(viewerId)}')">✕ Tutup</button>
         </div>
-        <div class="instrument-pdf-inline-frame" title="${esc(d.nama_file || m.nama_spj || 'Dokumen SPJ')}" data-file-id="${esc(d.file_id || '')}" data-pdf-url="${esc(d.file_url || '')}"><div class="pdf-local-loading">Memuat pratinjau PDF...</div></div>
+        <iframe class="instrument-pdf-inline-frame" title="${esc(d.nama_file || m.nama_spj || 'Dokumen SPJ')}" src="about:blank" data-pdf-src="${esc(pdfPageUrl(d.file_url,1))}" loading="lazy"></iframe>
       </div>` : ''}`;
     }).join('');
 
@@ -1904,73 +1904,32 @@ async function renderDokumenTable(){
   }
 }
 
-window._simpelPdfLoadPromise=null;
-async function ensureSimpelPdfJs(){
-  if(window.pdfjsLib) return window.pdfjsLib;
-  if(window._simpelPdfLoadPromise) return window._simpelPdfLoadPromise;
-  window._simpelPdfLoadPromise=new Promise((resolve,reject)=>{
-    const sc=document.createElement('script');
-    sc.src='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
-    sc.onload=()=>{ try{ window.pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'; resolve(window.pdfjsLib); }catch(e){reject(e);} };
-    sc.onerror=()=>reject(new Error('Library PDF.js gagal dimuat.'));
-    document.head.appendChild(sc);
-  });
-  return window._simpelPdfLoadPromise;
-}
-function base64ToUint8Array_(b64){
-  const raw=atob(String(b64||''));
-  const out=new Uint8Array(raw.length);
-  for(let i=0;i<raw.length;i++) out[i]=raw.charCodeAt(i);
-  return out;
-}
-async function renderInstrumentPdfLocal_(frame,fileId,name){
-  if(!fileId) throw new Error('ID file PDF tidak tersedia.');
-  frame.innerHTML=loading('Mengambil PDF dari penyimpanan aplikasi...');
-  const r=await api('getDokumenPdfBase64',{fileId});
-  const pdfjs=await ensureSimpelPdfJs();
-  const pdf=await pdfjs.getDocument({data:base64ToUint8Array_(r.base64)}).promise;
-  let pageNo=1, zoom=1;
-  async function render(){
-    frame.innerHTML='';
-    const toolbar=document.createElement('div');
-    toolbar.style='display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;background:#fff;border-bottom:1px solid #dfe7e2;position:sticky;top:0;z-index:2';
-    toolbar.innerHTML=`<div style="display:flex;gap:6px"><button class="btn btn-light btn-sm" ${pageNo<=1?'disabled':''}>←</button><button class="btn btn-light btn-sm" ${pageNo>=pdf.numPages?'disabled':''}>→</button></div><span class="muted">Halaman ${pageNo} / ${pdf.numPages}</span><div style="display:flex;gap:6px"><button class="btn btn-light btn-sm">−</button><span class="muted" style="min-width:45px;text-align:center">${Math.round(zoom*100)}%</span><button class="btn btn-light btn-sm">+</button></div>`;
-    frame.appendChild(toolbar);
-    const wrap=document.createElement('div'); wrap.className='pdf-local-canvas-wrap'; frame.appendChild(wrap);
-    const page=await pdf.getPage(pageNo);
-    const base=page.getViewport({scale:1});
-    const maxWidth=Math.max(320,Math.min(frame.clientWidth-28,1100));
-    const fit=Math.min(maxWidth/base.width,1.5);
-    const vp=page.getViewport({scale:fit*zoom});
-    const canvas=document.createElement('canvas');
-    canvas.width=Math.ceil(vp.width); canvas.height=Math.ceil(vp.height); canvas.style='display:block;max-width:100%;height:auto;background:#fff;box-shadow:0 10px 28px rgba(0,0,0,.16);border:1px solid #d5ddd9';
-    wrap.appendChild(canvas);
-    await page.render({canvasContext:canvas.getContext('2d'),viewport:vp}).promise;
-    const bs=toolbar.querySelectorAll('button');
-    bs[0].onclick=async()=>{if(pageNo>1){pageNo--;await render();}};
-    bs[1].onclick=async()=>{if(pageNo<pdf.numPages){pageNo++;await render();}};
-    bs[2].onclick=async()=>{zoom=Math.max(.75,zoom-.1);await render();};
-    bs[3].onclick=async()=>{zoom=Math.min(2,zoom+.1);await render();};
-  }
-  await render();
-}
-window.showInstrumentPdf=async function(btn){
+window.showInstrumentPdf=function(btn){
   const targetId=btn?.dataset?.target||'';
   const url=btn?.dataset?.pdfUrl||'';
   const name=btn?.dataset?.pdfName||'Dokumen SPJ';
-  if(!targetId || !url){ toast('Berkas PDF tidak tersedia.','warning'); return; }
-  $$('.instrument-pdf-inline').forEach(v=>{if(v.id!==targetId)v.hidden=true;});
-  $$('.instrument-view-pdf-btn').forEach(b=>{if(b!==btn)b.classList.remove('btn-primary');});
-  const viewer=document.getElementById(targetId); if(!viewer)return;
-  const wasHidden=viewer.hidden; viewer.hidden=!wasHidden;
+  if(!targetId || !url){
+    toast('Berkas PDF tidak tersedia.','warning');
+    return;
+  }
+
+  // Hanya satu viewer instrumen dibuka pada satu waktu agar halaman tetap ringkas.
+  $$('.instrument-pdf-inline').forEach(v=>{
+    if(v.id!==targetId) v.hidden=true;
+  });
+  $$('.instrument-view-pdf-btn').forEach(b=>{
+    if(b!==btn) b.classList.remove('btn-primary');
+  });
+
+  const viewer=document.getElementById(targetId);
+  if(!viewer) return;
+
+  const wasHidden=viewer.hidden;
+  viewer.hidden=!wasHidden;
   btn.textContent=viewer.hidden?'👁️ Lihat':'✕ Tutup';
   if(!viewer.hidden){
     const frame=viewer.querySelector('.instrument-pdf-inline-frame');
-    if(frame && !frame.dataset.loaded){
-      frame.dataset.loaded='1';
-      try{ await renderInstrumentPdfLocal_(frame,frame.dataset.fileId,name); }
-      catch(e){ frame.innerHTML=msg('PDF tidak dapat ditampilkan: '+errorText(e),'error'); delete frame.dataset.loaded; }
-    }
+    if(frame && (!frame.src || frame.src==='about:blank')) frame.src=frame.dataset.pdfSrc||pdfPageUrl(url,1);
     viewer.scrollIntoView({behavior:'smooth',block:'nearest'});
   }
 };
@@ -4229,7 +4188,7 @@ window.openPdfInteractive=async function(){
 
 function renderPdfInteractive(x){
   const area=$('#pdfInteractiveArea');
-  const docs=x.docs||[]; const tx=x.tx||[]; const findings=x.findings||[]; const a=x.assessment||{}; const details=x.details||[];
+  const rawDocs=x.docs||[]; const docMap={}; rawDocs.forEach(d=>{const k=String(d.file_id||d.id_dokumen||''); if(k && (!docMap[k] || Number(d.versi||0)>Number(docMap[k].versi||0))) docMap[k]=d;}); const docs=Object.values(docMap); const tx=x.tx||[]; const findings=x.findings||[]; const a=x.assessment||{}; const details=x.details||[];
   if(!docs.length){area.innerHTML=msg('Belum ada PDF/bukti yang diunggah untuk periode ini.','warning');return;}
   const activeDoc=docs[0];
   const pageByIndicator={}; details.forEach(d=>{pageByIndicator[String(d.id_indikator)]=d.halaman_bukti||'';});
@@ -4307,36 +4266,31 @@ window.loadInteractiveIndicators=async function(){
   const c=window.__pdfInteractiveContext; if(!c||!isPengawas())return;
   const box=$('#interactiveIndicators'); if(!box)return;
   try{
-    const r=await api('hitungIndikatorDariTemuan',{idPeriode:c.p,npsn:c.n,idAsesmen:c.assessment.id_asesmen});
-    const list=r.data||[];
-    const details=c.details||[];
-    const locked=String(c.assessment.status_asesmen||'').toUpperCase()==='SELESAI';
-    box.innerHTML=list.map((d,i)=>{
-      const dt=details.find(x=>String(x.id_indikator)===String(d.id_indikator));
-      const page=dt?.halaman_bukti||'';
-      const current=(dt?.skor!==''&&dt?.skor!=null)?dt.skor:d.skor;
-      const automatic=dt?.hasil_otomatis??d.skor_otomatis??d.skor;
-      const finding=dt?.id_temuan||'';
-      const pageNow=$('#interactivePage')?.value||page||1;
-      return `<div class="v11-assessment-card" data-indicator="${esc(d.id_indikator)}">
-        <div class="v11-assessment-head">
-          <div><span class="v11-indicator-index">${String(i+1).padStart(2,'0')}</span><div><b>${esc(d.kode_indikator||'INDIKATOR')}</b><div class="v11-assessment-name">${esc(d.nama_indikator||'-')}</div></div></div>
-          <div class="v11-score-chip">${Number(current||0).toFixed(2)}<small>/4</small></div>
-        </div>
-        <div class="v11-assessment-meta"><span>Otomatis <b>${Number(automatic||0).toFixed(2)}</b></span><span>Risiko <b>${Number(d.risiko||0).toFixed(1)}/100</b></span><span>Bukti <b>Hal. ${esc(page||'-')}</b></span></div>
-        ${locked ? `<div class="v11-locked-note">🔒 Penilaian sudah difinalisasi.</div>` : `
-        <div class="v11-assessment-form">
-          <div><label>Keputusan / skor</label><select id="v11score_${esc(d.id_indikator)}"><option value="">Gunakan otomatis (${Number(automatic||0).toFixed(2)})</option>${[0,1,2,3,4].map(v=>`<option value="${v}" ${String(current)===String(v)?'selected':''}>${v} — ${['Sangat baik / tanpa masalah','Perlu perhatian ringan','Temuan minor','Temuan major','Temuan critical'][v]}</option>`).join('')}</select></div>
-          <div><label>Halaman bukti</label><input id="v11page_${esc(d.id_indikator)}" type="number" min="1" value="${esc(page||pageNow||1)}" placeholder="No. halaman"></div>
-        </div>
-        <div style="margin-top:8px"><label>Catatan Pengawas</label><textarea id="v11note_${esc(d.id_indikator)}" rows="2" placeholder="Tambahkan alasan atau catatan pemeriksaan...">${esc(dt?.catatan_pengawas||'')}</textarea></div>
-        <div class="v11-assessment-actions"><button class="btn btn-sm btn-primary" onclick="saveInlinePdfAssessment('${esc(c.assessment.id_asesmen)}','${esc(d.id_indikator)}','${esc(automatic)}','${esc(finding)}')">✓ Simpan Penilaian</button><button class="btn btn-sm btn-light" onclick="focusPdfIndicatorPage('${esc(d.id_indikator)}')">📄 Lihat Bukti</button></div>
-        `}
-      </div>`;
-    }).join('')||'<div class="muted">Belum ada indikator.</div>';
+    const r=await api('getPengawasBkuAnalysis',{idPeriode:c.p,npsn:c.n,idAsesmen:c.assessment.id_asesmen});
+    const data=r||{}; window.__bkuAutoAnalysis=data;
+    const s=data.summary||{};
+    const cards=(data.indicators||[]).map(function(d,i){
+      const locked=String(c.assessment.status_asesmen||'').toUpperCase()==='SELESAI';
+      let form='';
+      if(locked){ form='<div class="v11-locked-note">🔒 Penilaian sudah difinalisasi.</div>'; }
+      else {
+        const opts=[0,1,2,3,4].map(function(v){return '<option value="'+v+'" '+(String(d.skor)===String(v)?'selected':'')+'>'+v+'</option>';}).join('');
+        form='<div class="v11-assessment-form"><div><label>Nilai final</label><select id="bkuScore_'+esc(d.id_indikator)+'"><option value="">Gunakan otomatis ('+Number(d.skor_otomatis||0).toFixed(2)+')</option>'+opts+'</select></div><div><label>Halaman bukti</label><input id="bkuPage_'+esc(d.id_indikator)+'" type="number" min="1" value="'+esc(d.halaman_bukti||$('#interactivePage')?.value||1)+'"></div></div>'+
+        '<div style="margin-top:8px"><label>Catatan Pengawas</label><textarea id="bkuNote_'+esc(d.id_indikator)+'" rows="2" placeholder="Wajib jika mengubah nilai otomatis.">'+esc(d.catatan_pengawas||'')+'</textarea></div>'+
+        '<div class="v11-assessment-actions"><button class="btn btn-sm btn-primary" onclick="saveBkuAutoAssessment(\''+esc(c.assessment.id_asesmen)+'\',\''+esc(d.id_indikator)+'\',\''+esc(d.skor_otomatis)+'\')">✓ Simpan</button><button class="btn btn-sm btn-light" onclick="focusPdfIndicatorPage(\''+esc(d.id_indikator)+'\')">📄 Bukti</button></div>';
+      }
+      return '<div class="v11-assessment-card"><div class="v11-assessment-head"><div><span class="v11-indicator-index">'+String(i+1).padStart(2,'0')+'</span><div><b>'+esc(d.kode_indikator)+'</b><div class="v11-assessment-name">'+esc(d.nama_indikator)+'</div></div></div><div class="v11-score-chip">'+Number(d.skor||0).toFixed(2)+'<small>/4</small></div></div><div class="v11-assessment-meta"><span>Otomatis <b>'+Number(d.skor_otomatis||0).toFixed(2)+'</b></span><span>Status <b>'+esc(d.sumber_penilaian)+'</b></span></div><div class="muted" style="margin:8px 0"><b>Dasar:</b> '+esc(d.basis)+'</div>'+form+'</div>';
+    }).join('');
+    box.innerHTML='<div class="message ok"><b>Analisis automático BKU</b><br><span class="muted">Sumber utama: BKU terstruktur. PDF digunakan untuk verifikasi bukti.</span></div>'+
+      '<div class="cards" style="grid-template-columns:repeat(4,1fr);margin:10px 0"><div class="stat"><small>Transaksi</small><strong>'+(s.total_transaksi||0)+'</strong></div><div class="stat"><small>Dokumen unik</small><strong>'+(s.total_dokumen_unik||0)+'</strong></div><div class="stat"><small>Cocok RKAS</small><strong>'+(s.rkas_cocok||0)+'/'+(s.total_transaksi||0)+'</strong></div><div class="stat"><small>Duplikasi bukti</small><strong>'+(s.duplikasi_bukti||0)+'</strong></div></div>'+(cards||'<div class="muted">Belum ada hasil analisis BKU.</div>');
   }catch(e){box.innerHTML=msg(errorText(e));}
 };
-
+window.saveBkuAutoAssessment=async function(idAsesmen,idIndikator,auto){
+  const scoreEl=$('#bkuScore_'+idIndikator), noteEl=$('#bkuNote_'+idIndikator), pageEl=$('#bkuPage_'+idIndikator);
+  const selected=scoreEl?.value||'', note=noteEl?.value?.trim()||'', score=selected===''?'':Number(selected);
+  if(score!=='' && Math.abs(score-Number(auto))>0.001 && !note){toast('Catatan wajib diisi jika nilai manual berbeda dari nilai otomatis.','warning');return;}
+  try{await api('simpanDetailAsesmen',{data:{id_asesmen:idAsesmen,id_indikator:idIndikator,skor:score,hasil_otomatis:Number(auto),catatan_pengawas:note,halaman_bukti:pageEl?.value||''}});toast(score===''?'Nilai otomatis disimpan.':'Nilai penilaian disimpan.','ok');await openPdfInteractive();}catch(e){toast(errorText(e),'error',5000);}
+};
 window.focusPdfIndicatorPage=function(idIndikator){
   const c=window.__pdfInteractiveContext||{};
   const d=(c.details||[]).find(x=>String(x.id_indikator)===String(idIndikator));
@@ -5147,14 +5101,14 @@ function printV5Archive(){
 .instrument-pdf-inline[hidden]{display:none!important}
 .instrument-pdf-inline-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;background:#fff;border-bottom:1px solid var(--border,#dfe7e2)}
 .instrument-pdf-inline-head strong{display:block;color:var(--primary,#145b46);font-size:.92rem}
-.instrument-pdf-inline-frame{display:block;width:100%;height:min(72vh,760px);min-height:420px;border:0;background:#eef2f0;overflow:auto}.pdf-local-canvas-wrap{min-height:360px;padding:18px;display:flex;justify-content:center;align-items:flex-start;background:#e7ece9}.pdf-local-loading{padding:28px;text-align:center;color:var(--muted) }
+.instrument-pdf-inline-frame{display:block;width:100%;height:min(72vh,760px);min-height:420px;border:0;background:#eef2f0}
 .instrument-view-pdf-btn{transition:all .18s ease}
 .instrument-view-pdf-btn.btn-primary{color:#fff}
 @media(max-width:760px){
   .instrument-pdf-inline-frame{height:65vh;min-height:360px}
   .instrument-pdf-inline-head{align-items:flex-start;flex-direction:column}
 }
-.simpel-brand-gold{color:#D4AF37!important;text-shadow:0 1px 2px rgba(0,0,0,.18)}.simpel-brand-gold-sub{color:#E7C96A!important;font-weight:700}</style></head><body>${kop}${body}<script>window.onload=()=>setTimeout(()=>window.print(),350)<\/script></body></html>`);
+</style></head><body>${kop}${body}<script>window.onload=()=>setTimeout(()=>window.print(),350)<\/script></body></html>`);
   w.document.close();
 }
 window.loadV5Archive=loadV5Archive;
