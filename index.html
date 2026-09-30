@@ -1923,7 +1923,7 @@ async function renderDokumenTable(){
           </div>
           <button type="button" class="btn btn-light btn-sm" onclick="closeInstrumentPdf('${esc(viewerId)}')">✕ Tutup</button>
         </div>
-        <div class="instrument-pdf-inline-frame" data-file-id="${esc(d.file_id\vert{}\vert{}'')}" data-pdf-name="${esc(d.nama_file || m.nama_spj || 'Dokumen SPJ')}"><div class="muted" style="padding:24px;text-align:center">Klik <b>Lihat</b> untuk memuat PDF secara aman.</div></div>
+        <div class="instrument-pdf-inline-frame" data-file-id="${esc(d.file_id||'')}" data-pdf-name="${esc(d.nama_file || m.nama_spj || 'Dokumen SPJ')}"><div class="muted" style="padding:24px;text-align:center">Klik <b>Lihat</b> untuk memuat PDF secara aman.</div></div>
       </div>` : ''}`;
     }).join('');
 
@@ -5921,9 +5921,9 @@ async function loadV5Archive(){
         <div class="panel">
           <h3>G. PERSETUJUAN & PENGESAHAN</h3>
           <p>Persetujuan sekolah: <b>${appr ? 'TERCATAT' : 'BELUM TERCATAT'}</b></p>
-          ${appr ? `<p>Disetujui oleh: <b>${esc(appr.disetujui_oleh \vert{}\vert{} '-')}</b><br>Waktu:${esc(appr.disetujui_at || '-')}</p>` : ''}
+          ${appr ? `<p>Disetujui oleh: <b>${esc(appr.disetujui_oleh || '-')}</b><br>Waktu:${esc(appr.disetujui_at || '-')}</p>` : ''}
           <p>Pengesahan pengawas: <b>${sig ? 'DISAHKAN SECARA ELEKTRONIK' : 'BELUM DISAHKAN'}</b></p>
-          ${sig ? `<p>Penandatangan: <b>${esc(sig.ditandatangani_oleh || '-')}</b><br>Waktu: ${esc(sig.ditandatangani_at \vert{}\vert{} '-')}<br>Kode pengesahan: <b>${esc(sig.kode_pengesahan || '-')}</b><br>Hash integritas: <code style="word-break:break-all">${esc(sig.integrity_hash || '-')}</code></p><div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap"><img alt="QR Verifikasi Pengesahan" src="https://quickchart.io/qr?size=180&text=${encodeURIComponent(sig.verification_url || '')}" style="width:150px;height:150px;border:1px solid #ddd;padding:5px;background:#fff"><div><b>QR Verifikasi</b><br><span class="muted">Pindai QR untuk membuka halaman verifikasi pengesahan.</span><br><a href="${esc(sig.verification_url || '#')}" target="_blank">Buka verifikasi</a></div></div>` : ''}
+          ${sig ? `<p>Penandatangan: <b>${esc(sig.ditandatangani_oleh || '-')}</b><br>Waktu: ${esc(sig.ditandatangani_at || '-')}<br>Kode pengesahan: <b>${esc(sig.kode_pengesahan || '-')}</b><br>Hash integritas: <code style="word-break:break-all">${esc(sig.integrity_hash || '-')}</code></p><div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap"><img alt="QR Verifikasi Pengesahan" src="https://quickchart.io/qr?size=180&text=${encodeURIComponent(sig.verification_url || '')}" style="width:150px;height:150px;border:1px solid #ddd;padding:5px;background:#fff"><div><b>QR Verifikasi</b><br><span class="muted">Pindai QR untuk membuka halaman verifikasi pengesahan.</span><br><a href="${esc(sig.verification_url || '#')}" target="_blank">Buka verifikasi</a></div></div>` : ''}
         </div>
         
         <div class="panel">
