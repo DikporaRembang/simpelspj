@@ -842,46 +842,28 @@ window.ROLE_MENUS = {
     ]}
   ],
   PENGAWAS: [
-    { id: 'home', label: 'Beranda' },
-    { group: '1. SEKOLAH BINAAN', items: [
-      { id: 'penugasan', label: 'Sekolah Binaan' }
-    ]},
-    { group: '2. PEMERIKSAAN SPJ', items: [
-      { id: 'rkasReview', label: 'RKAS & Realisasi' },
-      { id: 'transaksi', label: 'Transaksi & BKU' },
-      { id: 'pdfInteraktif', label: 'Pemeriksaan BKU & Bukti' },
-      { id: 'crosscheck', label: 'Pemeriksaan & Cross-check' }
-    ]},
-    { group: '3. TEMUAN & TINDAK LANJUT', items: [
-      { id: 'temuan', label: 'Temuan SPJ' },
-      { id: 'pesan', label: 'Pesan & Koordinasi' }
-    ]},
-    { group: '4. PENILAIAN', items: [
-      { id: 'asesmen', label: 'Penilaian SPJ' },
-      { id: 'keberatan', label: 'Kaji Ulang / Keberatan' }
-    ]},
-    { group: '5. HASIL & BANTUAN', items: [
-      { id: 'arsipPenilaianV5', label: 'Arsip Penilaian' },
-      { id: 'tutorialV5', label: 'Panduan SIMPEL SPJ' }
-    ]},
-    { group: 'AKUN', items: [
-      { id: 'ubahPassword', label: 'Ubah Password' }
+    { id:'home', label:'🏠 Beranda' },
+    { id:'penugasan', label:'1. Pilih Sekolah Binaan' },
+    { id:'pdfInteraktif', label:'2. Workbench BKU & Bukti' },
+    { id:'temuan', label:'3. Temuan & Tindak Lanjut' },
+    { id:'asesmen', label:'4. Penilaian SPJ' },
+    { group:'HASIL & LAINNYA', items:[
+      { id:'arsipPenilaianV5', label:'📄 Hasil / Arsip Penilaian' },
+      { id:'pesan', label:'💬 Pesan & Koordinasi' },
+      { id:'keberatan', label:'↻ Kaji Ulang / Keberatan' },
+      { id:'tutorialV5', label:'❓ Panduan' },
+      { id:'ubahPassword', label:'🔐 Ubah Password' }
     ]}
   ],
   SEKOLAH: [
-    { id: 'home', label: 'Beranda' },
-    { group: 'SPJ SAYA', items: [
-      { id: 'dokumenBulanan', label: '📁 SPJ Saya' },
-      { id: 'statusSpj', label: '📊 Status & Hasil' }
-    ]},
-    { group: 'KOMUNIKASI', items: [
-      { id: 'pesan', label: '💬 Pesan & Koordinasi' }
-    ]},
-    { group: 'BANTUAN', items: [
-      { id: 'tutorialV5', label: '📖 Bantuan & Tutorial' }
-    ]},
-    { group: 'AKUN', items: [
-      { id: 'ubahPassword', label: '🔐 Ubah Password' }
+    { id:'home', label:'🏠 Beranda' },
+    { id:'transaksi', label:'1. Tetapkan Excel BKU' },
+    { id:'dokumenBulanan', label:'2. Lengkapi Bukti SPJ' },
+    { id:'statusSpj', label:'3. Status & Hasil' },
+    { group:'LAINNYA', items:[
+      { id:'pesan', label:'💬 Pesan Pengawas' },
+      { id:'tutorialV5', label:'❓ Panduan' },
+      { id:'ubahPassword', label:'🔐 Ubah Password' }
     ]}
   ]
 };
@@ -892,12 +874,12 @@ const SUBMENU_TUTORIALS = {
   sekolah: {title:'Data Sekolah',text:'Pastikan identitas satuan pendidikan dan NPSN benar sebelum dokumen, temuan, dan nilai dikaitkan ke sekolah yang diperiksa.',flow:['Identitas sekolah','Dokumen','Pemeriksaan','Nilai'],current:0},
   penugasan: {title:'Penugasan Pengawas',text:'Penugasan menentukan pengawas yang berwenang memeriksa sekolah dan menjadi penghubung ke proses pemeriksaan serta asesmen.',flow:['Sekolah','Pengawas','Periode','Asesmen'],current:1},
   rkasReview: {title:'Referensi RKAS',text:'Gunakan RKAS sebagai acuan kesesuaian penggunaan dana sebelum mencocokkan transaksi dan bukti SPJ.',flow:['RKAS','Transaksi','Bukti','Temuan'],current:0},
-  transaksi: {title:'Transaksi SPJ',text:'Pilih periode, catat atau impor transaksi BKU, lalu pastikan bukti dan kode rekeningnya siap untuk proses pemeriksaan.',flow:['Periode','Transaksi','Bukti','Cross-check'],current:1},
-  dokumenBulanan: {title:'SPJ Saya',text:'Pilih periode lalu lengkapi setiap komponen dokumen. Status dan langkah berikutnya akan berubah otomatis sesuai kelengkapan berkas.',flow:['Periode','Dokumen','Pemeriksaan','Tindak lanjut'],current:1},
+  transaksi: {title:'Tetapkan Excel BKU',text:'Excel BKU ARKAS adalah sumber transaksi resmi untuk penilaian. Pilih periode, unggah Excel BKU, validasi, lalu tetapkan snapshot aktif.',flow:['Periode','Excel BKU','Bukti SPJ','Penilaian'],current:1},
+  dokumenBulanan: {title:'Lengkapi Bukti SPJ',text:'Setelah Excel BKU ditetapkan, unggah dokumen bukti yang diperlukan. Bukti dipakai untuk verifikasi transaksi, bukan sebagai sumber transaksi utama.',flow:['Excel BKU','Bukti SPJ','Pemeriksaan','Hasil'],current:1},
   statusSpj: {title:'Status & Hasil',text:'Gunakan halaman ini untuk melihat posisi SPJ dalam satu alur: dari upload, pemeriksaan, temuan, sampai hasil penilaian.',flow:['Upload','Diperiksa','Temuan','Hasil'],current:1},
   statusSekolah: {title:'Status Sekolah',text:'Ringkasan ini menyatukan identitas sekolah, penugasan, RKAS, kelengkapan SPJ, temuan, dan hasil penilaian pada satu periode.',flow:['Identitas','RKAS & SPJ','Pemeriksaan','Hasil'],current:1},
   monitoringGlobal: {title:'Monitoring SPJ',text:'Dinas melihat kondisi pelaksanaan dan pemeriksaan secara agregat untuk menentukan sekolah atau periode yang perlu ditindaklanjuti.',flow:['Status','Temuan','Tindak lanjut','Rekap'],current:0},
-  pdfInteraktif: {title:'Pemeriksaan BKU & Bukti',text:'Mulai dari RKAS dan transaksi BKU. Sistem mendistribusikan transaksi ke Buku Bank, Kas Tunai, dan Pajak; PDF dipakai sebagai bukti cross-check.',flow:['RKAS','BKU','Distribusi Buku','Bukti','Penilaian'],current:1},
+  pdfInteraktif: {title:'Workbench BKU & Bukti',text:'Pilih sekolah dan periode. Sistem memakai Excel BKU sebagai ledger resmi, mencocokkannya dengan RKAS, membentuk buku pembantu, lalu menampilkan exception dan bukti untuk diperiksa.',flow:['Sekolah','Excel BKU','Exception & Bukti','Penilaian'],current:1},
   crosscheck: {title:'Pemeriksaan SPJ',text:'Pengawas memeriksa dokumen dan transaksi secara silang. Hasil pemeriksaan menjadi dasar terbentuknya temuan dan skor indikator.',flow:['Dokumen','Cross-check','Temuan','Indikator'],current:1},
   temuan: {title:'Temuan SPJ',text:'Temuan harus berbasis bukti. Hanya temuan yang telah diverifikasi TERBUKTI yang memengaruhi skor otomatis.',flow:['Bukti','Temuan','Verifikasi','Skor'],current:1},
   asesmen: {title:'Penilaian SPJ',text:'Sistem menghitung skor indikator dari temuan terverifikasi, menerapkan bobot, lalu menghasilkan nilai kualitas dan nilai akhir.',flow:['Temuan terbukti','Skor indikator','Bobot','Nilai akhir'],current:2},
@@ -1767,9 +1749,9 @@ function setActive(view){
           <div id="schoolHomeStatus">${loading('Menyusun status SPJ...')}</div>
         </section>
         <section class="school-quick-grid">
-          <button class="school-quick-card" onclick="loadView('dokumenBulanan')"><span>📁</span><div><strong>SPJ Saya</strong><small>Lengkapi dokumen dan bukti SPJ.</small></div><b>→</b></button>
-          <button class="school-quick-card" onclick="loadView('statusSpj')"><span>📊</span><div><strong>Status & Hasil</strong><small>Lihat pemeriksaan, temuan, dan nilai.</small></div><b>→</b></button>
-          <button class="school-quick-card" onclick="loadView('pesan')"><span>💬</span><div><strong>Hubungi Pengawas</strong><small>Klarifikasi atau tindak lanjut.</small></div><b>→</b></button>
+          <button class="school-quick-card" onclick="loadView('transaksi')"><span>📊</span><div><strong>1. Excel BKU</strong><small>Tetapkan sumber transaksi resmi untuk penilaian.</small></div><b>→</b></button>
+          <button class="school-quick-card" onclick="loadView('dokumenBulanan')"><span>📁</span><div><strong>2. Bukti SPJ</strong><small>Lengkapi dokumen pendukung transaksi.</small></div><b>→</b></button>
+          <button class="school-quick-card" onclick="loadView('statusSpj')"><span>✅</span><div><strong>3. Status & Hasil</strong><small>Lihat pemeriksaan, temuan, dan nilai.</small></div><b>→</b></button>
         </section>
       </div>`;
 
@@ -1784,9 +1766,10 @@ function setActive(view){
         if(p) state.selectedPeriode=p;
         const label=periods.find(x=>String(x.id_periode)===String(p));
         $('#schoolHomePeriodLabel').textContent=label?.nama_periode || p || 'Belum ada periode aktif';
-        const [statusRes,ringRes]=await Promise.all([
+        const [statusRes,ringRes,bkuRes]=await Promise.all([
           safeApi('getStatusSPJ',{idPeriode:p},{data:[]}),
-          safeApi('getRingkasanSPJ',{idPeriode:p},{status_umum:'BELUM_DIMULAI',ringkasan:{}})
+          safeApi('getRingkasanSPJ',{idPeriode:p},{status_umum:'BELUM_DIMULAI',ringkasan:{}}),
+          safeApi('getBkuLedgerWorkbench',{idPeriode:p,npsn:npsn},{source:{},summary:{}})
         ]);
         const items=Array.isArray(statusRes?.data)?statusRes.data:[];
         const ring=ringRes?.ringkasan||{};
@@ -1797,17 +1780,28 @@ function setActive(view){
         const progress=required?Math.round(complete/required*100):0;
         const repair=items.filter(x=>upper(x.status||'')==='PERLU_PERBAIKAN').length;
         const waiting=items.filter(x=>upper(x.status||'')==='DALAM_PEMERIKSAAN').length;
-        let action='Mulai melengkapi SPJ periode ini.', actionType='action';
-        if(repair) action=`Ada ${repair} komponen yang perlu diperbaiki.`;
-        else if(required && complete>=required) action=ringRes?.status_umum==='DALAM_PEMERIKSAAN' || waiting ? 'SPJ sudah lengkap dan sedang menunggu pemeriksaan Pengawas.' : 'SPJ sudah lengkap. Periksa status dan hasil penilaian.';
-        else if(complete) action=`Lengkapi ${Math.max(0,required-complete)} komponen SPJ yang belum selesai.`;
-        const actionView=repair||complete>=required?'statusSpj':'dokumenBulanan';
+        const bkuSource=bkuRes?.source||{};
+        const hasExcelBku=!!bkuSource.id_import;
+        let action='', actionView='transaksi';
+        if(!hasExcelBku){
+          action='Tetapkan Excel BKU ARKAS sebagai sumber transaksi resmi periode ini.';
+          actionView='transaksi';
+        }else if(repair){
+          action=`Ada ${repair} komponen bukti yang perlu diperbaiki.`;
+          actionView='dokumenBulanan';
+        }else if(required && complete>=required){
+          action=ringRes?.status_umum==='DALAM_PEMERIKSAAN' || waiting ? 'BKU dan bukti sudah siap. Sekarang menunggu pemeriksaan Pengawas.' : 'BKU dan bukti sudah lengkap. Lihat status dan hasil penilaian.';
+          actionView='statusSpj';
+        }else{
+          action=`Excel BKU sudah aktif. Lengkapi ${Math.max(0,required-complete)} komponen bukti SPJ.`;
+          actionView='dokumenBulanan';
+        }
         area.innerHTML=`
-          <div class="school-progress-head"><div><div class="school-eyebrow">STATUS SPJ</div><strong>${esc(ringRes?.status_umum||'BELUM DIMULAI')}</strong></div><div class="school-progress-number">${progress}%</div></div>
-          <div class="school-progress-track"><span style="width:${Math.min(100,progress)}%"></span></div>
-          <div class="school-progress-meta"><span>${fmtNum(complete)} dari ${fmtNum(required)} komponen selesai</span><span>${na?fmtNum(na)+' N/A':''}</span></div>
-          <div class="school-next-action ${repair?'danger':''}"><div><span class="school-eyebrow">LANGKAH BERIKUTNYA</span><strong>${esc(action)}</strong></div><button class="btn btn-primary btn-sm" onclick="loadView('${actionView}')">${repair||complete>=required?'Lihat Status':'Lanjutkan'} →</button></div>
-          <div class="school-mini-grid"><div><small>Dokumen</small><b>${fmtNum(complete)}</b></div><div><small>Perlu Perbaikan</small><b>${fmtNum(repair)}</b></div><div><small>Diperiksa</small><b>${fmtNum(waiting)}</b></div><div><small>Periode</small><b>${esc(label?.nama_periode||p||'-')}</b></div></div>`;
+          <div class="school-progress-head"><div><div class="school-eyebrow">ALUR PENILAIAN</div><strong>${hasExcelBku?'Excel BKU sudah ditetapkan':'Excel BKU belum ditetapkan'}</strong></div><div class="school-progress-number">${hasExcelBku?'✓':'1'}</div></div>
+          <div class="school-progress-track"><span style="width:${hasExcelBku?Math.max(34,progress):8}%"></span></div>
+          <div class="school-progress-meta"><span>${hasExcelBku?`${fmtNum(bkuSource.total_valid||0)} transaksi • ${esc(bkuSource.source_name||'Excel BKU')}`:'Langkah pertama wajib: tetapkan Excel BKU'}</span><span>${fmtNum(complete)}/${fmtNum(required)} bukti selesai</span></div>
+          <div class="school-next-action ${repair?'danger':''}"><div><span class="school-eyebrow">LANGKAH BERIKUTNYA</span><strong>${esc(action)}</strong></div><button class="btn btn-primary btn-sm" onclick="loadView('${actionView}')">Buka →</button></div>
+          <div class="school-mini-grid"><div><small>Excel BKU</small><b>${hasExcelBku?'AKTIF':'BELUM'}</b></div><div><small>Bukti SPJ</small><b>${fmtNum(complete)}/${fmtNum(required)}</b></div><div><small>Perlu Perbaikan</small><b>${fmtNum(repair)}</b></div><div><small>Periode</small><b>${esc(label?.nama_periode||p||'-')}</b></div></div>`;
       }catch(e){area.innerHTML=msg(errorText(e));}
     }
     $('#schoolHomeChangePeriod').onclick=()=>openSchoolPeriodPicker();
@@ -1859,9 +1853,9 @@ async function homeView(){
           <div>
             <span class="v17-ph-kicker">SIMPEL SPJ • RUANG KERJA PENGAWAS</span>
             <h2>Selamat datang, ${esc(name)}</h2>
-            <p>Mulai dari sekolah binaan. Setelah memilih sekolah, periksa RKAS dan realisasi, bukti SPJ, temuan, lalu selesaikan penilaian.</p>
+            <p>Alurnya sederhana: pilih sekolah → buka Workbench BKU → tindak lanjuti temuan → selesaikan penilaian.</p>
           </div>
-          <button class="btn btn-primary" onclick="loadView('penugasan')">🏫 Buka Sekolah Binaan →</button>
+          <button class="btn btn-primary" onclick="loadView('penugasan')">1. Pilih Sekolah →</button>
         </section>
 
         <section class="v17-ph-stats">
@@ -1871,13 +1865,12 @@ async function homeView(){
         </section>
 
         <section class="v17-ph-section">
-          <div class="v17-ph-section-head"><div><span class="v17-ph-label">ALUR KERJA</span><h3>Kerjakan secara berurutan</h3></div><span class="muted">1 → 5</span></div>
-          <div class="v17-ph-flow">
-            <button class="v17-ph-step" onclick="loadView('penugasan')"><b>1</b><div><strong>Sekolah Binaan</strong><small>Pilih sekolah yang menjadi tanggung jawab Anda.</small></div><em>→</em></button>
-            <button class="v17-ph-step" onclick="loadView('rkasReview')"><b>2</b><div><strong>RKAS & Realisasi</strong><small>Kenali pagu, realisasi, dan konteks belanja sekolah.</small></div><em>→</em></button>
-            <button class="v17-ph-step" onclick="loadView('pdfInteraktif')"><b>3</b><div><strong>Bukti & Pemeriksaan</strong><small>Periksa dokumen dan bukti yang tersedia.</small></div><em>→</em></button>
-            <button class="v17-ph-step" onclick="loadView('crosscheck')"><b>4</b><div><strong>Cross-check & Temuan</strong><small>Bandingkan bukti, transaksi, dan RKAS; catat temuan.</small></div><em>→</em></button>
-            <button class="v17-ph-step" onclick="loadView('asesmen')"><b>5</b><div><strong>Penilaian SPJ</strong><small>Selesaikan penilaian berdasarkan hasil pemeriksaan.</small></div><em>→</em></button>
+          <div class="v17-ph-section-head"><div><span class="v17-ph-label">ALUR KERJA</span><h3>Kerjakan secara berurutan</h3></div><span class="muted">1 → 4</span></div>
+          <div class="v17-ph-flow v21-simple-flow">
+            <button class="v17-ph-step" onclick="loadView('penugasan')"><b>1</b><div><strong>Pilih Sekolah</strong><small>Tentukan sekolah binaan dan periode yang akan diperiksa.</small></div><em>→</em></button>
+            <button class="v17-ph-step" onclick="loadView('pdfInteraktif')"><b>2</b><div><strong>Workbench BKU</strong><small>Excel BKU, RKAS, buku pembantu, exception, dan bukti ada di satu tempat.</small></div><em>→</em></button>
+            <button class="v17-ph-step" onclick="loadView('temuan')"><b>3</b><div><strong>Temuan</strong><small>Verifikasi hanya exception yang perlu perhatian dan lakukan tindak lanjut.</small></div><em>→</em></button>
+            <button class="v17-ph-step" onclick="loadView('asesmen')"><b>4</b><div><strong>Penilaian</strong><small>Finalisasi skor berdasarkan hasil pemeriksaan yang sudah terverifikasi.</small></div><em>✓</em></button>
           </div>
         </section>
 
@@ -6795,7 +6788,8 @@ function printV5Archive(){
 .instrument-pdf-single-canvas{display:block;max-width:none;height:auto;margin:0 auto;background:#fff;border:1px solid #d7dfda;box-shadow:0 10px 28px rgba(16,42,67,.14)}
 @media(max-width:760px){.instrument-pdf-inline-frame{height:70vh!important;min-height:390px!important}.instrument-pdf-toolbar{justify-content:center}.instrument-pdf-page-control{order:3;width:100%}.instrument-pdf-shortcuts{display:none}.instrument-pdf-stage{padding:8px}}
 </style>
-</head><body>${kop}${body}<script>window.onload=()=>setTimeout(()=>window.print(),350)<\/script></body></html>`);
+</head><body>${kop}${body}<script>window.onload=()=>setTimeout(()=>window.print(),350)<\/script>
+</body></html>`);
   w.document.close();
 }
 window.loadV5Archive=loadV5Archive;
@@ -7442,26 +7436,23 @@ window.executeRkasReplace=async function(){
 /* ================= V16 — SEKOLAH SIMPLE & ELEGANT ================= */
 (function(){
   const schoolMenu = [
-    { id:'home', label:'Beranda' },
-    { group:'KERJA UTAMA', items:[
-      { id:'dokumenBulanan', label:'SPJ Saya' },
-      { id:'statusSpj', label:'Status & Hasil' }
-    ]},
-    { group:'KOMUNIKASI', items:[
-      { id:'pesan', label:'Pesan & Koordinasi' }
-    ]},
-    { group:'BANTUAN', items:[
-      { id:'tutorialV5', label:'Bantuan & Tutorial' },
-      { id:'ubahPassword', label:'Ubah Password' }
+    { id:'home', label:'🏠 Beranda' },
+    { id:'transaksi', label:'1. Tetapkan Excel BKU' },
+    { id:'dokumenBulanan', label:'2. Lengkapi Bukti SPJ' },
+    { id:'statusSpj', label:'3. Status & Hasil' },
+    { group:'LAINNYA', items:[
+      { id:'pesan', label:'💬 Pesan Pengawas' },
+      { id:'tutorialV5', label:'❓ Panduan' },
+      { id:'ubahPassword', label:'🔐 Ubah Password' }
     ]}
   ];
   ROLE_MENUS.SEKOLAH = schoolMenu;
 
   const SCHOOL_PARENT = {
-    dokumenBulanan:'home',
-    statusSpj:'home',
-    transaksi:'dokumenBulanan',
-    rkasReview:'dokumenBulanan',
+    dokumenBulanan:'transaksi',
+    statusSpj:'dokumenBulanan',
+    transaksi:'home',
+    rkasReview:'transaksi',
     pdfInteraktif:'statusSpj',
     arsipPenilaianV5:'statusSpj',
     temuan:'statusSpj',
@@ -7509,7 +7500,7 @@ window.executeRkasReplace=async function(){
     const isS = String(state?.user?.role||'').toUpperCase()==='SEKOLAH';
     if(!isS || state.view==='home') return base;
     const parent = schoolNav[schoolNav.length-1] || SCHOOL_PARENT[state.view] || 'home';
-    const labels={home:'Beranda',dokumenBulanan:'SPJ Saya',statusSpj:'Status & Hasil',transaksi:'Transaksi',rkasReview:'RKAS',pdfInteraktif:'Bukti & Penilaian',arsipPenilaianV5:'Arsip Penilaian',temuan:'Temuan',keberatan:'Keberatan',asesmen:'Penilaian',pesan:'Pesan & Koordinasi',tutorialV5:'Bantuan',ubahPassword:'Akun'};
+    const labels={home:'Beranda',dokumenBulanan:'Bukti SPJ',statusSpj:'Status & Hasil',transaksi:'Excel BKU',rkasReview:'RKAS',pdfInteraktif:'Bukti & Penilaian',arsipPenilaianV5:'Arsip Penilaian',temuan:'Temuan',keberatan:'Keberatan',asesmen:'Penilaian',pesan:'Pesan & Koordinasi',tutorialV5:'Bantuan',ubahPassword:'Akun'};
     return `<div class="v16-breadcrumb"><button class="v16-back" type="button" onclick="schoolGoBack()">← Kembali ke ${esc(labels[parent]||'sebelumnya')}</button><span>•</span><span>${esc(labels[state.view]||title)}</span></div>` + base;
   };
 
@@ -7528,33 +7519,47 @@ window.executeRkasReplace=async function(){
       periods=r.data||[];
       if(!period && periods[0]){ period=periods[0].id_periode||periods[0].id||''; state.selectedPeriode=period; }
     }catch(e){}
-    let spj=[];
+
+    let spj=[]; let bku={source:{},summary:{}};
     if(period){
-      const r=await safeApi('getStatusSPJ',{idPeriode:period},{data:[]});
-      spj=r.data||[];
+      const [sr,br]=await Promise.all([
+        safeApi('getStatusSPJ',{idPeriode:period},{data:[]}),
+        safeApi('getBkuLedgerWorkbench',{idPeriode:period,npsn:npsn},{source:{},summary:{}})
+      ]);
+      spj=sr.data||[]; bku=br||{source:{},summary:{}};
     }
     const total=spj.length;
     const done=spj.filter(x=>!['BELUM_UPLOAD','N/A'].includes(upper(x.status||''))).length;
     const repair=spj.filter(x=>upper(x.status||'')==='PERLU_PERBAIKAN').length;
     const pct=total?Math.round(done/total*100):0;
-    const next = repair ? 'Ada dokumen yang perlu diperbaiki.' : total && done<total ? `${total-done} dokumen SPJ belum lengkap.` : total ? 'SPJ periode ini sudah lengkap.' : 'Pilih periode untuk mulai mengelola SPJ.';
-    const action = repair||done<total ? 'dokumenBulanan' : 'statusSpj';
+    const src=bku.source||{};
+    const hasExcel=!!src.id_import;
+    let next='', action='transaksi', actionLabel='Tetapkan Excel BKU';
+    if(!hasExcel){
+      next='Tetapkan Excel BKU ARKAS terlebih dahulu. Ini menjadi sumber transaksi resmi untuk penilaian.';
+    }else if(repair){
+      next=`Ada ${repair} bukti/dokumen yang perlu diperbaiki.`; action='dokumenBulanan'; actionLabel='Perbaiki Bukti';
+    }else if(total && done<total){
+      next=`Excel BKU sudah aktif. Lengkapi ${total-done} komponen bukti SPJ.`; action='dokumenBulanan'; actionLabel='Lengkapi Bukti';
+    }else{
+      next='BKU dan bukti sudah siap. Lihat status pemeriksaan dan hasil penilaian.'; action='statusSpj'; actionLabel='Lihat Status';
+    }
     const periodName=periods.find(x=>String(x.id_periode||x.id)===String(period))?.nama_periode || 'Periode aktif';
     $('#mainContent').innerHTML=`
       <div class="v16-school-home">
         <section class="v16-hero">
-          <div><span class="v16-kicker">SIMPEL SPJ • SEKOLAH</span><h1>Halo, ${esc(name)}</h1><p>Kelola SPJ dengan langkah yang singkat. Sistem akan menunjukkan apa yang perlu Anda lakukan berikutnya.</p></div>
+          <div><span class="v16-kicker">SIMPEL SPJ • SEKOLAH</span><h1>Halo, ${esc(name)}</h1><p>Ikuti 3 langkah saja: tetapkan Excel BKU, lengkapi bukti, lalu pantau hasil pemeriksaan.</p></div>
           <div class="v16-school-id"><span>🏫</span><div><b>${esc(state.user?.nama_sekolah||name)}</b><small>NPSN ${esc(npsn)}</small></div></div>
         </section>
         <section class="v16-period"><div><small>PERIODE AKTIF</small><strong>${esc(periodName)}</strong></div><button class="btn btn-light btn-sm" onclick="schoolChoosePeriod()">Ganti Periode</button></section>
-        <section class="v16-next ${repair?'danger':''}"><div><small>LANGKAH BERIKUTNYA</small><h2>${esc(next)}</h2><p>${repair?'Periksa dokumen yang ditandai perlu perbaikan dan lengkapi kembali.':'Ikuti satu langkah utama di bawah ini. Anda tidak perlu membuka banyak menu.'}</p></div><button class="btn btn-primary" onclick="loadView('${action}')">${repair||done<total?'Lengkapi SPJ':'Lihat Hasil'} →</button></section>
-        <section class="v16-progress"><div class="v16-progress-head"><div><small>KEMAJUAN SPJ</small><strong>${pct}%</strong></div><span>${done} dari ${total} komponen selesai</span></div><div class="v16-track"><i style="width:${pct}%"></i></div></section>
-        <section class="v16-steps">
-          <button onclick="loadView('dokumenBulanan')"><span>1</span><div><b>SPJ Saya</b><small>Transaksi dan dokumen</small></div><em>→</em></button>
-          <button onclick="loadView('statusSpj')"><span>2</span><div><b>Status & Hasil</b><small>Pemeriksaan, temuan, nilai</small></div><em>→</em></button>
-          <button onclick="loadView('pesan')"><span>3</span><div><b>Pesan</b><small>Hubungi Pengawas/Dinas</small></div><em>→</em></button>
+        <section class="v16-next ${repair?'danger':''}"><div><small>LANGKAH BERIKUTNYA</small><h2>${esc(next)}</h2><p>${hasExcel?`${fmtNum(src.total_valid||0)} transaksi berasal dari ${esc(src.source_name||'Excel BKU aktif')}.`:'Penilaian belum dimulai sebelum Excel BKU ditetapkan.'}</p></div><button class="btn btn-primary" onclick="loadView('${action}')">${esc(actionLabel)} →</button></section>
+        <section class="v16-progress"><div class="v16-progress-head"><div><small>STATUS ALUR</small><strong>${hasExcel?'BKU AKTIF':'BELUM ADA BKU'}</strong></div><span>${done} dari ${total} bukti selesai</span></div><div class="v16-track"><i style="width:${hasExcel?Math.max(34,pct):8}%"></i></div></section>
+        <section class="v16-steps v21-school-steps">
+          <button onclick="loadView('transaksi')"><span>${hasExcel?'✓':'1'}</span><div><b>Excel BKU</b><small>${hasExcel?'Snapshot aktif':'Tetapkan sumber transaksi'}</small></div><em>→</em></button>
+          <button onclick="loadView('dokumenBulanan')"><span>2</span><div><b>Bukti SPJ</b><small>Lengkapi dokumen pendukung</small></div><em>→</em></button>
+          <button onclick="loadView('statusSpj')"><span>3</span><div><b>Status & Hasil</b><small>Pemeriksaan, temuan, nilai</small></div><em>✓</em></button>
         </section>
-        <div class="v16-tip">💡 <span><b>Satu prinsip:</b> kerjakan hanya langkah yang ditunjukkan sistem. Setelah SPJ lengkap, Anda tinggal menunggu pemeriksaan Pengawas.</span></div>
+        <div class="v16-tip">💡 <span><b>Prinsip:</b> Excel BKU adalah sumber transaksi resmi. PDF dan dokumen lain hanya menjadi bukti pendukung pemeriksaan.</span></div>
       </div>`;
   };
   window.schoolChoosePeriod = async function(){
@@ -7564,5 +7569,15 @@ window.executeRkasReplace=async function(){
   };
 })();
 </script>
+
+<style id="v21SimpleNavStyles">
+.v21-simple-flow{grid-template-columns:repeat(4,minmax(0,1fr))!important}
+.v21-school-steps{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+.sidebar .nav-btn{min-height:42px;line-height:1.3}
+.sidebar>.nav-group{gap:4px}
+.nav-section-title{margin-bottom:6px}
+@media(max-width:1050px){.v21-simple-flow{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
+@media(max-width:680px){.v21-simple-flow,.v21-school-steps{grid-template-columns:1fr!important}}
+</style>
 </body>
 </html>
