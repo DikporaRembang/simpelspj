@@ -2169,7 +2169,8 @@ function _v222EvidenceProfile_(m, summaries){
     return {kind:'outflow',target:targets.ssp_pajak_pusat||{},source:'Buku Pembantu Pajak',title:'Setoran pajak pusat yang perlu dibuktikan',allowNA:false,tax:true};
   }
   if(/SSP.*PAJAK.*DAERAH|SSP PAJAK DAERAH|PAJAK DAERAH/.test(s)){
-    return {kind:'manual_optional',target:targets.ssp_pajak_daerah||{},source:'Manual',title:'SSP Pajak Daerah',allowNA:true};
+    const t=targets.ssp_pajak_daerah||{};
+    return {kind:'manual_optional',target:t,source:'Buku Pembantu Pajak',title:'SSP Pajak Daerah',allowNA:t.allow_na===true};
   }
   if(/FOTO|DOKUMENTASI/.test(s)){
     return {kind:'outflow',target:targets.foto_dokumentasi||{},source:'Buku Pembantu Kas Tunai',title:'Belanja yang didukung dokumentasi',coverage:true};
@@ -2182,12 +2183,16 @@ function _v222BookSummaryHtml_(m,summaries){
   if(profile.kind==='none')return '';
 
   if(profile.kind==='manual_optional'){
+    const x=profile.target||{};
+    const localValue=Number(x.target_value||0);
     return `<div class="v221-book-summary v222-support-summary v222-manual">
       <div class="v221-book-summary-head">
         <span class="v221-book-source">🧾 ${esc(profile.title)}</span>
-        <span class="v222-rule-badge">ADA / N/A</span>
+        <span class="v222-rule-badge">${localValue>0?'TERDETEKSI DI BKU':'ADA / N/A'}</span>
       </div>
-      <div class="muted">Tidak berasal dari transaksi BKU. Sekolah memilih <b>Ada</b> dengan mengunggah PDF, atau <b>N/A</b> bila memang tidak terdapat pajak daerah pada periode ini.</div>
+      ${localValue>0
+        ? `<div class="v222-target-value"><small>Setoran SSPD / Pajak Daerah dari BKU</small><strong>${fmtRupiah(localValue)}</strong></div><div class="v222-rule-note">Karena BKU memuat SSPD/Pajak Daerah, komponen ini <b>tidak boleh N/A</b> untuk periode tersebut.</div>`
+        : `<div class="muted">Tidak ada SSPD/Pajak Daerah yang teridentifikasi pada BKU periode ini. Sekolah dapat mengunggah PDF bila ada, atau memilih <b>N/A</b>.</div>`}
     </div>`;
   }
 
@@ -2204,6 +2209,15 @@ function _v222BookSummaryHtml_(m,summaries){
     const receiveLabel=key==='tax'?'Pungutan / Penerimaan':'Jumlah Penerimaan';
     const expenseLabel=key==='tax'?'Setoran / Pengeluaran':'Jumlah Pengeluaran';
     const saldoLabel=key==='tax'?'Saldo Pajak':'Saldo Akhir';
+    const auditNote=key==='tax'
+      ? `<div class="v223-tax-audit">
+          <span>Eksplisit: <b>${fmtNum(x.explicit_count||0)} baris</b></span>
+          <span>Terinferensi: <b>${fmtNum(x.inferred_count||0)} baris</b></span>
+          <span>PPh/PPN: <b>${fmtRupiah(x.pusat?.pengeluaran??x.pusat?.setor??0)}</b></span>
+          <span>SSPD: <b>${fmtRupiah(x.daerah?.pengeluaran??x.daerah?.setor??0)}</b></span>
+          <span>Jenis tidak terbaca: <b>${fmtRupiah(x.inferred_unknown?.pengeluaran??x.inferred_unknown?.setor??0)}</b></span>
+        </div>`
+      : '';
     return `<div class="v221-book-summary" data-book="${key}">
       <div class="v221-book-summary-head">
         <span class="v221-book-source">📊 Sumber: Excel BKU</span>
@@ -2214,6 +2228,7 @@ function _v222BookSummaryHtml_(m,summaries){
         <div><small>${expenseLabel}</small><strong>${fmtRupiah(x.pengeluaran||0)}</strong></div>
         <div><small>${saldoLabel}</small><strong>${fmtRupiah(x.saldo_akhir||0)}</strong></div>
       </div>
+      ${auditNote}
     </div>`;
   }
 
@@ -2237,7 +2252,7 @@ function _v222BookSummaryHtml_(m,summaries){
     const value=Number(x.target_value||0);
     const badgeText=profile.tax?'WAJIB • TIDAK N/A':(profile.coverage?'AKUMULASI BUKTI':'NILAI ACUAN');
     const note=profile.tax
-      ? `Nilai ini berasal dari <b>uang keluar/setoran Buku Pembantu Pajak</b>. SSP Pajak Pusat tidak dapat ditandai N/A.`
+      ? `Target di atas hanya setoran <b>PPN/PPh yang teridentifikasi eksplisit</b>. Pajak dengan uraian hanya "Terima/Setor" tidak dipaksakan sebagai Pajak Pusat; nilai belum terklasifikasi: <b>${fmtRupiah(x.inferred_unclassified_value||0)}</b>. Total seluruh setoran Buku Pajak: <b>${fmtRupiah(x.total_tax_outflow||value)}</b>.`
       : `Dokumen berfungsi mendukung belanja. Nilai setiap PDF tidak harus sama dengan total ini; yang dinilai adalah <b>cakupan/akumulasi bukti</b> terhadap total uang keluar.`;
     return `<div class="v221-book-summary v222-support-summary">
       <div class="v221-book-summary-head">
@@ -9302,6 +9317,26 @@ body.theme-sekolah .v221-book-summary{background:#F7F8FE}
   .v222-two-values{grid-template-columns:1fr!important}
   .v222-target-value{align-items:flex-start;flex-direction:column}
 }
+</style>
+
+
+<style id="v223TaxAuditFix">
+.v223-tax-audit{
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px 10px;
+  margin-top:8px;
+  padding-top:8px;
+  border-top:1px dashed var(--role-border,var(--border));
+  color:var(--muted);
+  font-size:.65rem;
+}
+.v223-tax-audit span{
+  padding:3px 6px;
+  border-radius:7px;
+  background:rgba(255,255,255,.72);
+}
+.v223-tax-audit b{color:var(--text)}
 </style>
 
 </body>
