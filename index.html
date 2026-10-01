@@ -818,28 +818,8 @@ const API_URL = 'https://script.google.com/macros/s/AKfycbyWvJXKr1QZ1zwbeJDoULTU
 // 1. DEKLARASIKAN ROLE_MENUS DI SINI (PALING ATAS)
 window.ROLE_MENUS = {
   DINAS: [
-    { id: 'home', label: 'Beranda' },
-    { group: 'PERSIAPAN', items: [
-      { id: 'masterSpj', label: 'Master SPJ & Periode' },
-      { id: 'sekolah', label: 'Data Sekolah' },
-      { id: 'penugasan', label: 'Penugasan Pengawas' }
-    ]},
-    { group: 'ANGGARAN', items: [
-      { id: 'rkasReview', label: 'Referensi RKAS' },
-      { id: 'transaksi', label: 'Realisasi SPJ' }
-    ]},
-    { group: 'MONITORING & PENILAIAN', items: [
-      { id: 'monitoringGlobal', label: 'Monitoring SPJ' },
-      { id: 'temuan', label: 'Temuan SPJ' }
-    ]},
-    { group: 'KOMUNIKASI', items: [
-      { id: 'pesan', label: 'Pesan & Koordinasi' }
-    ]},
-    { group: 'SISTEM', items: [
-      { id: 'dbCheck', label: 'Validasi Database' },
-      { id: 'tutorialV5', label: '📖 Tutorial SIMPEL SPJ' },
-      { id: 'arsipPenilaianV5', label: '🖨️ Arsip Penilaian' }
-    ]}
+    { id:'home', label:'🏠 Beranda Laporan' },
+    { id:'arsipPenilaianV5', label:'🖨️ Laporan Penilaian SPJ' }
   ],
   PENGAWAS: [
     { id:'home', label:'🏠 Beranda' },
@@ -5545,6 +5525,12 @@ function renderV20BkuWorkbenchHtml_(wb, docs){
   const budgetCount=Number(s.total_transaksi_belanja||s.total_transaksi||0); const pct=budgetCount?Math.round((Number(s.rkas_cocok||0)/budgetCount)*100):0;
   const b=books.bank||{}, c=books.cash||{}, t=books.tax||{};
   const derived=wb.derived_books||{}, dx=derived.crosscheck||{};
+  window.__v217Workbench=wb;
+  const pdfBtn=(type,obj)=>{
+    if(type==='PAJAK' && Number(obj.count||0)===0) return '<span class="badge badge-info">Tidak ada pajak</span>';
+    if(!obj.document?.file_id) return '<span class="badge badge-warning">PDF belum upload</span>';
+    return `<button class="btn btn-light btn-sm" onclick="runDerivedPdfCrossCheck('${type}','${esc(obj.document.file_id)}')">🔎 Cross-check PDF</button>`;
+  };
   const bankRows=derived.bank?.rows||[], cashRows=derived.cash?.rows||[], taxRows=derived.tax?.rows||[];
   const statusIcon=v=>v?'✓':'⚠'; const statusClass=v=>v?'badge-success':'badge-danger';
   const bookRows=(arr,type)=>arr.slice(0,40).map(x=>`<tr><td>${esc(x.tanggal_transaksi||'-')}</td><td>${esc(x.source_row||'-')}</td><td>${esc(x.nomor_bukti||'-')}</td><td>${esc(x.kode_rekening||'-')}</td><td>${esc(x.uraian||'-')}</td><td>${fmtRupiah(type==='tax'?(x.nilai||0):(x.masuk||0))}</td><td>${type==='tax'?esc(x.arah||'-'):fmtRupiah(x.keluar||0)}</td><td>${type==='tax'?esc(x.jenis_pajak||'-'):fmtRupiah(x.saldo_buku||0)}</td></tr>`).join('');
@@ -5559,11 +5545,11 @@ function renderV20BkuWorkbenchHtml_(wb, docs){
       <div class="stat"><small>COCOK RKAS</small><strong>${pct}%</strong><div class="muted">${fmtNum(s.rkas_cocok||0)} dari ${fmtNum(budgetCount)} transaksi belanja</div></div>
       <div class="stat"><small>PERLU REVIEW</small><strong>${fmtNum(s.jumlah_exception||0)}</strong><div class="muted">Exception prioritas</div></div>
     </div>
-    <div class="message ok" style="margin-bottom:14px"><b>Perhitungan akuntansi:</b> Realisasi RKAS hanya berasal dari pengeluaran belanja yang terhubung ke RKAS. Terima Dana, Tarik Tunai/Pergeseran, Terima Pajak, dan Setor Pajak tetap ada di ledger BKU tetapi tidak menambah realisasi RKAS.</div>
+    <div class="message ok" style="margin-bottom:14px"><b>Cross-check ringan:</b> nilai buku berasal dari Excel BKU. OCR PDF hanya dijalankan saat tombol <b>Cross-check PDF</b> ditekan, sehingga aplikasi tetap ringan.<br><b>Perhitungan akuntansi:</b> Realisasi RKAS hanya berasal dari pengeluaran belanja yang terhubung ke RKAS. Terima Dana, Tarik Tunai/Pergeseran, Terima Pajak, dan Setor Pajak tetap ada di ledger BKU tetapi tidak menambah realisasi RKAS.</div>
     <div class="v20-ledger-grid">
-      <article class="v20-ledger-card"><div class="v20-ledger-icon">🏦</div><div><small>LANGSUNG DARI EXCEL BKU</small><h3>Buku Bank</h3><strong>${fmtNum(b.count||0)} baris</strong><span>Saldo ${fmtRupiah(b.saldo_akhir||0)}</span>${docBadge(b.document)}</div></article>
-      <article class="v20-ledger-card"><div class="v20-ledger-icon">💵</div><div><small>LANGSUNG DARI EXCEL BKU</small><h3>Buku Kas Tunai</h3><strong>${fmtNum(c.count||0)} baris</strong><span>Saldo ${fmtRupiah(c.saldo_akhir||0)}</span>${docBadge(c.document)}</div></article>
-      <article class="v20-ledger-card"><div class="v20-ledger-icon">🧾</div><div><small>LANGSUNG DARI EXCEL BKU</small><h3>Buku Pajak</h3><strong>${fmtNum(t.count||0)} baris</strong><span>Saldo pajak ${fmtRupiah(t.saldo_pajak||0)}</span>${docBadge(t.document)}</div></article>
+      <article class="v20-ledger-card"><div class="v20-ledger-icon">🏦</div><div><small>HASIL DISTRIBUSI EXCEL BKU</small><h3>Buku Bank</h3><strong>${fmtNum(b.count||0)} baris</strong><span>Masuk ${fmtRupiah(b.masuk||0)} • Keluar ${fmtRupiah(b.keluar||0)} • Saldo ${fmtRupiah(b.saldo_akhir||0)}</span><div style="margin-top:8px">${docBadge(b.document)} ${pdfBtn('BANK',b)}</div><div id="v217PdfCmpBANK" style="margin-top:8px"></div></div></article>
+      <article class="v20-ledger-card"><div class="v20-ledger-icon">💵</div><div><small>HASIL DISTRIBUSI EXCEL BKU</small><h3>Buku Kas Tunai</h3><strong>${fmtNum(c.count||0)} baris</strong><span>Masuk ${fmtRupiah(c.masuk||0)} • Keluar ${fmtRupiah(c.keluar||0)} • Saldo ${fmtRupiah(c.saldo_akhir||0)}</span><div style="margin-top:8px">${docBadge(c.document)} ${pdfBtn('CASH',c)}</div><div id="v217PdfCmpCASH" style="margin-top:8px"></div></div></article>
+      <article class="v20-ledger-card"><div class="v20-ledger-icon">🧾</div><div><small>HASIL DISTRIBUSI EXCEL BKU</small><h3>Buku Pajak</h3><strong>${fmtNum(t.count||0)} baris</strong><span>Pungut ${fmtRupiah(t.pungut||0)} • Setor ${fmtRupiah(t.setor||0)} • Saldo ${fmtRupiah(t.saldo_pajak||0)}</span><div style="margin-top:8px">${docBadge(t.document)} ${pdfBtn('PAJAK',t)}</div><div id="v217PdfCmpPAJAK" style="margin-top:8px"></div></div></article>
     </div>
     <div class="panel" style="margin-top:14px">
       <div class="v20-exception-head"><div><small>CROSS-CHECK OTOMATIS DARI EXCEL BKU</small><h3>Rekonsiliasi Buku Pembantu</h3></div></div>
@@ -5584,6 +5570,34 @@ function renderV20BkuWorkbenchHtml_(wb, docs){
     ${ex.length?`<div class="panel v20-exception-panel"><div class="v20-exception-head"><div><small>EXCEPTION BASED REVIEW</small><h3>Transaksi yang perlu diperiksa (${fmtNum(ex.length)})</h3></div><span class="badge badge-warning">Fokus Pengawas</span></div><div class="table-wrap"><table class="friendly-table"><thead><tr><th>Tanggal</th><th>Bukti</th><th>Kode</th><th>Uraian</th><th>Nilai</th><th>Masalah</th></tr></thead><tbody>${exceptionRows||emptyRow(6)}</tbody></table></div>${ex.length>20?`<div class="muted" style="margin-top:8px">Menampilkan 20 exception pertama dari ${fmtNum(ex.length)}.</div>`:''}</div>`:`<div class="message ok">✓ Tidak ada exception utama yang terdeteksi dari ledger BKU untuk periode ini.</div>`}
   </div>`;
 }
+
+
+function _v217PdfCompareHtml_(r){
+  if(!r)return '';
+  if(r.status==='PDF_BELUM_UPLOAD')return `<div class="message warning">${esc(r.message||'PDF belum diunggah.')}</div>`;
+  if(r.status==='TIDAK_BERLAKU')return `<div class="message info">${esc(r.message||'Tidak berlaku.')}</div>`;
+  const cmp=r.comparison||{}, fields=cmp.fields||[];
+  const type=r.status==='COCOK'?'ok':(r.status==='SELISIH'?'error':'warning');
+  const rows=fields.map(x=>`<tr><td>${esc(x.label)}</td><td>${fmtRupiah(x.expected||0)}</td><td>${x.readable?fmtRupiah(x.pdf||0):'<span class="badge badge-warning">Tidak terbaca</span>'}</td><td>${x.readable?fmtRupiah(x.difference||0):'-'}</td><td>${x.match?'<span class="badge badge-success">COCOK</span>':(x.readable?'<span class="badge badge-danger">SELISIH</span>':'<span class="badge badge-warning">CEK MANUAL</span>')}</td></tr>`).join('');
+  return `<div class="message ${type}" style="margin-bottom:8px"><b>${esc(r.status)}</b> — ${esc(r.message||'')}</div><div class="table-wrap"><table class="friendly-table"><thead><tr><th>Komponen</th><th>Excel BKU</th><th>PDF</th><th>Selisih</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+
+window.runDerivedPdfCrossCheck=async function(bookType,fileId){
+  const wb=window.__v217Workbench||{},c=window.__pdfInteractiveContext||{};
+  const p=wb.id_periode||c.p||state.selectedPeriode||'',n=wb.npsn||c.n||state.selectedNpsn||state.user?.npsn||'';
+  const type=String(bookType||'').toUpperCase(),host=document.getElementById('v217PdfCmp'+type);
+  if(host)host.innerHTML=loading('Membaca total pada PDF...');
+  try{
+    const r=await api('crossCheckDerivedBookPdf',{data:{bookType:type,fileId:fileId,idPeriode:p,npsn:n}});
+    if(host)host.innerHTML=_v217PdfCompareHtml_(r);
+    if(r.status==='COCOK')toast('Cross-check PDF '+type+' cocok dengan Excel BKU.','ok',4500);
+    else if(r.status==='SELISIH')toast('Ada selisih pada PDF '+type+'.','warning',5500);
+    else toast(r.message||'Cross-check selesai.','warning',5000);
+  }catch(e){
+    if(host)host.innerHTML=msg(errorText(e),'error');
+    toast(errorText(e),'error',7000);
+  }
+};
 
 window.runV20BkuOcrReconcile=async function(fileId){
   const c=window.__pdfInteractiveContext||{};
@@ -6590,7 +6604,7 @@ async function arsipPenilaianV5View(){
   const c = $('#mainContent');
   if(!c) return;
 
-  c.innerHTML = head('Arsip Penilaian SPJ', 'Cetak bahan penilaian lengkap per sekolah dan periode') +
+  c.innerHTML = head(isDinas()?'Laporan Penilaian SPJ':'Arsip Penilaian SPJ', isDinas()?'Buka hasil penilaian per sekolah/periode lalu cetak laporan.':'Cetak bahan penilaian lengkap per sekolah dan periode') +
     `<div class="panel">
        <div class="toolbar">
          <input id="v5ArchiveNpsn" placeholder="NPSN sekolah" value="${esc(state.selectedNpsn || state.user?.npsn || '')}">
@@ -7691,5 +7705,33 @@ window.executeRkasReplace=async function(){
 @media(max-width:1050px){.v21-simple-flow{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
 @media(max-width:680px){.v21-simple-flow,.v21-school-steps{grid-template-columns:1fr!important}}
 </style>
+
+<script>
+(function(){
+  const oldLoadView=window.loadView;
+  window.loadView=function(view){
+    const r=String(window.state?.user?.role||'').toUpperCase();
+    if(r==='DINAS' && !['home','arsipPenilaianV5'].includes(String(view)))view='home';
+    return oldLoadView(view);
+  };
+  const previousHome=window.homeView;
+  window.homeView=async function(){
+    const r=String(window.state?.user?.role||'').toUpperCase();
+    if(r!=='DINAS')return previousHome();
+    const c=document.getElementById('mainContent');
+    if(!c)return;
+    c.innerHTML='<div class="ux-home">'+
+      '<section class="ux-hero"><div class="ux-hero-inner"><div class="ux-hero-copy">'+
+      '<div class="ux-hero-kicker">SIMPEL SPJ • DINAS LITE</div>'+
+      '<h2>Laporan Penilaian SPJ</h2>'+
+      '<p>Mode DINAS dibuat ringan. Data transaksi, Workbench BKU, OCR, dan dokumen pemeriksaan tidak dimuat pada akun DINAS.</p>'+
+      '<div style="margin-top:16px"><button class="btn btn-primary" onclick="loadView(&quot;arsipPenilaianV5&quot;)">🖨️ Buka Laporan & Cetak →</button></div>'+
+      '</div></div></section>'+
+      '<div class="message info" style="margin-top:16px"><b>Akses DINAS:</b> melihat hasil penilaian SPJ dan mencetak paket laporan per sekolah/periode.</div>'+
+      '</div>';
+  };
+})();
+</script>
+
 </body>
 </html>
