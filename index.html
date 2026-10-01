@@ -843,8 +843,25 @@ window.resetSimpelApiUrl = function(){
 // 1. DEKLARASIKAN ROLE_MENUS DI SINI (PALING ATAS)
 window.ROLE_MENUS = {
   DINAS: [
-    { id:'home', label:'🏠 Beranda Laporan' },
-    { id:'arsipPenilaianV5', label:'🖨️ Laporan Penilaian SPJ' }
+    { id:'home', label:'🏠 Beranda' },
+    { group:'PENGELOLAAN SPJ', items:[
+      { id:'masterSpj', label:'⚙️ Periode & Master SPJ' },
+      { id:'sekolah', label:'🏫 Data Sekolah' },
+      { id:'penugasan', label:'👥 Penugasan Pengawas' }
+    ]},
+    { group:'ANGGARAN & MONITORING', items:[
+      { id:'rkasReview', label:'📋 RKAS & Anggaran' },
+      { id:'monitoringGlobal', label:'📊 Monitoring SPJ' },
+      { id:'temuan', label:'⚠️ Temuan & Tindak Lanjut' }
+    ]},
+    { group:'HASIL PENILAIAN', items:[
+      { id:'arsipPenilaianV5', label:'🖨️ Laporan Penilaian & Cetak' }
+    ]},
+    { group:'KOMUNIKASI & SISTEM', items:[
+      { id:'pesan', label:'💬 Pesan & Koordinasi' },
+      { id:'dbCheck', label:'✅ Validasi Sistem' },
+      { id:'tutorialV5', label:'❓ Panduan SIMPEL SPJ' }
+    ]}
   ],
   PENGAWAS: [
     { id:'home', label:'🏠 Beranda' },
@@ -7827,29 +7844,188 @@ window.executeRkasReplace=async function(){
 @media(max-width:680px){.v21-simple-flow,.v21-school-steps{grid-template-columns:1fr!important}}
 </style>
 
+
+<style id="v211HomePhotoStyles">
+.v211-office-hero {
+  position:relative;
+  overflow:hidden;
+  border-radius:24px;
+  min-height:280px;
+  margin-bottom:18px;
+  background:#173f39;
+  box-shadow:0 14px 34px rgba(20,55,50,.14);
+}
+.v211-office-hero img {
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  object-position:center;
+}
+.v211-office-hero::after {
+  content:'';
+  position:absolute;
+  inset:0;
+  background:linear-gradient(90deg,rgba(8,36,33,.90) 0%,rgba(8,36,33,.70) 46%,rgba(8,36,33,.18) 100%);
+}
+.v211-office-copy {
+  position:relative;
+  z-index:2;
+  padding:34px;
+  max-width:720px;
+  color:#fff;
+}
+.v211-office-copy .kicker {
+  display:inline-flex;
+  padding:7px 11px;
+  border-radius:999px;
+  background:rgba(255,255,255,.14);
+  backdrop-filter:blur(6px);
+  font-size:.76rem;
+  font-weight:850;
+  letter-spacing:.05em;
+  margin-bottom:14px;
+}
+.v211-office-copy h2 {
+  margin:0 0 8px;
+  color:#fff;
+  font-size:clamp(1.7rem,3vw,2.65rem);
+  line-height:1.08;
+}
+.v211-office-copy p {
+  margin:0;
+  max-width:630px;
+  color:rgba(255,255,255,.9);
+  line-height:1.6;
+}
+.v211-office-actions {
+  display:flex;
+  flex-wrap:wrap;
+  gap:9px;
+  margin-top:18px;
+}
+.v211-dinas-grid {
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:12px;
+  margin-top:14px;
+}
+.v211-dinas-card {
+  border:1px solid var(--border);
+  border-radius:18px;
+  background:#fff;
+  padding:18px;
+  text-align:left;
+  cursor:pointer;
+  transition:.18s ease;
+}
+.v211-dinas-card:hover {
+  transform:translateY(-2px);
+  box-shadow:0 10px 24px rgba(23,75,67,.10);
+}
+.v211-dinas-card b {display:block;color:var(--primary);margin-bottom:5px}
+.v211-dinas-card small {display:block;color:var(--muted);line-height:1.45}
+@media(max-width:900px) {
+  .v211-dinas-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:620px) {
+  .v211-office-hero{min-height:330px}
+  .v211-office-copy{padding:24px}
+  .v211-dinas-grid{grid-template-columns:1fr}
+}
+</style>
+
 <script>
 (function(){
-  const oldLoadView=window.loadView;
-  window.loadView=function(view){
-    const r=String(window.state?.user?.role||'').toUpperCase();
-    if(r==='DINAS' && !['home','arsipPenilaianV5'].includes(String(view)))view='home';
-    return oldLoadView(view);
-  };
-  const previousHome=window.homeView;
-  window.homeView=async function(){
-    const r=String(window.state?.user?.role||'').toUpperCase();
-    if(r!=='DINAS')return previousHome();
+  const OFFICE_PHOTO='https://raw.githubusercontent.com/DikporaRembang/simpelspj/main/kantordindikpora.jpeg';
+
+  function roleNow(){
+    return String(window.state?.user?.role||'').toUpperCase();
+  }
+  function displayName(){
+    return window.state?.user?.nama_pengguna ||
+           window.state?.user?.nama ||
+           window.state?.user?.nama_sekolah ||
+           window.state?.user?.username || '';
+  }
+  function heroHtml(role){
+    const labels={
+      DINAS:'DINAS PENDIDIKAN, PEMUDA DAN OLAHRAGA',
+      PENGAWAS:'RUANG KERJA PENGAWAS',
+      SEKOLAH:'RUANG KERJA SEKOLAH'
+    };
+    const title={
+      DINAS:'SIMPEL SPJ Kabupaten Rembang',
+      PENGAWAS:'Pemeriksaan dan Penilaian SPJ',
+      SEKOLAH:'Pengelolaan dan Cross-check SPJ'
+    };
+    const desc={
+      DINAS:'Kelola periodisasi, sekolah, penugasan, anggaran, monitoring, temuan, serta laporan hasil penilaian dari satu sistem.',
+      PENGAWAS:'Pilih sekolah binaan, periksa distribusi BKU dan PDF pendukung, tindak lanjuti temuan, lalu selesaikan penilaian.',
+      SEKOLAH:'Tetapkan Excel BKU sebagai sumber transaksi, unggah dokumen PDF pembanding, periksa hasil cross-check, dan pantau hasil penilaian.'
+    };
+    return `<section class="v211-office-hero">
+      <img src="${OFFICE_PHOTO}" alt="Kantor Dindikpora Kabupaten Rembang" loading="eager"
+           onerror="this.style.display='none'">
+      <div class="v211-office-copy">
+        <div class="kicker">${labels[role]||'SIMPEL SPJ'}</div>
+        <h2>${title[role]||'SIMPEL SPJ'}</h2>
+        <p>${desc[role]||''}</p>
+      </div>
+    </section>`;
+  }
+
+  function dinasHome(){
     const c=document.getElementById('mainContent');
     if(!c)return;
-    c.innerHTML='<div class="ux-home">'+
-      '<section class="ux-hero"><div class="ux-hero-inner"><div class="ux-hero-copy">'+
-      '<div class="ux-hero-kicker">SIMPEL SPJ • DINAS LITE</div>'+
-      '<h2>Laporan Penilaian SPJ</h2>'+
-      '<p>Mode DINAS dibuat ringan. Data transaksi, Workbench BKU, OCR, dan dokumen pemeriksaan tidak dimuat pada akun DINAS.</p>'+
-      '<div style="margin-top:16px"><button class="btn btn-primary" onclick="loadView(&quot;arsipPenilaianV5&quot;)">🖨️ Buka Laporan & Cetak →</button></div>'+
-      '</div></div></section>'+
-      '<div class="message info" style="margin-top:16px"><b>Akses DINAS:</b> melihat hasil penilaian SPJ dan mencetak paket laporan per sekolah/periode.</div>'+
-      '</div>';
+    const name=displayName();
+    c.innerHTML =
+      heroHtml('DINAS') +
+      `<div class="panel">
+        <div style="display:flex;justify-content:space-between;align-items:start;gap:12px;flex-wrap:wrap">
+          <div>
+            <small class="muted">BERANDA DINAS</small>
+            <h3 style="margin:4px 0 5px">Selamat datang${name?', '+esc(name):''}</h3>
+            <div class="muted">Alur DINAS: konfigurasi → sekolah → penugasan → anggaran → monitoring → hasil penilaian.</div>
+          </div>
+          <button class="btn btn-primary" onclick="loadView('arsipPenilaianV5')">🖨️ Laporan & Cetak</button>
+        </div>
+        <div class="v211-dinas-grid">
+          <button class="v211-dinas-card" onclick="loadView('masterSpj')"><b>⚙️ Periode & Master SPJ</b><small>Tetapkan periodisasi dan komponen penilaian.</small></button>
+          <button class="v211-dinas-card" onclick="loadView('sekolah')"><b>🏫 Data Sekolah</b><small>Kelola satuan pendidikan yang menggunakan SIMPEL SPJ.</small></button>
+          <button class="v211-dinas-card" onclick="loadView('penugasan')"><b>👥 Penugasan Pengawas</b><small>Atur sekolah binaan dan tanggung jawab pemeriksa.</small></button>
+          <button class="v211-dinas-card" onclick="loadView('rkasReview')"><b>📋 RKAS & Anggaran</b><small>Lihat pagu dan konteks anggaran sekolah.</small></button>
+          <button class="v211-dinas-card" onclick="loadView('monitoringGlobal')"><b>📊 Monitoring SPJ</b><small>Pantau progres sekolah dan hasil pemeriksaan.</small></button>
+          <button class="v211-dinas-card" onclick="loadView('temuan')"><b>⚠️ Temuan & Tindak Lanjut</b><small>Pantau temuan yang memerlukan perbaikan atau tindak lanjut.</small></button>
+          <button class="v211-dinas-card" onclick="loadView('arsipPenilaianV5')"><b>🖨️ Laporan Penilaian</b><small>Buka hasil penilaian per sekolah/periode dan cetak.</small></button>
+          <button class="v211-dinas-card" onclick="loadView('pesan')"><b>💬 Pesan & Koordinasi</b><small>Koordinasi dengan sekolah dan pengawas.</small></button>
+          <button class="v211-dinas-card" onclick="loadView('dbCheck')"><b>✅ Validasi Sistem</b><small>Periksa kesehatan struktur data aplikasi.</small></button>
+        </div>
+      </div>
+      <div class="message info" style="margin-top:14px">
+        <b>Prinsip performa:</b> DINAS memperoleh fungsi pengelolaan, monitoring, dan laporan.
+        Workbench transaksi BKU dan OCR PDF tetap khusus SEKOLAH/PENGAWAS agar proses berat tidak membebani akun DINAS.
+      </div>`;
+  }
+
+  // Capture the full home implementation that existed before the old DINAS Lite wrapper.
+  const previousHome=window.homeView;
+
+  window.homeView=async function(){
+    const role=roleNow();
+    if(role==='DINAS'){
+      dinasHome();
+      return;
+    }
+
+    // Preserve the established SEKOLAH / PENGAWAS logic and add the office photo
+    // without removing their current status cards/workflow.
+    await previousHome();
+    const c=document.getElementById('mainContent');
+    if(!c || state.view!=='home')return;
+    if(c.querySelector('.v211-office-hero'))return;
+    c.insertAdjacentHTML('afterbegin',heroHtml(role));
   };
 })();
 </script>
