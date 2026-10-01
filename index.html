@@ -2154,21 +2154,74 @@ window.showInstrumentPdf=async function(btn){
   const wrap=viewer.querySelector('.instrument-pdf-inline-frame');
   if(!wrap) return;
   if(wrap.dataset.loaded==='1') return;
-  wrap.innerHTML=loading('Memuat PDF secara aman...');
+  wrap.innerHTML=loading('Membaca seluruh halaman PDF...');
   try{
     const doc={file_id:fileId,nama_file:name};
     const pdf=await getProtectedPdfDocument_(doc);
-    const page=await pdf.getPage(1);
-    const base=page.getViewport({scale:1});
-    const maxWidth=Math.max(320,Math.min(wrap.clientWidth-24,1000));
-    const scale=Math.min(maxWidth/base.width,1.5);
-    const vp=page.getViewport({scale});
-    const canvas=document.createElement('canvas');
-    canvas.style.display='block';canvas.style.maxWidth='100%';canvas.style.height='auto';canvas.style.margin='0 auto';canvas.style.background='#fff';canvas.style.boxShadow='0 8px 25px rgba(16,42,67,.12)';
-    canvas.width=Math.ceil(vp.width);canvas.height=Math.ceil(vp.height);
-    wrap.innerHTML='';wrap.appendChild(canvas);
-    await page.render({canvasContext:canvas.getContext('2d'),viewport:vp}).promise;
+    const totalPages=Math.max(1,Number(pdf.numPages)||1);
+
+    wrap.innerHTML=`<div class="instrument-pdf-summary"><b>${totalPages} halaman</b><span>Scroll ke bawah untuk membaca seluruh dokumen. Halaman dimuat bertahap agar tetap ringan.</span></div><div class="instrument-pdf-pages"></div>`;
+    const pagesHost=wrap.querySelector('.instrument-pdf-pages');
+    if(!pagesHost) return;
+
+    const slots=[];
+    for(let pageNo=1;pageNo<=totalPages;pageNo++){
+      const slot=document.createElement('section');
+      slot.className='instrument-pdf-page-slot';
+      slot.dataset.page=String(pageNo);
+      slot.innerHTML=`<div class="instrument-pdf-page-label">Halaman ${pageNo} dari ${totalPages}</div><div class="instrument-pdf-page-placeholder">${pageNo<=2?'Menyiapkan halaman...':'Scroll untuk memuat halaman ini'}</div>`;
+      pagesHost.appendChild(slot);
+      slots.push(slot);
+    }
+
+    const rendering=new Set();
+    async function renderPageSlot(slot){
+      if(!slot || slot.dataset.rendered==='1' || rendering.has(slot)) return;
+      rendering.add(slot);
+      const pageNo=Math.max(1,Number(slot.dataset.page)||1);
+      const holder=slot.querySelector('.instrument-pdf-page-placeholder');
+      if(holder) holder.innerHTML=loading(`Memuat halaman ${pageNo} dari ${totalPages}...`);
+      try{
+        const page=await pdf.getPage(pageNo);
+        const base=page.getViewport({scale:1});
+        const available=Math.max(280,Math.min((wrap.clientWidth||1000)-42,1050));
+        const scale=Math.min(available/base.width,1.5);
+        const vp=page.getViewport({scale});
+        const canvas=document.createElement('canvas');
+        canvas.className='instrument-pdf-page-canvas';
+        canvas.width=Math.ceil(vp.width);
+        canvas.height=Math.ceil(vp.height);
+        if(holder){ holder.innerHTML=''; holder.appendChild(canvas); }
+        await page.render({canvasContext:canvas.getContext('2d'),viewport:vp}).promise;
+        slot.dataset.rendered='1';
+      }catch(err){
+        if(holder) holder.innerHTML=msg(`Halaman ${pageNo} tidak dapat ditampilkan: ${errorText(err)}`,'error');
+      }finally{
+        rendering.delete(slot);
+      }
+    }
+
+    // Dua halaman awal langsung disiapkan agar pengguna segera melihat bahwa PDF multi-halaman.
+    await renderPageSlot(slots[0]);
+    if(slots[1]) renderPageSlot(slots[1]);
+
+    if('IntersectionObserver' in window){
+      const observer=new IntersectionObserver(entries=>{
+        entries.forEach(entry=>{
+          if(entry.isIntersecting){
+            renderPageSlot(entry.target);
+            if(entry.target.dataset.rendered==='1') observer.unobserve(entry.target);
+          }
+        });
+      },{root:wrap,rootMargin:'900px 0px',threshold:0.01});
+      slots.slice(1).forEach(slot=>observer.observe(slot));
+      wrap._pdfPageObserver=observer;
+    }else{
+      // Fallback browser lama: render bertahap tanpa IntersectionObserver.
+      for(let i=1;i<slots.length;i++) await renderPageSlot(slots[i]);
+    }
     wrap.dataset.loaded='1';
+    wrap.dataset.pages=String(totalPages);
   }catch(e){ wrap.innerHTML=msg('PDF tidak dapat ditampilkan: '+errorText(e),'error'); }
 };
 
@@ -6256,7 +6309,20 @@ function printV5Archive(){
 .v17-ph-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.v17-ph-card{display:flex;gap:12px;padding:16px;background:#fff;border:1px solid #e2e9e4;border-radius:16px}.v17-ph-card>span{font-size:1.25rem}.v17-ph-card h3{margin:0 0 5px;font-size:.92rem;color:#18352b}.v17-ph-card p{margin:0 0 11px;font-size:.76rem;line-height:1.5;color:#718078}.v17-ph-note{padding:13px 15px;border-left:4px solid #c8a24a;background:#fffdf7;border-radius:12px;color:#68766e;font-size:.78rem}
 @media(max-width:1050px){.v17-ph-flow{grid-template-columns:repeat(2,minmax(0,1fr))}.v17-ph-grid{grid-template-columns:1fr 1fr}.v17-ph-hero{align-items:flex-start;flex-direction:column}.v17-ph-stats{grid-template-columns:1fr 1fr}}
 @media(max-width:650px){.v17-ph-flow,.v17-ph-grid,.v17-ph-stats{grid-template-columns:1fr}.v17-ph-hero{padding:19px}.v17-ph-hero h2{font-size:1.35rem}.v17-ph-step{min-height:auto}}
-</style></head><body>${kop}${body}<script>window.onload=()=>setTimeout(()=>window.print(),350)<\/script></body></html>`);
+</style>
+<style>
+/* V19.3 — Pratinjau Dokumen SPJ multi-halaman, lazy render */
+.instrument-pdf-inline-frame{height:min(78vh,860px)!important;min-height:460px!important;overflow:auto!important;padding:12px!important;background:#e8eeeb!important;scroll-behavior:smooth}
+.instrument-pdf-summary{position:sticky;top:0;z-index:4;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:0 0 12px;padding:9px 12px;border:1px solid #d8e2dc;border-radius:12px;background:rgba(255,255,255,.96);box-shadow:0 3px 12px rgba(16,42,67,.06);font-size:.78rem;color:var(--muted,#687887)}
+.instrument-pdf-summary b{color:var(--primary,#145b46);font-size:.82rem}
+.instrument-pdf-pages{display:flex;flex-direction:column;align-items:center;gap:18px;width:100%}
+.instrument-pdf-page-slot{width:100%;display:flex;flex-direction:column;align-items:center;gap:7px}
+.instrument-pdf-page-label{align-self:center;padding:4px 9px;border-radius:999px;background:#fff;border:1px solid #d9e2dd;color:#69786f;font-size:.7rem;font-weight:800;box-shadow:0 2px 7px rgba(16,42,67,.04)}
+.instrument-pdf-page-placeholder{width:100%;min-height:280px;display:flex;align-items:center;justify-content:center;color:#7b8981;font-size:.8rem}
+.instrument-pdf-page-canvas{display:block;max-width:100%;height:auto;margin:0 auto;background:#fff;border:1px solid #d7dfda;box-shadow:0 10px 28px rgba(16,42,67,.14)}
+@media(max-width:760px){.instrument-pdf-inline-frame{height:70vh!important;min-height:390px!important;padding:8px!important}.instrument-pdf-summary{position:relative}.instrument-pdf-pages{gap:12px}}
+</style>
+</head><body>${kop}${body}<script>window.onload=()=>setTimeout(()=>window.print(),350)<\/script></body></html>`);
   w.document.close();
 }
 window.loadV5Archive=loadV5Archive;
