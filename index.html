@@ -2141,6 +2141,45 @@ async function dokumenBulananView(){
   if(state.selectedPeriode) await renderDokumenTable();
 }
 
+
+function _v221BookKeyFromMaster_(m){
+  const s=upper((m?.nama_spj||'')+' '+(m?.nama_dokumen||'')+' '+(m?.kode_spj||'')+' '+(m?.kode||''));
+  if(/BUKU KAS UMUM|\bBKU\b/.test(s))return 'bku';
+  if(/BUKU PEMBANTU BANK|BUKU BANK/.test(s))return 'bank';
+  if(/BUKU PEMBANTU KAS TUNAI|BUKU KAS TUNAI|KAS TUNAI/.test(s))return 'cash';
+  if(/BUKU PEMBANTU PAJAK|BUKU PAJAK/.test(s))return 'tax';
+  return '';
+}
+
+function _v221BookSummaryHtml_(m, summaries){
+  const key=_v221BookKeyFromMaster_(m);
+  if(!key)return '';
+
+  if(!summaries?.ready){
+    return `<div class="v221-book-summary v221-book-summary-empty">
+      <div class="v221-book-source">📊 Excel BKU</div>
+      <div class="muted">Belum ada snapshot Excel BKU untuk periode ini.</div>
+    </div>`;
+  }
+
+  const x=summaries[key]||{};
+  const receiveLabel=key==='tax'?'Pungutan / Penerimaan':'Jumlah Penerimaan';
+  const expenseLabel=key==='tax'?'Setoran / Pengeluaran':'Jumlah Pengeluaran';
+  const saldoLabel=key==='tax'?'Saldo Pajak':'Saldo Akhir';
+
+  return `<div class="v221-book-summary" data-book="${key}">
+    <div class="v221-book-summary-head">
+      <span class="v221-book-source">📊 Sumber: Excel BKU</span>
+      <span class="v221-book-count">${fmtNum(x.count||0)} baris</span>
+    </div>
+    <div class="v221-book-values">
+      <div><small>${receiveLabel}</small><strong>${fmtRupiah(x.penerimaan||0)}</strong></div>
+      <div><small>${expenseLabel}</small><strong>${fmtRupiah(x.pengeluaran||0)}</strong></div>
+      <div><small>${saldoLabel}</small><strong>${fmtRupiah(x.saldo_akhir||0)}</strong></div>
+    </div>
+  </div>`;
+}
+
 async function renderDokumenTable(){
   const periode = $('#periodeSelect')?.value || state.selectedPeriode;
   const area = $('#dokumenArea');
@@ -2156,8 +2195,14 @@ async function renderDokumenTable(){
     // jika sudah ada, sehingga tidak melakukan request berulang ke server.
     await ensureMasters();
     
-    // Hanya panggil API dokumen sesuai periode yang dipilih
-    const dRes = await api('getDokumenSPJ', { idPeriode: periode });
+    // Dokumen dan ringkasan empat buku utama diambil paralel.
+    // Summary ini ringan dan hanya membawa total hasil Excel BKU, bukan seluruh transaksi.
+    const summaryNpsn = isSchool() ? (state.user?.npsn || state.user?.username || '') : (state.selectedNpsn || '');
+    const [dRes, bookSummaryRes] = await Promise.all([
+      api('getDokumenSPJ', { idPeriode: periode, npsn: summaryNpsn }),
+      safeApi('getBkuBookSummaries', { idPeriode: periode, npsn: summaryNpsn }, {ready:false})
+    ]);
+    const bookSummaries = bookSummaryRes || {ready:false};
 
     const masters = (state.masterSpj || [])
       .filter(x => String(x.status_aktif ?? x.status ?? 'AKTIF').toUpperCase() === 'AKTIF')
@@ -2208,7 +2253,8 @@ async function renderDokumenTable(){
           <div>
             <strong>${esc(m.nama_spj || m.nama_dokumen || m.kode || m.id_spj)}</strong>
             <div class="muted">${esc(m.kelompok || m.keterangan || 'Dokumen SPJ')} ${m.wajib ? '· Wajib: '+esc(m.wajib) : ''}</div>
-            ${d?.nama_file ? `<div class="muted" style="margin-top:3px">📄 ${esc(d.nama_file)}</div>` : ''}
+            ${_v221BookSummaryHtml_(m,bookSummaries)}
+            ${d?.nama_file ? `<div class="muted" style="margin-top:5px">📄 ${esc(d.nama_file)}</div>` : ''}
           </div>
         </div>
         <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;justify-content:flex-end">
@@ -2243,6 +2289,7 @@ async function renderDokumenTable(){
         <div style="display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap">
           <div>
             <h3 style="margin:0">Alur Dokumen SPJ</h3>
+            <div class="muted" style="margin-top:4px">Untuk BKU dan tiga buku pembantu, angka Excel BKU ditampilkan sebagai nilai pembanding sebelum PDF diunggah.</div>
             <div class="muted">Sekolah menyiapkan dokumen, lalu mengunggah PDF pada setiap komponen.</div>
           </div>
           <div style="text-align:right"><strong>${done}/${total}</strong><div class="muted">komponen tersedia</div></div>
@@ -9045,6 +9092,72 @@ body.theme-sekolah .topbar [onclick*="logout"]{
     min-width:42px;
     background:rgba(8,22,35,.25)!important;
   }
+}
+</style>
+
+
+<style id="v221DocumentBookSummary">
+/* V21.21 — Excel BKU values directly inside document checklist */
+.v221-book-summary{
+  margin-top:9px;
+  padding:10px 12px;
+  border:1px solid var(--role-border,var(--border,#dce5e1));
+  border-radius:13px;
+  background:var(--role-soft-2,#f8faf9);
+  min-width:min(100%,620px);
+}
+.v221-book-summary-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  flex-wrap:wrap;
+  margin-bottom:8px;
+}
+.v221-book-source{
+  font-size:.72rem;
+  font-weight:850;
+  color:var(--primary);
+  letter-spacing:.01em;
+}
+.v221-book-count{
+  font-size:.68rem;
+  color:var(--muted);
+  font-weight:750;
+}
+.v221-book-values{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:8px;
+}
+.v221-book-values>div{
+  min-width:0;
+  padding:8px 9px;
+  border-radius:10px;
+  background:#fff;
+  border:1px solid color-mix(in srgb,var(--role-border,var(--border,#dce5e1)) 72%,#fff 28%);
+}
+.v221-book-values small{
+  display:block;
+  color:var(--muted);
+  font-size:.67rem;
+  margin-bottom:3px;
+}
+.v221-book-values strong{
+  display:block;
+  color:var(--text);
+  font-size:.84rem;
+  white-space:nowrap;
+}
+.v221-book-summary-empty{
+  border-style:dashed;
+}
+body.theme-dinas .v221-book-summary{background:#F4FAFB}
+body.theme-pengawas .v221-book-summary{background:#FFF7F8}
+body.theme-sekolah .v221-book-summary{background:#F7F8FE}
+@media(max-width:720px){
+  .v221-book-values{grid-template-columns:1fr}
+  .v221-book-values strong{font-size:.9rem}
 }
 </style>
 
