@@ -2142,18 +2142,54 @@ async function dokumenBulananView(){
 }
 
 
-function _v221BookKeyFromMaster_(m){
-  const s=upper((m?.nama_spj||'')+' '+(m?.nama_dokumen||'')+' '+(m?.kode_spj||'')+' '+(m?.kode||''));
-  if(/BUKU KAS UMUM|\bBKU\b/.test(s))return 'bku';
-  if(/BUKU PEMBANTU BANK|BUKU BANK/.test(s))return 'bank';
-  if(/BUKU PEMBANTU KAS TUNAI|BUKU KAS TUNAI|KAS TUNAI/.test(s))return 'cash';
-  if(/BUKU PEMBANTU PAJAK|BUKU PAJAK/.test(s))return 'tax';
-  return '';
+
+function _v222MasterText_(m){
+  return upper((m?.nama_spj||'')+' '+(m?.nama_dokumen||'')+' '+(m?.kode_spj||'')+' '+(m?.kode||''));
 }
 
-function _v221BookSummaryHtml_(m, summaries){
-  const key=_v221BookKeyFromMaster_(m);
-  if(!key)return '';
+function _v222EvidenceProfile_(m, summaries){
+  const s=_v222MasterText_(m);
+  const targets=summaries?.evidence_targets||{};
+
+  if(/BUKU KAS UMUM|\bBKU\b/.test(s))return {kind:'book',book:'bku',title:'Buku Kas Umum'};
+  if(/BUKU PEMBANTU BANK|BUKU BANK/.test(s))return {kind:'book',book:'bank',title:'Buku Pembantu Bank'};
+  if(/BUKU PEMBANTU KAS TUNAI|BUKU KAS TUNAI|KAS TUNAI/.test(s))return {kind:'book',book:'cash',title:'Buku Pembantu Kas Tunai'};
+  if(/BUKU PEMBANTU PAJAK|BUKU PAJAK/.test(s))return {kind:'book',book:'tax',title:'Buku Pembantu Pajak'};
+
+  if(/REKENING KORAN/.test(s)){
+    return {kind:'inout',target:targets.rekening_koran_bank||{},source:'Buku Pembantu Kas Tunai',title:'Acuan Rekening Koran Bank'};
+  }
+  if(/INVOICE|NOTA|KUITANSI|KWITANSI/.test(s)){
+    return {kind:'outflow',target:targets.invoice_nota_kuitansi||{},source:'Buku Pembantu Kas Tunai',title:'Nilai belanja yang perlu didukung',coverage:true};
+  }
+  if(/BUKTI PENDUKUNG LAIN/.test(s)){
+    return {kind:'outflow',target:targets.bukti_pendukung_lainnya||{},source:'Buku Pembantu Kas Tunai',title:'Nilai belanja yang perlu didukung',coverage:true};
+  }
+  if(/SSP.*PAJAK.*PUSAT|SSP PAJAK PUSAT|PAJAK PUSAT/.test(s)){
+    return {kind:'outflow',target:targets.ssp_pajak_pusat||{},source:'Buku Pembantu Pajak',title:'Setoran pajak pusat yang perlu dibuktikan',allowNA:false,tax:true};
+  }
+  if(/SSP.*PAJAK.*DAERAH|SSP PAJAK DAERAH|PAJAK DAERAH/.test(s)){
+    return {kind:'manual_optional',target:targets.ssp_pajak_daerah||{},source:'Manual',title:'SSP Pajak Daerah',allowNA:true};
+  }
+  if(/FOTO|DOKUMENTASI/.test(s)){
+    return {kind:'outflow',target:targets.foto_dokumentasi||{},source:'Buku Pembantu Kas Tunai',title:'Belanja yang didukung dokumentasi',coverage:true};
+  }
+  return {kind:'none'};
+}
+
+function _v222BookSummaryHtml_(m,summaries){
+  const profile=_v222EvidenceProfile_(m,summaries);
+  if(profile.kind==='none')return '';
+
+  if(profile.kind==='manual_optional'){
+    return `<div class="v221-book-summary v222-support-summary v222-manual">
+      <div class="v221-book-summary-head">
+        <span class="v221-book-source">🧾 ${esc(profile.title)}</span>
+        <span class="v222-rule-badge">ADA / N/A</span>
+      </div>
+      <div class="muted">Tidak berasal dari transaksi BKU. Sekolah memilih <b>Ada</b> dengan mengunggah PDF, atau <b>N/A</b> bila memang tidak terdapat pajak daerah pada periode ini.</div>
+    </div>`;
+  }
 
   if(!summaries?.ready){
     return `<div class="v221-book-summary v221-book-summary-empty">
@@ -2162,22 +2198,71 @@ function _v221BookSummaryHtml_(m, summaries){
     </div>`;
   }
 
-  const x=summaries[key]||{};
-  const receiveLabel=key==='tax'?'Pungutan / Penerimaan':'Jumlah Penerimaan';
-  const expenseLabel=key==='tax'?'Setoran / Pengeluaran':'Jumlah Pengeluaran';
-  const saldoLabel=key==='tax'?'Saldo Pajak':'Saldo Akhir';
+  if(profile.kind==='book'){
+    const key=profile.book;
+    const x=summaries[key]||{};
+    const receiveLabel=key==='tax'?'Pungutan / Penerimaan':'Jumlah Penerimaan';
+    const expenseLabel=key==='tax'?'Setoran / Pengeluaran':'Jumlah Pengeluaran';
+    const saldoLabel=key==='tax'?'Saldo Pajak':'Saldo Akhir';
+    return `<div class="v221-book-summary" data-book="${key}">
+      <div class="v221-book-summary-head">
+        <span class="v221-book-source">📊 Sumber: Excel BKU</span>
+        <span class="v221-book-count">${fmtNum(x.count||0)} baris</span>
+      </div>
+      <div class="v221-book-values">
+        <div><small>${receiveLabel}</small><strong>${fmtRupiah(x.penerimaan||0)}</strong></div>
+        <div><small>${expenseLabel}</small><strong>${fmtRupiah(x.pengeluaran||0)}</strong></div>
+        <div><small>${saldoLabel}</small><strong>${fmtRupiah(x.saldo_akhir||0)}</strong></div>
+      </div>
+    </div>`;
+  }
 
-  return `<div class="v221-book-summary" data-book="${key}">
-    <div class="v221-book-summary-head">
-      <span class="v221-book-source">📊 Sumber: Excel BKU</span>
-      <span class="v221-book-count">${fmtNum(x.count||0)} baris</span>
-    </div>
-    <div class="v221-book-values">
-      <div><small>${receiveLabel}</small><strong>${fmtRupiah(x.penerimaan||0)}</strong></div>
-      <div><small>${expenseLabel}</small><strong>${fmtRupiah(x.pengeluaran||0)}</strong></div>
-      <div><small>${saldoLabel}</small><strong>${fmtRupiah(x.saldo_akhir||0)}</strong></div>
-    </div>
-  </div>`;
+  if(profile.kind==='inout'){
+    const x=profile.target||{};
+    return `<div class="v221-book-summary v222-support-summary">
+      <div class="v221-book-summary-head">
+        <span class="v221-book-source">🔗 Acuan: ${esc(profile.source)}</span>
+        <span class="v222-rule-badge">UANG MASUK ↔ UANG KELUAR</span>
+      </div>
+      <div class="v221-book-values v222-two-values">
+        <div><small>Uang Masuk Acuan</small><strong>${fmtRupiah(x.penerimaan||0)}</strong></div>
+        <div><small>Uang Keluar Acuan</small><strong>${fmtRupiah(x.pengeluaran||0)}</strong></div>
+      </div>
+      <div class="v222-rule-note">PDF Rekening Koran disandingkan dengan mutasi masuk dan keluar pada ${esc(profile.source)}.</div>
+    </div>`;
+  }
+
+  if(profile.kind==='outflow'){
+    const x=profile.target||{};
+    const value=Number(x.target_value||0);
+    const badgeText=profile.tax?'WAJIB • TIDAK N/A':(profile.coverage?'AKUMULASI BUKTI':'NILAI ACUAN');
+    const note=profile.tax
+      ? `Nilai ini berasal dari <b>uang keluar/setoran Buku Pembantu Pajak</b>. SSP Pajak Pusat tidak dapat ditandai N/A.`
+      : `Dokumen berfungsi mendukung belanja. Nilai setiap PDF tidak harus sama dengan total ini; yang dinilai adalah <b>cakupan/akumulasi bukti</b> terhadap total uang keluar.`;
+    return `<div class="v221-book-summary v222-support-summary">
+      <div class="v221-book-summary-head">
+        <span class="v221-book-source">🔗 Acuan: ${esc(profile.source)}</span>
+        <span class="v222-rule-badge">${badgeText}</span>
+      </div>
+      <div class="v222-target-value">
+        <small>${esc(profile.title)}</small>
+        <strong>${fmtRupiah(value)}</strong>
+      </div>
+      <div class="v222-rule-note">${note}</div>
+    </div>`;
+  }
+
+  return '';
+}
+
+function _v222AllowNa_(m,summaries){
+  const p=_v222EvidenceProfile_(m,summaries);
+  return p.kind==='manual_optional' && p.allowNA===true;
+}
+
+function _v222LegacyNaMustBeIgnored_(m,d,summaries){
+  const p=_v222EvidenceProfile_(m,summaries);
+  return p.tax===true && upper(d?.status||'')==='N/A';
 }
 
 async function renderDokumenTable(){
@@ -2209,12 +2294,14 @@ async function renderDokumenTable(){
       .sort((a,b) => (Number(a.urutan)||0) - (Number(b.urutan)||0));
 
     const docs = dRes.data || [];
-    const groups = masters.map(m => ({
-      m,
-      d: docs
+    const groups = masters.map(m => {
+      let d=docs
         .filter(x => String(x.id_spj) === String(m.id_spj) && String(x.status||'').toUpperCase() !== 'NONAKTIF')
-        .sort((a,b)=>(Number(b.versi)||0)-(Number(a.versi)||0))[0]
-    }));
+        .sort((a,b)=>(Number(b.versi)||0)-(Number(a.versi)||0))[0];
+      // SSP Pajak Pusat lama yang pernah ditandai N/A dianggap belum upload.
+      if(_v222LegacyNaMustBeIgnored_(m,d,bookSummaries)) d=null;
+      return {m,d};
+    });
 
     const uploaded = groups.filter(x => x.d && String(x.d.status||'').toUpperCase() !== 'N/A').length;
     const na = groups.filter(x => String(x.d?.status||'').toUpperCase() === 'N/A').length;
@@ -2244,7 +2331,7 @@ async function renderDokumenTable(){
       const statusClass = status === 'SUDAH_UPLOAD' || status === 'SELESAI_DINILAI' ? 'success' :
                           status === 'N/A' ? 'warning' :
                           status === 'PERLU_PERBAIKAN' ? 'danger' : 'info';
-      const isSsp = /SSP|PAJAK/i.test(String(m.nama_spj||''));
+      const allowNA = _v222AllowNa_(m,bookSummaries);
       const viewerId = `instrumentPdfViewer_${String(m.id_spj||i).replace(/[^a-zA-Z0-9_-]/g,'_')}_${i}`;
       const pdfReady = !!(d?.file_url && String(d.status||'').toUpperCase() !== 'N/A');
       return `<div class="doc-row instrument-doc-row" data-instrument-index="${i}">
@@ -2253,7 +2340,7 @@ async function renderDokumenTable(){
           <div>
             <strong>${esc(m.nama_spj || m.nama_dokumen || m.kode || m.id_spj)}</strong>
             <div class="muted">${esc(m.kelompok || m.keterangan || 'Dokumen SPJ')} ${m.wajib ? '· Wajib: '+esc(m.wajib) : ''}</div>
-            ${_v221BookSummaryHtml_(m,bookSummaries)}
+            ${_v222BookSummaryHtml_(m,bookSummaries)}
             ${d?.nama_file ? `<div class="muted" style="margin-top:5px">📄 ${esc(d.nama_file)}</div>` : ''}
           </div>
         </div>
@@ -2266,7 +2353,7 @@ async function renderDokumenTable(){
               data-target="${esc(viewerId)}"
               onclick="showInstrumentPdf(this)">👁️ Lihat</button>` : ''}
           <button class="btn ${d ? 'btn-light' : 'btn-primary'}" type="button" onclick="openUpload('${esc(m.id_spj)}','${esc(m.nama_spj || m.nama_dokumen || m.kode || m.id_spj)}')">${d ? 'Ganti PDF' : 'Upload PDF'}</button>
-          ${isSsp ? `<button class="btn btn-light" type="button" onclick="openNaModal('${esc(m.id_spj)}','${esc(m.nama_spj || m.nama_dokumen || m.kode || m.id_spj)}')">N/A</button>` : ''}
+          ${allowNA ? `<button class="btn btn-light" type="button" onclick="openNaModal('${esc(m.id_spj)}','${esc(m.nama_spj || m.nama_dokumen || m.kode || m.id_spj)}')">N/A</button>` : ''}
         </div>
       </div>
       ${pdfReady ? `<div id="${esc(viewerId)}" class="instrument-pdf-inline" hidden>
@@ -2289,8 +2376,8 @@ async function renderDokumenTable(){
         <div style="display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap">
           <div>
             <h3 style="margin:0">Alur Dokumen SPJ</h3>
-            <div class="muted" style="margin-top:4px">Untuk BKU dan tiga buku pembantu, angka Excel BKU ditampilkan sebagai nilai pembanding sebelum PDF diunggah.</div>
-            <div class="muted">Sekolah menyiapkan dokumen, lalu mengunggah PDF pada setiap komponen.</div>
+            <div class="muted" style="margin-top:4px">Nilai dari Excel BKU diteruskan menjadi <b>nilai acuan dokumen</b>: buku utama, rekening koran, bukti belanja, SSP Pajak Pusat, dan dokumentasi.</div>
+            <div class="muted">PDF digunakan untuk membuktikan atau menyandingkan nilai tersebut; PDF tidak membentuk transaksi baru.</div>
           </div>
           <div style="text-align:right"><strong>${done}/${total}</strong><div class="muted">komponen tersedia</div></div>
         </div>
@@ -9158,6 +9245,62 @@ body.theme-sekolah .v221-book-summary{background:#F7F8FE}
 @media(max-width:720px){
   .v221-book-values{grid-template-columns:1fr}
   .v221-book-values strong{font-size:.9rem}
+}
+</style>
+
+
+<style id="v222EvidenceTargetMapping">
+.v222-support-summary{
+  border-left:4px solid var(--primary)!important;
+}
+.v222-rule-badge{
+  display:inline-flex;
+  align-items:center;
+  border:1px solid var(--role-border,var(--border));
+  background:#fff;
+  color:var(--primary);
+  padding:3px 7px;
+  border-radius:999px;
+  font-size:.62rem;
+  font-weight:900;
+  letter-spacing:.025em;
+  white-space:nowrap;
+}
+.v222-two-values{
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;
+}
+.v222-target-value{
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+  gap:12px;
+  padding:9px 10px;
+  border-radius:10px;
+  background:#fff;
+  border:1px solid color-mix(in srgb,var(--role-border,var(--border)) 72%,#fff 28%);
+}
+.v222-target-value small{
+  color:var(--muted);
+  font-size:.7rem;
+}
+.v222-target-value strong{
+  color:var(--text);
+  font-size:1rem;
+  white-space:nowrap;
+}
+.v222-rule-note{
+  margin-top:7px;
+  color:var(--muted);
+  font-size:.69rem;
+  line-height:1.45;
+}
+.v222-manual{
+  border-left:4px solid #b58a28!important;
+  background:#fffaf0!important;
+}
+@media(max-width:720px){
+  .v222-two-values{grid-template-columns:1fr!important}
+  .v222-target-value{align-items:flex-start;flex-direction:column}
 }
 </style>
 
