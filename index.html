@@ -6441,13 +6441,19 @@ function renderAssessment(a, indicators){
   const rows=indicators.map(d=>{
     const manual=String(d.sumber_penilaian||'').toUpperCase()==='KOREKSI_MANUAL';
     const findings=Number(d.jumlah_temuan||0);
+    const pending=Number(d.temuan_belum_verifikasi||0);
+    const status=pending>0?'PERLU VERIFIKASI':String(d.status_verifikasi||'SIAP').replaceAll('_',' ');
+    const statusClass=pending>0?'warning':status.includes('OCR')?'warning':'success';
     return `<tr>
-      <td><b>${esc(d.kode_indikator)}</b><br><small class="muted">${esc(d.nama_indikator)}</small></td>
-      <td>${Number(d.risiko||0).toFixed(2)}/100</td>
-      <td>${Number(d.bobot||0).toFixed(2)}%</td>
-      <td><span class="${manual?'score-manual':'score-auto'}">${Number(d.skor).toFixed(2)}</span><br><small class="muted">otomatis ${Number(d.skor_otomatis).toFixed(2)}</small></td>
-      <td>${findings?`<span class="badge badge-warning">${findings} temuan</span>`:'<span class="badge badge-success">Tidak ada</span>'}</td>
-      <td>${isPengawas()&&String(a.status_asesmen||'').toUpperCase()!=='SELESAI'?`<button class="btn btn-sm btn-light" onclick="editScore('${esc(a.id_asesmen)}','${esc(d.id_indikator)}','${d.skor}','${d.skor_otomatis}')">${manual?'Koreksi':'Koreksi manual'}</button>`:'-'}</td>
+      <td><b>${Number(d.no_instrumen||0)}. ${esc(d.nama_indikator)}</b><br><small class="muted">${esc(d.deskripsi||d.kode_indikator||'')}</small></td>
+      <td><span class="badge badge-${statusClass}">${esc(status)}</span></td>
+      <td><b>${Number(d.bobot||0).toFixed(0)}%</b></td>
+      <td><span class="${manual?'score-manual':'score-auto'}">${Number(d.skor).toFixed(2)}</span><br><small class="muted">rekomendasi ${Number(d.skor_otomatis).toFixed(2)}</small></td>
+      <td>
+        ${Number(d.temuan_terbukti||0)?`<span class="badge badge-warning">${Number(d.temuan_terbukti)} terbukti</span>`:'<span class="badge badge-success">0 terbukti</span>'}
+        ${pending?`<div style="margin-top:4px"><span class="badge badge-warning">${pending} belum diverifikasi</span></div>`:''}
+      </td>
+      <td>${isPengawas()&&String(a.status_asesmen||'').toUpperCase()!=='SELESAI'?`<button class="btn btn-sm btn-light" onclick="editScore('${esc(a.id_asesmen)}','${esc(d.id_indikator)}','${d.skor}','${d.skor_otomatis}')">${manual?'Ubah koreksi':'Koreksi manual'}</button>`:'-'}</td>
     </tr>`;
   }).join('');
 
@@ -6455,23 +6461,28 @@ function renderAssessment(a, indicators){
     <div class="toolbar" style="margin-bottom:12px">${interactiveBtn}</div>
     ${String(a.status_asesmen||'').toUpperCase()==='KAJI_ULANG'?`<div class="message warning" style="margin-bottom:14px"><b>Mode Kaji Ulang.</b> Sekolah mengajukan keberatan atas penilaian ini. Silakan periksa kembali bukti, temuan, dan skor sebelum memfinalisasi ulang.</div>`:''}
     <div class="assessment-guide">
-      <div class="assessment-guide-card"><strong>1. Sistem membaca temuan</strong><span>Hanya temuan berstatus TERBUKTI yang menjadi dasar penalti otomatis.</span></div>
-      <div class="assessment-guide-card"><strong>2. Risk Engine membentuk indikator</strong><span>Indikator dipilih otomatis berdasarkan pola risiko SPJ, bukan daftar bobot statis.</span></div>
-      <div class="assessment-guide-card"><strong>3. Bobot dinamis</strong><span>Bobot setiap indikator dihitung dari profil risiko sekolah dan totalnya dinormalisasi menjadi 100%.</span></div>
+      <div class="assessment-guide-card"><strong>1. Sistem membentuk rekomendasi</strong><span>Hanya temuan <b>TERBUKTI</b> yang menurunkan rekomendasi skor.</span></div>
+      <div class="assessment-guide-card"><strong>2. Pengawas memverifikasi</strong><span>Temuan wajib diputuskan TERBUKTI atau TIDAK TERBUKTI sebelum nilai difinalisasi.</span></div>
+      <div class="assessment-guide-card"><strong>3. 10 instrumen tetap</strong><span>Bobot penilaian bersifat tetap. Risk Engine hanya membantu menentukan prioritas pemeriksaan.</span></div>
     </div>
     <div class="cards">
       <div class="stat"><small>Status</small><strong style="font-size:1.05rem">${esc(a.status_asesmen||'-')}</strong></div>
       <div class="stat"><small>Nilai kualitas sementara</small><strong>${a.nilai_kualitas??preview}</strong></div>
-      <div class="stat"><small>Indikator</small><strong>${indicators.length}</strong></div>
+      <div class="stat"><small>Instrumen</small><strong>${indicators.length}/10</strong></div>
       <div class="stat"><small>Koreksi manual</small><strong>${done}</strong></div>
     </div>
-    <div class="message ok" style="margin-top:14px">Penilaian menggunakan Risk Engine otomatis. Risiko sistem menentukan bobot dinamis; hanya temuan <b>TERBUKTI</b> yang mengurangi skor indikator.</div><div class="panel" style="margin-top:14px;padding:16px">
+    <div class="message ok" style="margin-top:14px"><b>Scoring Engine 10 Instrumen.</b> Bobot tetap 100%. OCR/AI hanya memberi rekomendasi; OCR gagal atau confidence rendah <b>tidak otomatis mengurangi nilai</b> sampai diverifikasi Pengawas.</div><div class="panel" style="margin-top:14px;padding:16px">
       <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap">
         <div><b>Nilai kualitas</b><div class="muted">Pratinjau berdasarkan indikator aktif dan bobotnya.</div></div>
         <strong style="font-size:1.5rem;color:var(--emerald-2)">${Number(a.nilai_kualitas??preview).toFixed(2)}</strong>
       </div>
     </div>
-    <div class="table-wrap"><table class="friendly-table"><thead><tr><th>Indikator</th><th>Risiko</th><th>Bobot Dinamis</th><th>Skor</th><th>Temuan terbukti</th><th>Aksi</th></tr></thead><tbody>${rows||emptyRow(6)}</tbody></table></div>
+    <div class="v228-weight-map">
+      <span>RKAS 10%</span><span>BKU 10%</span><span>Bank 10%</span><span>Kas 10%</span><span>Pajak 10%</span>
+      <span class="strong">Dokumen Belanja 15%</span><span class="strong">Dokumen ↔ BKU 15%</span><span class="strong">Bukti Pendukung 10%</span>
+      <span>Digital 5%</span><span>Tindak Lanjut 5%</span>
+    </div>
+    <div class="table-wrap"><table class="friendly-table"><thead><tr><th>Instrumen</th><th>Status Verifikasi</th><th>Bobot Tetap</th><th>Skor 0–4</th><th>Temuan</th><th>Aksi</th></tr></thead><tbody>${rows||emptyRow(6)}</tbody></table></div>
     ${isPengawas()&&String(a.status_asesmen||'').toUpperCase()!=='SELESAI'?`<div class="toolbar" style="margin-top:14px"><button class="btn btn-primary" onclick="finalizeAssessment('${esc(a.id_asesmen)}')">✓ Finalisasi Penilaian</button></div>`:''}
     ${String(a.status_asesmen||'').toUpperCase()==='SELESAI'?`<div class="message ok" style="margin-top:14px">Penilaian sudah difinalisasi. Nilai akhir: <b>${esc(a.nilai_akhir??'-')}</b>.</div>${isSchool()?`<div class="toolbar" style="margin-top:12px"><button class="btn btn-primary" onclick="ajukanKeberatan('${esc(a.id_asesmen)}')">✉ Ajukan Keberatan Penilaian</button></div>`:''}`:''}
   `;
@@ -10238,6 +10249,31 @@ body.theme-sekolah .v221-book-summary{background:#F7F8FE}
 @media(max-width:900px){
   .v227-sign-grid{grid-template-columns:1fr}
   .v227-sign-card{min-height:auto}
+}
+</style>
+
+
+<style id="v228Scoring10">
+.v228-weight-map{
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+  margin:14px 0 10px;
+}
+.v228-weight-map span{
+  display:inline-flex;
+  padding:5px 8px;
+  border-radius:999px;
+  border:1px solid var(--role-border,var(--border));
+  background:#fff;
+  color:var(--muted);
+  font-size:.65rem;
+  font-weight:800;
+}
+.v228-weight-map span.strong{
+  color:var(--primary);
+  border-color:color-mix(in srgb,var(--primary) 35%,var(--role-border,var(--border)));
+  background:var(--role-soft-2,#f8faf9);
 }
 </style>
 
