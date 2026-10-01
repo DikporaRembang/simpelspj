@@ -1470,6 +1470,7 @@ function renderShell(){
             <div><h2 class="brand-gold-title">SIMPEL SPJ</h2><small>Peran: <b>${esc(currentRole)}</b></small></div>
           </div>
         </div>
+        ${isSchool() ? '' : `
         <div class="top-search" id="globalSearchBox">
           <div class="top-search-wrap">
             <span class="top-search-icon">⌕</span>
@@ -1477,7 +1478,7 @@ function renderShell(){
             <span class="top-search-kbd">Ctrl K</span>
           </div>
           <div id="globalSearchResults" class="search-results hidden"></div>
-        </div>
+        </div>`}
         <div class="top-actions">
           <span class="muted" style="font-weight:600; display:inline-flex; align-items:center; gap:8px;">
             ${schoolInfoText}
