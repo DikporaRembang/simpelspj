@@ -2560,20 +2560,30 @@ async function renderStatus(){
 
 async function transaksiView(){
   const periods = await periodeSelect();
-  $('#mainContent').innerHTML = head('Transaksi SPJ','Pencatatan BKU dan sinkronisasi anggaran')+
+  $('#mainContent').innerHTML = head('Excel BKU & Distribusi','Sumber transaksi resmi berasal dari snapshot Excel BKU ARKAS sesuai periode penilaian')+
     `<div class="panel"><div class="form-grid"><div class="field"><label>Periode SPJ</label>${periods}</div></div><div id="trxArea" style="margin-top:18px"></div></div>`;
-  
-  $('#periodeSelect').value = state.selectedPeriode;
-  $('#periodeSelect').onchange = () => {
-    state.selectedPeriode = $('#periodeSelect').value;
+
+  const sel=$('#periodeSelect');
+  if(isSchool()){
+    try{
+      const imports=await safeApi('getBkuImportPeriods',{}, {data:[]});
+      const available=(imports.data||[]).map(x=>String(x.id_periode||'')).filter(Boolean);
+      const optionValues=[...sel.options].map(o=>String(o.value||'')).filter(Boolean);
+      const usable=available.filter(p=>optionValues.includes(p));
+      if((!state.selectedPeriode || !available.includes(String(state.selectedPeriode))) && usable.length){
+        state.selectedPeriode=usable[0];
+      }
+    }catch(e){}
+  }
+
+  sel.value=state.selectedPeriode||'';
+  sel.onchange=()=>{
+    state.selectedPeriode=sel.value;
     renderTransaksi();
   };
-  
-  if (state.selectedPeriode) {
-    await renderTransaksi();
-  } else {
-    $('#trxArea').innerHTML = msg('Pilih periode untuk mulai.', 'ok');
-  }
+
+  if(state.selectedPeriode) await renderTransaksi();
+  else $('#trxArea').innerHTML=msg('Pilih periode SPJ untuk melihat distribusi Excel BKU.','ok');
 }
 
 // Variabel cache lokal frontend untuk daftar sekolah Dinas
@@ -2649,20 +2659,26 @@ async function renderTransaksi(page = 1){
       </div>`;
 
     const back = !isSchool() ? `<button class="btn btn-sm btn-light" onclick="state.selectedNpsn='';renderTransaksi(1)">← Daftar Sekolah</button>` : '';
-    const edit = isSchool() ? `<button class="btn btn-primary" onclick="openTransactionForm()">+ Tambah Transaksi</button><button class="btn btn-light" onclick="openExcelImport()">Tetapkan Excel BKU Penilaian</button>` : '';
+    const edit = isSchool() ? `<button class="btn btn-primary" onclick="openExcelImport()">📊 Tetapkan / Ganti Excel BKU</button>` : '';
     let trxNextAction = '';
     if(isSchool()){
       if(!Number(r.total||0)){
-        trxNextAction = `<div class="school-next-action"><div><span class="school-eyebrow">LANGKAH BERIKUTNYA</span><strong>Belum ada transaksi pada periode ini. Tambahkan transaksi pertama atau impor BKU dari Excel.</strong></div><button class="btn btn-primary btn-sm" onclick="openTransactionForm()">+ Tambah</button></div>`;
+        const importStatus=await safeApi('getBkuImportStatus',{idPeriode:p},{ready:false,data:null});
+        if(importStatus?.ready){
+          trxNextAction=`<div class="school-next-action danger"><div><span class="school-eyebrow">SNAPSHOT EXCEL TERDETEKSI</span><strong>Excel BKU sudah tercatat untuk periode ini, tetapi belum menghasilkan baris yang dapat ditampilkan.</strong><small style="display:block;margin-top:5px">Snapshot: ${esc(importStatus.data?.source_name||'-')} • ${fmtNum(importStatus.data?.total_valid||0)} baris valid. Backend V21.8 akan membaca langsung detail snapshot sebagai fallback.</small></div><button class="btn btn-primary btn-sm" onclick="renderTransaksi()">↻ Muat Ulang</button></div>`;
+        }else{
+          trxNextAction=`<div class="school-next-action"><div><span class="school-eyebrow">LANGKAH PERTAMA</span><strong>Belum ada Excel BKU yang ditetapkan untuk periode ini.</strong><small style="display:block;margin-top:5px">Transaksi manual bukan lagi sumber utama. Tetapkan Excel BKU ARKAS sebagai basis penilaian.</small></div><button class="btn btn-primary btn-sm" onclick="openExcelImport()">Tetapkan Excel BKU</button></div>`;
+        }
       }else{
-        trxNextAction = `<div class="school-next-action"><div><span class="school-eyebrow">LANGKAH BERIKUTNYA</span><strong>${fmtNum(r.total)} transaksi sudah tercatat. Setelah data sesuai, lanjutkan melengkapi dokumen/bukti SPJ.</strong></div><button class="btn btn-primary btn-sm" onclick="loadView('dokumenBulanan')">Kelola SPJ →</button></div>`;
+        const src=r.source||{};
+        trxNextAction=`<div class="school-next-action"><div><span class="school-eyebrow">EXCEL BKU AKTIF</span><strong>${fmtNum(r.total)} baris transaksi terbaca untuk periode ini.</strong><small style="display:block;margin-top:5px">${esc(src.source_name||'Snapshot Excel BKU')} ${src.id_import?'• '+esc(src.id_import):''}</small></div><button class="btn btn-primary btn-sm" onclick="loadView('dokumenBulanan')">Lanjut Bukti SPJ →</button></div>`;
       }
     }
     
     area.innerHTML = `${trxNextAction}
       <div class="toolbar">${back}${edit}</div>
       <div class="panel" style="margin:12px 0;background:rgba(23,75,67,.05);">
-        <b>Total SPJ Periode: ${fmtRupiah(r.totalNilai||0)}</b>
+        <b>Total Arus Transaksi BKU: ${fmtRupiah(r.totalNilai||0)}</b>
         <span class="muted" style="margin-left:10px;">${fmtNum(r.total)} transaksi • 50 per halaman</span>
       </div>
       <div class="table-wrap">
