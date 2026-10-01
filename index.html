@@ -1209,6 +1209,7 @@ window.openServerConnectionSettings=function(){
 };
 
 function authView(notice=''){
+  delete document.body.dataset.role;
   document.body.style.background='var(--bg)';
   $('#app').innerHTML=`
     <main class="auth">
@@ -1541,6 +1542,8 @@ async function startApp(){
 function renderShell(){
   // Mengambil role secara aman dengan fallback otomatis ke SEKOLAH jika undefined
   const currentRole = role() || 'SEKOLAH';
+  // V21.12: role marker untuk theme visual seluruh aplikasi.
+  document.body.dataset.role = currentRole;
   const menus = ROLE_MENUS[currentRole] || ROLE_MENUS.DINAS || ROLE_MENUS.SEKOLAH || [];
   
   // Informasi identitas sekolah / pengguna di topbar
@@ -6969,6 +6972,421 @@ function printV5Archive(){
 .instrument-pdf-single-canvas{display:block;max-width:none;height:auto;margin:0 auto;background:#fff;border:1px solid #d7dfda;box-shadow:0 10px 28px rgba(16,42,67,.14)}
 @media(max-width:760px){.instrument-pdf-inline-frame{height:70vh!important;min-height:390px!important}.instrument-pdf-toolbar{justify-content:center}.instrument-pdf-page-control{order:3;width:100%}.instrument-pdf-shortcuts{display:none}.instrument-pdf-stage{padding:8px}}
 </style>
+
+<style id="v212RoleColorThemes">
+/* ==========================================================================
+   V21.12 — ROLE COLOR THEMES
+   DINAS    : hijau tua -> hijau muda
+   PENGAWAS : merah tua -> maroon
+   SEKOLAH  : hitam -> coklat tua
+
+   Prinsip aksesibilitas:
+   - area navigasi/hero menggunakan teks putih
+   - panel konten memakai latar sangat terang agar tabel/form tetap mudah dibaca
+   - tombol utama selalu memakai warna role dengan teks putih
+   - focus ring, badge, tabel, input, link, highlight mengikuti role
+   ========================================================================== */
+
+/* ---------- Base semantic tokens ---------- */
+body[data-role]{
+  --role-dark:#173f39;
+  --role-mid:#2f6d56;
+  --role-light:#76b98f;
+  --role-soft:#edf7f0;
+  --role-soft-2:#f7fbf8;
+  --role-border:#cfe3d5;
+  --role-text:#173229;
+  --role-muted:#62736b;
+  --role-on:#ffffff;
+  --role-shadow:rgba(23,63,57,.18);
+  --role-focus:rgba(47,109,86,.24);
+  --role-table-head:#e5f1e8;
+  --role-table-hover:#f0f8f2;
+  --role-accent:#2f6d56;
+}
+
+/* DINAS — dark green to light green */
+body[data-role="DINAS"]{
+  --role-dark:#0b3d2e;
+  --role-mid:#176b4b;
+  --role-light:#72c58d;
+  --role-soft:#eaf7ee;
+  --role-soft-2:#f5fbf7;
+  --role-border:#badfc5;
+  --role-text:#123c2d;
+  --role-muted:#547064;
+  --role-shadow:rgba(11,61,46,.20);
+  --role-focus:rgba(23,107,75,.28);
+  --role-table-head:#dff1e4;
+  --role-table-hover:#eef8f1;
+  --role-accent:#176b4b;
+}
+
+/* PENGAWAS — dark red to maroon */
+body[data-role="PENGAWAS"]{
+  --role-dark:#5b1018;
+  --role-mid:#7d1827;
+  --role-light:#a93a4d;
+  --role-soft:#faecef;
+  --role-soft-2:#fff7f8;
+  --role-border:#e7c2c8;
+  --role-text:#4d151d;
+  --role-muted:#775b60;
+  --role-shadow:rgba(91,16,24,.20);
+  --role-focus:rgba(125,24,39,.25);
+  --role-table-head:#f4dfe3;
+  --role-table-hover:#fcf0f2;
+  --role-accent:#7d1827;
+}
+
+/* SEKOLAH — black to dark brown */
+body[data-role="SEKOLAH"]{
+  --role-dark:#171411;
+  --role-mid:#3b2a21;
+  --role-light:#76513a;
+  --role-soft:#f1ebe6;
+  --role-soft-2:#faf7f4;
+  --role-border:#d8c9be;
+  --role-text:#2c211b;
+  --role-muted:#75675f;
+  --role-shadow:rgba(23,20,17,.22);
+  --role-focus:rgba(84,57,42,.24);
+  --role-table-head:#ece3dc;
+  --role-table-hover:#f6f0eb;
+  --role-accent:#4d3528;
+}
+
+/* ---------- Global role surface ---------- */
+body[data-role]{
+  background:
+    radial-gradient(circle at top right, color-mix(in srgb,var(--role-light) 16%, transparent), transparent 33%),
+    linear-gradient(180deg,var(--role-soft-2),#f7f7f5 58%,var(--role-soft))!important;
+  color:var(--role-text)!important;
+}
+body[data-role]::before{
+  background:linear-gradient(180deg,rgba(255,255,255,.72),rgba(255,255,255,.32))!important;
+}
+
+/* ---------- Topbar ---------- */
+body[data-role] .topbar{
+  background:linear-gradient(90deg,var(--role-dark) 0%,var(--role-mid) 58%,var(--role-light) 145%)!important;
+  border-bottom:1px solid color-mix(in srgb,var(--role-light) 46%,transparent)!important;
+  box-shadow:0 5px 22px var(--role-shadow)!important;
+  color:#fff!important;
+}
+body[data-role] .topbar .brand-gold-title,
+body[data-role] .topbar .brand-title,
+body[data-role] .topbar small,
+body[data-role] .topbar b,
+body[data-role] .topbar .muted{
+  color:#fff!important;
+}
+body[data-role] .topbar .app-logo{
+  background:rgba(255,255,255,.96);
+  border-radius:10px;
+  padding:3px;
+}
+body[data-role] .topbar .btn-light{
+  background:rgba(255,255,255,.14)!important;
+  border-color:rgba(255,255,255,.28)!important;
+  color:#fff!important;
+}
+body[data-role] .topbar .btn-light:hover{
+  background:rgba(255,255,255,.23)!important;
+}
+
+/* ---------- Sidebar ---------- */
+body[data-role] .sidebar{
+  background:linear-gradient(180deg,var(--role-dark) 0%,var(--role-mid) 60%,color-mix(in srgb,var(--role-dark) 82%,#000 18%) 100%)!important;
+  box-shadow:8px 0 28px var(--role-shadow)!important;
+}
+body[data-role] .sidebar .nav-section-title{
+  color:rgba(255,255,255,.66)!important;
+  letter-spacing:.055em;
+}
+body[data-role] .sidebar .nav-btn,
+body[data-role] .sidebar .nav-group-toggle{
+  color:rgba(255,255,255,.92)!important;
+}
+body[data-role] .sidebar .nav-btn:hover,
+body[data-role] .sidebar .nav-group-toggle:hover{
+  background:rgba(255,255,255,.11)!important;
+  color:#fff!important;
+}
+body[data-role] .sidebar .nav-btn.active{
+  background:#fff!important;
+  color:var(--role-dark)!important;
+  box-shadow:0 7px 19px rgba(0,0,0,.18)!important;
+}
+body[data-role] .sidebar .nav-btn.active svg,
+body[data-role] .sidebar .nav-btn.active i{
+  color:var(--role-dark)!important;
+}
+
+/* ---------- Headings / links ---------- */
+body[data-role] .page-head h1,
+body[data-role] h1,
+body[data-role] h2,
+body[data-role] h3{
+  color:var(--role-text);
+}
+body[data-role] a:not(.btn){
+  color:var(--role-accent);
+}
+body[data-role] .muted{
+  color:var(--role-muted)!important;
+}
+
+/* ---------- Panels / stats / cards ---------- */
+body[data-role] .panel,
+body[data-role] .stat,
+body[data-role] .v211-dinas-card,
+body[data-role] .v20-ledger-card,
+body[data-role] .school-status-list,
+body[data-role] .school-timeline-step{
+  background:rgba(255,255,255,.96)!important;
+  border-color:var(--role-border)!important;
+  color:var(--role-text)!important;
+  box-shadow:0 12px 30px color-mix(in srgb,var(--role-shadow) 44%,transparent)!important;
+}
+body[data-role] .stat strong,
+body[data-role] .v211-dinas-card b,
+body[data-role] .v20-ledger-card h3{
+  color:var(--role-dark)!important;
+}
+body[data-role] .v211-dinas-card:hover,
+body[data-role] .v20-ledger-card:hover{
+  border-color:var(--role-mid)!important;
+  box-shadow:0 15px 32px var(--role-shadow)!important;
+}
+
+/* ---------- Buttons ---------- */
+body[data-role] .btn-primary{
+  background:linear-gradient(135deg,var(--role-dark),var(--role-mid))!important;
+  border-color:var(--role-dark)!important;
+  color:#fff!important;
+  box-shadow:0 6px 15px color-mix(in srgb,var(--role-shadow) 65%,transparent)!important;
+}
+body[data-role] .btn-primary:hover{
+  background:linear-gradient(135deg,color-mix(in srgb,var(--role-dark) 88%,#000 12%),var(--role-dark))!important;
+  color:#fff!important;
+}
+body[data-role] .btn-light{
+  background:var(--role-soft)!important;
+  border-color:var(--role-border)!important;
+  color:var(--role-text)!important;
+}
+body[data-role] .btn-light:hover{
+  background:color-mix(in srgb,var(--role-soft) 76%,var(--role-light) 24%)!important;
+  border-color:var(--role-mid)!important;
+}
+body[data-role] button:focus-visible,
+body[data-role] a:focus-visible,
+body[data-role] input:focus-visible,
+body[data-role] select:focus-visible,
+body[data-role] textarea:focus-visible{
+  outline:3px solid var(--role-focus)!important;
+  outline-offset:2px!important;
+}
+
+/* ---------- Inputs ---------- */
+body[data-role] input,
+body[data-role] select,
+body[data-role] textarea{
+  background:#fff!important;
+  color:var(--role-text)!important;
+  border-color:var(--role-border)!important;
+}
+body[data-role] input:focus,
+body[data-role] select:focus,
+body[data-role] textarea:focus{
+  border-color:var(--role-mid)!important;
+  box-shadow:0 0 0 4px var(--role-focus)!important;
+}
+body[data-role] label{
+  color:var(--role-text)!important;
+}
+
+/* ---------- Tables ---------- */
+body[data-role] .table-wrap{
+  border-color:var(--role-border)!important;
+  background:#fff!important;
+}
+body[data-role] .friendly-table th,
+body[data-role] table th{
+  background:var(--role-table-head)!important;
+  color:var(--role-text)!important;
+  border-color:var(--role-border)!important;
+}
+body[data-role] .friendly-table td,
+body[data-role] table td{
+  background:#fff!important;
+  color:var(--role-text)!important;
+  border-color:color-mix(in srgb,var(--role-border) 72%,#fff 28%)!important;
+}
+body[data-role] .friendly-table tr:hover td,
+body[data-role] table tbody tr:hover td{
+  background:var(--role-table-hover)!important;
+}
+
+/* ---------- Generic badges / highlights ---------- */
+body[data-role] .badge-info{
+  background:var(--role-soft)!important;
+  color:var(--role-dark)!important;
+  border:1px solid var(--role-border)!important;
+}
+body[data-role] .badge-success{
+  background:#e8f6ee!important;
+  color:#17643c!important;
+  border:1px solid #b8dec8!important;
+}
+body[data-role] .badge-warning{
+  background:#fff4d9!important;
+  color:#7a5200!important;
+  border:1px solid #ead191!important;
+}
+body[data-role] .badge-danger{
+  background:#fde8e8!important;
+  color:#8b1e1e!important;
+  border:1px solid #efb9b9!important;
+}
+body[data-role] .message.info{
+  background:var(--role-soft)!important;
+  border-color:var(--role-border)!important;
+  color:var(--role-text)!important;
+}
+body[data-role] .message.ok{
+  background:#eaf7ef!important;
+  border-color:#b8dfc7!important;
+  color:#185e39!important;
+}
+body[data-role] .message.warning{
+  background:#fff7df!important;
+  border-color:#ead391!important;
+  color:#765000!important;
+}
+body[data-role] .message.error,
+body[data-role] .message.danger{
+  background:#fdebec!important;
+  border-color:#efbdc1!important;
+  color:#7b1d27!important;
+}
+
+/* ---------- Role-colored progress / timeline / workflow ---------- */
+body[data-role] .school-progress-track span,
+body[data-role] .v16-track i,
+body[data-role] .progress-bar,
+body[data-role] .school-timeline-step.done > span{
+  background:linear-gradient(90deg,var(--role-dark),var(--role-light))!important;
+}
+body[data-role] .school-eyebrow,
+body[data-role] .v16-kicker,
+body[data-role] .v17-ph-kicker,
+body[data-role] .v17-ph-label{
+  color:var(--role-mid)!important;
+}
+
+/* ---------- Hero image overlay follows role ---------- */
+body[data-role] .v211-office-hero{
+  background:var(--role-dark)!important;
+  border:1px solid color-mix(in srgb,var(--role-light) 42%,transparent)!important;
+  box-shadow:0 15px 34px var(--role-shadow)!important;
+}
+body[data-role] .v211-office-hero::after{
+  background:
+    linear-gradient(90deg,
+      color-mix(in srgb,var(--role-dark) 94%,transparent) 0%,
+      color-mix(in srgb,var(--role-dark) 78%,transparent) 48%,
+      color-mix(in srgb,var(--role-mid) 28%,transparent) 100%)!important;
+}
+body[data-role] .v211-office-copy,
+body[data-role] .v211-office-copy h2,
+body[data-role] .v211-office-copy p{
+  color:#fff!important;
+}
+body[data-role] .v211-office-copy .kicker{
+  color:#fff!important;
+  background:rgba(255,255,255,.15)!important;
+  border:1px solid rgba(255,255,255,.18);
+}
+
+/* Existing role/home heroes also get the role palette */
+body[data-role] .v16-hero,
+body[data-role] .v17-ph-hero,
+body[data-role] .ux-hero,
+body[data-role] .school-result-hero{
+  background:linear-gradient(135deg,var(--role-dark),var(--role-mid),var(--role-light))!important;
+  color:#fff!important;
+  border-color:transparent!important;
+}
+body[data-role] .v16-hero h1,
+body[data-role] .v17-ph-hero h2,
+body[data-role] .ux-hero h2,
+body[data-role] .school-result-hero h3,
+body[data-role] .v16-hero p,
+body[data-role] .v17-ph-hero p,
+body[data-role] .ux-hero p,
+body[data-role] .school-result-hero p{
+  color:#fff!important;
+}
+body[data-role] .v16-hero .v16-kicker,
+body[data-role] .v17-ph-hero .v17-ph-kicker{
+  color:rgba(255,255,255,.84)!important;
+}
+
+/* ---------- Modal / overlays ---------- */
+body[data-role] [style*="position:fixed"][style*="background:rgba(0,0,0"] > div{
+  border:1px solid var(--role-border);
+}
+body[data-role] .modal h3,
+body[data-role] [id$="Modal"] h3{
+  color:var(--role-dark)!important;
+}
+
+/* ---------- Loading / selection ---------- */
+body[data-role] .loading-spinner{
+  border-color:color-mix(in srgb,var(--role-light) 42%,#dfe6e2 58%)!important;
+  border-top-color:var(--role-dark)!important;
+}
+body[data-role] ::selection{
+  background:var(--role-mid);
+  color:#fff;
+}
+
+/* ---------- Preserve critical icon/button contrast ---------- */
+body[data-role] .btn-primary svg,
+body[data-role] .btn-primary i,
+body[data-role] .sidebar svg,
+body[data-role] .sidebar i,
+body[data-role] .topbar svg,
+body[data-role] .topbar i{
+  color:currentColor!important;
+  stroke:currentColor;
+}
+
+/* Print stays neutral and readable */
+@media print{
+  body[data-role]{
+    background:#fff!important;
+    color:#111!important;
+  }
+  body[data-role] .topbar,
+  body[data-role] .sidebar,
+  body[data-role] .v211-office-hero{
+    display:none!important;
+  }
+  body[data-role] .panel,
+  body[data-role] .stat,
+  body[data-role] table td,
+  body[data-role] table th{
+    background:#fff!important;
+    color:#111!important;
+    box-shadow:none!important;
+    border-color:#bbb!important;
+  }
+}
+</style>
+
 </head><body>${kop}${body}<script>window.onload=()=>setTimeout(()=>window.print(),350)<\/script>
 </body></html>`);
   w.document.close();
