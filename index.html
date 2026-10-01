@@ -6,7 +6,23 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>SIMPEL SPJ — Kabupaten Rembang</title>
 <!-- SheetJS untuk membaca file Excel BKU secara lokal -->
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script>
+// SheetJS dimuat hanya saat fitur Excel benar-benar dipakai agar startup lebih ringan.
+let _xlsxLoaderPromise = null;
+function ensureXlsxLib(){
+  if (window.XLSX) return Promise.resolve(window.XLSX);
+  if (_xlsxLoaderPromise) return _xlsxLoaderPromise;
+  _xlsxLoaderPromise = new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+    s.async = true;
+    s.onload = () => resolve(window.XLSX);
+    s.onerror = () => { _xlsxLoaderPromise = null; reject(new Error('Library Excel gagal dimuat. Periksa koneksi internet.')); };
+    document.head.appendChild(s);
+  });
+  return _xlsxLoaderPromise;
+}
+</script>
 <style>
 /* SIMPEL SPJ V14 — consolidated design system */
 :root{
@@ -748,6 +764,16 @@ body{background:linear-gradient(180deg,#fbfaf6 0,#f4f2eb 100%)!important;color:v
 .simple-modal{position:fixed;inset:0;background:rgba(16,42,67,.48);display:flex;align-items:center;justify-content:center;padding:16px;z-index:10020}.simple-modal-card{width:min(100%,460px);background:#fff;border-radius:20px;padding:20px;box-shadow:0 24px 70px rgba(16,42,67,.24)}.simple-modal-card h3{margin:0}.simple-modal-actions{display:flex;justify-content:flex-end;margin-top:14px}.period-choice{width:100%;border:1px solid var(--border);background:#fff;border-radius:12px;padding:12px;text-align:left;margin-top:7px}.period-choice.active{border-color:var(--emerald);background:var(--emerald-soft)}.period-choice strong,.period-choice small{display:block}.period-choice small{color:var(--muted);margin-top:2px}
 @media(max-width:900px){.school-hero-v14{grid-template-columns:1fr}.school-identity-card{max-width:420px}.school-timeline{grid-template-columns:1fr 1fr}.school-quick-grid{grid-template-columns:1fr}.school-mini-grid{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:600px){.school-hero-v14{padding:20px;border-radius:19px}.school-identity-card{max-width:none}.school-work-panel{padding:15px}.school-next-action{align-items:flex-start;flex-direction:column}.school-next-action .btn{width:100%}.school-timeline{grid-template-columns:1fr}.school-status-row{align-items:flex-start;flex-direction:column}.school-result-hero{align-items:flex-start}.school-progress-meta{flex-direction:column;gap:2px}}
+
+/* V18 compatibility aliases: menjaga komponen lama tetap mendapat warna tanpa mengubah tema/logika. */
+:root{
+  --primary:var(--ux-green,#1f5b45);
+  --primary-2:var(--ux-green-2,#2e7358);
+  --green:var(--ux-green,#1f5b45);
+  --bg:var(--ux-cream,#f7f5ef);
+  --card-bg:var(--ux-paper,#fffefa);
+}
+
 </style>
 
 <style>
@@ -2619,8 +2645,8 @@ function _bkuMetaClient(rows){
 window.parseExcelBku=async function(){
   const f=$('#excelFile')?.files?.[0],out=$('#excelPreview'),btn=$('#bkuReadBtn');
   if(!f){out.innerHTML=msg('Pilih file Excel BKU.');return;}
-  if(typeof XLSX==='undefined'){out.innerHTML=msg('Library Excel belum tersedia.','warning');return;}
-  btn.disabled=true;btn.textContent='Membaca BKU...';out.innerHTML=loading('Menganalisis struktur BKU...');
+  btn.disabled=true;
+  try{ await ensureXlsxLib(); }catch(e){ out.innerHTML=msg(e.message,'warning'); btn.disabled=false; return; }btn.textContent='Membaca BKU...';out.innerHTML=loading('Menganalisis struktur BKU...');
   try{
     const buffer=await f.arrayBuffer();
     const wb=XLSX.read(new Uint8Array(buffer),{type:'array',cellDates:true});
@@ -3003,8 +3029,8 @@ window.readAndMapRkasFile=async function(){
   const file=$('#rkasImportFile')?.files?.[0];
   const out=$('#rkasPreviewArea'),msgHost=$('#rkasImportMsg'),btn=$('#rkasReadBtn');
   if(!file){msgHost.innerHTML=msg('Pilih file Excel RKAS terlebih dahulu.');return;}
-  if(typeof XLSX==='undefined'){msgHost.innerHTML=msg('Library Excel belum tersedia.','warning');return;}
-  btn.disabled=true;btn.textContent='Membaca & mapping...';out.innerHTML=loading('Menganalisis struktur RKAS dan menjalankan mapping...');
+  btn.disabled=true;
+  try{ await ensureXlsxLib(); }catch(e){ msgHost.innerHTML=msg(e.message,'warning'); btn.disabled=false; return; }btn.textContent='Membaca & mapping...';out.innerHTML=loading('Menganalisis struktur RKAS dan menjalankan mapping...');
   try{
     const buffer=await file.arrayBuffer();
     const wb=XLSX.read(new Uint8Array(buffer),{type:'array',cellDates:true});
@@ -4105,45 +4131,7 @@ async function penugasanView() {
   }
 }
 
-// Fungsi bantu tambahan untuk merender kartu binaan secara bersih
-function renderBinaanCards(list) {
-  const area = $('#binaanArea');
-  if (!area) return;
-  
-  if (!list || list.length === 0) {
-    area.innerHTML = msg('Belum ada sekolah binaan yang ditugaskan kepada Anda di sistem. Silakan hubungi Dinas.', 'warning');
-    return;
-  }
-
-  const cardsHtml = list.map(x => {
-    const npsnVal = esc(x.npsn || x.NPSN || '');
-    const namaSekolahVal = esc(x.nama_sekolah || x.nama || 'Sekolah Binaan');
-    const kecamatanVal = esc(x.kecamatan || '-');
-
-    return `
-      <div class="panel" style="margin-top:12px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;">
-        <div>
-          <h3 style="margin:0 0 4px; color:var(--primary); font-size:1.1rem;">${namaSekolahVal}</h3>
-          <p class="muted" style="margin:0">NPSN: <b>${npsnVal}</b> | Kecamatan: ${kecamatanVal}</p>
-        </div>
-        <div>
-          <button class="btn btn-sm btn-primary" onclick="pilihSekolahBinaan('${npsnVal}')">
-            Pilih Sekolah Ini
-          </button>
-        </div>
-      </div>
-    `;
-  }).join('');
-
-  area.innerHTML = cardsHtml;
-}
-
-window.pilihSekolahBinaan = function(npsn) {
-  state.selectedNpsn = npsn;
-  toast(`Sekolah binaan dengan NPSN ${npsn} dipilih.`, 'ok');
-  loadView('crosscheck');
-};
-
+// renderBinaanCards dipertahankan satu definisi saja untuk mencegah override diam-diam.
 function renderBinaanCards(list) {
   const area = $('#binaanArea');
   if (!area) return;
@@ -5519,8 +5507,9 @@ window.togglePassword = function(inputId, btnElement) {
   }
 };
 
-window.exportRkasExcel = function(){
+window.exportRkasExcel = async function(){
   try {
+    await ensureXlsxLib();
     const tbl = document.getElementById('tableRkasRealisasi');
     if(!tbl) {
       alert('Tabel data realisasi tidak ditemukan.');
@@ -5762,30 +5751,7 @@ window.changeMonPage = function(direction) {
   applyGlobalMonFilterAndSort();
 };
 
-// 5. Generator Baris Tabel menggunakan .map().join('') secara bersih
-function generateGlobalMonRows(list, offset = 0) {
-  if(!list || list.length === 0) return emptyRow(7, 'Tidak ada data yang cocok dengan filter.');
-  
-  return list.map((x, idx) => `
-    <tr>
-      <td style="text-align:center">${offset + idx + 1}</td>
-      <td><b>${esc(x.npsn)}</b></td>
-      <td>
-        <b>${esc(x.nama_sekolah)}</b><br>
-        <small class="muted">📍 ${esc(x.alamat_lengkap)} (Kec. ${esc(x.kecamatan)})</small>
-      </td>
-      <td><b>${fmtRupiah(x.total_pagu)}</b></td>
-      <td style="color:var(--success);font-weight:600">${fmtRupiah(x.total_realisasi)}</td>
-      <td style="text-align:center">${badge(x.jumlah_dokumen_spj > 0 ? `${x.jumlah_dokumen_spj} File` : 'Belum', x.jumlah_dokumen_spj > 0 ? 'success' : 'warning')}</td>
-      <td style="text-align:center">${badge(x.status_penilaian, x.status_penilaian === 'SELESAI_DINILAI' ? 'success' : 'info')}</td>
-    </tr>`).join('');
-}
-
-// 6. Filter Pencarian Teks
-window.filterGlobalMon = function(keyword) {
-  resetPageAndFilter();
-};
-
+// Generator monitoring global dipertahankan satu definisi saja.
 // 5. Generator Baris Tabel dengan Nomor Urut yang Menyesuaikan Halaman
 function generateGlobalMonRows(list, offset = 0) {
   if(!list || list.length === 0) return emptyRow(7, 'Tidak ada data yang cocok dengan filter.');
@@ -5810,8 +5776,9 @@ window.filterGlobalMon = function(keyword) {
 };
 
 // 7. Fungsi ekspor Excel untuk laporan monitoring global
-window.exportGlobalMonExcel = function(){
+window.exportGlobalMonExcel = async function(){
   try {
+    await ensureXlsxLib();
     const tbl = document.getElementById('tableGlobalMon');
     if(!tbl) {
       alert('Tabel data monitoring tidak ditemukan.');
@@ -6671,8 +6638,8 @@ window.analyzeRkasReplaceFile=async function(){
   const file=$('#rkasReplaceFile')?.files?.[0];
   const out=$('#rkasReplacePreview'), msgHost=$('#rkasReplaceMsg'), btn=$('#rkasReplaceAnalyzeBtn');
   if(!file){msgHost.innerHTML=msg('Pilih file Excel RKAS terlebih dahulu.','warning');return;}
-  if(typeof XLSX==='undefined'){msgHost.innerHTML=msg('Library Excel belum tersedia.','warning');return;}
-  btn.disabled=true;btn.textContent='Menganalisis...';
+  btn.disabled=true;
+  try{ await ensureXlsxLib(); }catch(e){ msgHost.innerHTML=msg(e.message,'warning'); btn.disabled=false; return; }btn.textContent='Menganalisis...';
   out.innerHTML=loading('Membaca struktur DPA/RKAS dan memisahkan subtotal dari detail barang...');
   try{
     const buffer=await file.arrayBuffer();
