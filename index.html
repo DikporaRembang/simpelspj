@@ -5949,26 +5949,34 @@ function renderPdfInteractive(x){
     </div>
     <div class="pdf-interactive-grid" style="display:grid;grid-template-columns:minmax(0,1.55fr) minmax(340px,.95fr);min-height:72vh">
       <section style="background:#eef1f3;min-width:0;padding:10px">
-        <div class="interactive-pdf-toolbar" style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;padding:8px 9px;margin-bottom:8px;background:#fff;border:1px solid #dbe3e0;border-radius:12px">
-          <div style="display:flex;gap:6px;align-items:center">
-            <button id="interactivePrevBtn" class="btn btn-light btn-sm" onclick="interactivePdfPrev()">← Sebelumnya</button>
-            <button id="interactiveNextBtn" class="btn btn-light btn-sm" onclick="interactivePdfNext()">Berikutnya →</button>
+        <div class="interactive-pdf-toolbar v224-pdf-toolbar">
+          <div class="v224-nav-group">
+            <button id="interactivePrevBtn" class="v224-icon-btn" onclick="interactivePdfPrev()" title="Halaman sebelumnya (← / Page Up)" aria-label="Halaman sebelumnya">←</button>
+            <div class="v224-page-box">
+              <span>Halaman</span>
+              <input id="interactivePage" type="number" min="1" value="${Math.max(1,Number(ui.page)||1)}" onkeydown="if(event.key==='Enter'){event.preventDefault();goInteractivePage()}">
+              <span id="interactivePageInfo">/ …</span>
+            </div>
+            <button id="interactiveNextBtn" class="v224-icon-btn" onclick="interactivePdfNext()" title="Halaman berikutnya (→ / Page Down)" aria-label="Halaman berikutnya">→</button>
           </div>
-          <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-            <span class="muted">Hal.</span>
-            <input id="interactivePage" type="number" min="1" value="${Math.max(1,Number(ui.page)||1)}" style="width:74px;min-height:38px" onkeydown="if(event.key==='Enter'){event.preventDefault();goInteractivePage()}">
-            <span id="interactivePageInfo" class="muted">/ …</span>
-            <button class="btn btn-light btn-sm" onclick="goInteractivePage()">Buka</button>
+
+          <div class="v224-zoom-group">
+            <button class="v224-icon-btn" onclick="interactivePdfZoom(-.1)" title="Perkecil (-)" aria-label="Perkecil">−</button>
+            <button id="interactiveZoomInfo" class="v224-zoom-readout" onclick="interactivePdfResetZoom()" title="Reset zoom ke 100% (0)">${Math.round((Number(ui.zoom)||1)*100)}%</button>
+            <button class="v224-icon-btn" onclick="interactivePdfZoom(.1)" title="Perbesar (+)" aria-label="Perbesar">+</button>
           </div>
-          <div style="display:flex;gap:6px;align-items:center">
-            <button class="btn btn-light btn-sm" onclick="interactivePdfZoom(-.1)">−</button>
-            <span id="interactiveZoomInfo" class="muted">${Math.round((Number(ui.zoom)||1)*100)}%</span>
-            <button class="btn btn-light btn-sm" onclick="interactivePdfZoom(.1)">+</button>
-            <button class="btn btn-light btn-sm" onclick="ocrCurrentInteractivePdf()" title="OCR hanya untuk membaca bukti PDF; bukan sumber transaksi BKU">🔎 OCR Bukti</button>
-          </div>
+
+          <button class="v224-ocr-btn" onclick="ocrCurrentInteractivePdf()" title="OCR hanya membaca bukti PDF; bukan sumber transaksi BKU">🔎 OCR</button>
         </div>
-        <div id="interactivePdfFrame" tabindex="0" style="width:100%;height:72vh;overflow:auto;background:#dfe5e8;border:1px solid #d4dde1;display:flex;align-items:flex-start;justify-content:center;padding:14px;outline:none"><div class="muted" style="padding:40px;text-align:center">Memuat PDF secara aman...</div></div>
-        <div class="muted" style="padding:7px 3px 0">Keyboard: ←/→ pindah halaman • Page Up/Page Down • Home/End. Shortcut aktif saat tidak sedang mengetik.</div>
+        <div id="interactivePdfFrame" tabindex="0" class="v224-pdf-frame"><div class="muted" style="padding:40px;text-align:center">Memuat PDF secara aman...</div></div>
+        <div class="v224-keyboard-hint">
+          <b>Keyboard:</b>
+          <span>← / → halaman</span>
+          <span>PgUp / PgDn halaman</span>
+          <span>Home / End awal-akhir</span>
+          <span>+ / − zoom</span>
+          <span>0 reset 100%</span>
+        </div>
       </section>
       <aside style="padding:16px;overflow:auto;max-height:78vh">
         <div class="cards" style="grid-template-columns:1fr 1fr"><div class="stat"><small>Status</small><strong>${esc(a.status_asesmen||'DRAFT')}</strong></div><div class="stat"><small>Nilai akhir</small><strong>${esc(a.nilai_akhir??'-')}</strong></div></div>
@@ -6033,6 +6041,9 @@ window.renderInteractivePdfPage=async function(pageNo){
     const prev=$('#interactivePrevBtn');if(prev)prev.disabled=safePage<=1;
     const next=$('#interactiveNextBtn');if(next)next.disabled=safePage>=pdf.numPages;
     renderInteractiveEvidenceSummary_();
+    if(document.activeElement===document.body || !document.activeElement){
+      wrap.focus({preventScroll:true});
+    }
   }catch(e){wrap.innerHTML=msg('PDF tidak dapat ditampilkan: '+errorText(e),'error');}
 };
 
@@ -6041,10 +6052,30 @@ window.changeInteractivePdf=async function(){
   ui.docId=$('#interactiveDocSelect')?.value||'';ui.page=1;ui.zoom=1;ui.totalPages=0;
   await renderInteractivePdfPage(1);
 };
-window.goInteractivePage=async function(){await renderInteractivePdfPage($('#interactivePage')?.value||1);};
-window.interactivePdfPrev=async function(){const u=window.__pdfInteractiveUiState||{};await renderInteractivePdfPage(Math.max(1,(Number(u.page)||1)-1));};
-window.interactivePdfNext=async function(){const u=window.__pdfInteractiveUiState||{};await renderInteractivePdfPage(Math.min(Number(u.totalPages)||99999,(Number(u.page)||1)+1));};
-window.interactivePdfZoom=async function(delta){const u=window.__pdfInteractiveUiState||(window.__pdfInteractiveUiState={});u.zoom=Math.max(.7,Math.min(2,(Number(u.zoom)||1)+Number(delta||0)));await renderInteractivePdfPage(u.page||1);};
+window.goInteractivePage=async function(){
+  const u=window.__pdfInteractiveUiState||{};
+  const max=Number(u.totalPages)||99999;
+  const raw=Math.round(Number($('#interactivePage')?.value)||1);
+  await renderInteractivePdfPage(Math.max(1,Math.min(max,raw)));
+};
+window.interactivePdfPrev=async function(){
+  const u=window.__pdfInteractiveUiState||{};
+  await renderInteractivePdfPage(Math.max(1,(Number(u.page)||1)-1));
+};
+window.interactivePdfNext=async function(){
+  const u=window.__pdfInteractiveUiState||{};
+  await renderInteractivePdfPage(Math.min(Number(u.totalPages)||99999,(Number(u.page)||1)+1));
+};
+window.interactivePdfZoom=async function(delta){
+  const u=window.__pdfInteractiveUiState||(window.__pdfInteractiveUiState={});
+  u.zoom=Math.max(.7,Math.min(2,(Number(u.zoom)||1)+Number(delta||0)));
+  await renderInteractivePdfPage(u.page||1);
+};
+window.interactivePdfResetZoom=async function(){
+  const u=window.__pdfInteractiveUiState||(window.__pdfInteractiveUiState={});
+  u.zoom=1;
+  await renderInteractivePdfPage(u.page||1);
+};
 
 function ensureInteractivePdfKeyboard_(){
   if(window.__interactivePdfKeyboardBound)return;
@@ -6053,10 +6084,23 @@ function ensureInteractivePdfKeyboard_(){
     if(state.view!=='pdfInteraktif'||!document.getElementById('interactivePdfFrame'))return;
     const tag=String(e.target?.tagName||'').toLowerCase();
     if(['input','textarea','select'].includes(tag)||e.target?.isContentEditable)return;
-    if(e.key==='ArrowLeft'||e.key==='PageUp'){e.preventDefault();interactivePdfPrev();}
-    else if(e.key==='ArrowRight'||e.key==='PageDown'){e.preventDefault();interactivePdfNext();}
-    else if(e.key==='Home'){e.preventDefault();renderInteractivePdfPage(1);}
-    else if(e.key==='End'){e.preventDefault();renderInteractivePdfPage(window.__pdfInteractiveUiState?.totalPages||1);}
+
+    const key=e.key;
+    if(key==='ArrowLeft'||key==='PageUp'){
+      e.preventDefault();interactivePdfPrev();
+    }else if(key==='ArrowRight'||key==='PageDown'){
+      e.preventDefault();interactivePdfNext();
+    }else if(key==='Home'){
+      e.preventDefault();renderInteractivePdfPage(1);
+    }else if(key==='End'){
+      e.preventDefault();renderInteractivePdfPage(window.__pdfInteractiveUiState?.totalPages||1);
+    }else if(key==='+'||key==='='){
+      e.preventDefault();interactivePdfZoom(.1);
+    }else if(key==='-'||key==='_'){
+      e.preventDefault();interactivePdfZoom(-.1);
+    }else if(key==='0'){
+      e.preventDefault();interactivePdfResetZoom();
+    }
   });
 }
 
@@ -9337,6 +9381,138 @@ body.theme-sekolah .v221-book-summary{background:#F7F8FE}
   background:rgba(255,255,255,.72);
 }
 .v223-tax-audit b{color:var(--text)}
+</style>
+
+
+<style id="v224PdfNavigationPolish">
+.v224-pdf-toolbar{
+  position:sticky;
+  top:0;
+  z-index:8;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:10px;
+  flex-wrap:wrap;
+  padding:8px 10px;
+  margin-bottom:8px;
+  background:rgba(255,255,255,.96);
+  border:1px solid #dbe3e0;
+  border-radius:12px;
+  box-shadow:0 3px 12px rgba(16,42,67,.07);
+  backdrop-filter:blur(8px);
+}
+.v224-nav-group,.v224-zoom-group{
+  display:flex;
+  align-items:center;
+  gap:6px;
+}
+.v224-icon-btn{
+  width:38px;
+  height:38px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  border:1px solid var(--role-border,var(--border,#d8e0dc));
+  border-radius:10px;
+  background:#fff;
+  color:var(--primary);
+  font-size:1.1rem;
+  font-weight:900;
+  cursor:pointer;
+}
+.v224-icon-btn:hover:not(:disabled){
+  background:var(--role-soft,#f4f7f5);
+  border-color:var(--primary);
+}
+.v224-icon-btn:disabled{
+  opacity:.35;
+  cursor:not-allowed;
+}
+.v224-page-box{
+  min-height:38px;
+  display:flex;
+  align-items:center;
+  gap:5px;
+  padding:0 8px;
+  border:1px solid var(--role-border,var(--border,#d8e0dc));
+  border-radius:10px;
+  background:#fff;
+  color:var(--muted);
+  font-size:.76rem;
+}
+.v224-page-box input{
+  width:48px!important;
+  min-height:30px!important;
+  padding:3px 5px!important;
+  text-align:center;
+  border:0!important;
+  background:var(--role-soft-2,#f7f9f8)!important;
+  box-shadow:none!important;
+  font-weight:850;
+  color:var(--text)!important;
+}
+.v224-page-box input:focus{
+  outline:2px solid var(--primary);
+  outline-offset:1px;
+}
+.v224-zoom-readout{
+  min-width:58px;
+  height:38px;
+  border:1px solid var(--role-border,var(--border,#d8e0dc));
+  border-radius:10px;
+  background:#fff;
+  color:var(--text);
+  font-weight:850;
+  cursor:pointer;
+}
+.v224-ocr-btn{
+  height:38px;
+  padding:0 11px;
+  border:1px solid var(--role-border,var(--border,#d8e0dc));
+  border-radius:10px;
+  background:#fff;
+  color:var(--primary);
+  font-weight:800;
+  cursor:pointer;
+}
+.v224-pdf-frame{
+  width:100%;
+  height:72vh;
+  overflow:auto;
+  background:#dfe5e8;
+  border:1px solid #d4dde1;
+  display:flex;
+  align-items:flex-start;
+  justify-content:center;
+  padding:14px;
+  outline:none;
+  border-radius:10px;
+}
+.v224-pdf-frame:focus{
+  box-shadow:0 0 0 3px color-mix(in srgb,var(--primary) 18%,transparent);
+}
+.v224-keyboard-hint{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  flex-wrap:wrap;
+  gap:5px 12px;
+  padding:8px 4px 0;
+  color:var(--muted);
+  font-size:.69rem;
+}
+.v224-keyboard-hint span{
+  white-space:nowrap;
+}
+@media(max-width:720px){
+  .v224-pdf-toolbar{justify-content:space-between;gap:7px}
+  .v224-nav-group{order:1}
+  .v224-zoom-group{order:2}
+  .v224-ocr-btn{order:3;width:100%}
+  .v224-page-box>span:first-child{display:none}
+  .v224-keyboard-hint{display:none}
+}
 </style>
 
 </body>
