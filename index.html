@@ -5935,58 +5935,104 @@ async function tutorialV5View(){
 
     area.innerHTML=`<div id="v5PdfReader" style="background:#eef2f4;border:1px solid var(--border);border-radius:14px;overflow:hidden">
       <div style="position:sticky;top:0;z-index:2;background:#fff;border-bottom:1px solid var(--border);padding:10px 12px;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
-        <div style="display:flex;align-items:center;gap:8px">
-          <button class="btn btn-light btn-sm" id="v5PdfPrev">← Sebelumnya</button>
-          <button class="btn btn-light btn-sm" id="v5PdfNext">Berikutnya →</button>
+        <div>
+          <b>📖 Tutorial lengkap</b>
+          <div class="muted" id="v5PdfPageInfo">Menyiapkan seluruh halaman...</div>
         </div>
-        <div class="muted" id="v5PdfPageInfo">Memuat halaman...</div>
         <div style="display:flex;align-items:center;gap:7px">
-          <button class="btn btn-light btn-sm" id="v5PdfZoomOut">−</button>
+          <button class="btn btn-light btn-sm" id="v5PdfZoomOut" title="Perkecil">−</button>
           <span id="v5PdfZoomInfo" class="muted">100%</span>
-          <button class="btn btn-light btn-sm" id="v5PdfZoomIn">+</button>
+          <button class="btn btn-light btn-sm" id="v5PdfZoomIn" title="Perbesar">+</button>
         </div>
       </div>
-      <div id="v5PdfCanvasWrap" style="padding:18px;min-height:72vh;display:flex;justify-content:center;align-items:flex-start;overflow:auto">
+      <div id="v5PdfCanvasWrap" style="padding:18px;min-height:72vh;max-height:78vh;overflow:auto;background:#dfe4e6;scroll-behavior:smooth">
         <div class="loading-container" style="min-height:55vh">${loading('Membaca PDF dari GitHub...')}</div>
       </div>
     </div>
-    <div class="muted" style="margin-top:8px">PDF dibaca langsung di halaman aplikasi. Sumber: GitHub resmi SIMPEL SPJ.</div>`;
+    <div class="muted" style="margin-top:8px">Seluruh halaman ditampilkan vertikal. Halaman berikutnya dimuat otomatis saat Anda menggulir agar aplikasi tetap ringan.</div>`;
 
     const pdf=await window.pdfjsLib.getDocument({url:rawUrl,withCredentials:false}).promise;
-    let pageNo=1, zoom=1;
+    let zoom=1;
     const wrap=$('#v5PdfCanvasWrap'), info=$('#v5PdfPageInfo'), zoomInfo=$('#v5PdfZoomInfo');
+    if(!wrap) return;
 
-    async function renderPage(){
-      if(!wrap) return;
-      wrap.innerHTML=loading(`Memuat halaman ${pageNo} dari ${pdf.numPages}...`);
-      const page=await pdf.getPage(pageNo);
-      const base=page.getViewport({scale:1});
-      const maxWidth=Math.max(320, Math.min(wrap.clientWidth-36, 980));
-      const fitScale=Math.min(maxWidth/base.width, 1.55);
-      const viewport=page.getViewport({scale:fitScale*zoom});
-      const canvas=document.createElement('canvas');
-      canvas.style.display='block';
-      canvas.style.maxWidth='100%';
-      canvas.style.height='auto';
-      canvas.style.background='#fff';
-      canvas.style.boxShadow='0 8px 25px rgba(16,42,67,.12)';
-      canvas.style.border='1px solid #d7e0e5';
-      canvas.width=Math.ceil(viewport.width);
-      canvas.height=Math.ceil(viewport.height);
-      wrap.innerHTML='';
-      wrap.appendChild(canvas);
-      await page.render({canvasContext:canvas.getContext('2d'),viewport}).promise;
-      info.textContent=`Halaman ${pageNo} dari ${pdf.numPages}`;
-      zoomInfo.textContent=`${Math.round(zoom*100)}%`;
-      $('#v5PdfPrev').disabled=pageNo<=1;
-      $('#v5PdfNext').disabled=pageNo>=pdf.numPages;
+    const slots=[];
+    wrap.innerHTML='';
+    for(let pageNo=1;pageNo<=pdf.numPages;pageNo++){
+      const slot=document.createElement('section');
+      slot.className='v5-pdf-page-slot';
+      slot.dataset.page=String(pageNo);
+      slot.dataset.rendered='0';
+      slot.style.cssText='width:100%;max-width:1040px;margin:0 auto 18px;min-height:420px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:7px;';
+      slot.innerHTML=`<div class="muted" style="width:100%;max-width:980px;text-align:left;font-weight:750">Halaman ${pageNo} / ${pdf.numPages}</div><div class="v5-pdf-placeholder" style="width:100%;min-height:390px;border:1px dashed #bdc8cc;border-radius:10px;background:rgba(255,255,255,.45);display:grid;place-items:center"><span class="muted">Halaman ${pageNo} akan dimuat saat diperlukan…</span></div>`;
+      wrap.appendChild(slot);
+      slots.push(slot);
+    }
+    info.textContent=`${pdf.numPages} halaman • gulir untuk membaca`;
+
+    let renderGeneration=0;
+    async function renderSlot(slot, force=false){
+      if(!slot || (slot.dataset.rendered==='1' && !force)) return;
+      if(slot.dataset.rendering==='1') return;
+      slot.dataset.rendering='1';
+      const generation=renderGeneration;
+      const pageNo=Number(slot.dataset.page)||1;
+      try{
+        const page=await pdf.getPage(pageNo);
+        if(generation!==renderGeneration && !force) return;
+        const base=page.getViewport({scale:1});
+        const available=Math.max(300,Math.min((wrap.clientWidth||1020)-44,980));
+        const fitScale=Math.min(available/base.width,1.55);
+        const viewport=page.getViewport({scale:fitScale*zoom});
+        const canvas=document.createElement('canvas');
+        canvas.className='v5-pdf-page-canvas';
+        canvas.width=Math.ceil(viewport.width);
+        canvas.height=Math.ceil(viewport.height);
+        canvas.style.cssText='display:block;max-width:100%;height:auto;background:#fff;box-shadow:0 8px 25px rgba(16,42,67,.12);border:1px solid #d7e0e5;';
+        const label=slot.querySelector('.muted');
+        slot.innerHTML='';
+        if(label) slot.appendChild(label);
+        else {
+          const lbl=document.createElement('div');
+          lbl.className='muted';
+          lbl.style.cssText='width:100%;max-width:980px;text-align:left;font-weight:750';
+          lbl.textContent=`Halaman ${pageNo} / ${pdf.numPages}`;
+          slot.appendChild(lbl);
+        }
+        slot.appendChild(canvas);
+        await page.render({canvasContext:canvas.getContext('2d'),viewport}).promise;
+        slot.dataset.rendered='1';
+      }catch(err){
+        const holder=slot.querySelector('.v5-pdf-placeholder');
+        if(holder) holder.innerHTML=`<span class="muted">Gagal memuat halaman ${pageNo}. Gulir kembali untuk mencoba lagi.</span>`;
+      }finally{
+        slot.dataset.rendering='0';
+      }
     }
 
-    $('#v5PdfPrev').onclick=async()=>{if(pageNo>1){pageNo--;await renderPage();}};
-    $('#v5PdfNext').onclick=async()=>{if(pageNo<pdf.numPages){pageNo++;await renderPage();}};
-    $('#v5PdfZoomOut').onclick=async()=>{zoom=Math.max(.75,zoom-.1);await renderPage();};
-    $('#v5PdfZoomIn').onclick=async()=>{zoom=Math.min(2,zoom+.1);await renderPage();};
-    await renderPage();
+    const observer=new IntersectionObserver(entries=>{
+      entries.forEach(entry=>{
+        if(entry.isIntersecting) renderSlot(entry.target);
+      });
+    },{root:wrap,rootMargin:'700px 0px',threshold:0.01});
+    slots.forEach(slot=>observer.observe(slot));
+
+    // Pastikan halaman pertama langsung tersedia walau IntersectionObserver belum mengeksekusi callback.
+    await renderSlot(slots[0]);
+    if(slots[1]) renderSlot(slots[1]);
+
+    async function applyZoom(nextZoom){
+      zoom=Math.max(.75,Math.min(1.8,nextZoom));
+      zoomInfo.textContent=`${Math.round(zoom*100)}%`;
+      renderGeneration++;
+      const visibleOrRendered=slots.filter(slot=>slot.dataset.rendered==='1' || Math.abs(slot.getBoundingClientRect().top-wrap.getBoundingClientRect().top)<(wrap.clientHeight+900));
+      visibleOrRendered.forEach(slot=>{slot.dataset.rendered='0';slot.dataset.rendering='0';});
+      for(const slot of visibleOrRendered) await renderSlot(slot,true);
+    }
+
+    $('#v5PdfZoomOut').onclick=()=>applyZoom(zoom-.1);
+    $('#v5PdfZoomIn').onclick=()=>applyZoom(zoom+.1);
+    zoomInfo.textContent='100%';
   }catch(e){
     area.innerHTML=msg('Tutorial tidak dapat ditampilkan langsung di feed: '+errorText(e)+'. Gunakan tombol "Buka di GitHub" untuk membuka dokumen asli.','error');
   }
