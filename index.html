@@ -592,7 +592,17 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
 .tutorial-feed p{margin:0;color:#516271;font-size:.84rem;line-height:1.55}
 .tutorial-feed .tutorial-flow{margin-top:9px;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
 .tutorial-step{padding:5px 8px;border-radius:999px;background:#edf7f2;color:var(--emerald-2);font-size:.69rem;font-weight:800}
+.tutorial-step.current{background:var(--emerald);color:#fff;box-shadow:0 4px 12px rgba(8,127,91,.18)}
 .tutorial-arrow{color:#9aa8b2;font-size:.72rem}
+.tutorial-feed-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.tutorial-feed-main{min-width:0;flex:1}
+.tutorial-toggle{border:1px solid #e3dccb;background:#fffdf8;color:#755f2e;border-radius:999px;padding:6px 10px;font-size:.68rem;font-weight:800;white-space:nowrap;cursor:pointer}
+.tutorial-toggle:hover{background:#f7f1e3}
+.tutorial-role-tip{margin-top:9px;padding:8px 10px;border-radius:10px;background:rgba(8,127,91,.055);color:#486257;font-size:.74rem;line-height:1.45}
+.tutorial-feed.collapsed{padding:10px 13px;margin-bottom:12px}
+.tutorial-feed.collapsed .tutorial-body{display:none}
+.tutorial-feed.collapsed .tutorial-label{margin-bottom:1px}
+.tutorial-feed.collapsed h3{font-size:.86rem;margin:0}
 .assessment-guide{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:15px}
 .assessment-guide-card{padding:12px 13px;border:1px solid var(--border);border-radius:13px;background:#fff}
 .assessment-guide-card strong{display:block;font-size:.78rem;color:var(--navy);margin-bottom:4px}
@@ -863,18 +873,25 @@ window.ROLE_MENUS = {
 const ROLE_MENUS = window.ROLE_MENUS;
 
 const SUBMENU_TUTORIALS = {
-  masterSpj: {title:'Master SPJ & Periode',text:'Dinas menetapkan komponen SPJ, indikator pemeriksaan, dan periode aktif. Ini menjadi fondasi agar seluruh sekolah dinilai dengan standar yang sama.',flow:['Master SPJ','Indikator','Periode','Penilaian']},
-  sekolah: {title:'Data Sekolah',text:'Memastikan identitas satuan pendidikan dan NPSN benar sebelum dokumen, temuan, dan nilai dikaitkan ke sekolah yang diperiksa.',flow:['Identitas sekolah','Dokumen','Pemeriksaan','Nilai']},
-  penugasan: {title:'Penugasan Pengawas',text:'Menentukan pengawas yang berwenang memeriksa sekolah. Penugasan menjadi penghubung antara sekolah, periode, pemeriksaan, dan asesmen.',flow:['Sekolah','Pengawas','Periode','Asesmen']},
-  rkasReview: {title:'Referensi RKAS',text:'RKAS menjadi acuan kesesuaian penggunaan dana. Pemeriksaan SPJ membandingkan realisasi dan bukti dengan perencanaan yang telah ditetapkan.',flow:['RKAS','Transaksi','Bukti','Temuan']},
-  monitoringGlobal: {title:'Monitoring SPJ',text:'Dinas melihat kondisi pelaksanaan dan pemeriksaan secara agregat. Monitoring membantu menentukan bagian yang perlu ditindaklanjuti, bukan menggantikan pemeriksaan detail.',flow:['Status','Temuan','Tindak lanjut','Rekap']},
-  temuan: {title:'Temuan SPJ',text:'Temuan adalah hasil pemeriksaan berbasis bukti. Hanya temuan yang telah diverifikasi TERBUKTI yang memengaruhi skor otomatis.',flow:['Bukti','Temuan','Verifikasi','Skor']},
-  crosscheck: {title:'Pemeriksaan SPJ',text:'Pengawas memeriksa dokumen dan transaksi secara silang. Hasil pemeriksaan menjadi dasar terbentuknya temuan dan skor otomatis indikator.',flow:['Dokumen','Cross-check','Temuan','Indikator']},
-  asesmen: {title:'Penilaian SPJ',text:'Nilai tidak dimasukkan sembarang. Sistem menghitung skor indikator dari temuan terverifikasi, menerapkan bobot indikator, lalu menghitung nilai kualitas dan nilai akhir.',flow:['Temuan terbukti','Skor indikator','Bobot','Nilai akhir']},
-  dokumenBulanan: {title:'SPJ Saya',text:'Sekolah mengunggah dan mengelola bukti pertanggungjawaban sesuai periode. Bukti inilah yang menjadi bahan pemeriksaan pengawas.',flow:['Periode','Dokumen','Pemeriksaan','Temuan']},
-  statusSpj: {title:'Status Pemeriksaan',text:'Sekolah dapat melihat posisi dokumen dalam alur pemeriksaan dan mengetahui apakah perlu melengkapi atau memperbaiki bukti.',flow:['Upload','Diperiksa','Temuan','Tindak lanjut']},
-  pesan: {title:'Pesan & Koordinasi',text:'Digunakan untuk komunikasi resmi ketika ada kekurangan bukti, klarifikasi temuan, atau tindak lanjut hasil pemeriksaan.',flow:['Temuan','Klarifikasi','Perbaikan','Verifikasi']},
-  dbCheck: {title:'Validasi Database',text:'Memastikan struktur data pendukung aplikasi tetap sesuai sebelum proses operasional dan penilaian dijalankan.',flow:['Struktur','Data','Proses','Penilaian']}
+  masterSpj: {title:'Master SPJ & Periode',text:'Dinas menetapkan komponen SPJ, indikator pemeriksaan, dan periode aktif. Ini menjadi fondasi agar seluruh sekolah dinilai dengan standar yang sama.',flow:['Master SPJ','Indikator','Periode','Penilaian'],current:0},
+  sekolah: {title:'Data Sekolah',text:'Pastikan identitas satuan pendidikan dan NPSN benar sebelum dokumen, temuan, dan nilai dikaitkan ke sekolah yang diperiksa.',flow:['Identitas sekolah','Dokumen','Pemeriksaan','Nilai'],current:0},
+  penugasan: {title:'Penugasan Pengawas',text:'Penugasan menentukan pengawas yang berwenang memeriksa sekolah dan menjadi penghubung ke proses pemeriksaan serta asesmen.',flow:['Sekolah','Pengawas','Periode','Asesmen'],current:1},
+  rkasReview: {title:'Referensi RKAS',text:'Gunakan RKAS sebagai acuan kesesuaian penggunaan dana sebelum mencocokkan transaksi dan bukti SPJ.',flow:['RKAS','Transaksi','Bukti','Temuan'],current:0},
+  transaksi: {title:'Transaksi SPJ',text:'Pilih periode, catat atau impor transaksi BKU, lalu pastikan bukti dan kode rekeningnya siap untuk proses pemeriksaan.',flow:['Periode','Transaksi','Bukti','Cross-check'],current:1},
+  dokumenBulanan: {title:'SPJ Saya',text:'Pilih periode lalu lengkapi setiap komponen dokumen. Status dan langkah berikutnya akan berubah otomatis sesuai kelengkapan berkas.',flow:['Periode','Dokumen','Pemeriksaan','Tindak lanjut'],current:1},
+  statusSpj: {title:'Status & Hasil',text:'Gunakan halaman ini untuk melihat posisi SPJ dalam satu alur: dari upload, pemeriksaan, temuan, sampai hasil penilaian.',flow:['Upload','Diperiksa','Temuan','Hasil'],current:1},
+  statusSekolah: {title:'Status Sekolah',text:'Ringkasan ini menyatukan identitas sekolah, penugasan, RKAS, kelengkapan SPJ, temuan, dan hasil penilaian pada satu periode.',flow:['Identitas','RKAS & SPJ','Pemeriksaan','Hasil'],current:1},
+  monitoringGlobal: {title:'Monitoring SPJ',text:'Dinas melihat kondisi pelaksanaan dan pemeriksaan secara agregat untuk menentukan sekolah atau periode yang perlu ditindaklanjuti.',flow:['Status','Temuan','Tindak lanjut','Rekap'],current:0},
+  pdfInteraktif: {title:'Bukti & Pemeriksaan PDF',text:'Buka bukti PDF yang relevan, cocokkan dengan transaksi/RKAS, lalu gunakan hasilnya sebagai dasar pemeriksaan dan temuan.',flow:['Pilih bukti','Periksa','Cross-check','Temuan'],current:1},
+  crosscheck: {title:'Pemeriksaan SPJ',text:'Pengawas memeriksa dokumen dan transaksi secara silang. Hasil pemeriksaan menjadi dasar terbentuknya temuan dan skor indikator.',flow:['Dokumen','Cross-check','Temuan','Indikator'],current:1},
+  temuan: {title:'Temuan SPJ',text:'Temuan harus berbasis bukti. Hanya temuan yang telah diverifikasi TERBUKTI yang memengaruhi skor otomatis.',flow:['Bukti','Temuan','Verifikasi','Skor'],current:1},
+  asesmen: {title:'Penilaian SPJ',text:'Sistem menghitung skor indikator dari temuan terverifikasi, menerapkan bobot, lalu menghasilkan nilai kualitas dan nilai akhir.',flow:['Temuan terbukti','Skor indikator','Bobot','Nilai akhir'],current:2},
+  keberatan: {title:'Kaji Ulang / Keberatan',text:'Gunakan modul ini untuk meninjau keberatan atau klarifikasi terhadap hasil pemeriksaan dengan tetap mengacu pada bukti dan catatan yang tersedia.',flow:['Hasil','Keberatan','Kaji ulang','Keputusan'],current:1},
+  pesan: {title:'Pesan & Koordinasi',text:'Gunakan komunikasi resmi untuk meminta bukti, memberi klarifikasi, atau menyampaikan tindak lanjut hasil pemeriksaan.',flow:['Temuan','Klarifikasi','Perbaikan','Verifikasi'],current:1},
+  arsipPenilaianV5: {title:'Arsip Penilaian',text:'Periksa kembali berkas dan hasil yang sudah tersusun sebelum dicetak atau digunakan sebagai dokumentasi penilaian.',flow:['Pilih sekolah','Pilih periode','Periksa arsip','Cetak'],current:2},
+  tutorialV5: {title:'Panduan SIMPEL SPJ',text:'Gunakan halaman panduan bila membutuhkan penjelasan lebih lengkap. Tutorial singkat tetap tersedia pada setiap halaman kerja.',flow:['Pilih peran','Ikuti alur','Kerjakan','Cek hasil'],current:0},
+  ubahPassword: {title:'Keamanan Akun',text:'Gunakan kata sandi yang kuat dan tidak digunakan bersama akun lain. Perubahan kata sandi tidak mengubah data SPJ.',flow:['Password lama','Password baru','Konfirmasi','Simpan'],current:1},
+  dbCheck: {title:'Validasi Database',text:'Pastikan struktur data pendukung aplikasi sesuai sebelum proses operasional dan penilaian dijalankan.',flow:['Struktur','Data','Proses','Penilaian'],current:0}
 };
 
 const state = {
@@ -1017,10 +1034,42 @@ function initLoadingProgress(root){}
 function setLoadingStage(container, progress, text=''){}
 function updateLoadingBatch(container, done, total, detail=''){}
 
+function tutorialPreferenceKey(){
+  return `simpel_tutorial_collapsed_${String(state.user?.username || state.user?.npsn || role() || 'user')}`;
+}
+function tutorialRoleTip(){
+  if(isSchool()) return 'Fokus Sekolah: selesaikan data yang diminta pada tahap ini, lalu cek Status & Hasil untuk memastikan tidak ada perbaikan yang tertunda.';
+  if(isPengawas()) return 'Fokus Pengawas: gunakan bukti yang tersedia, lakukan pemeriksaan sesuai alur, dan catat temuan hanya jika didukung bukti.';
+  if(isDinas()) return 'Fokus Dinas: pastikan master, penugasan, dan monitoring konsisten agar proses sekolah dan pengawas berjalan pada periode yang benar.';
+  return '';
+}
+window.togglePageTutorial=function(){
+  const box=document.querySelector('.tutorial-feed');
+  if(!box) return;
+  box.classList.toggle('collapsed');
+  const collapsed=box.classList.contains('collapsed');
+  try{localStorage.setItem(tutorialPreferenceKey(), collapsed?'1':'0');}catch(e){}
+  const btn=box.querySelector('.tutorial-toggle');
+  if(btn) btn.textContent=collapsed?'ⓘ Tampilkan panduan':'Sembunyikan';
+};
+function tutorialHtml(){
+  const info=SUBMENU_TUTORIALS[state.view];
+  if(!info) return '';
+  let collapsed=false;
+  try{collapsed=localStorage.getItem(tutorialPreferenceKey())==='1';}catch(e){}
+  const current=Number.isInteger(info.current)?info.current:-1;
+  const flow=(info.flow||[]).map((x,i)=>`${i?'<span class="tutorial-arrow">→</span>':''}<span class="tutorial-step ${i===current?'current':''}">${esc(x)}${i===current?' · tahap ini':''}</span>`).join('');
+  const tip=tutorialRoleTip();
+  return `<div class="tutorial-feed ${collapsed?'collapsed':''}">
+    <div class="tutorial-feed-head">
+      <div class="tutorial-feed-main"><div class="tutorial-label">Tutorial singkat • ${esc(role()||'PENGGUNA')}</div><h3>${esc(info.title)}</h3></div>
+      <button type="button" class="tutorial-toggle" onclick="togglePageTutorial()">${collapsed?'ⓘ Tampilkan panduan':'Sembunyikan'}</button>
+    </div>
+    <div class="tutorial-body"><p>${esc(info.text)}</p><div class="tutorial-flow">${flow}</div>${tip?`<div class="tutorial-role-tip">${esc(tip)}</div>`:''}</div>
+  </div>`;
+}
 function head(title,desc=''){
-  const info = SUBMENU_TUTORIALS[state.view];
-  const tutorial = info ? `<div class="tutorial-feed"><div class="tutorial-label">Tutorial singkat • Hubungan dengan alur SPJ BOS SD</div><h3>${esc(info.title)}</h3><p>${esc(info.text)}</p><div class="tutorial-flow">${info.flow.map((x,i)=>`${i?'<span class="tutorial-arrow">→</span>':''}<span class="tutorial-step">${esc(x)}</span>`).join('')}</div></div>` : '';
-  return `${tutorial}<div class="page-head"><div><h1>${esc(title)}</h1>${desc?`<div class="muted">${esc(desc)}</div>`:''}</div></div>`;
+  return `${tutorialHtml()}<div class="page-head"><div><h1>${esc(title)}</h1>${desc?`<div class="muted">${esc(desc)}</div>`:''}</div></div>`;
 }
 function emptyRow(cols,text='Tidak ada data.'){ return `<tr><td colspan="${cols}" class="muted" style="text-align:center;padding:25px">${esc(text)}</td></tr>`; }
 
@@ -2002,6 +2051,21 @@ async function renderDokumenTable(){
     const total = groups.length;
     const done = uploaded + na;
     const pct = total ? Math.round(done / total * 100) : 0;
+    const repairGroups = groups.filter(x => upper(x.d?.status||'') === 'PERLU_PERBAIKAN');
+    const missingGroups = groups.filter(x => !x.d);
+    let nextActionText = 'Dokumen SPJ periode ini sudah lengkap. Pantau Status & Hasil untuk melihat proses pemeriksaan berikutnya.';
+    let nextActionButton = `<button class="btn btn-primary btn-sm" type="button" onclick="loadView('statusSpj')">Lihat Status →</button>`;
+    let nextActionDanger = false;
+    if(repairGroups.length){
+      const names=repairGroups.slice(0,2).map(x=>x.m.nama_spj||x.m.nama_dokumen||x.m.kode||x.m.id_spj).join(', ');
+      nextActionText = `${repairGroups.length} komponen perlu diperbaiki${names ? ': '+names : ''}. Buka komponen terkait dan unggah revisinya.`;
+      nextActionButton = '';
+      nextActionDanger = true;
+    }else if(missingGroups.length){
+      const first=missingGroups[0]?.m;
+      nextActionText = `Lengkapi ${missingGroups.length} komponen yang belum diunggah. Mulai dari ${first?.nama_spj || first?.nama_dokumen || first?.kode || 'dokumen pertama yang belum tersedia'}.`;
+      nextActionButton = '';
+    }
 
     // Rendering menggunakan .map().join('') agar browser hanya melakukan DOM reflow 1 kali
     const rows = groups.map((x,i) => {
@@ -2047,6 +2111,9 @@ async function renderDokumenTable(){
     }).join('');
 
     area.innerHTML = `
+      <div class="school-next-action ${nextActionDanger?'danger':''}" style="margin-top:0;margin-bottom:12px">
+        <div><span class="school-eyebrow">LANGKAH BERIKUTNYA</span><strong>${esc(nextActionText)}</strong></div>${nextActionButton}
+      </div>
       <div class="panel" style="margin-top:0">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap">
           <div>
@@ -2490,8 +2557,16 @@ async function renderTransaksi(page = 1){
 
     const back = !isSchool() ? `<button class="btn btn-sm btn-light" onclick="state.selectedNpsn='';renderTransaksi(1)">← Daftar Sekolah</button>` : '';
     const edit = isSchool() ? `<button class="btn btn-primary" onclick="openTransactionForm()">+ Tambah Transaksi</button><button class="btn btn-light" onclick="openExcelImport()">Impor Excel BKU</button>` : '';
+    let trxNextAction = '';
+    if(isSchool()){
+      if(!Number(r.total||0)){
+        trxNextAction = `<div class="school-next-action"><div><span class="school-eyebrow">LANGKAH BERIKUTNYA</span><strong>Belum ada transaksi pada periode ini. Tambahkan transaksi pertama atau impor BKU dari Excel.</strong></div><button class="btn btn-primary btn-sm" onclick="openTransactionForm()">+ Tambah</button></div>`;
+      }else{
+        trxNextAction = `<div class="school-next-action"><div><span class="school-eyebrow">LANGKAH BERIKUTNYA</span><strong>${fmtNum(r.total)} transaksi sudah tercatat. Setelah data sesuai, lanjutkan melengkapi dokumen/bukti SPJ.</strong></div><button class="btn btn-primary btn-sm" onclick="loadView('dokumenBulanan')">Kelola SPJ →</button></div>`;
+      }
+    }
     
-    area.innerHTML = `
+    area.innerHTML = `${trxNextAction}
       <div class="toolbar">${back}${edit}</div>
       <div class="panel" style="margin:12px 0;background:rgba(23,75,67,.05);">
         <b>Total SPJ Periode: ${fmtRupiah(r.totalNilai||0)}</b>
