@@ -825,7 +825,7 @@ window.ROLE_MENUS = {
       { id:'sekolah', label:'2. 🏫 Data Sekolah' },
       { id:'penugasan', label:'3. 👥 Penugasan Pengawas' },
       { id:'rkasReview', label:'4. 📋 RKAS & Anggaran' },
-      { id:'monitoringGlobal', label:'5. 📊 Monitoring SPJ' },
+      { id:'monitoringGlobal', label:'5. 📊 Monitoring Proses SPJ' },
       { id:'temuan', label:'6. ⚠️ Temuan & Tindak Lanjut' },
       { id:'arsipPenilaianV5', label:'7. 🖨️ Hasil Penilaian & Cetak' }
     ]},
@@ -842,10 +842,10 @@ window.ROLE_MENUS = {
       { id:'pdfInteraktif', label:'2. 🔎 Periksa BKU & Bukti PDF' },
       { id:'temuan', label:'3. ⚠️ Temuan & Tindak Lanjut' },
       { id:'asesmen', label:'4. ✅ Penilaian & Finalisasi' },
-      { id:'arsipPenilaianV5', label:'5. 📄 Hasil / Arsip Penilaian' }
+      { id:'kesepakatan', label:'5. 🤝 Persetujuan / Keberatan / Pengesahan' },
+      { id:'arsipPenilaianV5', label:'6. 📄 Hasil / Arsip Penilaian' }
     ]},
     { group:'PENDUKUNG', items:[
-      { id:'keberatan', label:'↻ Kaji Ulang / Keberatan' },
       { id:'pesan', label:'💬 Pesan & Koordinasi' },
       { id:'tutorialV5', label:'❓ Panduan' },
       { id:'ubahPassword', label:'🔐 Ubah Password' }
@@ -856,7 +856,8 @@ window.ROLE_MENUS = {
     { group:'ALUR SPJ', items:[
       { id:'transaksi', label:'1. 📊 Tetapkan Excel BKU' },
       { id:'dokumenBulanan', label:'2. 📁 Lengkapi Bukti & Cross-check' },
-      { id:'statusSpj', label:'3. ✅ Status & Hasil' }
+      { id:'statusSpj', label:'3. ✅ Status & Hasil Penilaian' },
+      { id:'kesepakatan', label:'4. 🤝 Persetujuan / Keberatan' }
     ]},
     { group:'PENDUKUNG', items:[
       { id:'pesan', label:'💬 Pesan & Koordinasi' },
@@ -1810,6 +1811,7 @@ async function renderViewSafely(view){
     crosscheck: crosscheckView,
     temuan: temuanView,
     asesmen: asesmenView,
+    kesepakatan: kesepakatanView,
     keberatan: keberatanView,
     dbCheck: dbCheckView,
     pesan: pesanView,
@@ -6218,6 +6220,132 @@ window.interactiveEditScore=async function(idAsesmen,idIndikator,current,automat
 };
 
 
+
+async function kesepakatanView(){
+  const isS=isSchool();
+  const isP=isPengawas();
+
+  if(!isS && !isP){
+    $('#mainContent').innerHTML=head('Kesepakatan Penilaian','Tahap ini digunakan oleh Sekolah dan Pengawas.');
+    return;
+  }
+
+  const periods=await periodeSelect('periodeSelect',true,'bulan');
+  let schoolOptions='';
+
+  if(isP){
+    const schools=await getCachedAuditSchools_();
+    const options=schools.map(x=>`
+      <option value="${esc(x.npsn)}" ${String(state.selectedNpsn||'')===String(x.npsn)?'selected':''}>
+        ${esc(x.npsn)} - ${esc(x.nama_sekolah)}
+      </option>`).join('');
+    schoolOptions=`
+      <div class="field">
+        <label>Sekolah Binaan</label>
+        <select id="npsnSelect">
+          <option value="">-- Pilih Sekolah --</option>
+          ${options}
+        </select>
+      </div>`;
+  }
+
+  $('#mainContent').innerHTML=
+    head(
+      isS?'4. Persetujuan / Keberatan Penilaian':'5. Persetujuan / Keberatan / Pengesahan',
+      isS
+        ? 'Tinjau hasil final Pengawas. Sekolah memilih setuju atau mengajukan keberatan sebelum penilaian disahkan.'
+        : 'Pantau tanggapan Sekolah, proses kaji ulang bila ada keberatan, kemudian sahkan penilaian setelah terdapat kesepakatan.'
+    )+
+    `<div class="v226-agreement-guide">
+      <div class="v226-agreement-step"><span>1</span><div><b>Penilaian difinalisasi</b><small>Pengawas menyelesaikan nilai berdasarkan bukti dan temuan terverifikasi.</small></div></div>
+      <div class="v226-agreement-step"><span>2</span><div><b>Tanggapan Sekolah</b><small>Sekolah memilih setuju atau mengajukan keberatan dengan alasan.</small></div></div>
+      <div class="v226-agreement-step"><span>3</span><div><b>Kaji ulang bila perlu</b><small>Keberatan membuka kembali penilaian untuk ditinjau Pengawas.</small></div></div>
+      <div class="v226-agreement-step"><span>4</span><div><b>Pengesahan</b><small>Setelah Sekolah setuju dan keberatan selesai, Pengawas mengesahkan penilaian.</small></div></div>
+    </div>
+
+    <div class="panel">
+      <div class="form-grid">
+        <div class="field"><label>Periode SPJ</label>${periods}</div>
+        ${schoolOptions}
+      </div>
+      <div class="toolbar">
+        <button class="btn btn-primary" onclick="openAgreementAssessmentV226()">Buka Hasil Penilaian</button>
+      </div>
+      <div id="assessmentArea"></div>
+    </div>
+
+    <div class="panel" style="margin-top:14px">
+      <div style="display:flex;justify-content:space-between;align-items:start;gap:12px;flex-wrap:wrap">
+        <div>
+          <h3 style="margin:0">${isS?'✉ Keberatan Penilaian':'↻ Keberatan & Kaji Ulang'}</h3>
+          <div class="muted" style="margin-top:4px">${isS
+            ? 'Jika tidak setuju dengan hasil final, ajukan keberatan di sini. Bila setuju, gunakan tombol persetujuan pada hasil penilaian di atas.'
+            : 'Keberatan Sekolah harus diselesaikan sebelum pengesahan elektronik dapat dilakukan.'}</div>
+        </div>
+      </div>
+      <div id="appealArea" style="margin-top:12px">${loading('Memuat status keberatan...')}</div>
+    </div>`;
+
+  $('#periodeSelect').value=state.selectedPeriode||'';
+  if(isP && state.selectedNpsn && $('#npsnSelect')) $('#npsnSelect').value=state.selectedNpsn;
+
+  $('#periodeSelect').onchange=()=>{
+    state.selectedPeriode=$('#periodeSelect').value;
+    renderKeberatanList();
+  };
+  if(isP && $('#npsnSelect')){
+    $('#npsnSelect').onchange=()=>{
+      state.selectedNpsn=$('#npsnSelect').value;
+      renderKeberatanList();
+    };
+  }
+
+  await renderKeberatanList();
+
+  if(state.selectedPeriode && (isS || state.selectedNpsn)){
+    await openAgreementAssessmentV226();
+  }
+}
+
+window.openAgreementAssessmentV226=async function(){
+  const p=$('#periodeSelect')?.value||state.selectedPeriode;
+  const n=isSchool()?ownNpsn():($('#npsnSelect')?.value||state.selectedNpsn);
+
+  if(!p || !n){
+    toast('Pilih periode dan sekolah terlebih dahulu.','warning');
+    return;
+  }
+
+  state.selectedPeriode=p;
+  state.selectedNpsn=n;
+
+  const area=$('#assessmentArea');
+  if(!area)return;
+  area.innerHTML=loading('Memuat hasil penilaian dan status kesepakatan...');
+
+  try{
+    const r=await api('buatAtauAmbilAsesmen',{idPeriode:p,npsn:n});
+    const asesmen=r.data||r.asesmen||r;
+    const indRes=await safeApi(
+      'hitungIndikatorDariTemuan',
+      {idPeriode:p,npsn:n,idAsesmen:asesmen.id_asesmen},
+      {data:[]}
+    );
+    renderAssessment(asesmen,indRes.data||[]);
+
+    const st=upper(asesmen.status_asesmen||'');
+    if(st!=='SELESAI' && st!=='KAJI_ULANG'){
+      const info=document.createElement('div');
+      info.className='message warning';
+      info.style.marginTop='12px';
+      info.innerHTML='<b>Penilaian belum final.</b> Tahap persetujuan atau keberatan aktif setelah Pengawas memfinalisasi penilaian.';
+      area.prepend(info);
+    }
+  }catch(e){
+    area.innerHTML=msg(errorText(e));
+  }
+};
+
 async function keberatanView(){
   const areaId='appealArea';
   $('#mainContent').innerHTML=head(isSchool()?'Keberatan Penilaian':'Keberatan & Kaji Ulang','Sekolah dapat menyampaikan keberatan; pengawas dapat mengkaji ulang penilaian berdasarkan alasan dan bukti.');
@@ -9710,29 +9838,31 @@ body.theme-sekolah .v221-book-summary{background:#F7F8FE}
     SEKOLAH:[
       {view:'transaksi',title:'Tetapkan Excel BKU',desc:'Tetapkan snapshot Excel BKU sebagai sumber transaksi periode penilaian.'},
       {view:'dokumenBulanan',title:'Lengkapi Bukti & Cross-check',desc:'Upload PDF dan sandingkan dengan nilai yang diturunkan dari Excel BKU.'},
-      {view:'statusSpj',title:'Status & Hasil',desc:'Lihat hasil pemeriksaan, perbaikan, temuan, dan nilai.'}
+      {view:'statusSpj',title:'Status & Hasil Penilaian',desc:'Lihat hasil pemeriksaan, perbaikan, temuan, dan nilai final Pengawas.'},
+      {view:'kesepakatan',title:'Persetujuan / Keberatan',desc:'Tinjau nilai final, pilih setuju atau ajukan keberatan sebelum pengesahan.'}
     ],
     PENGAWAS:[
       {view:'penugasan',title:'Pilih Sekolah Binaan',desc:'Tetapkan sekolah yang akan diperiksa.'},
       {view:'pdfInteraktif',title:'Periksa BKU & Bukti PDF',desc:'Periksa transaksi, buku turunan, bukti PDF, dan cross-check dalam satu workbench.'},
       {view:'temuan',title:'Temuan & Tindak Lanjut',desc:'Verifikasi temuan dan tindak lanjut sekolah.'},
-      {view:'asesmen',title:'Penilaian & Finalisasi',desc:'Tetapkan penilaian setelah pemeriksaan dan temuan selesai.'},
-      {view:'arsipPenilaianV5',title:'Hasil / Arsip Penilaian',desc:'Buka hasil final dan riwayat penilaian.'}
+      {view:'asesmen',title:'Penilaian & Finalisasi',desc:'Finalisasi nilai berdasarkan bukti dan temuan terverifikasi.'},
+      {view:'kesepakatan',title:'Persetujuan / Keberatan / Pengesahan',desc:'Tunggu tanggapan Sekolah, kaji ulang bila perlu, lalu sahkan penilaian.'},
+      {view:'arsipPenilaianV5',title:'Hasil / Arsip Penilaian',desc:'Buka hasil final yang telah melalui proses kesepakatan dan pengesahan.'}
     ],
     DINAS:[
       {view:'masterSpj',title:'Periode & Master SPJ',desc:'Tetapkan periodisasi dan standar komponen pemeriksaan.'},
       {view:'sekolah',title:'Data Sekolah',desc:'Pastikan data satuan pendidikan siap digunakan.'},
       {view:'penugasan',title:'Penugasan Pengawas',desc:'Tetapkan sekolah binaan setiap pengawas.'},
       {view:'rkasReview',title:'RKAS & Anggaran',desc:'Kelola referensi anggaran yang menjadi konteks realisasi.'},
-      {view:'monitoringGlobal',title:'Monitoring SPJ',desc:'Pantau progres sekolah dan pemeriksaan pengawas.'},
+      {view:'monitoringGlobal',title:'Monitoring Proses SPJ',desc:'Pantau progres pemeriksaan termasuk persetujuan, keberatan, kaji ulang, dan pengesahan.'},
       {view:'temuan',title:'Temuan & Tindak Lanjut',desc:'Pantau isu yang belum selesai.'},
-      {view:'arsipPenilaianV5',title:'Hasil Penilaian & Cetak',desc:'Lihat dan cetak laporan hasil penilaian SPJ.'}
+      {view:'arsipPenilaianV5',title:'Hasil Penilaian & Cetak',desc:'Lihat dan cetak hasil penilaian yang telah mencapai status final/pengesahan.'}
     ]
   };
 
   const SUPPORT={
     SEKOLAH:[['pesan','💬 Pesan'],['tutorialV5','❓ Panduan'],['ubahPassword','🔐 Akun']],
-    PENGAWAS:[['keberatan','↻ Kaji Ulang'],['pesan','💬 Pesan'],['tutorialV5','❓ Panduan'],['ubahPassword','🔐 Akun']],
+    PENGAWAS:[['pesan','💬 Pesan'],['tutorialV5','❓ Panduan'],['ubahPassword','🔐 Akun']],
     DINAS:[['pesan','💬 Pesan'],['dbCheck','✅ Validasi Sistem'],['tutorialV5','❓ Panduan']]
   };
 
@@ -9749,7 +9879,7 @@ body.theme-sekolah .v221-book-summary{background:#F7F8FE}
 
   window.v225Go=function(view){
     const r=roleV225();
-    if(r==='PENGAWAS' && view!=='penugasan' && ['pdfInteraktif','temuan','asesmen'].includes(view) && !state.selectedNpsn){
+    if(r==='PENGAWAS' && view!=='penugasan' && ['pdfInteraktif','temuan','asesmen','kesepakatan'].includes(view) && !state.selectedNpsn){
       toast('Pilih sekolah binaan terlebih dahulu.','warning');
       loadView('penugasan');
       return;
@@ -9762,17 +9892,17 @@ body.theme-sekolah .v221-book-summary{background:#F7F8FE}
     if(r==='SEKOLAH')return {
       kicker:'ALUR SPJ SEKOLAH',
       title:'Kerjakan SPJ secara berurutan',
-      desc:'Mulai dari Excel BKU, lanjutkan ke bukti PDF dan cross-check, lalu lihat status serta hasil pemeriksaan.'
+      desc:'Mulai dari Excel BKU, lanjutkan ke bukti PDF dan cross-check, lihat hasil penilaian, lalu berikan persetujuan atau keberatan.'
     };
     if(r==='PENGAWAS')return {
       kicker:'ALUR PEMERIKSAAN PENGAWAS',
       title:'Satu sekolah, satu alur pemeriksaan',
-      desc:'Pilih sekolah binaan, periksa BKU dan bukti dalam satu workbench, selesaikan temuan, lalu finalisasi penilaian.'
+      desc:'Pilih sekolah binaan, periksa BKU dan bukti, selesaikan temuan, finalisasi nilai, lalu tuntaskan persetujuan/keberatan dan pengesahan.'
     };
     return {
       kicker:'ALUR PENGELOLAAN DINAS',
       title:'Kelola SPJ dari persiapan sampai laporan',
-      desc:'Konfigurasi sistem, kelola sekolah dan penugasan, pantau pemeriksaan, lalu buka hasil penilaian dan cetak laporan.'
+      desc:'Konfigurasi sistem, kelola sekolah dan penugasan, pantau pemeriksaan hingga persetujuan/pengesahan, lalu buka hasil penilaian dan cetak laporan.'
     };
   }
 
@@ -9878,6 +10008,55 @@ body.theme-sekolah .v221-book-summary{background:#F7F8FE}
   }
 })();
 </script>
+
+
+<style id="v226AgreementAppealFlow">
+.v226-agreement-guide{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:9px;
+  margin-bottom:14px;
+}
+.v226-agreement-step{
+  display:flex;
+  gap:9px;
+  align-items:flex-start;
+  padding:12px;
+  border:1px solid var(--role-border,var(--border));
+  border-radius:13px;
+  background:var(--role-soft-2,#f8faf9);
+}
+.v226-agreement-step>span{
+  flex:0 0 27px;
+  height:27px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  border-radius:999px;
+  background:var(--primary);
+  color:#fff;
+  font-size:.7rem;
+  font-weight:900;
+}
+.v226-agreement-step b{
+  display:block;
+  color:var(--text);
+  font-size:.78rem;
+  margin:2px 0 4px;
+}
+.v226-agreement-step small{
+  display:block;
+  color:var(--muted);
+  font-size:.68rem;
+  line-height:1.4;
+}
+@media(max-width:1000px){
+  .v226-agreement-guide{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:620px){
+  .v226-agreement-guide{grid-template-columns:1fr}
+}
+</style>
 
 </body>
 </html>
