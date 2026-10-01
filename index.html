@@ -827,7 +827,8 @@ window.ROLE_MENUS = {
       { id:'rkasReview', label:'4. 📋 RKAS & Anggaran' },
       { id:'monitoringGlobal', label:'5. 📊 Monitoring Proses SPJ' },
       { id:'temuan', label:'6. ⚠️ Temuan & Tindak Lanjut' },
-      { id:'arsipPenilaianV5', label:'7. 🖨️ Hasil Penilaian & Cetak' }
+      { id:'kesepakatan', label:'7. 🔏 Pengesahan Akhir DINAS' },
+      { id:'arsipPenilaianV5', label:'8. 🖨️ Hasil Penilaian & Cetak' }
     ]},
     { group:'PENDUKUNG', items:[
       { id:'pesan', label:'💬 Pesan & Koordinasi' },
@@ -6224,17 +6225,15 @@ window.interactiveEditScore=async function(idAsesmen,idIndikator,current,automat
 async function kesepakatanView(){
   const isS=isSchool();
   const isP=isPengawas();
-
-  if(!isS && !isP){
-    $('#mainContent').innerHTML=head('Kesepakatan Penilaian','Tahap ini digunakan oleh Sekolah dan Pengawas.');
-    return;
-  }
+  const isD=isDinas();
 
   const periods=await periodeSelect('periodeSelect',true,'bulan');
   let schoolOptions='';
 
-  if(isP){
-    const schools=await getCachedAuditSchools_();
+  if(isP || isD){
+    const schools=isP
+      ? await getCachedAuditSchools_()
+      : ((await safeApi('getSekolah',{}, {data:[]})).data||[]);
     const options=schools.map(x=>`
       <option value="${esc(x.npsn)}" ${String(state.selectedNpsn||'')===String(x.npsn)?'selected':''}>
         ${esc(x.npsn)} - ${esc(x.nama_sekolah)}
@@ -6251,16 +6250,18 @@ async function kesepakatanView(){
 
   $('#mainContent').innerHTML=
     head(
-      isS?'4. Persetujuan / Keberatan Penilaian':'5. Persetujuan / Keberatan / Pengesahan',
+      isS?'4. Persetujuan / Keberatan Penilaian':isP?'5. Persetujuan / Keberatan / Pengesahan':'7. Pengesahan Akhir DINAS',
       isS
         ? 'Tinjau hasil final Pengawas. Sekolah memilih setuju atau mengajukan keberatan sebelum penilaian disahkan.'
-        : 'Pantau tanggapan Sekolah, proses kaji ulang bila ada keberatan, kemudian sahkan penilaian setelah terdapat kesepakatan.'
+        : isP
+          ? 'Pantau tanggapan Sekolah, proses kaji ulang bila ada keberatan, kemudian sahkan penilaian setelah terdapat kesepakatan.'
+          : 'DINAS melakukan pengesahan akhir hanya setelah persetujuan elektronik Sekolah dan pengesahan elektronik Pengawas lengkap.'
     )+
     `<div class="v226-agreement-guide">
       <div class="v226-agreement-step"><span>1</span><div><b>Penilaian difinalisasi</b><small>Pengawas menyelesaikan nilai berdasarkan bukti dan temuan terverifikasi.</small></div></div>
       <div class="v226-agreement-step"><span>2</span><div><b>Tanggapan Sekolah</b><small>Sekolah memilih setuju atau mengajukan keberatan dengan alasan.</small></div></div>
       <div class="v226-agreement-step"><span>3</span><div><b>Kaji ulang bila perlu</b><small>Keberatan membuka kembali penilaian untuk ditinjau Pengawas.</small></div></div>
-      <div class="v226-agreement-step"><span>4</span><div><b>Pengesahan</b><small>Setelah Sekolah setuju dan keberatan selesai, Pengawas mengesahkan penilaian.</small></div></div>
+      <div class="v226-agreement-step"><span>4</span><div><b>Pengesahan berjenjang</b><small>Sekolah menandatangani persetujuan, Pengawas mengesahkan, lalu DINAS memberi pengesahan akhir.</small></div></div>
     </div>
 
     <div class="panel">
@@ -6274,7 +6275,7 @@ async function kesepakatanView(){
       <div id="assessmentArea"></div>
     </div>
 
-    <div class="panel" style="margin-top:14px">
+    ${isD?`<div class="message info" style="margin-top:14px"><b>Peran DINAS:</b> DINAS tidak mengubah nilai. DINAS hanya memberi pengesahan akhir setelah QR Sekolah dan QR Pengawas valid.</div>`:`<div class="panel" style="margin-top:14px">
       <div style="display:flex;justify-content:space-between;align-items:start;gap:12px;flex-wrap:wrap">
         <div>
           <h3 style="margin:0">${isS?'✉ Keberatan Penilaian':'↻ Keberatan & Kaji Ulang'}</h3>
@@ -6284,23 +6285,23 @@ async function kesepakatanView(){
         </div>
       </div>
       <div id="appealArea" style="margin-top:12px">${loading('Memuat status keberatan...')}</div>
-    </div>`;
+    </div>`}`;
 
   $('#periodeSelect').value=state.selectedPeriode||'';
-  if(isP && state.selectedNpsn && $('#npsnSelect')) $('#npsnSelect').value=state.selectedNpsn;
+  if((isP||isD) && state.selectedNpsn && $('#npsnSelect')) $('#npsnSelect').value=state.selectedNpsn;
 
   $('#periodeSelect').onchange=()=>{
     state.selectedPeriode=$('#periodeSelect').value;
     renderKeberatanList();
   };
-  if(isP && $('#npsnSelect')){
+  if((isP||isD) && $('#npsnSelect')){
     $('#npsnSelect').onchange=()=>{
       state.selectedNpsn=$('#npsnSelect').value;
-      renderKeberatanList();
+      if(!isD) renderKeberatanList();
     };
   }
 
-  await renderKeberatanList();
+  if(!isD) await renderKeberatanList();
 
   if(state.selectedPeriode && (isS || state.selectedNpsn)){
     await openAgreementAssessmentV226();
@@ -6321,9 +6322,21 @@ window.openAgreementAssessmentV226=async function(){
 
   const area=$('#assessmentArea');
   if(!area)return;
-  area.innerHTML=loading('Memuat hasil penilaian dan status kesepakatan...');
+  area.innerHTML=loading('Memuat hasil penilaian dan status pengesahan...');
 
   try{
+    if(isDinas()){
+      const s=await api('getPengesahanPenilaianByPeriode',{idPeriode:p,npsn:n});
+      const d=s.data;
+      if(!d){
+        area.innerHTML=msg('Penilaian sekolah/periode ini belum tersedia.','warning');
+        return;
+      }
+      window.__v227CurrentAssessmentId=d.id_asesmen;
+      area.innerHTML=v227ApprovalLifecycleHtml_(d,true);
+      return;
+    }
+
     const r=await api('buatAtauAmbilAsesmen',{idPeriode:p,npsn:n});
     const asesmen=r.data||r.asesmen||r;
     const indRes=await safeApi(
@@ -7138,7 +7151,7 @@ async function loadV5Archive(){
     const d = r.data || {};
     window._v5ArchiveData = d;
     
-    const a = d.asesmen || {}, sig = d.pengesahan_pengawas || {}, appr = d.persetujuan_sekolah || {};
+    const a = d.asesmen || {}, sig = d.pengesahan_pengawas || {}, appr = d.persetujuan_sekolah || {}, dsig = d.pengesahan_dinas || {};
     
     area.innerHTML = `
       <div id="v5PrintableArchive" class="v5-print-sheet">
@@ -7162,8 +7175,9 @@ async function loadV5Archive(){
           <h3>Ringkasan Status</h3>
           <div class="assessment-guide">
             <div class="assessment-guide-card"><strong>Penilaian</strong><span>${esc(a.status_asesmen || '-')}</span></div>
-            <div class="assessment-guide-card"><strong>Persetujuan Sekolah</strong><span>${appr ? 'DISETUJUI' : 'BELUM'}</span></div>
-            <div class="assessment-guide-card"><strong>Pengesahan Pengawas</strong><span>${sig ? 'DISAHKAN' : 'BELUM'}</span></div>
+            <div class="assessment-guide-card"><strong>Persetujuan Sekolah</strong><span>${appr&&Object.keys(appr).length ? 'DITANDATANGANI' : 'BELUM'}</span></div>
+            <div class="assessment-guide-card"><strong>Pengesahan Pengawas</strong><span>${sig&&Object.keys(sig).length ? 'DISAHKAN' : 'BELUM'}</span></div>
+            <div class="assessment-guide-card"><strong>Pengesahan DINAS</strong><span>${dsig&&Object.keys(dsig).length ? 'FINAL' : 'BELUM'}</span></div>
           </div>
         </div>
         
@@ -7729,55 +7743,125 @@ window.loadV5Archive=loadV5Archive;
  * UI PENGESAHAN ELEKTRONIK — V3
  * Menempel pada modul Penilaian yang sudah ada agar alur utama tidak berubah.
  * ========================================================================== */
+
+function v227QrBlock_(sig,label,icon){
+  if(!sig)return `<div class="v227-sign-card pending"><div class="v227-sign-head"><span>${icon}</span><div><b>${esc(label)}</b><small>BELUM</small></div></div><div class="muted">Belum ada tanda tangan elektronik.</div></div>`;
+
+  const actor=sig.ditandatangani_oleh||sig.disetujui_oleh||'-';
+  const at=sig.ditandatangani_at||sig.disetujui_at||'-';
+
+  return `<div class="v227-sign-card done">
+    <div class="v227-sign-head">
+      <span>${icon}</span>
+      <div><b>${esc(label)}</b><small>TERCATAT</small></div>
+    </div>
+    ${sig.verification_url?`<img class="v227-qr" alt="QR ${esc(label)}" src="https://quickchart.io/qr?size=180&text=${encodeURIComponent(sig.verification_url)}">`:''}
+    <div class="v227-sign-meta">
+      <b>${esc(actor)}</b>
+      <span>${esc(at)}</span>
+      <span>Kode: ${esc(sig.kode_pengesahan||'-')}</span>
+    </div>
+  </div>`;
+}
+
+function v227ApprovalLifecycleHtml_(d,isDinasPanel){
+  const school=d.persetujuan_sekolah;
+  const pengawas=d.pengesahan_pengawas;
+  const dinas=d.pengesahan_dinas;
+  const appeal=d.keberatan_terakhir;
+  const activeAppeal=appeal && ['DIAJUKAN','DIKAJI_ULANG'].includes(upper(appeal.status_keberatan||''));
+
+  let action='';
+  if(isDinasPanel && d.siap_disahkan_dinas && !activeAppeal){
+    action=`<button class="btn btn-primary" onclick="sahkanPenilaianDinasV227('${esc(d.id_asesmen)}')">🔏 Setujui & Sahkan Penilaian Akhir</button>`;
+  }else if(isDinasPanel && dinas){
+    action=`<button class="btn btn-primary" onclick="loadView('arsipPenilaianV5')">🖨️ Buka Hasil Final & Cetak</button>`;
+  }
+
+  return `<div class="v227-lifecycle">
+    <div class="v227-lifecycle-head">
+      <div>
+        <small>STATUS PENILAIAN</small>
+        <h3>${esc(String(d.status_pengesahan||'-').replaceAll('_',' '))}</h3>
+        <div class="muted">Nilai akhir: <b>${esc(d.nilai_akhir??'-')}</b></div>
+      </div>
+      <span class="badge badge-${dinas?'success':activeAppeal?'warning':'info'}">${dinas?'FINAL DINAS':activeAppeal?'KEBERATAN AKTIF':esc(String(d.status_pengesahan||'-').replaceAll('_',' '))}</span>
+    </div>
+
+    ${activeAppeal?`<div class="message warning"><b>Pengesahan ditahan.</b> Keberatan Sekolah masih dalam proses ${esc(appeal.status_keberatan||'')}.</div>`:''}
+
+    <div class="v227-sign-grid">
+      ${v227QrBlock_(school,'Persetujuan Sekolah','🏫')}
+      ${v227QrBlock_(pengawas,'Pengesahan Pengawas','🔎')}
+      ${v227QrBlock_(dinas,'Pengesahan Akhir DINAS','🏛️')}
+    </div>
+
+    ${action?`<div class="toolbar" style="margin-top:14px;justify-content:flex-end">${action}</div>`:''}
+  </div>`;
+}
+
+window.sahkanPenilaianDinasV227=async function(idAsesmen){
+  if(!confirm('Sahkan penilaian SPJ ini sebagai hasil akhir DINAS? Pastikan QR Sekolah dan QR Pengawas telah tersedia dan tidak ada keberatan aktif.'))return;
+  try{
+    const r=await api('sahkanPenilaianDinas',{idAsesmen});
+    toast(r.message||'Pengesahan akhir DINAS berhasil.','ok',5000);
+    await openAgreementAssessmentV226();
+  }catch(e){
+    toast(errorText(e),'error',5000);
+  }
+};
+
 async function renderPengesahanPanel(idAsesmen){
   const host=document.getElementById('assessmentSigningArea'); if(!host)return;
-  host.innerHTML=loading('Memeriksa status pengesahan...');
+  host.innerHTML=loading('Memeriksa status persetujuan dan pengesahan...');
   try{
     const r=await api('getPengesahanPenilaian',{idAsesmen});
     const d=r.data||{};
-    const approval=d.persetujuan_sekolah;
-    const signature=d.pengesahan_pengawas;
+    const school=d.persetujuan_sekolah;
+    const pengawas=d.pengesahan_pengawas;
+    const dinas=d.pengesahan_dinas;
     const appeal=d.keberatan_terakhir;
-    const signed=!!signature;
-    const approved=!!approval;
+    const activeAppeal=appeal && ['DIAJUKAN','DIKAJI_ULANG'].includes(upper(appeal.status_keberatan||''));
+
     let action='';
-    if(signed){
-      const vr=await api('verifikasiPengesahanPenilaian',{idAsesmen});
-      action=`<div class="message ${vr.valid?'ok':'error'}" style="margin-top:12px">
-        <b>${vr.valid?'🔒 PENILAIAN DISAHKAN':'⚠ PENGESAHAN PERLU DIVERIFIKASI'}</b><br>
-        Penandatangan: ${esc(signature.ditandatangani_oleh||'-')}<br>
-        Waktu: ${esc(signature.ditandatangani_at||signature.tanggal||'-')}<br>
-        Kode pengesahan: <b>${esc(signature.kode_pengesahan||'-')}</b><br>
-        Hash integritas: <code style="word-break:break-all">${esc(signature.integrity_hash||'-')}</code>
-        ${signature.verification_url?`<div style="display:flex;gap:14px;align-items:center;margin-top:12px;flex-wrap:wrap"><img alt="QR Verifikasi" src="https://quickchart.io/qr?size=180&text=${encodeURIComponent(signature.verification_url)}" style="width:140px;height:140px;border:1px solid #ddd;padding:4px;background:#fff"><div><b>QR Verifikasi</b><br><a target="_blank" href="${esc(signature.verification_url)}">Buka halaman verifikasi</a></div></div>`:''}
-      </div>`;
-    }else if(isPengawas() && approved && String(d.status_asesmen).toUpperCase()==='SELESAI'){
-      action=`<div class="toolbar" style="margin-top:12px"><button class="btn btn-primary" onclick="tandaTanganiPenilaian('${esc(idAsesmen)}')">🔏 Tanda Tangani & Sah-kan Penilaian</button></div>`;
-    }else if(isSchool() && !approved && String(d.status_asesmen).toUpperCase()==='SELESAI'){
-      action=`<div class="toolbar" style="margin-top:12px"><button class="btn btn-primary" onclick="setujuiPenilaian('${esc(idAsesmen)}')">✓ Saya Setuju dengan Penilaian</button></div>`;
-    }else if(approved && !signed){
-      action=`<div class="message info" style="margin-top:12px">Persetujuan sekolah sudah tercatat. Menunggu pengesahan elektronik pengawas.</div>`;
+    if(isSchool() && !school && upper(d.status_asesmen)==='SELESAI' && !activeAppeal){
+      action=`<button class="btn btn-primary" onclick="setujuiPenilaian('${esc(idAsesmen)}')">🔏 Setuju & Tanda Tangan Elektronik</button>`;
+    }else if(isPengawas() && d.siap_ditandatangani_pengawas && !activeAppeal){
+      action=`<button class="btn btn-primary" onclick="tandaTanganiPenilaian('${esc(idAsesmen)}')">🔏 Tanda Tangani & Sahkan sebagai Pengawas</button>`;
     }
+
     host.innerHTML=`
-      <div class="panel" style="margin-top:14px;border-left:4px solid var(--primary);">
+      <div class="panel v227-signing-panel" style="margin-top:14px">
         <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap">
-          <div><h3 style="margin:0">🔐 Pengesahan Penilaian</h3><div class="muted">Tahap terakhir setelah penilaian dan proses keberatan selesai.</div></div>
-          <span class="badge badge-${signed?'success':approved?'info':'warning'}">${signed?'DISAHKAN':approved?'MENUNGGU PENGAWAS':'MENUNGGU PERSETUJUAN SEKOLAH'}</span>
+          <div>
+            <h3 style="margin:0">🔐 Persetujuan & Pengesahan Elektronik</h3>
+            <div class="muted">Urutan wajib: Sekolah → Pengawas → DINAS.</div>
+          </div>
+          <span class="badge badge-${dinas?'success':activeAppeal?'warning':'info'}">${esc(String(d.status_pengesahan||'-').replaceAll('_',' '))}</span>
         </div>
-        ${approved?`<div class="message ok" style="margin-top:12px">✓ Persetujuan sekolah tercatat oleh <b>${esc(approval.disetujui_oleh||'-')}</b> pada ${esc(approval.disetujui_at||approval.tanggal||'-')}.</div>`:''}
-        ${appeal && ['DIAJUKAN','DIKAJI_ULANG'].includes(String(appeal.status_keberatan||'').toUpperCase())?`<div class="message warning" style="margin-top:12px">Keberatan masih dalam proses. Pengesahan ditahan sampai kaji ulang selesai.</div>`:''}
-        ${signed?`<div class="toolbar" style="margin-top:12px;justify-content:flex-end"><button class="btn btn-primary" onclick="bukaArsipTersahkan('${esc(idAsesmen)}')">🖨️ Cetak Berkas Penilaian Sah</button></div>`:''}
-        ${action}
+
+        ${activeAppeal?`<div class="message warning" style="margin-top:12px"><b>Keberatan masih aktif.</b> Semua pengesahan berikutnya ditahan sampai kaji ulang selesai.</div>`:''}
+
+        <div class="v227-sign-grid" style="margin-top:14px">
+          ${v227QrBlock_(school,'Persetujuan Sekolah','🏫')}
+          ${v227QrBlock_(pengawas,'Pengesahan Pengawas','🔎')}
+          ${v227QrBlock_(dinas,'Pengesahan Akhir DINAS','🏛️')}
+        </div>
+
+        ${action?`<div class="toolbar" style="margin-top:14px">${action}</div>`:''}
+        ${dinas?`<div class="toolbar" style="margin-top:12px;justify-content:flex-end"><button class="btn btn-primary" onclick="bukaArsipTersahkan('${esc(idAsesmen)}')">🖨️ Cetak Penilaian SPJ Final</button></div>`:''}
       </div>`;
-  }catch(e){host.innerHTML=msg(errorText(e));}
+  }catch(e){
+    host.innerHTML=msg(errorText(e));
+  }
 }
 
 window.bukaArsipTersahkan=async function(idAsesmen){
   try{
     const r=await api('getPengesahanPenilaian',{idAsesmen});
     const d=r.data||{};
-    if(!d.persetujuan_sekolah || !d.pengesahan_pengawas) {
-      toast('Berkas baru dapat dicetak sebagai berkas sah setelah persetujuan sekolah dan pengesahan pengawas tercatat.','warning',5000);
+    if(!d.persetujuan_sekolah || !d.pengesahan_pengawas || !d.pengesahan_dinas) {
+      toast('Berkas final baru dapat dicetak setelah tanda tangan Sekolah, Pengawas, dan DINAS lengkap.','warning',5000);
       return;
     }
     state.selectedNpsn=d.npsn;
@@ -7792,16 +7876,16 @@ window.bukaArsipTersahkan=async function(idAsesmen){
 };
 
 window.setujuiPenilaian=async function(idAsesmen){
-  if(!confirm('Anda menyetujui hasil penilaian ini. Setelah disetujui, pengawas dapat melakukan pengesahan elektronik. Lanjutkan?'))return;
+  if(!confirm('Setujui hasil penilaian ini dan buat tanda tangan elektronik/QR Sekolah? Setelah ditandatangani, Pengawas dapat melakukan pengesahan. Lanjutkan?'))return;
   try{
     await api('setujuiPenilaianSekolah',{idAsesmen});
-    toast('Persetujuan sekolah berhasil dicatat.','ok',4500);
+    toast('Persetujuan elektronik dan QR Sekolah berhasil dibuat.','ok',4500);
     await openAssessment();
   }catch(e){toast(errorText(e),'error',5000);}
 };
 
 window.tandaTanganiPenilaian=async function(idAsesmen){
-  if(!confirm('Tanda tangani dan sahkan hasil penilaian ini? Pastikan hasil kaji ulang dan persetujuan sekolah sudah benar.'))return;
+  if(!confirm('Tanda tangani dan sahkan hasil penilaian ini sebagai Pengawas? Pastikan QR Sekolah sudah tersedia dan tidak ada keberatan aktif.'))return;
   try{
     const r=await api('tandaTanganiPenilaianPengawas',{idAsesmen});
     toast(r.message||'Penilaian berhasil disahkan.','ok',5000);
@@ -9856,7 +9940,8 @@ body.theme-sekolah .v221-book-summary{background:#F7F8FE}
       {view:'rkasReview',title:'RKAS & Anggaran',desc:'Kelola referensi anggaran yang menjadi konteks realisasi.'},
       {view:'monitoringGlobal',title:'Monitoring Proses SPJ',desc:'Pantau progres pemeriksaan termasuk persetujuan, keberatan, kaji ulang, dan pengesahan.'},
       {view:'temuan',title:'Temuan & Tindak Lanjut',desc:'Pantau isu yang belum selesai.'},
-      {view:'arsipPenilaianV5',title:'Hasil Penilaian & Cetak',desc:'Lihat dan cetak hasil penilaian yang telah mencapai status final/pengesahan.'}
+      {view:'kesepakatan',title:'Pengesahan Akhir DINAS',desc:'Sahkan hasil akhir setelah QR Sekolah dan QR Pengawas lengkap.'},
+      {view:'arsipPenilaianV5',title:'Hasil Penilaian & Cetak',desc:'Lihat dan cetak penilaian final yang telah disahkan DINAS.'}
     ]
   };
 
@@ -10055,6 +10140,104 @@ body.theme-sekolah .v221-book-summary{background:#F7F8FE}
 }
 @media(max-width:620px){
   .v226-agreement-guide{grid-template-columns:1fr}
+}
+</style>
+
+
+<style id="v227TripleQrApproval">
+.v227-lifecycle,.v227-signing-panel{
+  border:1px solid var(--role-border,var(--border));
+  border-radius:18px;
+  background:#fff;
+  padding:18px;
+}
+.v227-lifecycle-head{
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+  align-items:flex-start;
+  margin-bottom:14px;
+}
+.v227-lifecycle-head small{
+  color:var(--muted);
+  font-weight:850;
+  letter-spacing:.05em;
+}
+.v227-lifecycle-head h3{
+  margin:4px 0 3px;
+}
+.v227-sign-grid{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:12px;
+}
+.v227-sign-card{
+  min-width:0;
+  min-height:210px;
+  padding:14px;
+  border:1px solid var(--role-border,var(--border));
+  border-radius:15px;
+  background:var(--role-soft-2,#f8faf9);
+}
+.v227-sign-card.pending{
+  opacity:.72;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+}
+.v227-sign-card.done{
+  background:#fff;
+  box-shadow:0 7px 18px rgba(20,40,50,.06);
+}
+.v227-sign-head{
+  display:flex;
+  align-items:center;
+  gap:9px;
+  margin-bottom:10px;
+}
+.v227-sign-head>span{
+  font-size:1.25rem;
+}
+.v227-sign-head div{
+  display:flex;
+  flex-direction:column;
+}
+.v227-sign-head b{
+  color:var(--text);
+  font-size:.8rem;
+}
+.v227-sign-head small{
+  color:var(--muted);
+  font-size:.62rem;
+  font-weight:900;
+  margin-top:2px;
+}
+.v227-qr{
+  display:block;
+  width:132px;
+  height:132px;
+  margin:8px auto;
+  padding:5px;
+  background:#fff;
+  border:1px solid #dde3e0;
+  border-radius:8px;
+}
+.v227-sign-meta{
+  display:flex;
+  flex-direction:column;
+  gap:3px;
+  color:var(--muted);
+  font-size:.66rem;
+  line-height:1.35;
+  overflow-wrap:anywhere;
+}
+.v227-sign-meta b{
+  color:var(--text);
+  font-size:.72rem;
+}
+@media(max-width:900px){
+  .v227-sign-grid{grid-template-columns:1fr}
+  .v227-sign-card{min-height:auto}
 }
 </style>
 
