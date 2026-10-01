@@ -6004,15 +6004,12 @@ function _v5DocCards(docs){
 }
 async function tutorialV5View(){
   const c=$('#mainContent');
-  const githubUrl='https://github.com/DikporaRembang/simpelspj/blob/main/tutorial_simpelspj.pdf';
   const rawUrl='https://raw.githubusercontent.com/DikporaRembang/simpelspj/main/tutorial_simpelspj.pdf';
-  window._v5TutorialUrl=githubUrl;
 
-  c.innerHTML=head('Tutorial SIMPEL SPJ','Panduan resmi aplikasi dari repositori GitHub')+
+  c.innerHTML=head('Tutorial SIMPEL SPJ','Panduan resmi penggunaan aplikasi SIMPEL SPJ')+
     `<div class="panel" style="border-left:4px solid var(--gold);">
       <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap">
-        <div><h2 style="margin:0">📖 tutorial_simpelspj.pdf</h2><div class="muted">Tutorial resmi aplikasi — DINAS, PENGAWAS, dan SEKOLAH.</div></div>
-        <a class="btn btn-light" href="${githubUrl}" target="_blank" rel="noopener">Buka di GitHub</a>
+        <div><h2 style="margin:0">📖 Tutorial SIMPEL SPJ</h2><div class="muted">Panduan resmi aplikasi — DINAS, PENGAWAS, dan SEKOLAH.</div></div>
       </div>
       <div id="v5TutorialFeed" style="margin-top:14px">${loading('Menyiapkan pembaca tutorial...')}</div>
     </div>`;
@@ -6138,7 +6135,7 @@ async function tutorialV5View(){
     $('#v5PdfZoomIn').onclick=()=>applyZoom(zoom+.1);
     zoomInfo.textContent='100%';
   }catch(e){
-    area.innerHTML=msg('Tutorial tidak dapat ditampilkan langsung di feed: '+errorText(e)+'. Gunakan tombol "Buka di GitHub" untuk membuka dokumen asli.','error');
+    area.innerHTML=msg('Tutorial belum dapat ditampilkan. Periksa koneksi lalu buka kembali menu Tutorial. Detail: '+errorText(e),'error');
   }
 }
 
