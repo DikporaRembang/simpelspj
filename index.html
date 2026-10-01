@@ -813,7 +813,32 @@ body{background:linear-gradient(180deg,#fbfaf6 0,#f4f2eb 100%)!important;color:v
 
 const V10_VERSION = 'V17.3-PENGAWAS-SIMPLE-LOGIN-FIX';
 
-const API_URL = 'https://script.google.com/macros/s/AKfycbyWvJXKr1QZ1zwbeJDoULTUihycj1771SsDlGFy8jnuF4i3DsEbHXlcJU48VDAg17fqDA/exec';
+const API_URL_DEFAULT = 'https://script.google.com/macros/s/AKfycbyWvJXKr1QZ1zwbeJDoULTUihycj1771SsDlGFy8jnuF4i3DsEbHXlcJU48VDAg17fqDA/exec';
+let API_URL = (() => {
+  try{
+    const fromQuery = new URLSearchParams(location.search).get('api');
+    const saved = localStorage.getItem('SIMPEL_API_URL');
+    return String(fromQuery || saved || API_URL_DEFAULT).trim();
+  }catch(e){
+    return API_URL_DEFAULT;
+  }
+})();
+
+window.setSimpelApiUrl = function(url){
+  const u=String(url||'').trim();
+  if(!/^https:\/\/script\.google\.com\/macros\/s\/[^/]+\/exec$/i.test(u)){
+    throw new Error('URL harus berupa URL Web App Google Apps Script yang berakhir /exec');
+  }
+  localStorage.setItem('SIMPEL_API_URL',u);
+  API_URL=u;
+  return u;
+};
+window.resetSimpelApiUrl = function(){
+  localStorage.removeItem('SIMPEL_API_URL');
+  API_URL=API_URL_DEFAULT;
+  return API_URL;
+};
+
 
 // 1. DEKLARASIKAN ROLE_MENUS DI SINI (PALING ATAS)
 window.ROLE_MENUS = {
@@ -1053,9 +1078,35 @@ function emptyRow(cols,text='Tidak ada data.'){ return `<tr><td colspan="${cols}
 async function api(action, payload={}){
   const body = { action, ...payload };
   if(state.token) body.token = state.token;
-  const response = await fetch(API_URL, {method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(body)});
-  if(!response.ok) throw new Error(`Server HTTP ${response.status}`);
-  const data = await response.json();
+
+  let response;
+  try{
+    response = await fetch(API_URL, {
+      method:'POST',
+      headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body:JSON.stringify(body),
+      redirect:'follow'
+    });
+  }catch(networkErr){
+    const err=new Error(
+      'Backend SIMPEL SPJ tidak dapat dijangkau (Failed to fetch). '+
+      'Periksa URL deployment /exec, status deployment Apps Script, dan hak akses Web App.'
+    );
+    err.code='NETWORK_FETCH_FAILED';
+    err.apiUrl=API_URL;
+    err.original=networkErr;
+    throw err;
+  }
+
+  if(!response.ok) throw new Error(`Server HTTP ${response.status} — ${API_URL}`);
+
+  let data;
+  try{
+    data=await response.json();
+  }catch(parseErr){
+    throw new Error('Server dapat dijangkau tetapi respons bukan JSON. Pastikan URL yang digunakan adalah URL Web App /exec terbaru.');
+  }
+
   if(!data.success) throw new Error(data.message || 'Permintaan gagal.');
   return data;
 }
@@ -1088,6 +1139,57 @@ function generateMathCaptcha(){
   state.captchaQuestion=`Berapa hasil ${a} ${op} ${b} ?`;
   return state.captchaQuestion;
 }
+
+
+window.testSimpelConnection = async function(){
+  const box=document.getElementById('serverConnectionResult');
+  if(box)box.innerHTML=loading('Menguji koneksi backend...');
+  try{
+    // Endpoint ringan yang tidak membutuhkan session.
+    const response=await fetch(API_URL,{
+      method:'POST',
+      headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body:JSON.stringify({action:'getSekolah'}),
+      redirect:'follow'
+    });
+    if(!response.ok)throw new Error('HTTP '+response.status);
+    const raw=await response.text();
+    let parsed=null;
+    try{parsed=JSON.parse(raw);}catch(_){}
+    if(!parsed)throw new Error('Respons server bukan JSON');
+    if(box)box.innerHTML=msg('Backend berhasil dijangkau. URL deployment aktif.','ok');
+    return true;
+  }catch(e){
+    if(box)box.innerHTML=msg('Backend tidak dapat dijangkau: '+(e.message||e)+'. Periksa URL /exec dan deployment Apps Script.','error');
+    return false;
+  }
+};
+
+window.openServerConnectionSettings=function(){
+  const existing=document.getElementById('serverConnectionModal');
+  if(existing)existing.remove();
+  const wrap=document.createElement('div');
+  wrap.id='serverConnectionModal';
+  wrap.innerHTML=`<div style="position:fixed;inset:0;background:rgba(0,0,0,.52);display:flex;align-items:center;justify-content:center;z-index:9999;padding:16px">
+    <div style="background:#fff;padding:26px;border-radius:22px;width:min(100%,680px);max-height:90vh;overflow:auto;box-shadow:0 20px 50px rgba(0,0,0,.22)">
+      <div style="display:flex;justify-content:space-between;gap:12px;align-items:start">
+        <div><h3 style="margin:0;color:var(--primary)">Koneksi Backend SIMPEL SPJ</h3>
+        <div class="muted" style="margin-top:5px">Masukkan URL Web App Apps Script terbaru yang berakhir dengan <b>/exec</b>.</div></div>
+        <button class="btn btn-light btn-sm" onclick="document.getElementById('serverConnectionModal')?.remove()">✕</button>
+      </div>
+      <div class="field" style="margin-top:18px"><label>URL Backend /exec</label>
+        <input id="serverApiUrlInput" value="${esc(API_URL)}" placeholder="https://script.google.com/macros/s/.../exec">
+      </div>
+      <div id="serverConnectionResult" style="margin-top:10px"></div>
+      <div class="toolbar" style="margin-top:16px;justify-content:flex-end;gap:8px">
+        <button class="btn btn-light" onclick="resetSimpelApiUrl();document.getElementById('serverApiUrlInput').value=API_URL;testSimpelConnection()">Reset URL Lama</button>
+        <button class="btn btn-light" onclick="setSimpelApiUrl(document.getElementById('serverApiUrlInput').value);testSimpelConnection()">Uji Koneksi</button>
+        <button class="btn btn-primary" onclick="try{setSimpelApiUrl(document.getElementById('serverApiUrlInput').value);location.reload()}catch(e){document.getElementById('serverConnectionResult').innerHTML=msg(e.message,'error')}">Simpan & Muat Ulang</button>
+      </div>
+    </div>
+  </div>`;
+  document.body.appendChild(wrap);
+};
 
 function authView(notice=''){
   document.body.style.background='var(--bg)';
@@ -1134,6 +1236,9 @@ function authView(notice=''){
           <div id="authMsg"></div>
           <button class="btn btn-primary full" type="submit" style="margin-top:8px">Masuk ke Aplikasi</button>
         </form>
+        <div style="margin-top:12px;text-align:center">
+          <button type="button" class="btn btn-light btn-sm" onclick="openServerConnectionSettings()">⚙️ Koneksi Server</button>
+        </div>
         <div style="text-align:center;margin-top:16px">
           <a href="#" onclick="showRegisterView(event)" style="color:var(--primary-2);font-weight:700;font-size:0.9rem;text-decoration:none">Belum punya akun? Pendaftaran Akun Baru</a>
         </div>
