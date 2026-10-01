@@ -2833,12 +2833,22 @@ window.parseExcelBku=async function(){
   if(!f){out.innerHTML=msg('Pilih file Excel BKU ARKAS terlebih dahulu.');return;}
   btn.disabled=true;
   try{await ensureXlsxLib();}catch(e){out.innerHTML=msg(e.message,'warning');btn.disabled=false;return;}
-  btn.textContent='Membaca Excel...';out.innerHTML=loading('Memvalidasi struktur dan saldo BKU...');
+  btn.textContent='Membaca Excel...';out.innerHTML=loading('Membaca nilai BKU tanpa style/format Excel...');
   try{
     const buffer=await f.arrayBuffer();
-    const wb=XLSX.read(new Uint8Array(buffer),{type:'array',cellDates:true});
+    // FAST PATH: untuk BKU kita hanya butuh nilai sel. Style, rich text, formula
+    // formatting, dan konversi Date tidak perlu diproses oleh SheetJS.
+    const wb=XLSX.read(buffer,{
+      type:'array',
+      cellDates:false,
+      cellStyles:false,
+      cellNF:false,
+      cellText:false,
+      cellFormula:false,
+      cellHTML:false
+    });
     const ws=wb.Sheets[wb.SheetNames[0]];
-    const rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:true,defval:''});
+    const rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:true,defval:'',blankrows:false});
     const h=_bkuFindHeaderClient(rows);
     if(!h)throw new Error('Header BKU tidak ditemukan. Pastikan file berasal dari ekspor Buku Kas Umum ARKAS.');
     const meta=_bkuMetaClient(rows);
@@ -2893,7 +2903,7 @@ window.parseExcelBku=async function(){
         <tr><td>Saldo Akhir</td><td><b>${fmtRupiah(Number(lastSaldo)||0)}</b></td></tr>
         <tr><td>Konsistensi saldo berantai</td><td>${invalidSaldo?badge(`${invalidSaldo} baris perlu review`,'warning'):badge('KONSISTEN','success')}</td></tr>
       </tbody></table></div></div>`+
-      `<div class="table-wrap"><table class="friendly-table"><thead><tr><th>Tanggal</th><th>Kegiatan</th><th>Kode Rekening</th><th>No. Bukti</th><th>Uraian</th><th>Penerimaan</th><th>Pengeluaran</th><th>Saldo</th></tr></thead><tbody>${data.slice(0,60).map(x=>`<tr><td>${esc(x.tanggal_transaksi)}</td><td>${esc(x.kode_kegiatan||'-')}</td><td><code>${esc(x.kode_rekening||'-')}</code></td><td>${esc(x.nomor_bukti||'-')}</td><td>${esc(x.uraian_transaksi)}</td><td>${fmtRupiah(x.penerimaan)}</td><td>${fmtRupiah(x.pengeluaran)}</td><td>${fmtRupiah(x.saldo)}</td></tr>`).join('')}</tbody></table></div>`+
+      `<div class="table-wrap"><table class="friendly-table"><thead><tr><th>Tanggal</th><th>Kegiatan</th><th>Kode Rekening</th><th>No. Bukti</th><th>Uraian</th><th>Penerimaan</th><th>Pengeluaran</th><th>Saldo</th></tr></thead><tbody>${data.slice(0,25).map(x=>`<tr><td>${esc(x.tanggal_transaksi)}</td><td>${esc(x.kode_kegiatan||'-')}</td><td><code>${esc(x.kode_rekening||'-')}</code></td><td>${esc(x.nomor_bukti||'-')}</td><td>${esc(x.uraian_transaksi)}</td><td>${fmtRupiah(x.penerimaan)}</td><td>${fmtRupiah(x.pengeluaran)}</td><td>${fmtRupiah(x.saldo)}</td></tr>`).join('')}</tbody></table></div>`+
       `<div class="message warning" style="margin-top:12px"><b>Snapshot penilaian.</b> Setelah disimpan, Excel ini menjadi BKU aktif untuk periode yang tercakup. Impor Excel baru akan menggantikan snapshot aktif pada penilaian tanpa menghapus riwayat impor sebelumnya.</div>`+
       `<button class="btn btn-primary" style="margin-top:12px" onclick="saveImportedTransactions()">✓ Tetapkan sebagai BKU Penilaian</button>`;
   }catch(err){out.innerHTML=msg(errorText(err),'error');state.bkuImport=null;state.importedTransactions=[];}
@@ -2903,7 +2913,7 @@ window.parseExcelBku=async function(){
 window.saveImportedTransactions=async function(){
   const imp=state.bkuImport;if(!imp||!state.importedTransactions.length){toast('Baca file Excel BKU terlebih dahulu.','warning');return;}
   const btn=$('#bkuReadBtn');if(btn){btn.disabled=true;btn.textContent='Menetapkan snapshot...';}
-  const out=$('#excelPreview');out.innerHTML=loading('Menyimpan snapshot Excel BKU sebagai basis penilaian...');
+  const out=$('#excelPreview');out.innerHTML=loading('Menetapkan snapshot BKU dan memetakan periode secara batch...');
   try{
     const r=await api('importBkuBundle',{data:{
       npsn:imp.meta?.npsn||'',source_name:imp.fileName,source_type:'EXCEL_BKU_ARKAS',
@@ -3459,16 +3469,18 @@ async function renderPengawasRkasAndRealisasi(){
   try{
     // Satu endpoint agregat: tidak menarik seluruh detail RKAS/SPJ ke browser.
     // Cache frontend hanya untuk perpindahan menu; detail tetap lazy-load.
-    const r = await api('getRingkasanRKASRealisasi');
+    const selectedPeriod = state.selectedPeriode || '';
+    if(!selectedPeriod) throw new Error('Pilih periode SPJ terlebih dahulu dari pemilih periode.');
+    const r = await api('getRingkasanRKASRealisasi',{idPeriode:selectedPeriod});
     const list = r.data || [];
     const totalPagu = list.reduce((a,x) => a + Number(x.total_pagu || 0), 0);
     const totalRealisasi = list.reduce((a,x) => a + Number(x.total_realisasi || 0), 0);
     const totalSisa = list.reduce((a,x) => a + Number(x.sisa_pagu || 0), 0);
     const persen = totalPagu > 0 ? (totalRealisasi / totalPagu) * 100 : 0;
 
-    const periodLabel = r.nama_periode_aktif
-      ? `<span class="badge badge-info">Periode aktif: ${esc(r.nama_periode_aktif)}</span>`
-      : `<span class="badge badge-warning">Belum ada periode aktif</span>`;
+    const periodLabel = r.nama_periode
+      ? `<span class="badge badge-info">Periode dipilih: ${esc(r.nama_periode)}</span>`
+      : `<span class="badge badge-warning">Pilih periode SPJ</span>`;
 
     const schoolCardsHtml = list.map(x => {
       const pagu = Number(x.total_pagu || 0);
@@ -3548,7 +3560,7 @@ window.openPengawasRkasDetail=async function(npsn, page=1){
   
   area.innerHTML = loading('Memuat rincian RKAS sekolah...');
   try{
-    const r = await api('getRealisasiRKASPaged', {npsn, page, limit:50});
+    const r = await api('getRealisasiRKASPaged', {npsn, page, limit:50, idPeriode:state.selectedPeriode||''});
     const rows = r.data || [];
     const groups = groupBelanjaClient(rows, 'pagu');
     let no = (r.page - 1) * r.limit;
@@ -7505,62 +7517,145 @@ window.executeRkasReplace=async function(){
   };
 
   const baseHomeView = window.homeView;
-  window.homeView = async function(){
-    const isS=String(state?.user?.role||'').toUpperCase()==='SEKOLAH';
-    if(!isS){
-      return baseHomeView ? baseHomeView() : undefined;
-    }
-    const name=state.user?.nama_pengguna||state.user?.nama||state.user?.nama_sekolah||state.user?.username||'Sekolah';
-    const npsn=state.user?.npsn||state.user?.username||'-';
-    let period=state.selectedPeriode||'';
-    let periods=[];
-    try{
-      const r=await safeApi('getPeriodeSPJ',{status:'AKTIF'},{data:[]});
-      periods=r.data||[];
-      if(!period && periods[0]){ period=periods[0].id_periode||periods[0].id||''; state.selectedPeriode=period; }
-    }catch(e){}
 
-    let spj=[]; let bku={source:{},summary:{}};
-    if(period){
-      const [sr,br]=await Promise.all([
-        safeApi('getStatusSPJ',{idPeriode:period},{data:[]}),
-        safeApi('getBkuLedgerWorkbench',{idPeriode:period,npsn:npsn},{source:{},summary:{}})
-      ]);
-      spj=sr.data||[]; bku=br||{source:{},summary:{}};
-    }
-    const total=spj.length;
-    const done=spj.filter(x=>!['BELUM_UPLOAD','N/A'].includes(upper(x.status||''))).length;
-    const repair=spj.filter(x=>upper(x.status||'')==='PERLU_PERBAIKAN').length;
-    const pct=total?Math.round(done/total*100):0;
-    const src=bku.source||{};
-    const hasExcel=!!src.id_import;
-    let next='', action='transaksi', actionLabel='Tetapkan Excel BKU';
-    if(!hasExcel){
-      next='Tetapkan Excel BKU ARKAS terlebih dahulu. Ini menjadi sumber transaksi resmi untuk penilaian.';
-    }else if(repair){
-      next=`Ada ${repair} bukti/dokumen yang perlu diperbaiki.`; action='dokumenBulanan'; actionLabel='Perbaiki Bukti';
-    }else if(total && done<total){
-      next=`Excel BKU sudah aktif. Lengkapi ${total-done} komponen bukti SPJ.`; action='dokumenBulanan'; actionLabel='Lengkapi Bukti';
-    }else{
-      next='BKU dan bukti sudah siap. Lihat status pemeriksaan dan hasil penilaian.'; action='statusSpj'; actionLabel='Lihat Status';
-    }
-    const periodName=periods.find(x=>String(x.id_periode||x.id)===String(period))?.nama_periode || 'Periode aktif';
+  function _homeTimeout_(promise, ms, fallback){
+    return Promise.race([
+      Promise.resolve(promise).catch(()=>fallback),
+      new Promise(resolve=>setTimeout(()=>resolve(fallback), ms))
+    ]);
+  }
+
+  function _renderSchoolHomeShell_(name,npsn,periodName){
     $('#mainContent').innerHTML=`
       <div class="v16-school-home">
         <section class="v16-hero">
           <div><span class="v16-kicker">SIMPEL SPJ • SEKOLAH</span><h1>Halo, ${esc(name)}</h1><p>Ikuti 3 langkah saja: tetapkan Excel BKU, lengkapi bukti, lalu pantau hasil pemeriksaan.</p></div>
           <div class="v16-school-id"><span>🏫</span><div><b>${esc(state.user?.nama_sekolah||name)}</b><small>NPSN ${esc(npsn)}</small></div></div>
         </section>
-        <section class="v16-period"><div><small>PERIODE AKTIF</small><strong>${esc(periodName)}</strong></div><button class="btn btn-light btn-sm" onclick="schoolChoosePeriod()">Ganti Periode</button></section>
-        <section class="v16-next ${repair?'danger':''}"><div><small>LANGKAH BERIKUTNYA</small><h2>${esc(next)}</h2><p>${hasExcel?`${fmtNum(src.total_valid||0)} transaksi berasal dari ${esc(src.source_name||'Excel BKU aktif')}.`:'Penilaian belum dimulai sebelum Excel BKU ditetapkan.'}</p></div><button class="btn btn-primary" onclick="loadView('${action}')">${esc(actionLabel)} →</button></section>
-        <section class="v16-progress"><div class="v16-progress-head"><div><small>STATUS ALUR</small><strong>${hasExcel?'BKU AKTIF':'BELUM ADA BKU'}</strong></div><span>${done} dari ${total} bukti selesai</span></div><div class="v16-track"><i style="width:${hasExcel?Math.max(34,pct):8}%"></i></div></section>
+        <section class="v16-period"><div><small>PERIODE DIPILIH</small><strong id="v214PeriodName">${esc(periodName||'Memuat periode...')}</strong></div><button class="btn btn-light btn-sm" onclick="schoolChoosePeriod()">Ganti Periode</button></section>
+
+        <section class="v16-next" id="v214NextCard">
+          <div><small>LANGKAH BERIKUTNYA</small><h2 id="v214NextTitle">Memeriksa status alur...</h2><p id="v214NextDesc">Beranda sudah siap digunakan. Ringkasan dimuat di latar belakang.</p></div>
+          <button class="btn btn-primary" id="v214NextBtn" onclick="loadView('transaksi')">Excel BKU →</button>
+        </section>
+
+        <section class="v16-progress">
+          <div class="v16-progress-head"><div><small>STATUS ALUR</small><strong id="v214BkuStatus">MEMUAT</strong></div><span id="v214EvidenceStatus">Memuat status bukti...</span></div>
+          <div class="v16-track"><i id="v214ProgressBar" style="width:8%"></i></div>
+        </section>
+
         <section class="v16-steps v21-school-steps">
-          <button onclick="loadView('transaksi')"><span>${hasExcel?'✓':'1'}</span><div><b>Excel BKU</b><small>${hasExcel?'Snapshot aktif':'Tetapkan sumber transaksi'}</small></div><em>→</em></button>
+          <button onclick="loadView('transaksi')"><span id="v214StepBku">1</span><div><b>Excel BKU</b><small id="v214StepBkuText">Cek sumber transaksi</small></div><em>→</em></button>
           <button onclick="loadView('dokumenBulanan')"><span>2</span><div><b>Bukti SPJ</b><small>Lengkapi dokumen pendukung</small></div><em>→</em></button>
           <button onclick="loadView('statusSpj')"><span>3</span><div><b>Status & Hasil</b><small>Pemeriksaan, temuan, nilai</small></div><em>✓</em></button>
         </section>
         <div class="v16-tip">💡 <span><b>Prinsip:</b> Excel BKU adalah sumber transaksi resmi. PDF dan dokumen lain hanya menjadi bukti pendukung pemeriksaan.</span></div>
       </div>`;
+  }
+
+  async function _refreshSchoolHomeV214_(npsn){
+    let period=state.selectedPeriode||'';
+    let periods=[];
+
+    const pr=await _homeTimeout_(
+      safeApi('getPeriodeSPJ',{status:'AKTIF'},{data:[]}),
+      7000,
+      {data:[]}
+    );
+    periods=pr?.data||[];
+
+    if(!period && periods[0]){
+      period=periods[0].id_periode||periods[0].id||'';
+      state.selectedPeriode=period;
+    }
+
+    const pObj=periods.find(x=>String(x.id_periode||x.id)===String(period));
+    const pName=pObj?.nama_periode||period||'Belum ada periode';
+    const periodEl=document.getElementById('v214PeriodName');
+    if(periodEl) periodEl.textContent=pName;
+
+    if(!period){
+      const title=document.getElementById('v214NextTitle');
+      const desc=document.getElementById('v214NextDesc');
+      if(title) title.textContent='Periode SPJ belum tersedia.';
+      if(desc) desc.textContent='DINAS perlu menyiapkan periode SPJ terlebih dahulu.';
+      return;
+    }
+
+    // Beranda memakai endpoint ringan. Workbench penuh hanya dibuka saat user
+    // memang masuk ke modul pemeriksaan.
+    const [sr,ir]=await Promise.all([
+      _homeTimeout_(safeApi('getStatusSPJ',{idPeriode:period},{data:[]}),8000,{data:[]}),
+      _homeTimeout_(safeApi('getBkuImportStatus',{idPeriode:period,npsn:npsn},{ready:false,data:null}),8000,{ready:false,data:null})
+    ]);
+
+    // Jika user sudah pindah modul, jangan menimpa halaman baru.
+    if(state.view!=='home') return;
+
+    const spj=sr?.data||[];
+    const imp=ir?.data||null;
+    const hasExcel=!!(ir?.ready && imp?.id_import);
+    const total=spj.length;
+    const done=spj.filter(x=>!['BELUM_UPLOAD','N/A'].includes(upper(x.status||''))).length;
+    const repair=spj.filter(x=>upper(x.status||'')==='PERLU_PERBAIKAN').length;
+    const pct=total?Math.round(done/total*100):0;
+
+    let next='',action='transaksi',label='Tetapkan Excel BKU';
+    if(!hasExcel){
+      next='Tetapkan Excel BKU ARKAS terlebih dahulu.';
+    }else if(repair){
+      next=`Ada ${repair} bukti/dokumen yang perlu diperbaiki.`;
+      action='dokumenBulanan'; label='Perbaiki Bukti';
+    }else if(total && done<total){
+      next=`Excel BKU sudah aktif. Lengkapi ${total-done} komponen bukti SPJ.`;
+      action='dokumenBulanan'; label='Lengkapi Bukti';
+    }else{
+      next='BKU dan bukti sudah siap. Lihat status pemeriksaan dan hasil penilaian.';
+      action='statusSpj'; label='Lihat Status';
+    }
+
+    const card=document.getElementById('v214NextCard');
+    if(card) card.classList.toggle('danger',!!repair);
+    const title=document.getElementById('v214NextTitle');
+    if(title) title.textContent=next;
+    const desc=document.getElementById('v214NextDesc');
+    if(desc) desc.textContent=hasExcel
+      ? `${fmtNum(imp.total_valid||0)} transaksi berasal dari ${imp.source_name||'Excel BKU aktif'}.`
+      : 'Penilaian belum dimulai sebelum Excel BKU ditetapkan.';
+    const btn=document.getElementById('v214NextBtn');
+    if(btn){btn.textContent=label+' →';btn.onclick=()=>loadView(action);}
+    const bku=document.getElementById('v214BkuStatus');
+    if(bku) bku.textContent=hasExcel?'BKU AKTIF':'BELUM ADA BKU';
+    const ev=document.getElementById('v214EvidenceStatus');
+    if(ev) ev.textContent=`${done} dari ${total} bukti selesai`;
+    const bar=document.getElementById('v214ProgressBar');
+    if(bar) bar.style.width=(hasExcel?Math.max(34,pct):8)+'%';
+    const step=document.getElementById('v214StepBku');
+    if(step) step.textContent=hasExcel?'✓':'1';
+    const stepTxt=document.getElementById('v214StepBkuText');
+    if(stepTxt) stepTxt.textContent=hasExcel?'Snapshot aktif':'Tetapkan sumber transaksi';
+  }
+
+  window.homeView = async function(){
+    const isS=String(state?.user?.role||'').toUpperCase()==='SEKOLAH';
+    if(!isS){
+      return baseHomeView ? baseHomeView() : undefined;
+    }
+
+    const name=state.user?.nama_pengguna||state.user?.nama||state.user?.nama_sekolah||state.user?.username||'Sekolah';
+    const npsn=state.user?.npsn||state.user?.username||'-';
+
+    // PENTING: render langsung dan return. Jangan menahan navigation shield sambil
+    // menunggu Google Sheets/API.
+    _renderSchoolHomeShell_(name,npsn,state.selectedPeriode||'');
+    setTimeout(()=>{ _refreshSchoolHomeV214_(npsn).catch(e=>{
+      if(state.view!=='home') return;
+      const t=document.getElementById('v214NextTitle');
+      const d=document.getElementById('v214NextDesc');
+      if(t) t.textContent='Beranda siap digunakan.';
+      if(d) d.textContent='Ringkasan belum berhasil dimuat. Anda tetap dapat membuka Excel BKU, Bukti SPJ, atau Status & Hasil.';
+      console.error('Home summary:',e);
+    }); },0);
   };
   window.schoolChoosePeriod = async function(){
     const r=await safeApi('getPeriodeSPJ',{status:'AKTIF'},{data:[]});
