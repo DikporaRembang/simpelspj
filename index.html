@@ -2392,7 +2392,7 @@ async function renderDokumenTable(){
         <div style="display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap">
           <div>
             <h3 style="margin:0">Alur Dokumen SPJ</h3>
-            <div class="muted" style="margin-top:4px">Nilai dari Excel BKU diteruskan menjadi <b>nilai acuan dokumen</b>: buku utama, rekening koran, bukti belanja, SSP Pajak Pusat, dan dokumentasi.</div>
+            <div class="muted" style="margin-top:4px"><b>Sepuluh jenis dokumen pada halaman ini adalah basis 10 instrumen nilai SPJ semester.</b> Excel BKU dipakai sebagai sumber angka/cross-check, sedangkan RKAS hanya referensi anggaran dan tidak menjadi instrumen skor.</div>
             <div class="muted">PDF digunakan untuk membuktikan atau menyandingkan nilai tersebut; PDF tidak membentuk transaksi baru.</div>
           </div>
           <div style="text-align:right"><strong>${done}/${total}</strong><div class="muted">komponen tersedia</div></div>
@@ -6432,57 +6432,82 @@ window.selesaikanKajiUlang=async function(idPesan){
 
 function renderAssessment(a, indicators){
   const interactiveBtn=`<button class="btn btn-light" onclick="loadView('pdfInteraktif')">📄 Buka PDF & Penilaian Interaktif</button>`;
-  const totalWeight=indicators.reduce((s,x)=>s+Math.max(0,Number(x.bobot)||0),0);
-  const weighted=totalWeight>0
-    ? indicators.reduce((s,x)=>s+(Number(x.skor)||0)*Math.max(0,Number(x.bobot)||0),0)/totalWeight
-    : (indicators.length?indicators.reduce((s,x)=>s+(Number(x.skor)||0),0)/indicators.length:0);
-  const preview=Number((weighted*25).toFixed(2));
+  const applicable=indicators.filter(x=>x.berlaku!==false);
+  const totalWeight=applicable.reduce((s,x)=>s+Math.max(0,Number(x.bobot_efektif??x.bobot)||0),0);
+  const earned=applicable.reduce((s,x)=>s+((Number(x.skor)||0)/4)*Math.max(0,Number(x.bobot_efektif??x.bobot)||0),0);
+  const preview=Number((totalWeight>0?(earned/totalWeight)*100:0).toFixed(2));
+  const pendingValue=Number(indicatorResp.pending_value_verifications||0);
+  const bkuReady=indicatorResp.bku_ready!==false;
   const done=indicators.filter(x=>String(x.sumber_penilaian||'').toUpperCase()==='KOREKSI_MANUAL').length;
   const rows=indicators.map(d=>{
     const manual=String(d.sumber_penilaian||'').toUpperCase()==='KOREKSI_MANUAL';
-    const findings=Number(d.jumlah_temuan||0);
     const pending=Number(d.temuan_belum_verifikasi||0);
-    const status=pending>0?'PERLU VERIFIKASI':String(d.status_verifikasi||'SIAP').replaceAll('_',' ');
-    const statusClass=pending>0?'warning':status.includes('OCR')?'warning':'success';
+    const na=d.berlaku===false;
+    const status=na?'N/A':String(d.status_verifikasi||'BELUM UPLOAD').replaceAll('_',' ');
+    const statusClass=na?'info':status.includes('BELUM')?'danger':status.includes('PERLU')?'warning':status.includes('SELISIH')?'danger':'success';
+    const resolved=d.skor!==null && d.skor!=='' && d.skor!==undefined;
+    const scoreText=na?'-':(resolved?Number(d.skor).toFixed(2):'—');
+    const autoText=na?'Tidak berlaku':(d.skor_otomatis==null?'menunggu verifikasi nilai':`rekomendasi ${Number(d.skor_otomatis).toFixed(2)}`);
+    const comp=d.komponen_acuan_bku||{};
+    const compParts=Object.entries(comp).filter(([,v])=>Number(v)!==0).map(([k,v])=>`${esc(k.replaceAll('_',' '))}: <b>${fmtRupiah(v)}</b>`);
     return `<tr>
-      <td><b>${Number(d.no_instrumen||0)}. ${esc(d.nama_indikator)}</b><br><small class="muted">${esc(d.deskripsi||d.kode_indikator||'')}</small></td>
-      <td><span class="badge badge-${statusClass}">${esc(status)}</span></td>
-      <td><b>${Number(d.bobot||0).toFixed(0)}%</b></td>
-      <td><span class="${manual?'score-manual':'score-auto'}">${Number(d.skor).toFixed(2)}</span><br><small class="muted">rekomendasi ${Number(d.skor_otomatis).toFixed(2)}</small></td>
       <td>
-        ${Number(d.temuan_terbukti||0)?`<span class="badge badge-warning">${Number(d.temuan_terbukti)} terbukti</span>`:'<span class="badge badge-success">0 terbukti</span>'}
-        ${pending?`<div style="margin-top:4px"><span class="badge badge-warning">${pending} belum diverifikasi</span></div>`:''}
+        <b>${Number(d.no_instrumen||0)}. ${esc(d.nama_indikator)}</b>
+        <br><small class="muted">${d.nama_file?`📄 ${esc(d.nama_file)}`:'Belum ada file aktif'}</small>
+        ${d.ocr_confidence?`<br><small class="muted">OCR confidence ${Number(d.ocr_confidence).toFixed(0)}% — hanya alat bantu</small>`:''}
       </td>
-      <td>${isPengawas()&&String(a.status_asesmen||'').toUpperCase()!=='SELESAI'?`<button class="btn btn-sm btn-light" onclick="editScore('${esc(a.id_asesmen)}','${esc(d.id_indikator)}','${d.skor}','${d.skor_otomatis}')">${manual?'Ubah koreksi':'Koreksi manual'}</button>`:'-'}</td>
+      <td>
+        <div><b>${fmtRupiah(d.nilai_acuan_bku||0)}</b></div>
+        <small class="muted">${esc(d.label_acuan_bku||'Acuan Excel BKU')}</small>
+        ${compParts.length?`<div class="v230-components">${compParts.join(' · ')}</div>`:''}
+      </td>
+      <td><span class="badge badge-${statusClass}">${esc(status)}</span></td>
+      <td><b>${Number(d.bobot||0).toFixed(0)}%</b>${na?'<br><small class="muted">dikeluarkan dari pembagi</small>':''}</td>
+      <td><span class="${manual?'score-manual':'score-auto'}">${scoreText}</span><br><small class="muted">${autoText}</small></td>
+      <td>
+        ${d.nilai_dokumen_terverifikasi!=null?`<div><small class="muted">Nilai dokumen:</small> <b>${fmtRupiah(d.nilai_dokumen_terverifikasi)}</b></div>`:''}
+        ${d.nilai_selisih!=null?`<div><small class="muted">Selisih:</small> <b>${fmtRupiah(d.nilai_selisih)}</b></div>`:''}
+        ${pending?`<div style="margin-top:4px"><span class="badge badge-warning">${pending} temuan belum diverifikasi</span></div>`:''}
+      </td>
+      <td>${isPengawas()&&!na&&String(a.status_asesmen||'').toUpperCase()!=='SELESAI'?`<button class="btn btn-sm btn-light" onclick="editScore('${esc(a.id_asesmen)}','${esc(d.id_indikator)}','${resolved?d.skor:''}','${d.skor_otomatis??''}')">${manual?'Ubah verifikasi':'Verifikasi manual'}</button>`:'-'}</td>
     </tr>`;
   }).join('');
 
   $('#assessmentArea').innerHTML=`
     <div class="toolbar" style="margin-bottom:12px">${interactiveBtn}</div>
     ${String(a.status_asesmen||'').toUpperCase()==='KAJI_ULANG'?`<div class="message warning" style="margin-bottom:14px"><b>Mode Kaji Ulang.</b> Sekolah mengajukan keberatan atas penilaian ini. Silakan periksa kembali bukti, temuan, dan skor sebelum memfinalisasi ulang.</div>`:''}
+    ${!bkuReady?'<div class="message error">Excel BKU periode ini belum siap. Nilai acuan 10 dokumen belum dapat dihitung.</div>':''}
+    ${pendingValue?`<div class="message warning"><b>${pendingValue} dokumen</b> masih menunggu verifikasi kesesuaian nilai terhadap Excel BKU.</div>`:''}
     <div class="assessment-guide">
-      <div class="assessment-guide-card"><strong>1. Sistem membentuk rekomendasi</strong><span>Hanya temuan <b>TERBUKTI</b> yang menurunkan rekomendasi skor.</span></div>
-      <div class="assessment-guide-card"><strong>2. Pengawas memverifikasi</strong><span>Temuan wajib diputuskan TERBUKTI atau TIDAK TERBUKTI sebelum nilai difinalisasi.</span></div>
-      <div class="assessment-guide-card"><strong>3. 10 instrumen tetap</strong><span>Bobot penilaian bersifat tetap. Risk Engine hanya membantu menentukan prioritas pemeriksaan.</span></div>
+      <div class="assessment-guide-card"><strong>1. Nilai acuan dari Excel BKU</strong><span>Setiap dokumen dibandingkan dengan nilai yang dihitung dari BKU Excel pada periode yang sama.</span></div>
+      <div class="assessment-guide-card"><strong>2. Upload bukan otomatis skor 4</strong><span>Dokumen harus cocok nilainya dengan acuan BKU, atau diverifikasi manual oleh Pengawas bila OCR tidak mampu membaca.</span></div>
+      <div class="assessment-guide-card"><strong>3. N/A dikeluarkan dari perhitungan</strong><span>Dokumen yang memang tidak berlaku pada periode tersebut tidak dihukum dan bobotnya dinormalisasi.</span></div>
     </div>
     <div class="cards">
       <div class="stat"><small>Status</small><strong style="font-size:1.05rem">${esc(a.status_asesmen||'-')}</strong></div>
       <div class="stat"><small>Nilai kualitas sementara</small><strong>${a.nilai_kualitas??preview}</strong></div>
-      <div class="stat"><small>Instrumen</small><strong>${indicators.length}/10</strong></div>
+      <div class="stat"><small>Dokumen Dinilai</small><strong>${indicators.length}/10</strong></div>
       <div class="stat"><small>Koreksi manual</small><strong>${done}</strong></div>
     </div>
-    <div class="message ok" style="margin-top:14px"><b>Scoring Engine 10 Instrumen.</b> Bobot tetap 100%. OCR/AI hanya memberi rekomendasi; OCR gagal atau confidence rendah <b>tidak otomatis mengurangi nilai</b> sampai diverifikasi Pengawas.</div><div class="panel" style="margin-top:14px;padding:16px">
+    <div class="message ok" style="margin-top:14px"><b>Scoring berbasis nilai acuan BKU.</b> Masing-masing dokumen dinilai dari kesesuaian nilainya terhadap angka yang dihasilkan Excel BKU. OCR hanya alat bantu; bila tulisan pudar, Pengawas dapat melakukan verifikasi manual terhadap nilai acuan.</div><div class="panel" style="margin-top:14px;padding:16px">
       <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap">
-        <div><b>Nilai kualitas</b><div class="muted">Pratinjau berdasarkan indikator aktif dan bobotnya.</div></div>
+        <div><b>Nilai SPJ Semester</b><div class="muted">Pratinjau berdasarkan dokumen yang berlaku. Dokumen N/A yang sah dinormalisasi otomatis.</div></div>
         <strong style="font-size:1.5rem;color:var(--emerald-2)">${Number(a.nilai_kualitas??preview).toFixed(2)}</strong>
       </div>
     </div>
     <div class="v228-weight-map">
-      <span>RKAS 10%</span><span>BKU 10%</span><span>Bank 10%</span><span>Kas 10%</span><span>Pajak 10%</span>
-      <span class="strong">Dokumen Belanja 15%</span><span class="strong">Dokumen ↔ BKU 15%</span><span class="strong">Bukti Pendukung 10%</span>
-      <span>Digital 5%</span><span>Tindak Lanjut 5%</span>
+      <span>BKU 10%</span>
+      <span>Buku Bank 8%</span>
+      <span>Kas Tunai 8%</span>
+      <span>Buku Pajak 8%</span>
+      <span>Rekening Koran 10%</span>
+      <span class="strong">Invoice / Nota / Kuitansi 20%</span>
+      <span class="strong">Bukti Pendukung 12%</span>
+      <span>SSP Pusat 8%</span>
+      <span>SSP Daerah 6%</span>
+      <span class="strong">Foto / Dokumentasi 10%</span>
     </div>
-    <div class="table-wrap"><table class="friendly-table"><thead><tr><th>Instrumen</th><th>Status Verifikasi</th><th>Bobot Tetap</th><th>Skor 0–4</th><th>Temuan</th><th>Aksi</th></tr></thead><tbody>${rows||emptyRow(6)}</tbody></table></div>
+    <div class="table-wrap"><table class="friendly-table"><thead><tr><th>Dokumen yang Dinilai</th><th>Nilai Acuan Excel BKU</th><th>Status Kesesuaian</th><th>Bobot</th><th>Skor 0–4</th><th>Hasil Banding</th><th>Aksi</th></tr></thead><tbody>${rows||emptyRow(7)}</tbody></table></div>
     ${isPengawas()&&String(a.status_asesmen||'').toUpperCase()!=='SELESAI'?`<div class="toolbar" style="margin-top:14px"><button class="btn btn-primary" onclick="finalizeAssessment('${esc(a.id_asesmen)}')">✓ Finalisasi Penilaian</button></div>`:''}
     ${String(a.status_asesmen||'').toUpperCase()==='SELESAI'?`<div class="message ok" style="margin-top:14px">Penilaian sudah difinalisasi. Nilai akhir: <b>${esc(a.nilai_akhir??'-')}</b>.</div>${isSchool()?`<div class="toolbar" style="margin-top:12px"><button class="btn btn-primary" onclick="ajukanKeberatan('${esc(a.id_asesmen)}')">✉ Ajukan Keberatan Penilaian</button></div>`:''}`:''}
   `;
@@ -6495,7 +6520,7 @@ window.finalizeAssessment=async function(idAsesmen){
 };
 
 window.editScore=async function(idAsesmen,idIndikator,current,automatic){
-  const raw=prompt(`Skor indikator (0–4).\nSkor otomatis: ${automatic}\nKosongkan untuk kembali ke skor otomatis.`,current??automatic);
+  const raw=prompt(`Skor kesesuaian dokumen terhadap nilai acuan Excel BKU (0–4).\nSkor otomatis: ${automatic}\nKosongkan untuk kembali ke skor otomatis.`,current??automatic);
   if(raw===null)return;
   let score=raw.trim()===''?'':Number(raw);
   if(score!=='' && (!Number.isFinite(score)||score<0||score>4)){toast('Skor harus antara 0 sampai 4.','warning');return;}
@@ -6506,7 +6531,7 @@ window.editScore=async function(idAsesmen,idIndikator,current,automatic){
   }
   try{
     await api('simpanDetailAsesmen',{data:{id_asesmen:idAsesmen,id_indikator:idIndikator,skor:score,catatan_pengawas:note,status_berlaku:'BERLAKU'}});
-    toast(score===''?'Indikator dikembalikan ke skor otomatis.':'Koreksi indikator tersimpan.','ok');
+    toast(score===''?'Dokumen dikembalikan ke rekomendasi sistem.':'Koreksi skor dokumen tersimpan.','ok');
     await openAssessment();
   }catch(e){toast(errorText(e),'error',4500);}
 };
@@ -10274,6 +10299,16 @@ body.theme-sekolah .v221-book-summary{background:#F7F8FE}
   color:var(--primary);
   border-color:color-mix(in srgb,var(--primary) 35%,var(--role-border,var(--border)));
   background:var(--role-soft-2,#f8faf9);
+}
+</style>
+
+
+<style id="v230BkuValueScoring">
+.v230-components{
+  margin-top:4px;
+  line-height:1.45;
+  font-size:.62rem;
+  color:var(--muted);
 }
 </style>
 
