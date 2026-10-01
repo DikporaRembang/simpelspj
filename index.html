@@ -820,20 +820,16 @@ const API_URL = 'https://script.google.com/macros/s/AKfycbyWvJXKr1QZ1zwbeJDoULTU
 window.ROLE_MENUS = {
   DINAS: [
     { id:'home', label:'🏠 Beranda' },
-    { group:'PENGELOLAAN SPJ', items:[
-      { id:'masterSpj', label:'⚙️ Periode & Master SPJ' },
-      { id:'sekolah', label:'🏫 Data Sekolah' },
-      { id:'penugasan', label:'👥 Penugasan Pengawas' }
+    { group:'ALUR UTAMA', items:[
+      { id:'masterSpj', label:'1. ⚙️ Periode & Master SPJ' },
+      { id:'sekolah', label:'2. 🏫 Data Sekolah' },
+      { id:'penugasan', label:'3. 👥 Penugasan Pengawas' },
+      { id:'rkasReview', label:'4. 📋 RKAS & Anggaran' },
+      { id:'monitoringGlobal', label:'5. 📊 Monitoring SPJ' },
+      { id:'temuan', label:'6. ⚠️ Temuan & Tindak Lanjut' },
+      { id:'arsipPenilaianV5', label:'7. 🖨️ Hasil Penilaian & Cetak' }
     ]},
-    { group:'ANGGARAN & MONITORING', items:[
-      { id:'rkasReview', label:'📋 RKAS & Anggaran' },
-      { id:'monitoringGlobal', label:'📊 Monitoring SPJ' },
-      { id:'temuan', label:'⚠️ Temuan & Tindak Lanjut' }
-    ]},
-    { group:'HASIL PENILAIAN', items:[
-      { id:'arsipPenilaianV5', label:'🖨️ Laporan Penilaian & Cetak' }
-    ]},
-    { group:'KOMUNIKASI & SISTEM', items:[
+    { group:'PENDUKUNG', items:[
       { id:'pesan', label:'💬 Pesan & Koordinasi' },
       { id:'dbCheck', label:'✅ Validasi Sistem' },
       { id:'tutorialV5', label:'❓ Panduan SIMPEL SPJ' }
@@ -841,25 +837,29 @@ window.ROLE_MENUS = {
   ],
   PENGAWAS: [
     { id:'home', label:'🏠 Beranda' },
-    { id:'penugasan', label:'1. Pilih Sekolah Binaan' },
-    { id:'pdfInteraktif', label:'2. Workbench BKU & Bukti' },
-    { id:'temuan', label:'3. Temuan & Tindak Lanjut' },
-    { id:'asesmen', label:'4. Penilaian SPJ' },
-    { group:'HASIL & LAINNYA', items:[
-      { id:'arsipPenilaianV5', label:'📄 Hasil / Arsip Penilaian' },
-      { id:'pesan', label:'💬 Pesan & Koordinasi' },
+    { group:'ALUR PEMERIKSAAN', items:[
+      { id:'penugasan', label:'1. 🏫 Pilih Sekolah Binaan' },
+      { id:'pdfInteraktif', label:'2. 🔎 Periksa BKU & Bukti PDF' },
+      { id:'temuan', label:'3. ⚠️ Temuan & Tindak Lanjut' },
+      { id:'asesmen', label:'4. ✅ Penilaian & Finalisasi' },
+      { id:'arsipPenilaianV5', label:'5. 📄 Hasil / Arsip Penilaian' }
+    ]},
+    { group:'PENDUKUNG', items:[
       { id:'keberatan', label:'↻ Kaji Ulang / Keberatan' },
+      { id:'pesan', label:'💬 Pesan & Koordinasi' },
       { id:'tutorialV5', label:'❓ Panduan' },
       { id:'ubahPassword', label:'🔐 Ubah Password' }
     ]}
   ],
   SEKOLAH: [
     { id:'home', label:'🏠 Beranda' },
-    { id:'transaksi', label:'1. Tetapkan Excel BKU' },
-    { id:'dokumenBulanan', label:'2. Lengkapi Bukti SPJ' },
-    { id:'statusSpj', label:'3. Status & Hasil' },
-    { group:'LAINNYA', items:[
-      { id:'pesan', label:'💬 Pesan Pengawas' },
+    { group:'ALUR SPJ', items:[
+      { id:'transaksi', label:'1. 📊 Tetapkan Excel BKU' },
+      { id:'dokumenBulanan', label:'2. 📁 Lengkapi Bukti & Cross-check' },
+      { id:'statusSpj', label:'3. ✅ Status & Hasil' }
+    ]},
+    { group:'PENDUKUNG', items:[
+      { id:'pesan', label:'💬 Pesan & Koordinasi' },
       { id:'tutorialV5', label:'❓ Panduan' },
       { id:'ubahPassword', label:'🔐 Ubah Password' }
     ]}
@@ -2119,15 +2119,13 @@ window.switchPeriodeMode = function(elementId, mode) {
 async function dokumenBulananView(){
   const periods = await periodeSelect('periodeSelect', true, 'bulan');
 
-  $('#mainContent').innerHTML = head('SPJ Saya', 'Input, impor, dan unggah dokumen SPJ sesuai periode') +
+  $('#mainContent').innerHTML = head('2. Lengkapi Bukti & Cross-check', 'Unggah dokumen PDF sesuai nilai acuan yang dibentuk dari Excel BKU') +
     `<div class="panel">
        <div class="form-grid">
          <div class="field"><label>Periode SPJ</label>${periods}</div>
        </div>
        <div class="toolbar" style="margin-top:14px;flex-wrap:wrap">
-         <button class="btn btn-primary" type="button" onclick="openImportPaketSPJ()">📥 Impor Paket SPJ</button>
-         <button class="btn btn-light" type="button" onclick="loadView('transaksi')">💰 Kelola Transaksi</button>
-         <button class="btn btn-light" type="button" onclick="loadView('rkasReview')">📋 Lihat RKAS</button>
+         <button class="btn btn-light" type="button" onclick="openImportPaketSPJ()">📥 Impor Paket Dokumen</button>
          <button class="btn btn-light" type="button" onclick="renderDokumenTable()">↻ Muat Ulang</button>
        </div>
        <div id="dokumenArea" style="margin-top:18px">${msg('Pilih periode untuk menampilkan alur dokumen SPJ.', 'ok')}</div>
@@ -9514,6 +9512,372 @@ body.theme-sekolah .v221-book-summary{background:#F7F8FE}
   .v224-keyboard-hint{display:none}
 }
 </style>
+
+
+<style id="v225LinearRoleFlow">
+/* Old context bar created a second navigation system; hide it permanently. */
+.ux-context,.v16-breadcrumb{display:none!important}
+
+/* Linear progress bar shown on operational pages */
+.v225-flowbar{
+  display:grid;
+  grid-template-columns:auto minmax(0,1fr) auto;
+  gap:12px;
+  align-items:center;
+  margin:0 0 16px;
+  padding:12px 14px;
+  background:#fff;
+  border:1px solid var(--role-border,var(--border));
+  border-radius:15px;
+  box-shadow:0 5px 16px rgba(20,40,50,.05);
+}
+.v225-flow-center{min-width:0}
+.v225-flow-kicker{
+  display:block;
+  color:var(--muted);
+  font-size:.65rem;
+  font-weight:850;
+  letter-spacing:.06em;
+  margin-bottom:3px;
+}
+.v225-flow-title{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  color:var(--text);
+  font-weight:900;
+}
+.v225-step-pill{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-width:26px;
+  height:26px;
+  padding:0 7px;
+  border-radius:999px;
+  background:var(--primary);
+  color:#fff;
+  font-size:.69rem;
+  font-weight:900;
+}
+.v225-flow-actions{display:flex;gap:7px}
+.v225-flow-btn{
+  min-height:37px;
+  padding:0 11px;
+  border:1px solid var(--role-border,var(--border));
+  border-radius:10px;
+  background:#fff;
+  color:var(--text);
+  font-weight:800;
+  cursor:pointer;
+}
+.v225-flow-btn.primary{
+  background:linear-gradient(135deg,var(--primary-dark,var(--primary)),var(--primary));
+  border-color:var(--primary);
+  color:#fff;
+}
+.v225-flow-btn:disabled{opacity:.42;cursor:not-allowed}
+
+/* Home: workflow first, shortcuts second */
+.v225-home{display:grid;gap:16px}
+.v225-home-hero{
+  position:relative;
+  min-height:260px;
+  overflow:hidden;
+  border-radius:24px;
+  background:var(--primary-dark,var(--primary));
+  box-shadow:0 14px 32px rgba(20,40,50,.13);
+}
+.v225-home-hero img{
+  position:absolute;inset:0;width:100%;height:100%;
+  object-fit:cover;object-position:center;
+}
+.v225-home-hero::after{
+  content:"";position:absolute;inset:0;
+  background:linear-gradient(90deg,color-mix(in srgb,var(--primary-dark,var(--primary)) 94%,transparent),color-mix(in srgb,var(--primary) 72%,transparent),rgba(0,0,0,.08));
+}
+.v225-home-copy{
+  position:relative;z-index:2;
+  padding:32px;
+  max-width:760px;
+  color:#fff;
+}
+.v225-home-copy small{
+  display:inline-flex;
+  padding:6px 10px;
+  border:1px solid rgba(255,255,255,.20);
+  background:rgba(255,255,255,.11);
+  border-radius:999px;
+  color:#fff;
+  font-size:.68rem;
+  font-weight:850;
+  letter-spacing:.05em;
+}
+.v225-home-copy h1{
+  color:#fff!important;
+  margin:13px 0 8px;
+  font-size:clamp(1.75rem,3vw,2.55rem);
+}
+.v225-home-copy p{
+  color:rgba(255,255,255,.88)!important;
+  line-height:1.6;
+  max-width:680px;
+}
+.v225-workflow{
+  background:#fff;
+  border:1px solid var(--role-border,var(--border));
+  border-radius:20px;
+  padding:19px;
+}
+.v225-workflow-head{
+  display:flex;justify-content:space-between;gap:12px;align-items:flex-start;
+  margin-bottom:14px;
+}
+.v225-workflow-head h3{margin:0 0 4px}
+.v225-workflow-head p{margin:0;color:var(--muted);font-size:.82rem}
+.v225-steps{
+  display:grid;
+  grid-template-columns:repeat(var(--v225-cols,3),minmax(0,1fr));
+  gap:10px;
+}
+.v225-step{
+  position:relative;
+  display:flex;
+  gap:10px;
+  align-items:flex-start;
+  padding:14px;
+  min-height:105px;
+  border:1px solid var(--role-border,var(--border));
+  background:var(--role-soft-2,#f8faf9);
+  border-radius:14px;
+  text-align:left;
+  cursor:pointer;
+}
+.v225-step:hover{
+  border-color:var(--primary);
+  box-shadow:0 7px 16px rgba(20,40,50,.07);
+}
+.v225-step-num{
+  flex:0 0 28px;height:28px;border-radius:999px;
+  display:flex;align-items:center;justify-content:center;
+  background:var(--primary);color:#fff;font-size:.72rem;font-weight:900;
+}
+.v225-step b{display:block;color:var(--text);margin:2px 0 4px}
+.v225-step span{display:block;color:var(--muted);font-size:.72rem;line-height:1.4}
+.v225-home-next{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:14px;
+  padding:17px 18px;
+  border-radius:17px;
+  background:var(--role-soft,#f3f7f5);
+  border:1px solid var(--role-border,var(--border));
+}
+.v225-home-next small{display:block;color:var(--muted);font-weight:800;margin-bottom:3px}
+.v225-home-next strong{color:var(--text);font-size:1rem}
+.v225-support{
+  display:flex;gap:8px;flex-wrap:wrap;
+  padding:2px 0;
+}
+.v225-support button{
+  border:1px solid var(--role-border,var(--border));
+  background:#fff;color:var(--text);
+  border-radius:10px;padding:8px 11px;font-weight:750;cursor:pointer;
+}
+
+@media(max-width:1100px){
+  .v225-steps{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:720px){
+  .v225-flowbar{grid-template-columns:1fr}
+  .v225-flow-actions{justify-content:space-between}
+  .v225-steps{grid-template-columns:1fr}
+  .v225-home-next{align-items:flex-start;flex-direction:column}
+  .v225-home-next .btn{width:100%}
+  .v225-home-copy{padding:24px}
+}
+</style>
+
+<script>
+/* ==========================================================================
+   V21.25 — ONE LINEAR FLOW PER ROLE
+   ========================================================================== */
+(function(){
+  const OFFICE_PHOTO='https://raw.githubusercontent.com/DikporaRembang/simpelspj/main/kantordindikpora.jpeg';
+
+  const FLOWS={
+    SEKOLAH:[
+      {view:'transaksi',title:'Tetapkan Excel BKU',desc:'Tetapkan snapshot Excel BKU sebagai sumber transaksi periode penilaian.'},
+      {view:'dokumenBulanan',title:'Lengkapi Bukti & Cross-check',desc:'Upload PDF dan sandingkan dengan nilai yang diturunkan dari Excel BKU.'},
+      {view:'statusSpj',title:'Status & Hasil',desc:'Lihat hasil pemeriksaan, perbaikan, temuan, dan nilai.'}
+    ],
+    PENGAWAS:[
+      {view:'penugasan',title:'Pilih Sekolah Binaan',desc:'Tetapkan sekolah yang akan diperiksa.'},
+      {view:'pdfInteraktif',title:'Periksa BKU & Bukti PDF',desc:'Periksa transaksi, buku turunan, bukti PDF, dan cross-check dalam satu workbench.'},
+      {view:'temuan',title:'Temuan & Tindak Lanjut',desc:'Verifikasi temuan dan tindak lanjut sekolah.'},
+      {view:'asesmen',title:'Penilaian & Finalisasi',desc:'Tetapkan penilaian setelah pemeriksaan dan temuan selesai.'},
+      {view:'arsipPenilaianV5',title:'Hasil / Arsip Penilaian',desc:'Buka hasil final dan riwayat penilaian.'}
+    ],
+    DINAS:[
+      {view:'masterSpj',title:'Periode & Master SPJ',desc:'Tetapkan periodisasi dan standar komponen pemeriksaan.'},
+      {view:'sekolah',title:'Data Sekolah',desc:'Pastikan data satuan pendidikan siap digunakan.'},
+      {view:'penugasan',title:'Penugasan Pengawas',desc:'Tetapkan sekolah binaan setiap pengawas.'},
+      {view:'rkasReview',title:'RKAS & Anggaran',desc:'Kelola referensi anggaran yang menjadi konteks realisasi.'},
+      {view:'monitoringGlobal',title:'Monitoring SPJ',desc:'Pantau progres sekolah dan pemeriksaan pengawas.'},
+      {view:'temuan',title:'Temuan & Tindak Lanjut',desc:'Pantau isu yang belum selesai.'},
+      {view:'arsipPenilaianV5',title:'Hasil Penilaian & Cetak',desc:'Lihat dan cetak laporan hasil penilaian SPJ.'}
+    ]
+  };
+
+  const SUPPORT={
+    SEKOLAH:[['pesan','💬 Pesan'],['tutorialV5','❓ Panduan'],['ubahPassword','🔐 Akun']],
+    PENGAWAS:[['keberatan','↻ Kaji Ulang'],['pesan','💬 Pesan'],['tutorialV5','❓ Panduan'],['ubahPassword','🔐 Akun']],
+    DINAS:[['pesan','💬 Pesan'],['dbCheck','✅ Validasi Sistem'],['tutorialV5','❓ Panduan']]
+  };
+
+  function roleV225(){return String(state?.user?.role||'SEKOLAH').trim().toUpperCase()}
+  function flowV225(){return FLOWS[roleV225()]||FLOWS.SEKOLAH}
+  function idxV225(view){return flowV225().findIndex(x=>x.view===view)}
+  function roleTitleV225(){
+    const r=roleV225();
+    return r==='DINAS'?'DINAS':r==='PENGAWAS'?'PENGAWAS':'SEKOLAH';
+  }
+  function nameV225(){
+    return state?.user?.nama_pengguna||state?.user?.nama_sekolah||state?.user?.nama||state?.user?.username||'Pengguna';
+  }
+
+  window.v225Go=function(view){
+    const r=roleV225();
+    if(r==='PENGAWAS' && view!=='penugasan' && ['pdfInteraktif','temuan','asesmen'].includes(view) && !state.selectedNpsn){
+      toast('Pilih sekolah binaan terlebih dahulu.','warning');
+      loadView('penugasan');
+      return;
+    }
+    loadView(view);
+  };
+
+  function heroTextV225(){
+    const r=roleV225();
+    if(r==='SEKOLAH')return {
+      kicker:'ALUR SPJ SEKOLAH',
+      title:'Kerjakan SPJ secara berurutan',
+      desc:'Mulai dari Excel BKU, lanjutkan ke bukti PDF dan cross-check, lalu lihat status serta hasil pemeriksaan.'
+    };
+    if(r==='PENGAWAS')return {
+      kicker:'ALUR PEMERIKSAAN PENGAWAS',
+      title:'Satu sekolah, satu alur pemeriksaan',
+      desc:'Pilih sekolah binaan, periksa BKU dan bukti dalam satu workbench, selesaikan temuan, lalu finalisasi penilaian.'
+    };
+    return {
+      kicker:'ALUR PENGELOLAAN DINAS',
+      title:'Kelola SPJ dari persiapan sampai laporan',
+      desc:'Konfigurasi sistem, kelola sekolah dan penugasan, pantau pemeriksaan, lalu buka hasil penilaian dan cetak laporan.'
+    };
+  }
+
+  window.homeView=async function(){
+    const r=roleV225();
+    const flow=flowV225();
+    const h=heroTextV225();
+    const cols=Math.min(flow.length,4);
+
+    let nextIndex=0;
+    if(r==='SEKOLAH'){
+      // Beranda tetap ringan: gunakan konteks yang sudah ada, tanpa Workbench berat.
+      // Jika periode belum dipilih, langkah pertama tetap Excel BKU.
+      nextIndex=state.selectedPeriode?1:0;
+    }else if(r==='PENGAWAS'){
+      nextIndex=state.selectedNpsn?1:0;
+    }else{
+      nextIndex=0;
+    }
+    const next=flow[nextIndex]||flow[0];
+
+    const steps=flow.map((x,i)=>`
+      <button class="v225-step" onclick="v225Go('${x.view}')">
+        <span class="v225-step-num">${i+1}</span>
+        <div><b>${esc(x.title)}</b><span>${esc(x.desc)}</span></div>
+      </button>`).join('');
+
+    const support=(SUPPORT[r]||[]).map(x=>`<button onclick="loadView('${x[0]}')">${x[1]}</button>`).join('');
+
+    $('#mainContent').innerHTML=`
+      <div class="v225-home">
+        <section class="v225-home-hero">
+          <img src="${OFFICE_PHOTO}" alt="Kantor Dindikpora Kabupaten Rembang" onerror="this.style.display='none'">
+          <div class="v225-home-copy">
+            <small>${esc(h.kicker)}</small>
+            <h1>${esc(h.title)}</h1>
+            <p>Selamat datang, <b>${esc(nameV225())}</b>. ${esc(h.desc)}</p>
+          </div>
+        </section>
+
+        <section class="v225-home-next">
+          <div>
+            <small>LANGKAH BERIKUTNYA</small>
+            <strong>${nextIndex+1}. ${esc(next.title)}</strong>
+            <div class="muted" style="margin-top:4px">${esc(next.desc)}</div>
+          </div>
+          <button class="btn btn-primary" onclick="v225Go('${next.view}')">Buka langkah ${nextIndex+1} →</button>
+        </section>
+
+        <section class="v225-workflow">
+          <div class="v225-workflow-head">
+            <div>
+              <h3>Alur kerja ${esc(roleTitleV225())}</h3>
+              <p>Ikuti dari kiri ke kanan. Menu pendukung tidak menjadi bagian dari urutan utama.</p>
+            </div>
+          </div>
+          <div class="v225-steps" style="--v225-cols:${cols}">${steps}</div>
+        </section>
+
+        <div class="v225-support">${support}</div>
+      </div>`;
+  };
+
+  function buildFlowBarV225(view){
+    const flow=flowV225();
+    const idx=idxV225(view);
+    if(idx<0)return null;
+
+    const cur=flow[idx];
+    const prev=idx>0?flow[idx-1]:null;
+    const next=idx<flow.length-1?flow[idx+1]:null;
+
+    const bar=document.createElement('div');
+    bar.className='v225-flowbar';
+    bar.innerHTML=`
+      <div class="v225-flow-actions">
+        ${prev?`<button class="v225-flow-btn" onclick="v225Go('${prev.view}')">← ${esc(prev.title)}</button>`:`<button class="v225-flow-btn" onclick="loadView('home')">← Beranda</button>`}
+      </div>
+      <div class="v225-flow-center">
+        <span class="v225-flow-kicker">${esc(roleTitleV225())} • LANGKAH ${idx+1} DARI ${flow.length}</span>
+        <div class="v225-flow-title"><span class="v225-step-pill">${idx+1}</span>${esc(cur.title)}</div>
+      </div>
+      <div class="v225-flow-actions">
+        ${next?`<button class="v225-flow-btn primary" onclick="v225Go('${next.view}')">Lanjut: ${esc(next.title)} →</button>`:`<button class="v225-flow-btn primary" onclick="loadView('home')">Selesai • Beranda</button>`}
+      </div>`;
+    return bar;
+  }
+
+  // Final wrapper: remove old secondary navigation and add exactly one flow bar.
+  const renderBeforeV225=window.renderViewSafely;
+  if(renderBeforeV225){
+    window.renderViewSafely=async function(view){
+      await renderBeforeV225(view);
+      const c=document.getElementById('mainContent');
+      if(!c)return;
+
+      c.querySelectorAll('.ux-context,.v16-breadcrumb,.v225-flowbar').forEach(x=>x.remove());
+      if(view==='home')return;
+
+      const bar=buildFlowBarV225(view);
+      if(bar)c.prepend(bar);
+    };
+  }
+})();
+</script>
 
 </body>
 </html>
