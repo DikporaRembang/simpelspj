@@ -3372,7 +3372,44 @@ window.commitRkasImportFromPreview=async function(){
   }
 };
 
+function ensurePengawasRkasStyles(){
+  if(document.getElementById('pengawasRkasStylesV196')) return;
+  const style = document.createElement('style');
+  style.id = 'pengawasRkasStylesV196';
+  style.textContent = `
+    .pengawas-rkas-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px}
+    .pengawas-rkas-card{margin:0!important;padding:0!important;border:1px solid #dfe7e3!important;border-radius:22px!important;background:linear-gradient(180deg,#ffffff 0%,#fbfcfb 100%);box-shadow:0 10px 26px rgba(16,42,67,.06);overflow:hidden;display:flex;flex-direction:column;min-height:100%}
+    .pengawas-rkas-card-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;padding:18px 18px 8px 18px}
+    .pengawas-rkas-school{min-width:0;flex:1}
+    .pengawas-rkas-school h3{margin:0;font-size:1.05rem;line-height:1.3;color:var(--navy);font-weight:850;letter-spacing:-.2px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+    .pengawas-rkas-meta{margin-top:6px;color:var(--muted);font-size:.85rem;line-height:1.45}
+    .pengawas-rkas-meta b{color:var(--navy)}
+    .pengawas-rkas-pill{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;min-width:62px;padding:9px 12px;border-radius:999px;background:#edf6ff;color:#1769AA;border:1px solid #cfe3fb;font-weight:850;font-size:.82rem;white-space:nowrap}
+    .pengawas-rkas-body{padding:0 18px 18px 18px;display:flex;flex-direction:column;gap:14px;flex:1}
+    .pengawas-rkas-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+    .pengawas-rkas-stat{background:#f6f8f9;border:1px solid #e7ece9;border-radius:14px;padding:12px 12px 11px 12px;min-width:0}
+    .pengawas-rkas-stat-label{display:block;font-size:.75rem;color:#6b7c76;font-weight:700;line-height:1.25;margin-bottom:6px}
+    .pengawas-rkas-stat-value{display:block;font-size:1.08rem;line-height:1.2;font-weight:850;color:#243933;word-break:break-word}
+    .pengawas-rkas-progressbox{background:#f8fbfa;border:1px solid #e6eeea;border-radius:14px;padding:12px 12px 10px 12px}
+    .pengawas-rkas-progresshead{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:8px;font-size:.82rem;color:#64756d;font-weight:700}
+    .pengawas-rkas-track{height:9px;background:#e5ece8;border-radius:999px;overflow:hidden}
+    .pengawas-rkas-bar{height:100%;background:linear-gradient(90deg,#1f6f4b 0%,#2b8a61 100%);border-radius:999px}
+    .pengawas-rkas-foot{margin-top:auto;padding-top:2px}
+    .pengawas-rkas-btn{width:100%;min-height:44px;border-radius:14px;font-weight:800;letter-spacing:.1px;box-shadow:none!important}
+    @media(max-width:760px){
+      .pengawas-rkas-grid{grid-template-columns:1fr}
+      .pengawas-rkas-card-head{padding:16px 16px 8px 16px}
+      .pengawas-rkas-body{padding:0 16px 16px 16px}
+      .pengawas-rkas-stats{grid-template-columns:1fr}
+      .pengawas-rkas-school h3{font-size:1rem}
+      .pengawas-rkas-stat-value{font-size:1rem}
+    }
+  `;
+  document.head.appendChild(style);
+}
+
 async function renderPengawasRkasAndRealisasi(){
+  ensurePengawasRkasStyles();
   const contentArea = $('#mainContent');
   if(!contentArea) return;
 
@@ -3402,36 +3439,47 @@ async function renderPengawasRkasAndRealisasi(){
       const pct = Math.max(0, Math.min(100, Number(x.persentase_realisasi || 0)));
       const pctText = Number(x.persentase_realisasi || 0).toFixed(1);
       return `
-      <article class="panel" style="margin:0;border:1px solid var(--border);padding:17px;">
-        <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;">
-          <div>
-            <div style="font-weight:850;color:var(--primary);">🏫 ${esc(x.nama_sekolah||'-')}</div>
-            <div class="muted" style="margin-top:4px;">NPSN <b>${esc(x.npsn||'-')}</b> • Kecamatan ${esc(x.kecamatan||'-')}</div>
+      <article class="panel pengawas-rkas-card">
+        <div class="pengawas-rkas-card-head">
+          <div class="pengawas-rkas-school">
+            <h3>🏫 ${esc(x.nama_sekolah||'-')}</h3>
+            <div class="pengawas-rkas-meta">NPSN <b>${esc(x.npsn||'-')}</b> • Kecamatan ${esc(x.kecamatan||'-')}</div>
           </div>
-          <span class="badge badge-info">${pctText}%</span>
+          <span class="pengawas-rkas-pill">${pctText}%</span>
         </div>
 
-        <div style="margin-top:13px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;">
-          <div style="background:#f8fafc;border-radius:10px;padding:9px;">
-            <small class="muted">Pagu RKAS</small><div style="font-weight:800;">${fmtRupiah(pagu)}</div>
+        <div class="pengawas-rkas-body">
+          <div class="pengawas-rkas-stats">
+            <div class="pengawas-rkas-stat">
+              <span class="pengawas-rkas-stat-label">Pagu RKAS</span>
+              <span class="pengawas-rkas-stat-value">${fmtRupiah(pagu)}</span>
+            </div>
+            <div class="pengawas-rkas-stat">
+              <span class="pengawas-rkas-stat-label">Realisasi</span>
+              <span class="pengawas-rkas-stat-value">${fmtRupiah(realisasi)}</span>
+            </div>
+            <div class="pengawas-rkas-stat">
+              <span class="pengawas-rkas-stat-label">Sisa Pagu</span>
+              <span class="pengawas-rkas-stat-value">${fmtRupiah(sisa)}</span>
+            </div>
           </div>
-          <div style="background:#f8fafc;border-radius:10px;padding:9px;">
-            <small class="muted">Realisasi</small><div style="font-weight:800;">${fmtRupiah(realisasi)}</div>
+
+          <div class="pengawas-rkas-progressbox">
+            <div class="pengawas-rkas-progresshead">
+              <span>Progress Realisasi</span>
+              <span>${pctText}% dari pagu</span>
+            </div>
+            <div class="pengawas-rkas-track">
+              <div class="pengawas-rkas-bar" style="width:${pct}%"></div>
+            </div>
           </div>
-          <div style="background:#f8fafc;border-radius:10px;padding:9px;">
-            <small class="muted">Sisa Pagu</small><div style="font-weight:800;">${fmtRupiah(sisa)}</div>
+
+          <div class="pengawas-rkas-foot">
+            <button class="btn btn-primary pengawas-rkas-btn" onclick="openPengawasRkasDetail('${esc(x.npsn)}')">
+              Lihat Rincian RKAS & Realisasi
+            </button>
           </div>
         </div>
-
-        <div style="margin-top:11px;">
-          <div style="height:7px;background:#e9eef5;border-radius:99px;overflow:hidden;">
-            <div style="height:100%;width:${pct}%;background:var(--primary);border-radius:99px;"></div>
-          </div>
-        </div>
-
-        <button class="btn btn-sm btn-primary" style="width:100%;margin-top:13px;" onclick="openPengawasRkasDetail('${esc(x.npsn)}')">
-          Lihat Rincian RKAS & Realisasi
-        </button>
       </article>`;
     }).join('') || msg('Belum ada sekolah binaan.', 'ok');
 
@@ -3447,7 +3495,7 @@ async function renderPengawasRkasAndRealisasi(){
           <div class="muted">Pilih sekolah untuk membuka rincian RKAS, realisasi, sisa pagu, dan kelompok belanja.</div>
           ${periodLabel}
         </div>
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:12px;">
+        <div class="pengawas-rkas-grid">
           ${schoolCardsHtml}
         </div>
       </div>`;
