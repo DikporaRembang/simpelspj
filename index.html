@@ -1356,7 +1356,8 @@ async function logout(){
 
 async function startApp(){
   document.body.style.background='var(--bg)';
-  renderShell(); 
+  renderShell();
+  await ensurePaketPemeriksaan(true).catch(()=>null);
   await loadView('home');
 
   // Tambahkan baris ini di sini:
@@ -1837,6 +1838,29 @@ async function initV11TutorialFeed(){
   await render();
 }
 
+let pemeriksaanConfigCache_ = null;
+async function ensurePaketPemeriksaan(force=false){
+  if(!force && pemeriksaanConfigCache_) return pemeriksaanConfigCache_;
+  const r = await safeApi('getPaketKonfigurasiPemeriksaan', {}, null);
+  if(!r) return null;
+  pemeriksaanConfigCache_ = r;
+  state.pemeriksaanConfig = r;
+  if(Array.isArray(r.instrumen)) state.masterSpj = r.instrumen;
+  if(Array.isArray(r.periode)) cachedPeriodeList = r.periode;
+  return r;
+}
+function pemeriksaanContextHtml_(cfg){
+  if(!cfg) return '';
+  const f=String(cfg.frekuensi||'').toUpperCase();
+  const label=f==='BULANAN'?'Bulanan':f==='TRIWULANAN'?'Triwulanan':f==='SEMESTERAN'?'Semesteran':'Belum ditetapkan';
+  const locked=role()!=='DINAS';
+  return `<div class="panel" style="padding:12px 16px;margin-bottom:14px;border-left:4px solid var(--primary)">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+      <div><b>Pemeriksaan SPJ ${esc(cfg.tahun||'')}</b><div class="muted" style="font-size:.82rem">Periodisasi ${esc(label)} • ${esc(cfg.jumlah_instrumen||0)} instrumen aktif • ditetapkan DINAS</div></div>
+      <span class="badge badge-${locked?'info':'success'}">${locked?'Mengikuti ketetapan DINAS':'Kendali DINAS'}</span>
+    </div></div>`;
+}
+
 async function ensureMasters(){
   // Jika data sudah ada di state frontend, langsung gunakan tanpa panggil API lagi
   if(state.masterSpj && state.masterSpj.length > 0) {
@@ -1862,7 +1886,8 @@ async function ensurePeriodeMaster(force = false) {
 }
 
 async function periodeSelect(id = 'periodeSelect', required = true, defaultMode = 'bulan') {
-  const res = await safeApi('getPeriodeSPJ', {}, {data:[],frekuensi:'',tahun:new Date().getFullYear()});
+  const cfg = await ensurePaketPemeriksaan().catch(()=>null);
+  const res = cfg ? {data:cfg.periode||[],frekuensi:cfg.frekuensi||'',tahun:cfg.tahun} : await safeApi('getPeriodeSPJ', {}, {data:[],frekuensi:'',tahun:new Date().getFullYear()});
   cachedPeriodeList = Array.isArray(res?.data) ? res.data : [];
   const configuredFrequency = String(res?.frekuensi || '').toUpperCase();
   const configuredYear = Number(res?.tahun || new Date().getFullYear());
