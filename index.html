@@ -813,31 +813,7 @@ body{background:linear-gradient(180deg,#fbfaf6 0,#f4f2eb 100%)!important;color:v
 
 const V10_VERSION = 'V17.3-PENGAWAS-SIMPLE-LOGIN-FIX';
 
-const API_URL_DEFAULT = 'https://script.google.com/macros/s/AKfycbyWvJXKr1QZ1zwbeJDoULTUihycj1771SsDlGFy8jnuF4i3DsEbHXlcJU48VDAg17fqDA/exec';
-let API_URL = (() => {
-  try{
-    const fromQuery = new URLSearchParams(location.search).get('api');
-    const saved = localStorage.getItem('SIMPEL_API_URL');
-    return String(fromQuery || saved || API_URL_DEFAULT).trim();
-  }catch(e){
-    return API_URL_DEFAULT;
-  }
-})();
-
-window.setSimpelApiUrl = function(url){
-  const u=String(url||'').trim();
-  if(!/^https:\/\/script\.google\.com\/macros\/s\/[^/]+\/exec$/i.test(u)){
-    throw new Error('URL harus berupa URL Web App Google Apps Script yang berakhir /exec');
-  }
-  localStorage.setItem('SIMPEL_API_URL',u);
-  API_URL=u;
-  return u;
-};
-window.resetSimpelApiUrl = function(){
-  localStorage.removeItem('SIMPEL_API_URL');
-  API_URL=API_URL_DEFAULT;
-  return API_URL;
-};
+const API_URL = 'https://script.google.com/macros/s/AKfycbyWvJXKr1QZ1zwbeJDoULTUihycj1771SsDlGFy8jnuF4i3DsEbHXlcJU48VDAg17fqDA/exec';
 
 
 // 1. DEKLARASIKAN ROLE_MENUS DI SINI (PALING ATAS)
@@ -1158,112 +1134,105 @@ function generateMathCaptcha(){
 }
 
 
-window.testSimpelConnection = async function(){
-  const box=document.getElementById('serverConnectionResult');
-  if(box)box.innerHTML=loading('Menguji koneksi backend...');
-  try{
-    // Endpoint ringan yang tidak membutuhkan session.
-    const response=await fetch(API_URL,{
-      method:'POST',
-      headers:{'Content-Type':'text/plain;charset=utf-8'},
-      body:JSON.stringify({action:'getSekolah'}),
-      redirect:'follow'
-    });
-    if(!response.ok)throw new Error('HTTP '+response.status);
-    const raw=await response.text();
-    let parsed=null;
-    try{parsed=JSON.parse(raw);}catch(_){}
-    if(!parsed)throw new Error('Respons server bukan JSON');
-    if(box)box.innerHTML=msg('Backend berhasil dijangkau. URL deployment aktif.','ok');
-    return true;
-  }catch(e){
-    if(box)box.innerHTML=msg('Backend tidak dapat dijangkau: '+(e.message||e)+'. Periksa URL /exec dan deployment Apps Script.','error');
-    return false;
-  }
-};
-
-window.openServerConnectionSettings=function(){
-  const existing=document.getElementById('serverConnectionModal');
-  if(existing)existing.remove();
-  const wrap=document.createElement('div');
-  wrap.id='serverConnectionModal';
-  wrap.innerHTML=`<div style="position:fixed;inset:0;background:rgba(0,0,0,.52);display:flex;align-items:center;justify-content:center;z-index:9999;padding:16px">
-    <div style="background:#fff;padding:26px;border-radius:22px;width:min(100%,680px);max-height:90vh;overflow:auto;box-shadow:0 20px 50px rgba(0,0,0,.22)">
-      <div style="display:flex;justify-content:space-between;gap:12px;align-items:start">
-        <div><h3 style="margin:0;color:var(--primary)">Koneksi Backend SIMPEL SPJ</h3>
-        <div class="muted" style="margin-top:5px">Masukkan URL Web App Apps Script terbaru yang berakhir dengan <b>/exec</b>.</div></div>
-        <button class="btn btn-light btn-sm" onclick="document.getElementById('serverConnectionModal')?.remove()">✕</button>
-      </div>
-      <div class="field" style="margin-top:18px"><label>URL Backend /exec</label>
-        <input id="serverApiUrlInput" value="${esc(API_URL)}" placeholder="https://script.google.com/macros/s/.../exec">
-      </div>
-      <div id="serverConnectionResult" style="margin-top:10px"></div>
-      <div class="toolbar" style="margin-top:16px;justify-content:flex-end;gap:8px">
-        <button class="btn btn-light" onclick="resetSimpelApiUrl();document.getElementById('serverApiUrlInput').value=API_URL;testSimpelConnection()">Reset URL Lama</button>
-        <button class="btn btn-light" onclick="setSimpelApiUrl(document.getElementById('serverApiUrlInput').value);testSimpelConnection()">Uji Koneksi</button>
-        <button class="btn btn-primary" onclick="try{setSimpelApiUrl(document.getElementById('serverApiUrlInput').value);location.reload()}catch(e){document.getElementById('serverConnectionResult').innerHTML=msg(e.message,'error')}">Simpan & Muat Ulang</button>
-      </div>
-    </div>
-  </div>`;
-  document.body.appendChild(wrap);
-};
-
 function authView(notice=''){
   delete document.body.dataset.role;
-  document.body.style.background='var(--bg)';
-  $('#app').innerHTML=`
-    <main class="auth">
-      <section class="auth-side"><div class="auth-side-inner">
-        <div class="brand">
-          <img src="bidangsd.png" class="app-logo" alt="Logo">
-          <div><h2 class="brand-gold-title">SIMPEL SPJ</h2><small class="brand-gold-subtitle">Kabupaten Rembang</small></div>
-        </div>
-        <h1>Sistem Penilaian SPJ BOS SD Kabupaten Rembang.</h1>
-        <p>Sistem terintegrasi tingkat lanjut untuk pencatatan BKU harian, pemeriksaan otomatis, hingga asesmen tata kelola keuangan berbasis RKAS.</p>
-        
-        <div class="footer-logos">
-          <div class="footer-logo-item">
-            <img src="logorembang.png" alt="Rembang">
-            <div><span>DINDIKPORA REMBANG</span><small>Pemerintah Kab. Rembang</small></div>
-          </div>
-          <div class="footer-logo-item">
-            <img src="logopendidikan.png" alt="Kemdikdasmen">
-            <div><span>KEMENDIKDASMEN RI</span><small>Direktorat SD</small></div>
-          </div>
-        </div>
-      </div></section>
+  document.body.classList.remove(
+    'theme-dinas','theme-pengawas','theme-sekolah',
+    'public-register','public-login','v219-auth-body'
+  );
+  document.body.classList.add('v219-auth-body');
 
-      <section class="auth-panel"><div class="auth-card">
-        <div class="brand" style="margin-bottom:20px">
-          <img src="bidangsd.png" class="app-logo" alt="Logo">
-          <div><h2 class="brand-gold-title">SIMPEL SPJ</h2><small>Silakan masuk ke akun Anda</small></div>
-        </div>
-        ${notice}
-        <form id="loginForm">
-          <div class="field"><label>Username / NPSN</label><input id="username" required autocomplete="username" placeholder="Masukkan username atau NPSN"></div>
-          <div class="field">
-            <label>Kata Sandi</label>
-            <div class="password-wrapper">
-              <input id="password" type="password" required autocomplete="current-password" placeholder="Masukkan password">
-              <button type="button" class="toggle-password-btn" onclick="togglePassword('password', this)" title="Tampilkan / Sembunyikan Password">
-                <svg id="icon-password" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
-              </button>
+  $('#app').innerHTML=`
+    <main class="v219-auth-page">
+      <section class="v219-auth-photo">
+        <div class="v219-auth-photo-shade"></div>
+        <div class="v219-auth-photo-content">
+          <div class="v219-auth-brand">
+            <img src="bidangsd.png" alt="Logo SIMPEL SPJ">
+            <div>
+              <strong>SIMPEL SPJ</strong>
+              <span>Dindikpora Kabupaten Rembang</span>
             </div>
           </div>
-          <div class="field"><label>Verifikasi Keamanan</label><div class="captcha-question" style="font-weight:850;color:var(--primary);margin-bottom:7px">${generateMathCaptcha()}</div><input id="captchaInput" type="number" required inputmode="numeric" autocomplete="off" placeholder="Masukkan hasil perhitungan"></div>
-          <div id="authMsg"></div>
-          <button class="btn btn-primary full" type="submit" style="margin-top:8px">Masuk ke Aplikasi</button>
-        </form>
-        <div style="margin-top:12px;text-align:center">
-          <button type="button" class="btn btn-light btn-sm" onclick="openServerConnectionSettings()">⚙️ Koneksi Server</button>
+
+          <div class="v219-auth-intro">
+            <small>SISTEM INFORMASI PENGELOLAAN & PENILAIAN SPJ</small>
+            <h1>Sistem Penilaian SPJ BOS SD Kabupaten Rembang</h1>
+            <p>Excel BKU, bukti pertanggungjawaban, pemeriksaan, tindak lanjut, dan penilaian SPJ dalam satu alur kerja.</p>
+          </div>
+
+          <div class="v219-auth-agency">
+            <div>
+              <img src="logorembang.png" alt="Kabupaten Rembang">
+              <span><b>DINDIKPORA REMBANG</b><small>Pemerintah Kabupaten Rembang</small></span>
+            </div>
+            <div>
+              <img src="logopendidikan.png" alt="Kemdikdasmen">
+              <span><b>KEMENDIKDASMEN RI</b><small>Direktorat Sekolah Dasar</small></span>
+            </div>
+          </div>
         </div>
-        <div style="text-align:center;margin-top:16px">
-          <a href="#" onclick="showRegisterView(event)" style="color:var(--primary-2);font-weight:700;font-size:0.9rem;text-decoration:none">Belum punya akun? Pendaftaran Akun Baru</a>
+      </section>
+
+      <section class="v219-auth-form-area">
+        <div class="v219-auth-card">
+          <div class="v219-auth-card-photo">
+            <div>
+              <strong>SIMPEL SPJ</strong>
+              <span>Dindikpora Kabupaten Rembang</span>
+            </div>
+          </div>
+
+          <header class="v219-auth-card-head">
+            <img src="bidangsd.png" alt="Logo">
+            <div>
+              <h2>Masuk SIMPEL SPJ</h2>
+              <p>Gunakan akun yang telah terdaftar.</p>
+            </div>
+          </header>
+
+          ${notice}
+
+          <form id="loginForm" class="v219-auth-form">
+            <div class="field">
+              <label>Username / NPSN</label>
+              <input id="username" required autocomplete="username" placeholder="Masukkan username atau NPSN">
+            </div>
+
+            <div class="field">
+              <label>Kata Sandi</label>
+              <div class="password-wrapper">
+                <input id="password" type="password" required autocomplete="current-password" placeholder="Masukkan password">
+                <button type="button" class="toggle-password-btn" onclick="togglePassword('password', this)" title="Tampilkan / Sembunyikan Password" aria-label="Tampilkan atau sembunyikan password">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
+                </button>
+              </div>
+            </div>
+
+            <div class="field">
+              <label>Verifikasi Keamanan</label>
+              <div class="captcha-question v219-auth-captcha">${generateMathCaptcha()}</div>
+              <input id="captchaInput" type="number" required inputmode="numeric" autocomplete="off" placeholder="Masukkan hasil perhitungan">
+            </div>
+
+            <div id="authMsg"></div>
+
+            <button class="v219-auth-submit" type="submit">Masuk ke Aplikasi</button>
+          </form>
+
+          <div class="v219-role-row" aria-label="Jenis pengguna">
+            <div class="v219-role dinas"><span>🏛️</span><b>DINAS</b></div>
+            <div class="v219-role pengawas"><span>🔎</span><b>PENGAWAS</b></div>
+            <div class="v219-role sekolah"><span>🏫</span><b>SEKOLAH</b></div>
+          </div>
+
+          <div class="v219-auth-register-link">
+            <a href="#" onclick="showRegisterView(event)">Belum punya akun? <b>Pendaftaran Akun Baru</b></a>
+          </div>
         </div>
-      </div></section>
+      </section>
     </main>`;
 }
-
 async function doLogin(e){
   e.preventDefault();
   if(Number($('#captchaInput').value)!==state.captchaAns){
@@ -1294,69 +1263,98 @@ async function doLogin(e){
 
 window.showRegisterView = function(e) {
   if(e) e.preventDefault();
-  const card = $('.auth-card');
-  if(!card) return;
-  card.innerHTML = `
-    <div class="brand" style="margin-bottom:16px">
-      <img src="bidangsd.png" class="app-logo" alt="Logo">
-      <div><h2 class="brand-gold-title">SIMPEL SPJ</h2><small>Pendaftaran Akun Baru (Sekolah / Pengawas)</small></div>
-    </div>
-    <form id="registerForm">
-      <div class="field">
-        <label>Pilih Peran (Role)</label>
-        <select id="regRole" required onchange="toggleRegisterFields()">
-          <option value="SEKOLAH">Satuan Pendidikan (Sekolah)</option>
-          <option value="PENGAWAS">Pengawas Pembina</option>
-        </select>
-      </div>
 
-      <div class="field" id="fieldNpsnGroup">
-        <label>NPSN Sekolah</label>
-        <input id="regNpsn" placeholder="Contoh: 20301234" onblur="autoFillSekolahByNpsn(this.value)">
-        <small class="muted" style="font-size:0.75rem;">Ketik NPSN lalu klik di luar kotak untuk mengisi nama sekolah otomatis.</small>
-      </div>
+  document.body.classList.remove(
+    'theme-dinas','theme-pengawas','theme-sekolah',
+    'public-register','public-login','v219-auth-body'
+  );
+  document.body.classList.add('v219-auth-body');
 
-      <div class="field" id="fieldNamaGroup">
-        <label id="labelNamaUser">Nama Satuan Pendidikan</label>
-        <input id="regNamaSekolah" required placeholder="Contoh: SD Negeri 1 Rembang">
-      </div>
-
-      <div class="field" id="fieldNipGroup" style="display:none">
-        <label>NIP / ID Pengawas</label>
-        <input id="regNip" placeholder="Contoh: 196611061986081001" oninput="syncPengawasUsername(this.value)">
-        <small class="muted" style="font-size:0.75rem;">Username login akan terisi otomatis dari NIP/ID yang diketik.</small>
-      </div>
-
-      <div class="field" id="fieldNamaPengawasGroup" style="display:none">
-        <label>Nama Lengkap & Gelar Pengawas</label>
-        <input id="regNamaPengawas" placeholder="Contoh: Drs. Ahmad, M.Pd.">
-      </div>
-
-      <div class="field">
-        <label id="labelUsername">Username</label>
-        <input id="regUsername" required placeholder="Username untuk login" readonly style="background:#f1f5f9; cursor:not-allowed;">
-      </div>
-
-      <!-- KOTAK PASSWORD DENGAN IKON MATA INTERAKTIF -->
-      <div class="field">
-        <label>Kata Sandi</label>
-        <div class="password-wrapper">
-          <input id="regPassword" type="password" required placeholder="Minimal 6 karakter">
-          <button type="button" class="toggle-password-btn" onclick="togglePassword('regPassword', this)" title="Tampilkan / Sembunyikan Password">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
-          </button>
+  $('#app').innerHTML = `
+    <main class="v219-register-page">
+      <section class="v219-register-photo">
+        <div class="v219-register-photo-shade"></div>
+        <div class="v219-register-photo-content">
+          <div class="v219-auth-brand">
+            <img src="bidangsd.png" alt="Logo SIMPEL SPJ">
+            <div><strong>SIMPEL SPJ</strong><span>Dindikpora Kabupaten Rembang</span></div>
+          </div>
+          <div class="v219-register-intro">
+            <small>PENDAFTARAN AKUN</small>
+            <h1>Daftarkan akun Sekolah atau Pengawas</h1>
+            <p>Gunakan identitas resmi. Akun DINAS tidak didaftarkan melalui halaman publik.</p>
+          </div>
         </div>
-      </div>
+      </section>
 
-      <div id="regMsg"></div>
-      <button class="btn btn-primary full" type="submit" style="margin-top:10px">Daftarkan Akun Sekarang</button>
-      <div style="text-align:center;margin-top:14px">
-        <a href="#" onclick="authView()" style="color:var(--muted);font-size:0.88rem;text-decoration:none">← Kembali ke Halaman Masuk</a>
-      </div>
-    </form>`;
+      <section class="v219-register-form-area">
+        <div class="v219-register-card">
+          <div class="v219-register-card-photo">
+            <div><strong>Pendaftaran SIMPEL SPJ</strong><span>Dindikpora Kabupaten Rembang</span></div>
+          </div>
+
+          <header class="v219-register-head">
+            <img src="bidangsd.png" alt="Logo">
+            <div><h2>Pendaftaran Akun Baru</h2><p>Sekolah / Pengawas</p></div>
+          </header>
+
+          <form id="registerForm">
+            <div class="field">
+              <label>Pilih Peran (Role)</label>
+              <select id="regRole" required onchange="toggleRegisterFields()">
+                <option value="SEKOLAH">Satuan Pendidikan (Sekolah)</option>
+                <option value="PENGAWAS">Pengawas Pembina</option>
+              </select>
+            </div>
+
+            <div class="field" id="fieldNpsnGroup">
+              <label>NPSN Sekolah</label>
+              <input id="regNpsn" placeholder="Contoh: 20301234" onblur="autoFillSekolahByNpsn(this.value)">
+              <small class="muted">Ketik NPSN lalu klik di luar kotak untuk mengisi nama sekolah otomatis.</small>
+            </div>
+
+            <div class="field" id="fieldNamaGroup">
+              <label id="labelNamaUser">Nama Satuan Pendidikan</label>
+              <input id="regNamaSekolah" required placeholder="Contoh: SD Negeri 1 Rembang">
+            </div>
+
+            <div class="field" id="fieldNipGroup" style="display:none">
+              <label>NIP / ID Pengawas</label>
+              <input id="regNip" placeholder="Contoh: 196611061986081001" oninput="syncPengawasUsername(this.value)">
+              <small class="muted">Username login akan terisi otomatis dari NIP/ID.</small>
+            </div>
+
+            <div class="field" id="fieldNamaPengawasGroup" style="display:none">
+              <label>Nama Lengkap & Gelar Pengawas</label>
+              <input id="regNamaPengawas" placeholder="Contoh: Drs. Ahmad, M.Pd.">
+            </div>
+
+            <div class="field">
+              <label id="labelUsername">Username</label>
+              <input id="regUsername" required placeholder="Username untuk login" readonly>
+            </div>
+
+            <div class="field">
+              <label>Kata Sandi</label>
+              <div class="password-wrapper">
+                <input id="regPassword" type="password" required placeholder="Minimal 6 karakter">
+                <button type="button" class="toggle-password-btn" onclick="togglePassword('regPassword', this)" title="Tampilkan / Sembunyikan Password">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
+                </button>
+              </div>
+            </div>
+
+            <div id="regMsg"></div>
+
+            <button class="v219-register-submit" type="submit">Daftarkan Akun Sekarang</button>
+            <button class="v219-register-back" type="button" onclick="authView()">← Kembali ke Halaman Masuk</button>
+          </form>
+        </div>
+      </section>
+    </main>`;
 
   toggleRegisterFields();
-  
+
   $('#registerForm').onsubmit = async ev => {
     ev.preventDefault();
     const roleVal = $('#regRole').value;
@@ -1369,24 +1367,31 @@ window.showRegisterView = function(e) {
       nip_pengawas: roleVal === 'PENGAWAS' ? $('#regNip').value.trim() : '',
       nama_pengguna: roleVal === 'PENGAWAS' ? $('#regNamaPengawas').value.trim() : $('#regNamaSekolah').value.trim()
     };
+
     const msgBox = $('#regMsg');
     const submitBtn = document.querySelector('#registerForm button[type="submit"]');
     if(submitBtn?.disabled) return;
-    if(submitBtn){ submitBtn.disabled = true; submitBtn.dataset.originalText = submitBtn.textContent; submitBtn.textContent = 'Memproses...'; }
+    if(submitBtn){
+      submitBtn.disabled = true;
+      submitBtn.dataset.originalText = submitBtn.textContent;
+      submitBtn.textContent = 'Memproses...';
+    }
     msgBox.innerHTML = '<p class="muted">Memproses pendaftaran akun...</p>';
 
     try {
       const res = await api('registerAkun', { data: payload });
       msgBox.innerHTML = msg(res.message || 'Pendaftaran akun berhasil! Silakan masuk.', 'ok');
       if(submitBtn) submitBtn.textContent = 'Berhasil';
-      setTimeout(() => { authView(); }, 1500);
+      setTimeout(() => authView(), 1500);
     } catch(err) {
       msgBox.innerHTML = msg(errorText(err));
-      if(submitBtn){ submitBtn.disabled = false; submitBtn.textContent = submitBtn.dataset.originalText || 'Daftarkan Akun Sekarang'; }
+      if(submitBtn){
+        submitBtn.disabled = false;
+        submitBtn.textContent = submitBtn.dataset.originalText || 'Daftarkan Akun Sekarang';
+      }
     }
   };
 };
-
 window.syncPengawasUsername = function(val) {
   const usernameField = $('#regUsername');
   if(usernameField) {
@@ -1540,10 +1545,16 @@ async function startApp(){
 }
 
 function renderShell(){
+  document.body.classList.remove('public-login','public-register','v219-auth-body');
   // Mengambil role secara aman dengan fallback otomatis ke SEKOLAH jika undefined
-  const currentRole = role() || 'SEKOLAH';
-  // V21.12: role marker untuk theme visual seluruh aplikasi.
+  const currentRole = String(role() || 'SEKOLAH').trim().toUpperCase();
+  // V21.13: marker + class eksplisit. Ini sengaja dibuat redundan agar
+  // CSS role tidak kalah oleh stylesheet lama.
   document.body.dataset.role = currentRole;
+  document.body.classList.remove('theme-dinas','theme-pengawas','theme-sekolah');
+  if(currentRole==='DINAS') document.body.classList.add('theme-dinas');
+  else if(currentRole==='PENGAWAS') document.body.classList.add('theme-pengawas');
+  else document.body.classList.add('theme-sekolah');
   const menus = ROLE_MENUS[currentRole] || ROLE_MENUS.DINAS || ROLE_MENUS.SEKOLAH || [];
   
   // Informasi identitas sekolah / pengguna di topbar
@@ -8447,6 +8458,595 @@ window.executeRkasReplace=async function(){
   };
 })();
 </script>
+
+
+<style id="v213RoleThemeForceFix">
+/* ==========================================================================
+   V21.13 FINAL ROLE OVERRIDE
+   Diletakkan PALING AKHIR untuk mengalahkan CSS hijau legacy.
+   ========================================================================== */
+
+/* Common layout */
+body.theme-dinas,
+body.theme-pengawas,
+body.theme-sekolah{
+  transition:background .18s ease,color .18s ease;
+}
+
+/* ========================= DINAS ========================= */
+body.theme-dinas{
+  --primary:#147D7E!important;
+  --primary-dark:#123B5D!important;
+  --primary-light:#43A3A5!important;
+  --emerald:#147D7E!important;
+  --emerald-2:#2A9394!important;
+  --gold:#D4B35A!important;
+  --bg:#F4F9FB!important;
+  --card:#ffffff!important;
+  --border:#BFD7DF!important;
+  --text:#183747!important;
+  --muted:#5D7480!important;
+  background:linear-gradient(135deg,#F8FCFD 0%,#EAF5F6 100%)!important;
+}
+body.theme-dinas .topbar{
+  background:linear-gradient(90deg,#123B5D 0%,#147D7E 68%,#43A3A5 145%)!important;
+  color:#fff!important;
+  border-bottom-color:#43A3A5!important;
+}
+body.theme-dinas .sidebar{
+  background:linear-gradient(180deg,#0E304D 0%,#123B5D 44%,#147D7E 100%)!important;
+}
+body.theme-dinas .btn-primary{
+  background:linear-gradient(135deg,#123B5D,#147D7E)!important;
+  border-color:#123B5D!important;
+  color:#fff!important;
+}
+body.theme-dinas .page-head h1,
+body.theme-dinas .stat strong,
+body.theme-dinas .panel h2,
+body.theme-dinas .panel h3{color:#183747!important}
+
+/* ======================= PENGAWAS ======================= */
+body.theme-pengawas{
+  --primary:#A63646!important;
+  --primary-dark:#641E2B!important;
+  --primary-light:#C55868!important;
+  --emerald:#A63646!important;
+  --emerald-2:#B94758!important;
+  --gold:#D7A253!important;
+  --bg:#FFF7F8!important;
+  --card:#ffffff!important;
+  --border:#E8C2C8!important;
+  --text:#4E1C25!important;
+  --muted:#7A5B61!important;
+  background:linear-gradient(135deg,#FFF9FA 0%,#F8E9EC 100%)!important;
+}
+body.theme-pengawas .topbar{
+  background:linear-gradient(90deg,#641E2B 0%,#842838 58%,#A63646 100%)!important;
+  color:#fff!important;
+  border-bottom-color:#C55868!important;
+}
+body.theme-pengawas .sidebar{
+  background:linear-gradient(180deg,#4E151F 0%,#641E2B 46%,#8C2D3D 100%)!important;
+}
+body.theme-pengawas .btn-primary{
+  background:linear-gradient(135deg,#641E2B,#A63646)!important;
+  border-color:#641E2B!important;
+  color:#fff!important;
+}
+body.theme-pengawas .page-head h1,
+body.theme-pengawas .stat strong,
+body.theme-pengawas .panel h2,
+body.theme-pengawas .panel h3{color:#4E1C25!important}
+
+/* ======================== SEKOLAH ======================= */
+body.theme-sekolah{
+  --primary:#4F68C8!important;
+  --primary-dark:#263B80!important;
+  --primary-light:#7188E3!important;
+  --emerald:#4F68C8!important;
+  --emerald-2:#6278D4!important;
+  --gold:#D2AA55!important;
+  --bg:#F6F8FF!important;
+  --card:#ffffff!important;
+  --border:#C8D2F0!important;
+  --text:#283560!important;
+  --muted:#657092!important;
+  background:linear-gradient(135deg,#FAFBFF 0%,#EDF1FD 100%)!important;
+}
+body.theme-sekolah .topbar{
+  background:linear-gradient(90deg,#263B80 0%,#3D55AA 58%,#4F68C8 100%)!important;
+  color:#fff!important;
+  border-bottom-color:#7188E3!important;
+  box-shadow:0 5px 24px rgba(38,59,128,.24)!important;
+}
+body.theme-sekolah .sidebar{
+  background:linear-gradient(180deg,#1F316C 0%,#263B80 42%,#4058B0 100%)!important;
+  box-shadow:8px 0 30px rgba(38,59,128,.24)!important;
+}
+body.theme-sekolah .btn-primary{
+  background:linear-gradient(135deg,#263B80,#4F68C8)!important;
+  border-color:#263B80!important;
+  color:#fff!important;
+}
+body.theme-sekolah .page-head h1,
+body.theme-sekolah .stat strong,
+body.theme-sekolah .panel h2,
+body.theme-sekolah .panel h3{color:#283560!important}
+
+/* ================== Shared high contrast ================== */
+body.theme-dinas .topbar *,
+body.theme-pengawas .topbar *,
+body.theme-sekolah .topbar *{
+  color:#fff!important;
+}
+body.theme-dinas .sidebar .nav-btn,
+body.theme-dinas .sidebar .nav-group-toggle,
+body.theme-pengawas .sidebar .nav-btn,
+body.theme-pengawas .sidebar .nav-group-toggle,
+body.theme-sekolah .sidebar .nav-btn,
+body.theme-sekolah .sidebar .nav-group-toggle{
+  color:#fff!important;
+}
+body.theme-dinas .sidebar .nav-section-title,
+body.theme-pengawas .sidebar .nav-section-title,
+body.theme-sekolah .sidebar .nav-section-title{
+  color:rgba(255,255,255,.67)!important;
+}
+body.theme-dinas .sidebar .nav-btn.active,
+body.theme-pengawas .sidebar .nav-btn.active,
+body.theme-sekolah .sidebar .nav-btn.active{
+  background:#fff!important;
+  color:var(--primary-dark)!important;
+}
+body.theme-dinas .sidebar .nav-btn:hover,
+body.theme-pengawas .sidebar .nav-btn:hover,
+body.theme-sekolah .sidebar .nav-btn:hover{
+  background:rgba(255,255,255,.13)!important;
+}
+body.theme-dinas .panel,
+body.theme-pengawas .panel,
+body.theme-sekolah .panel,
+body.theme-dinas .stat,
+body.theme-pengawas .stat,
+body.theme-sekolah .stat{
+  background:#fff!important;
+  color:var(--text)!important;
+  border-color:var(--border)!important;
+}
+body.theme-dinas .friendly-table th{background:#E3F0F2!important;color:#183747!important}
+body.theme-pengawas .friendly-table th{background:#F4E2E6!important;color:#4E1C25!important}
+body.theme-sekolah .friendly-table th{background:#E7EBFA!important;color:#283560!important}
+body.theme-dinas .friendly-table td,
+body.theme-pengawas .friendly-table td,
+body.theme-sekolah .friendly-table td{
+  background:#fff!important;
+  color:var(--text)!important;
+}
+body.theme-dinas .v211-office-hero::after{
+  background:linear-gradient(90deg,rgba(18,59,93,.95),rgba(20,125,126,.72),rgba(67,163,165,.18))!important;
+}
+body.theme-pengawas .v211-office-hero::after{
+  background:linear-gradient(90deg,rgba(100,30,43,.95),rgba(132,40,56,.74),rgba(166,54,70,.20))!important;
+}
+body.theme-sekolah .v211-office-hero::after{
+  background:linear-gradient(90deg,rgba(38,59,128,.95),rgba(61,85,170,.75),rgba(79,104,200,.20))!important;
+}
+body.theme-dinas .v211-office-copy *,
+body.theme-pengawas .v211-office-copy *,
+body.theme-sekolah .v211-office-copy *{color:#fff!important}
+
+/* Existing school hero was hard-coded green in older versions. Force it brown. */
+body.theme-sekolah .school-hero-v14,
+body.theme-sekolah .v16-hero,
+body.theme-sekolah .ux-hero,
+body.theme-sekolah .school-result-hero,
+body.theme-sekolah .v17-ph-hero{
+  background:linear-gradient(135deg,#263B80,#3D55AA,#4F68C8)!important;
+  border-color:#7188E3!important;
+  color:#fff!important;
+}
+body.theme-sekolah .school-hero-v14 *,
+body.theme-sekolah .v16-hero *,
+body.theme-sekolah .ux-hero *,
+body.theme-sekolah .school-result-hero *,
+body.theme-sekolah .v17-ph-hero *{
+  color:#fff!important;
+}
+
+/* Same protection for Pengawas legacy green heroes */
+body.theme-pengawas .v11-hero,
+body.theme-pengawas .ux-hero,
+body.theme-pengawas .v17-ph-hero{
+  background:linear-gradient(135deg,#641E2B,#842838,#A63646)!important;
+  color:#fff!important;
+}
+body.theme-pengawas .v11-hero *,
+body.theme-pengawas .ux-hero *,
+body.theme-pengawas .v17-ph-hero *{color:#fff!important}
+
+/* Dinas hero explicitly green */
+body.theme-dinas .v11-hero,
+body.theme-dinas .ux-hero,
+body.theme-dinas .v17-ph-hero{
+  background:linear-gradient(135deg,#123B5D,#147D7E,#43A3A5)!important;
+  color:#fff!important;
+}
+body.theme-dinas .v11-hero *,
+body.theme-dinas .ux-hero *,
+body.theme-dinas .v17-ph-hero *{color:#fff!important}
+</style>
+
+<script>
+/* V21.13 diagnostic: guarantee theme is reapplied after every view render. */
+(function(){
+  window.applyRoleThemeV213=function(){
+    const r=String(window.state?.user?.role||'SEKOLAH').trim().toUpperCase();
+    document.body.dataset.role=r;
+    document.body.classList.remove('theme-dinas','theme-pengawas','theme-sekolah');
+    document.body.classList.add(r==='DINAS'?'theme-dinas':r==='PENGAWAS'?'theme-pengawas':'theme-sekolah');
+    return r;
+  };
+
+  const oldLoadView=window.loadView;
+  if(typeof oldLoadView==='function'){
+    window.loadView=async function(){
+      applyRoleThemeV213();
+      const result=await oldLoadView.apply(this,arguments);
+      applyRoleThemeV213();
+      return result;
+    };
+  }
+})();
+</script>
+
+<style id="v219CleanAuth">
+/* ==========================================================================
+   V21.19 — CLEAN AUTH FINAL
+   Exactly ONE login/register stylesheet.
+   ========================================================================== */
+body.v219-auth-body{
+  margin:0!important;
+  min-height:100vh!important;
+  overflow:auto!important;
+  background:#F2F0EA!important;
+  color:#1A2D3B!important;
+}
+body.v219-auth-body::before{display:none!important}
+
+/* LOGIN */
+.v219-auth-page{
+  min-height:100vh;
+  display:grid;
+  grid-template-columns:minmax(0,1.08fr) minmax(430px,.92fr);
+  background:#F2F0EA;
+}
+.v219-auth-photo{
+  position:relative;
+  min-height:100vh;
+  color:#fff;
+  background:
+    url('https://raw.githubusercontent.com/DikporaRembang/simpelspj/main/kantordindikpora.jpeg') center/cover no-repeat,
+    #102A43;
+}
+.v219-auth-photo-shade,
+.v219-register-photo-shade{
+  position:absolute;inset:0;
+  background:
+    radial-gradient(circle at 16% 14%,rgba(201,162,77,.17),transparent 23%),
+    linear-gradient(125deg,rgba(7,26,43,.95),rgba(16,42,67,.86),rgba(29,78,111,.64));
+}
+.v219-auth-photo-content,
+.v219-register-photo-content{
+  position:relative;z-index:2;
+  min-height:100vh;
+  padding:clamp(34px,5vw,76px);
+  display:flex;flex-direction:column;
+}
+.v219-auth-brand{
+  display:flex;align-items:center;gap:12px;
+}
+.v219-auth-brand img{
+  width:48px;height:48px;object-fit:contain;background:#fff;padding:4px;border-radius:12px;
+}
+.v219-auth-brand div{display:flex;flex-direction:column}
+.v219-auth-brand strong{color:#E0BF67;font-size:1.05rem}
+.v219-auth-brand span{color:rgba(255,255,255,.72);font-size:.78rem;margin-top:2px}
+.v219-auth-intro{margin:auto 0;max-width:700px}
+.v219-auth-intro small,.v219-register-intro small{
+  color:#E0BF67;font-weight:850;letter-spacing:.1em;font-size:.72rem
+}
+.v219-auth-intro h1,.v219-register-intro h1{
+  color:#fff!important;margin:14px 0 15px;
+  font-size:clamp(2.15rem,4.1vw,3.8rem);line-height:1.07;letter-spacing:-.04em
+}
+.v219-auth-intro p,.v219-register-intro p{
+  color:rgba(255,255,255,.84);line-height:1.7;max-width:620px
+}
+.v219-auth-agency{
+  display:flex;gap:22px;flex-wrap:wrap;padding-top:20px;border-top:1px solid rgba(255,255,255,.18)
+}
+.v219-auth-agency>div{display:flex;align-items:center;gap:10px}
+.v219-auth-agency img{width:40px;height:40px;object-fit:contain;background:#fff;padding:3px;border-radius:9px}
+.v219-auth-agency span{display:flex;flex-direction:column}
+.v219-auth-agency b{color:#fff;font-size:.75rem}
+.v219-auth-agency small{color:rgba(255,255,255,.67);font-size:.67rem;margin-top:2px}
+
+.v219-auth-form-area{
+  min-height:100vh;display:flex;align-items:center;justify-content:center;
+  padding:34px;background:linear-gradient(180deg,#FBFAF7,#F0EDE6)
+}
+.v219-auth-card{
+  width:min(100%,470px);background:#fff;border:1px solid #E3DDD2;border-radius:26px;
+  padding:34px;box-shadow:0 24px 64px rgba(16,42,67,.16)
+}
+.v219-auth-card-photo{display:none}
+.v219-auth-card-head{
+  display:flex;align-items:center;gap:12px;margin-bottom:20px
+}
+.v219-auth-card-head img{
+  width:46px;height:46px;object-fit:contain;border-radius:12px;background:#fff;padding:3px;
+  box-shadow:0 5px 14px rgba(16,42,67,.12)
+}
+.v219-auth-card-head h2{margin:0;color:#102A43!important;font-size:1.08rem}
+.v219-auth-card-head p{margin:3px 0 0;color:#71808B;font-size:.78rem}
+.v219-auth-form .field{margin:15px 0}
+.v219-auth-form label{color:#213B4E!important;font-weight:800!important}
+.v219-auth-form input{border-color:#CAD5DD!important;background:#fff!important}
+.v219-auth-form input:focus{border-color:#1D4E6F!important;box-shadow:0 0 0 4px rgba(29,78,111,.12)!important}
+.v219-auth-captcha{color:#1D4E6F;font-weight:900;margin:4px 0 7px}
+.v219-auth-submit,.v219-register-submit{
+  width:100%;min-height:48px;margin-top:8px;border:0;border-radius:12px;
+  background:linear-gradient(135deg,#102A43,#1D4E6F);color:#fff;font-weight:850;cursor:pointer
+}
+.v219-role-row{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px
+}
+.v219-role{
+  display:flex;justify-content:center;align-items:center;gap:5px;
+  min-height:38px;border:1px solid #DCE4E9;border-radius:11px;background:#F8FAFB;
+  color:#304A5D;font-size:.71rem
+}
+.v219-role.dinas{border-top:3px solid #147D7E}
+.v219-role.pengawas{border-top:3px solid #A63646}
+.v219-role.sekolah{border-top:3px solid #4F68C8}
+.v219-auth-register-link{text-align:center;margin-top:18px}
+.v219-auth-register-link a{color:#1D4E6F!important;text-decoration:none;font-size:.84rem}
+
+/* REGISTER */
+.v219-register-page{
+  min-height:100vh;display:grid;
+  grid-template-columns:minmax(0,1fr) minmax(480px,.9fr);
+  background:#F2F0EA
+}
+.v219-register-photo{
+  position:relative;min-height:100vh;color:#fff;
+  background:
+    url('https://raw.githubusercontent.com/DikporaRembang/simpelspj/main/kantordindikpora.jpeg') center/cover no-repeat,
+    #102A43
+}
+.v219-register-intro{margin:auto 0;max-width:640px}
+.v219-register-form-area{
+  min-height:100vh;display:flex;align-items:flex-start;justify-content:center;
+  padding:34px;overflow:auto;background:linear-gradient(180deg,#FBFAF7,#F0EDE6)
+}
+.v219-register-card{
+  width:min(100%,520px);margin:auto 0;padding:34px;background:#fff;
+  border:1px solid #E3DDD2;border-radius:26px;box-shadow:0 24px 64px rgba(16,42,67,.15)
+}
+.v219-register-card-photo{display:none}
+.v219-register-head{display:flex;align-items:center;gap:12px;margin-bottom:18px}
+.v219-register-head img{
+  width:46px;height:46px;object-fit:contain;border-radius:12px;background:#fff;padding:3px;
+  box-shadow:0 5px 14px rgba(16,42,67,.12)
+}
+.v219-register-head h2{margin:0;color:#102A43!important;font-size:1.08rem}
+.v219-register-head p{margin:3px 0 0;color:#71808B;font-size:.78rem}
+.v219-register-card input,.v219-register-card select{border-color:#CAD5DD!important}
+.v219-register-card input:focus,.v219-register-card select:focus{
+  border-color:#1D4E6F!important;box-shadow:0 0 0 4px rgba(29,78,111,.12)!important
+}
+.v219-register-card #regUsername{background:#F1F5F9!important;cursor:not-allowed}
+.v219-register-back{
+  width:100%;min-height:45px;margin-top:9px;border-radius:12px;cursor:pointer;
+  background:#F5F7F8;border:1px solid #D7E0E6;color:#29465A;font-weight:800
+}
+
+/* Narrow screens: ONE card, photo integrated, no overlap */
+@media(max-width:1050px){
+  .v219-auth-page,.v219-register-page{
+    display:block;min-height:100vh;padding:24px 14px;
+    background:linear-gradient(145deg,#EAF0F4,#F7F3EC)
+  }
+  .v219-auth-photo,.v219-register-photo{display:none}
+  .v219-auth-form-area,.v219-register-form-area{
+    min-height:auto;padding:0;background:transparent;overflow:visible
+  }
+  .v219-auth-card,.v219-register-card{
+    width:min(100%,560px);margin:0 auto;padding:0 27px 28px;overflow:hidden
+  }
+  .v219-auth-card-photo,.v219-register-card-photo{
+    display:block;position:relative;height:165px;margin:0 -27px 24px;
+    background:
+      linear-gradient(125deg,rgba(8,28,46,.68),rgba(29,78,111,.42)),
+      url('https://raw.githubusercontent.com/DikporaRembang/simpelspj/main/kantordindikpora.jpeg') center 45%/cover no-repeat,
+      #102A43
+  }
+  .v219-auth-card-photo>div,.v219-register-card-photo>div{
+    position:absolute;inset:0;display:flex;flex-direction:column;justify-content:flex-end;
+    padding:20px 23px;background:linear-gradient(180deg,transparent,rgba(7,26,42,.68))
+  }
+  .v219-auth-card-photo strong,.v219-register-card-photo strong{color:#fff}
+  .v219-auth-card-photo span,.v219-register-card-photo span{color:rgba(255,255,255,.78);font-size:.77rem;margin-top:2px}
+}
+@media(max-width:600px){
+  .v219-auth-page,.v219-register-page{padding:0}
+  .v219-auth-card,.v219-register-card{
+    width:100%;min-height:100vh;max-width:none;border-radius:0;border:0;
+    padding:0 19px 26px;box-shadow:none
+  }
+  .v219-auth-card-photo,.v219-register-card-photo{
+    height:190px;margin:0 -19px 23px
+  }
+  .v219-role-row{gap:5px}
+  .v219-role{font-size:.63rem}
+}
+</style>
+
+
+<style id="v220TopbarContrastFix">
+/* ==========================================================================
+   V21.20 — TOPBAR CONTRAST FIX
+   Prevent white search / logout controls from disappearing on colored topbars.
+   ========================================================================== */
+
+/* Search container on colored role topbars */
+body[data-role] .topbar .top-search-wrap{
+  background:rgba(8,22,35,.20)!important;
+  border:1px solid rgba(255,255,255,.30)!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.06)!important;
+  backdrop-filter:blur(9px);
+}
+body[data-role] .topbar .top-search-wrap:hover{
+  background:rgba(8,22,35,.27)!important;
+  border-color:rgba(255,255,255,.42)!important;
+}
+body[data-role] .topbar .top-search-wrap:focus-within{
+  background:rgba(255,255,255,.13)!important;
+  border-color:rgba(255,255,255,.72)!important;
+  box-shadow:0 0 0 3px rgba(255,255,255,.13)!important;
+}
+
+/* Search icon, input, placeholder */
+body[data-role] .topbar .top-search-icon{
+  color:rgba(255,255,255,.82)!important;
+}
+body[data-role] .topbar .top-search input{
+  color:#fff!important;
+  caret-color:#fff!important;
+  background:transparent!important;
+}
+body[data-role] .topbar .top-search input::placeholder{
+  color:rgba(255,255,255,.68)!important;
+  opacity:1!important;
+}
+
+/* Keyboard shortcut pill */
+body[data-role] .topbar .top-search-kbd{
+  color:#fff!important;
+  background:rgba(255,255,255,.10)!important;
+  border-color:rgba(255,255,255,.26)!important;
+}
+
+/* Search result dropdown must remain light/readable */
+body[data-role] .topbar .search-results{
+  background:#fff!important;
+  color:var(--text)!important;
+  border-color:var(--border)!important;
+}
+body[data-role] .topbar .search-result{
+  background:#fff!important;
+  color:var(--text)!important;
+}
+body[data-role] .topbar .search-result:hover{
+  background:var(--role-soft,#f5f7f8)!important;
+}
+body[data-role] .topbar .search-result strong{
+  color:var(--text)!important;
+}
+body[data-role] .topbar .search-result small,
+body[data-role] .topbar .search-result .muted{
+  color:var(--muted)!important;
+}
+
+/* User identity */
+body[data-role] .topbar .user-info,
+body[data-role] .topbar .user-info b,
+body[data-role] .topbar .user-info span,
+body[data-role] .topbar .top-user,
+body[data-role] .topbar .top-user b,
+body[data-role] .topbar .top-user span{
+  color:#fff!important;
+}
+
+/* Logout / light action buttons on topbar */
+body[data-role] .topbar .btn-light,
+body[data-role] .topbar button.btn-light{
+  background:rgba(8,22,35,.18)!important;
+  color:#fff!important;
+  border:1px solid rgba(255,255,255,.38)!important;
+  box-shadow:none!important;
+}
+body[data-role] .topbar .btn-light:hover,
+body[data-role] .topbar button.btn-light:hover{
+  background:rgba(255,255,255,.16)!important;
+  border-color:rgba(255,255,255,.66)!important;
+  color:#fff!important;
+}
+
+/* If logout has its own class/id in older frontend variants */
+body[data-role] .topbar .logout-btn,
+body[data-role] .topbar #logoutBtn,
+body[data-role] .topbar [onclick*="logout"]{
+  background:rgba(8,22,35,.18)!important;
+  color:#fff!important;
+  border:1px solid rgba(255,255,255,.40)!important;
+}
+body[data-role] .topbar .logout-btn:hover,
+body[data-role] .topbar #logoutBtn:hover,
+body[data-role] .topbar [onclick*="logout"]:hover{
+  background:rgba(255,255,255,.16)!important;
+  border-color:rgba(255,255,255,.68)!important;
+}
+
+/* Preserve icon contrast */
+body[data-role] .topbar .btn-light svg,
+body[data-role] .topbar .btn-light i,
+body[data-role] .topbar [onclick*="logout"] svg,
+body[data-role] .topbar [onclick*="logout"] i{
+  color:#fff!important;
+  stroke:currentColor!important;
+}
+
+/* DINAS */
+body.theme-dinas .topbar .top-search-wrap{
+  background:rgba(5,36,52,.28)!important;
+}
+body.theme-dinas .topbar .btn-light,
+body.theme-dinas .topbar [onclick*="logout"]{
+  background:rgba(7,42,58,.30)!important;
+}
+
+/* PENGAWAS */
+body.theme-pengawas .topbar .top-search-wrap{
+  background:rgba(65,8,18,.27)!important;
+}
+body.theme-pengawas .topbar .btn-light,
+body.theme-pengawas .topbar [onclick*="logout"]{
+  background:rgba(65,8,18,.28)!important;
+}
+
+/* SEKOLAH */
+body.theme-sekolah .topbar .top-search-wrap{
+  background:rgba(22,32,85,.28)!important;
+}
+body.theme-sekolah .topbar .btn-light,
+body.theme-sekolah .topbar [onclick*="logout"]{
+  background:rgba(22,32,85,.30)!important;
+}
+
+/* Mobile: keep controls distinct */
+@media(max-width:700px){
+  body[data-role] .topbar .top-search-wrap{
+    background:rgba(8,22,35,.25)!important;
+  }
+  body[data-role] .topbar .btn-light,
+  body[data-role] .topbar [onclick*="logout"]{
+    min-width:42px;
+    background:rgba(8,22,35,.25)!important;
+  }
+}
+</style>
 
 </body>
 </html>
