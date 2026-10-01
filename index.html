@@ -2140,6 +2140,59 @@ async function renderDokumenTable(){
   }
 }
 
+window.__instrumentPdfState = window.__instrumentPdfState || null;
+
+window.renderInstrumentPdfPage = async function(pageNo){
+  const st=window.__instrumentPdfState;
+  if(!st || !st.pdf || !st.wrap) return;
+  const p=Math.max(1,Math.min(Number(st.pdf.numPages)||1,Number(pageNo)||1));
+  st.pageNo=p;
+  const stage=st.wrap.querySelector('.instrument-pdf-stage');
+  const info=st.wrap.querySelector('.instrument-pdf-page-info');
+  const input=st.wrap.querySelector('.instrument-pdf-page-input');
+  const prev=st.wrap.querySelector('.instrument-pdf-prev');
+  const next=st.wrap.querySelector('.instrument-pdf-next');
+  const zoomInfo=st.wrap.querySelector('.instrument-pdf-zoom-info');
+  if(input) input.value=String(p);
+  if(info) info.textContent=`dari ${st.pdf.numPages}`;
+  if(prev) prev.disabled=p<=1;
+  if(next) next.disabled=p>=st.pdf.numPages;
+  if(zoomInfo) zoomInfo.textContent=`${Math.round(st.zoom*100)}%`;
+  if(!stage) return;
+  stage.innerHTML=loading(`Memuat halaman ${p} dari ${st.pdf.numPages}...`);
+  try{
+    const page=await st.pdf.getPage(p);
+    const base=page.getViewport({scale:1});
+    const available=Math.max(280,Math.min((stage.clientWidth||st.wrap.clientWidth||1000)-28,1080));
+    const fitScale=Math.min(available/base.width,1.55);
+    const vp=page.getViewport({scale:fitScale*st.zoom});
+    const canvas=document.createElement('canvas');
+    canvas.className='instrument-pdf-single-canvas';
+    canvas.width=Math.ceil(vp.width);
+    canvas.height=Math.ceil(vp.height);
+    stage.innerHTML='';
+    stage.appendChild(canvas);
+    await page.render({canvasContext:canvas.getContext('2d'),viewport:vp}).promise;
+  }catch(err){
+    stage.innerHTML=msg(`Halaman ${p} tidak dapat ditampilkan: ${errorText(err)}`,'error');
+  }
+};
+
+window.instrumentPdfGo = async function(delta){
+  const st=window.__instrumentPdfState; if(!st) return;
+  await renderInstrumentPdfPage(st.pageNo + Number(delta||0));
+};
+window.instrumentPdfGoInput = async function(input){
+  const st=window.__instrumentPdfState; if(!st) return;
+  const p=Math.max(1,Math.min(st.pdf.numPages,Number(input?.value)||st.pageNo));
+  await renderInstrumentPdfPage(p);
+};
+window.instrumentPdfZoom = async function(delta){
+  const st=window.__instrumentPdfState; if(!st) return;
+  st.zoom=Math.max(.65,Math.min(2.2,st.zoom+Number(delta||0)));
+  await renderInstrumentPdfPage(st.pageNo);
+};
+
 window.showInstrumentPdf=async function(btn){
   const targetId=btn?.dataset?.target||'';
   const name=btn?.dataset?.pdfName||'Dokumen SPJ';
@@ -2149,85 +2202,83 @@ window.showInstrumentPdf=async function(btn){
   $$('.instrument-view-pdf-btn').forEach(b=>{ if(b!==btn) b.classList.remove('btn-primary'); });
   const viewer=document.getElementById(targetId); if(!viewer) return;
   const wasHidden=viewer.hidden; viewer.hidden=!wasHidden; btn.textContent=viewer.hidden?'👁️ Lihat':'✕ Tutup';
-  if(viewer.hidden) return;
+  if(viewer.hidden){
+    if(window.__instrumentPdfState?.viewer===viewer) window.__instrumentPdfState=null;
+    return;
+  }
   viewer.scrollIntoView({behavior:'smooth',block:'nearest'});
   const wrap=viewer.querySelector('.instrument-pdf-inline-frame');
   if(!wrap) return;
-  if(wrap.dataset.loaded==='1') return;
-  wrap.innerHTML=loading('Membaca seluruh halaman PDF...');
+
+  // Jika PDF ini sudah pernah dimuat, aktifkan kembali state-nya tanpa request ulang.
+  if(wrap._pdfDoc){
+    window.__instrumentPdfState={viewer,wrap,pdf:wrap._pdfDoc,pageNo:Number(wrap.dataset.page||1),zoom:Number(wrap.dataset.zoom||1)};
+    await renderInstrumentPdfPage(window.__instrumentPdfState.pageNo);
+    return;
+  }
+
+  wrap.innerHTML=loading('Memuat PDF secara aman...');
   try{
     const doc={file_id:fileId,nama_file:name};
     const pdf=await getProtectedPdfDocument_(doc);
-    const totalPages=Math.max(1,Number(pdf.numPages)||1);
-
-    wrap.innerHTML=`<div class="instrument-pdf-summary"><b>${totalPages} halaman</b><span>Scroll ke bawah untuk membaca seluruh dokumen. Halaman dimuat bertahap agar tetap ringan.</span></div><div class="instrument-pdf-pages"></div>`;
-    const pagesHost=wrap.querySelector('.instrument-pdf-pages');
-    if(!pagesHost) return;
-
-    const slots=[];
-    for(let pageNo=1;pageNo<=totalPages;pageNo++){
-      const slot=document.createElement('section');
-      slot.className='instrument-pdf-page-slot';
-      slot.dataset.page=String(pageNo);
-      slot.innerHTML=`<div class="instrument-pdf-page-label">Halaman ${pageNo} dari ${totalPages}</div><div class="instrument-pdf-page-placeholder">${pageNo<=2?'Menyiapkan halaman...':'Scroll untuk memuat halaman ini'}</div>`;
-      pagesHost.appendChild(slot);
-      slots.push(slot);
-    }
-
-    const rendering=new Set();
-    async function renderPageSlot(slot){
-      if(!slot || slot.dataset.rendered==='1' || rendering.has(slot)) return;
-      rendering.add(slot);
-      const pageNo=Math.max(1,Number(slot.dataset.page)||1);
-      const holder=slot.querySelector('.instrument-pdf-page-placeholder');
-      if(holder) holder.innerHTML=loading(`Memuat halaman ${pageNo} dari ${totalPages}...`);
-      try{
-        const page=await pdf.getPage(pageNo);
-        const base=page.getViewport({scale:1});
-        const available=Math.max(280,Math.min((wrap.clientWidth||1000)-42,1050));
-        const scale=Math.min(available/base.width,1.5);
-        const vp=page.getViewport({scale});
-        const canvas=document.createElement('canvas');
-        canvas.className='instrument-pdf-page-canvas';
-        canvas.width=Math.ceil(vp.width);
-        canvas.height=Math.ceil(vp.height);
-        if(holder){ holder.innerHTML=''; holder.appendChild(canvas); }
-        await page.render({canvasContext:canvas.getContext('2d'),viewport:vp}).promise;
-        slot.dataset.rendered='1';
-      }catch(err){
-        if(holder) holder.innerHTML=msg(`Halaman ${pageNo} tidak dapat ditampilkan: ${errorText(err)}`,'error');
-      }finally{
-        rendering.delete(slot);
-      }
-    }
-
-    // Dua halaman awal langsung disiapkan agar pengguna segera melihat bahwa PDF multi-halaman.
-    await renderPageSlot(slots[0]);
-    if(slots[1]) renderPageSlot(slots[1]);
-
-    if('IntersectionObserver' in window){
-      const observer=new IntersectionObserver(entries=>{
-        entries.forEach(entry=>{
-          if(entry.isIntersecting){
-            renderPageSlot(entry.target);
-            if(entry.target.dataset.rendered==='1') observer.unobserve(entry.target);
-          }
-        });
-      },{root:wrap,rootMargin:'900px 0px',threshold:0.01});
-      slots.slice(1).forEach(slot=>observer.observe(slot));
-      wrap._pdfPageObserver=observer;
-    }else{
-      // Fallback browser lama: render bertahap tanpa IntersectionObserver.
-      for(let i=1;i<slots.length;i++) await renderPageSlot(slots[i]);
-    }
+    wrap._pdfDoc=pdf;
     wrap.dataset.loaded='1';
-    wrap.dataset.pages=String(totalPages);
+    wrap.dataset.page='1';
+    wrap.dataset.zoom='1';
+    wrap.innerHTML=`
+      <div class="instrument-pdf-toolbar" role="toolbar" aria-label="Navigasi PDF">
+        <div class="instrument-pdf-toolbar-group">
+          <button type="button" class="btn btn-light btn-sm instrument-pdf-prev" onclick="instrumentPdfGo(-1)" aria-label="Halaman sebelumnya">← Sebelumnya</button>
+          <button type="button" class="btn btn-light btn-sm instrument-pdf-next" onclick="instrumentPdfGo(1)" aria-label="Halaman berikutnya">Berikutnya →</button>
+        </div>
+        <div class="instrument-pdf-page-control">
+          <span>Halaman</span>
+          <input class="instrument-pdf-page-input" type="number" min="1" max="${pdf.numPages}" value="1" inputmode="numeric" aria-label="Nomor halaman" onkeydown="if(event.key==='Enter'){event.preventDefault();instrumentPdfGoInput(this)}" onchange="instrumentPdfGoInput(this)">
+          <span class="instrument-pdf-page-info">dari ${pdf.numPages}</span>
+        </div>
+        <div class="instrument-pdf-toolbar-group">
+          <button type="button" class="btn btn-light btn-sm" onclick="instrumentPdfZoom(-.1)" aria-label="Perkecil PDF">−</button>
+          <span class="instrument-pdf-zoom-info">100%</span>
+          <button type="button" class="btn btn-light btn-sm" onclick="instrumentPdfZoom(.1)" aria-label="Perbesar PDF">+</button>
+        </div>
+      </div>
+      <div class="instrument-pdf-shortcuts">Keyboard: <kbd>←</kbd>/<kbd>→</kbd> pindah halaman · <kbd>Page Up</kbd>/<kbd>Page Down</kbd> · <kbd>Home</kbd>/<kbd>End</kbd></div>
+      <div class="instrument-pdf-stage" tabindex="0" aria-label="Tampilan PDF"></div>`;
+    window.__instrumentPdfState={viewer,wrap,pdf,pageNo:1,zoom:1};
+    await renderInstrumentPdfPage(1);
+    wrap.querySelector('.instrument-pdf-stage')?.focus({preventScroll:true});
   }catch(e){ wrap.innerHTML=msg('PDF tidak dapat ditampilkan: '+errorText(e),'error'); }
 };
+
+
+if(!window.__instrumentPdfKeyboardBound){
+  window.__instrumentPdfKeyboardBound=true;
+  document.addEventListener('keydown',async function(e){
+    const st=window.__instrumentPdfState;
+    if(!st || !st.viewer || st.viewer.hidden) return;
+    const tag=String(e.target?.tagName||'').toUpperCase();
+    const editable=e.target?.isContentEditable || ['INPUT','TEXTAREA','SELECT'].includes(tag);
+    if(editable) return;
+    let handled=true;
+    if(e.key==='ArrowLeft' || e.key==='PageUp') await instrumentPdfGo(-1);
+    else if(e.key==='ArrowRight' || e.key==='PageDown') await instrumentPdfGo(1);
+    else if(e.key==='Home') await renderInstrumentPdfPage(1);
+    else if(e.key==='End') await renderInstrumentPdfPage(st.pdf.numPages);
+    else handled=false;
+    if(handled) e.preventDefault();
+  });
+}
+
 
 window.closeInstrumentPdf=function(id){
   const viewer=document.getElementById(id);
   if(!viewer) return;
+  const st=window.__instrumentPdfState;
+  if(st?.viewer===viewer){
+    st.wrap.dataset.page=String(st.pageNo||1);
+    st.wrap.dataset.zoom=String(st.zoom||1);
+    window.__instrumentPdfState=null;
+  }
   viewer.hidden=true;
   const btn=document.querySelector(`.instrument-view-pdf-btn[data-target="${CSS.escape(id)}"]`);
   if(btn) btn.textContent='👁️ Lihat';
@@ -6311,16 +6362,16 @@ function printV5Archive(){
 @media(max-width:650px){.v17-ph-flow,.v17-ph-grid,.v17-ph-stats{grid-template-columns:1fr}.v17-ph-hero{padding:19px}.v17-ph-hero h2{font-size:1.35rem}.v17-ph-step{min-height:auto}}
 </style>
 <style>
-/* V19.3 — Pratinjau Dokumen SPJ multi-halaman, lazy render */
-.instrument-pdf-inline-frame{height:min(78vh,860px)!important;min-height:460px!important;overflow:auto!important;padding:12px!important;background:#e8eeeb!important;scroll-behavior:smooth}
-.instrument-pdf-summary{position:sticky;top:0;z-index:4;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:0 0 12px;padding:9px 12px;border:1px solid #d8e2dc;border-radius:12px;background:rgba(255,255,255,.96);box-shadow:0 3px 12px rgba(16,42,67,.06);font-size:.78rem;color:var(--muted,#687887)}
-.instrument-pdf-summary b{color:var(--primary,#145b46);font-size:.82rem}
-.instrument-pdf-pages{display:flex;flex-direction:column;align-items:center;gap:18px;width:100%}
-.instrument-pdf-page-slot{width:100%;display:flex;flex-direction:column;align-items:center;gap:7px}
-.instrument-pdf-page-label{align-self:center;padding:4px 9px;border-radius:999px;background:#fff;border:1px solid #d9e2dd;color:#69786f;font-size:.7rem;font-weight:800;box-shadow:0 2px 7px rgba(16,42,67,.04)}
-.instrument-pdf-page-placeholder{width:100%;min-height:280px;display:flex;align-items:center;justify-content:center;color:#7b8981;font-size:.8rem}
-.instrument-pdf-page-canvas{display:block;max-width:100%;height:auto;margin:0 auto;background:#fff;border:1px solid #d7dfda;box-shadow:0 10px 28px rgba(16,42,67,.14)}
-@media(max-width:760px){.instrument-pdf-inline-frame{height:70vh!important;min-height:390px!important;padding:8px!important}.instrument-pdf-summary{position:relative}.instrument-pdf-pages{gap:12px}}
+/* V19.4 — Pratinjau Dokumen SPJ satu layar + tombol & keyboard */
+.instrument-pdf-inline-frame{height:min(78vh,860px)!important;min-height:460px!important;overflow:hidden!important;padding:0!important;background:#e8eeeb!important;display:flex!important;flex-direction:column!important}
+.instrument-pdf-toolbar{position:sticky;top:0;z-index:5;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:9px 10px;background:#fff;border-bottom:1px solid #d8e2dc;box-shadow:0 3px 10px rgba(16,42,67,.04)}
+.instrument-pdf-toolbar-group{display:flex;align-items:center;gap:6px}.instrument-pdf-page-control{display:flex;align-items:center;justify-content:center;gap:6px;font-size:.78rem;color:var(--muted,#687887)}
+.instrument-pdf-page-input{width:62px;height:36px;padding:5px 7px;border:1px solid #cfdad4;border-radius:9px;text-align:center;background:#fff;color:var(--text,#17212b);font:inherit;font-weight:800}.instrument-pdf-page-input:focus{outline:0;border-color:var(--primary,#145b46);box-shadow:0 0 0 3px rgba(20,91,70,.10)}
+.instrument-pdf-zoom-info{min-width:48px;text-align:center;font-size:.76rem;font-weight:800;color:var(--primary,#145b46)}
+.instrument-pdf-shortcuts{padding:6px 10px;background:#f8faf9;border-bottom:1px solid #d8e2dc;color:#718078;font-size:.68rem;text-align:center}.instrument-pdf-shortcuts kbd{display:inline-block;padding:1px 5px;border:1px solid #d4ddd8;border-bottom-width:2px;border-radius:5px;background:#fff;color:#4d5c54;font:inherit;font-weight:800}
+.instrument-pdf-stage{flex:1;min-height:0;overflow:auto;display:flex;align-items:flex-start;justify-content:center;padding:12px;outline:none;background:#e8eeeb}.instrument-pdf-stage:focus-visible{box-shadow:inset 0 0 0 3px rgba(20,91,70,.16)}
+.instrument-pdf-single-canvas{display:block;max-width:none;height:auto;margin:0 auto;background:#fff;border:1px solid #d7dfda;box-shadow:0 10px 28px rgba(16,42,67,.14)}
+@media(max-width:760px){.instrument-pdf-inline-frame{height:70vh!important;min-height:390px!important}.instrument-pdf-toolbar{justify-content:center}.instrument-pdf-page-control{order:3;width:100%}.instrument-pdf-shortcuts{display:none}.instrument-pdf-stage{padding:8px}}
 </style>
 </head><body>${kop}${body}<script>window.onload=()=>setTimeout(()=>window.print(),350)<\/script></body></html>`);
   w.document.close();
