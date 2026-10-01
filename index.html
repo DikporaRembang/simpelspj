@@ -5278,16 +5278,111 @@ window.submitPasswordChangeV10=async function(){
   catch(e){toast(errorText(e),'error',5000);}
 };
 
+window.__pageAwareOcrCache = window.__pageAwareOcrCache || {};
+window.__pageAwareOcrCancel = false;
+
+function _ocrNormText_(v){
+  return String(v||'').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^A-Z0-9]+/g,' ').replace(/\s+/g,' ').trim();
+}
+function _ocrDigits_(v){ return String(v||'').replace(/\D/g,''); }
+function _ocrMoneyVariants_(v){
+  const n=Math.round(Math.abs(Number(v)||0)); if(!n) return [];
+  const raw=String(n), dot=raw.replace(/\B(?=(\d{3})+(?!\d))/g,'.'), comma=raw.replace(/\B(?=(\d{3})+(?!\d))/g,',');
+  return [raw,dot,comma,'RP '+dot,'RP'+dot];
+}
+function _ocrDateVariants_(v){
+  const s=String(v||'').slice(0,10); const m=s.match(/^(\d{4})-(\d{2})-(\d{2})$/); if(!m)return [];
+  return [m[3]+'/'+m[2]+'/'+m[1],m[3]+'-'+m[2]+'-'+m[1],m[3]+' '+m[2]+' '+m[1],m[1]+'-'+m[2]+'-'+m[3]];
+}
+function _scoreTxAgainstOcrPage_(tx,pageText){
+  const raw=String(pageText||'').toUpperCase(); const norm=_ocrNormText_(raw); const digits=_ocrDigits_(raw);
+  let score=0, reasons=[];
+  const bukti=String(tx.nomor_bukti||'').trim();
+  if(bukti){
+    const bn=_ocrNormText_(bukti); const bd=_ocrDigits_(bukti);
+    if((bn.length>=3 && norm.includes(bn)) || (bd.length>=4 && digits.includes(bd))){score+=38;reasons.push('nomor bukti');}
+  }
+  const kode=String(tx.kode_rekening||'').trim();
+  if(kode){const kd=_ocrDigits_(kode);if(kd.length>=6 && digits.includes(kd)){score+=24;reasons.push('kode rekening');}}
+  if(_ocrMoneyVariants_(tx.nilai_transaksi).some(v=>raw.includes(v))){score+=28;reasons.push('nominal');}
+  if(_ocrDateVariants_(tx.tanggal_transaksi).some(v=>raw.includes(v))){score+=10;reasons.push('tanggal');}
+  const words=_ocrNormText_(tx.uraian_transaksi||'').split(' ').filter(w=>w.length>=5 && !/^\d+$/.test(w));
+  if(words.length){
+    const uniq=[...new Set(words)].slice(0,12); const hit=uniq.filter(w=>norm.includes(w)).length;
+    const ratio=hit/uniq.length;
+    if(hit>=2){const add=Math.min(18,Math.round(ratio*18));score+=add;reasons.push('uraian');}
+  }
+  return {score:Math.min(100,score),reasons};
+}
+function _matchTransactionsToOcrPages_(transactions,pages){
+  return (transactions||[]).map(tx=>{
+    let best={page:0,score:0,reasons:[]};
+    (pages||[]).forEach(p=>{const s=_scoreTxAgainstOcrPage_(tx,p.text);if(s.score>best.score)best={page:p.page,score:s.score,reasons:s.reasons};});
+    let level='RENDAH'; if(best.score>=75)level='TINGGI'; else if(best.score>=50)level='SEDANG';
+    return {id_transaksi:String(tx.id_transaksi||''),page:best.page,confidence:best.score,confidence_level:level,reasons:best.reasons};
+  });
+}
+async function _canvasToBase64Jpeg_(canvas,quality=.9){
+  const blob=await new Promise((resolve,reject)=>canvas.toBlob(b=>b?resolve(b):reject(new Error('Canvas tidak dapat dikonversi.')),'image/jpeg',quality));
+  const buf=await blob.arrayBuffer(); const bytes=new Uint8Array(buf); let binary=''; const chunk=0x8000;
+  for(let i=0;i<bytes.length;i+=chunk) binary+=String.fromCharCode(...bytes.subarray(i,i+chunk));
+  return btoa(binary);
+}
+function _showPageAwareOcrModal_(name,totalPages){
+  document.querySelector('#pageAwareOcrModal')?.remove();
+  const modal=document.createElement('div');modal.id='pageAwareOcrModal';modal.className='simple-modal';
+  modal.innerHTML=`<div class="simple-modal-card" style="width:min(920px,96vw);max-height:88vh;overflow:auto">
+    <h3>OCR Presisi per Halaman — ${esc(name||'Dokumen PDF')}</h3>
+    <p class="muted">Setiap halaman dibaca terpisah agar transaksi BKU dapat ditautkan ke halaman sumber.</p>
+    <div class="progress" style="margin:12px 0"><i id="pageOcrProgressBar" style="width:0%"></i></div>
+    <div id="pageOcrProgressText" class="muted">Menyiapkan ${fmtNum(totalPages)} halaman...</div>
+    <div id="pageOcrResult" style="margin-top:14px"></div>
+    <div class="simple-modal-actions"><button id="pageOcrCancelBtn" class="btn btn-light">Batalkan</button><button class="btn btn-primary" onclick="this.closest('.simple-modal').remove()">Tutup</button></div>
+  </div>`;
+  document.body.appendChild(modal);
+  $('#pageOcrCancelBtn').onclick=()=>{window.__pageAwareOcrCancel=true;$('#pageOcrCancelBtn').disabled=true;$('#pageOcrCancelBtn').textContent='Membatalkan...';};
+  return modal;
+}
+
 window.ocrCurrentInteractivePdf=async function(){
   const c=window.__pdfInteractiveContext||{}; const select=$('#interactiveDocSelect');
   const doc=(c.docs||[]).find(d=>String(d.file_id||d.id_dokumen)===String(select?.value||''))||c.docs?.[0];
   if(!doc?.file_id){toast('Dokumen tidak memiliki file_id.','warning');return;}
-  const box=$('#pageEvidenceSummary'); if(box) box.innerHTML=loading('OCR sedang diproses...');
+  window.__pageAwareOcrCancel=false;
   try{
-    const r=await api('ocrDokumenPdf',{fileId:doc.file_id,idPeriode:c.p,npsn:c.n});
-    const textOcr=String(r.text||'').trim();
-    const modal=document.createElement('div'); modal.className='simple-modal'; modal.innerHTML=`<div class="simple-modal-card" style="width:min(900px,96vw)"><h3>Hasil OCR — ${esc(doc.nama_file||'Dokumen PDF')}</h3><p class="muted">${fmtNum(r.characters||textOcr.length)} karakter berhasil diekstrak.</p><textarea style="width:100%;min-height:420px;font-family:ui-monospace,monospace;font-size:.85rem">${esc(textOcr||'Tidak ada teks yang terdeteksi.')}</textarea><div class="simple-modal-actions"><button class="btn btn-primary" onclick="this.closest('.simple-modal').remove()">Tutup</button></div></div>`; document.body.appendChild(modal);
-  }catch(e){toast(errorText(e),'error',6000);}
+    const pdf=await getProtectedPdfDocument_(doc);
+    const modal=_showPageAwareOcrModal_(doc.nama_file||'Dokumen PDF',pdf.numPages);
+    const pages=[];
+    for(let pageNo=1;pageNo<=pdf.numPages;pageNo++){
+      if(window.__pageAwareOcrCancel) break;
+      const p=await pdf.getPage(pageNo);
+      const base=p.getViewport({scale:1});
+      const targetWidth=Math.min(2200,Math.max(1500,base.width*2));
+      const scale=targetWidth/base.width;
+      const vp=p.getViewport({scale});
+      const canvas=document.createElement('canvas');canvas.width=Math.ceil(vp.width);canvas.height=Math.ceil(vp.height);
+      const ctx=canvas.getContext('2d',{alpha:false});ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);
+      await p.render({canvasContext:ctx,viewport:vp}).promise;
+      const imageBase64=await _canvasToBase64Jpeg_(canvas,.92);
+      const r=await api('ocrPdfPageImage',{data:{fileId:doc.file_id,idPeriode:c.p,npsn:c.n,pageNo,imageBase64,mimeType:'image/jpeg'}});
+      pages.push({page:pageNo,text:String(r.text||''),characters:Number(r.characters||0)});
+      const pct=Math.round(pageNo/pdf.numPages*100); const bar=$('#pageOcrProgressBar'),txt=$('#pageOcrProgressText');
+      if(bar)bar.style.width=pct+'%'; if(txt)txt.textContent=`OCR halaman ${pageNo} dari ${pdf.numPages} • ${fmtNum(r.characters||0)} karakter`;
+      canvas.width=1;canvas.height=1;
+    }
+    if(!pages.length){ if(window.__pageAwareOcrCancel) toast('OCR dibatalkan.','warning'); return; }
+    const matches=_matchTransactionsToOcrPages_(c.tx||[],pages);
+    window.__pageAwareOcrCache[String(doc.file_id)]={pages,matches,createdAt:Date.now()};
+    const byId={};matches.forEach(m=>{if(m.id_transaksi)byId[m.id_transaksi]=m;});
+    (c.tx||[]).forEach(t=>{const m=byId[String(t.id_transaksi||'')];if(m){t.ocr_page=m.page;t.ocr_confidence=m.confidence;t.ocr_confidence_level=m.confidence_level;t.ocr_reasons=m.reasons;}});
+    const high=matches.filter(m=>m.confidence>=75).length,medium=matches.filter(m=>m.confidence>=50&&m.confidence<75).length,low=matches.filter(m=>m.confidence<50).length;
+    const result=$('#pageOcrResult');
+    if(result) result.innerHTML=`<div class="cards" style="margin-bottom:12px"><div class="stat"><small>Halaman OCR</small><strong>${pages.length}</strong></div><div class="stat"><small>Confidence tinggi</small><strong>${high}</strong></div><div class="stat"><small>Perlu review</small><strong>${medium+low}</strong></div></div>
+      ${msg(`OCR selesai. ${high} transaksi memiliki kecocokan halaman tinggi, ${medium} sedang, ${low} rendah. Hasil ini adalah kandidat dan tidak mengubah transaksi otomatis.`,'ok')}`;
+    const txt=$('#pageOcrProgressText');if(txt)txt.textContent=window.__pageAwareOcrCancel?`OCR dihentikan setelah ${pages.length} halaman.`:`OCR selesai: ${pages.length} halaman.`;
+    const cancel=$('#pageOcrCancelBtn');if(cancel){cancel.disabled=true;cancel.textContent='Selesai';}
+    renderPdfInteractive(c);
+  }catch(e){toast(errorText(e),'error',8000);}
   finally{renderInteractiveEvidenceSummary_();}
 };
 
@@ -5405,7 +5500,9 @@ function renderPdfInteractive(x){
     const linked=fs.map(f=>detailByFinding[String(f.id_temuan)]).find(Boolean);
     const action=linked?.halaman_bukti
       ? `<button class="btn btn-sm btn-light" onclick="jumpPdfPageFromTx('${esc(t.id_transaksi||'')}')">📄 Hal. ${esc(linked.halaman_bukti)}</button>`
-      : `<span class="muted">Belum ditautkan</span>`;
+      : t.ocr_page
+        ? `<button class="btn btn-sm btn-light" title="Kandidat dari OCR • confidence ${esc(t.ocr_confidence||0)}%" onclick="jumpPdfPageFromTx('${esc(t.id_transaksi||'')}')">🔎 Hal. ${esc(t.ocr_page)} • ${esc(t.ocr_confidence||0)}%</button>`
+        : `<span class="muted">Belum ditautkan</span>`;
     return `<tr><td>${esc(t.tanggal_transaksi||'-')}</td><td><b>${esc(t.nomor_bukti||'-')}</b></td><td>${esc(t.kode_rekening||'-')}</td><td>${esc(t.uraian_transaksi||'-')}</td><td>${Number(t.nilai_transaksi||0).toLocaleString('id-ID')}</td><td>${fs.length?fs.map(f=>`<span class="badge badge-warning" style="display:inline-block;margin:2px">${esc(f.kode_temuan||'TEMUAN')} • ${esc(f.hasil_verifikasi||'BELUM')}</span>`).join(''):'<span class="badge badge-success">OK</span>'}</td><td>${action}</td></tr>`;
   }).join('');
 
@@ -5531,8 +5628,10 @@ window.jumpPdfPageFromTx=function(idTx){
   const c=window.__pdfInteractiveContext||{};
   const fs=(c.findings||[]).filter(x=>String(x.id_transaksi)===String(idTx));
   const d=(c.details||[]).find(x=>fs.some(f=>String(f.id_temuan)===String(x.id_temuan)) && x.halaman_bukti);
-  if(!d){toast('Transaksi ini belum memiliki halaman bukti yang ditautkan.','warning');return;}
-  renderInteractivePdfPage(d.halaman_bukti);
+  if(d?.halaman_bukti){renderInteractivePdfPage(d.halaman_bukti);return;}
+  const tx=(c.tx||[]).find(x=>String(x.id_transaksi)===String(idTx));
+  if(tx?.ocr_page){renderInteractivePdfPage(tx.ocr_page);toast(`Kandidat halaman OCR: ${tx.ocr_page} • confidence ${tx.ocr_confidence||0}%`,'ok',3500);return;}
+  toast('Transaksi ini belum memiliki halaman bukti atau kandidat OCR.','warning');
 };
 
 window.jumpFindingPageV10=function(idTemuan){
