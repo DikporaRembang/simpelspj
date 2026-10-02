@@ -6042,6 +6042,7 @@ window.renderInteractivePdfPage=async function(pageNo){
     const prev=$('#interactivePrevBtn');if(prev)prev.disabled=safePage<=1;
     const next=$('#interactiveNextBtn');if(next)next.disabled=safePage>=pdf.numPages;
     renderInteractiveEvidenceSummary_();
+    setTimeout(()=>prefetchInteractivePdfNeighbors_(pdf,safePage),0);
     if(document.activeElement===document.body || !document.activeElement){
       wrap.focus({preventScroll:true});
     }
@@ -6370,6 +6371,7 @@ async function renderKeberatanList(){
   const area=$('#appealArea'); if(!area)return;
   try{
     const r=await api('getKeberatanPenilaian',{}), rows=r.data||[];
+    window.__appealRows=rows;
     if(!rows.length){
       area.innerHTML=msg(isSchool()?'Belum ada penilaian selesai yang dapat diajukan keberatan.':'Belum ada pengajuan keberatan dari sekolah.','ok');
       return;
@@ -10639,5 +10641,179 @@ body:before{display:none!important}
   .sidebar{box-shadow:14px 0 40px rgba(17,57,87,.16)!important}
 }
 </style>
+
+<script id="v232WorkflowEnhancements">
+/* ========================================================================== 
+   V23.2 — FAST REVIEW + STRUCTURED APPEAL
+   - PDF: prefetch adjacent pages (PDF.js internal page cache)
+   - Appeal: per-instrument selection + structured reason/decision
+   - No database-column changes: payload remains JSON in pesan_koordinasi
+   ========================================================================== */
+function prefetchInteractivePdfNeighbors_(pdf,currentPage){
+  if(!pdf || !Number(pdf.numPages)) return;
+  const pages=[Number(currentPage)-1,Number(currentPage)+1]
+    .filter(p=>p>=1 && p<=Number(pdf.numPages));
+  pages.forEach(p=>{ try{ Promise.resolve(pdf.getPage(p)).catch(()=>{}); }catch(_){} });
+}
+
+function appealCategoryLabel_(v){
+  const map={
+    NILAI_TIDAK_SESUAI:'Nilai tidak sesuai hasil pemeriksaan sekolah',
+    BUKTI_TIDAK_TEPAT:'Bukti yang dinilai bukan bukti yang tepat',
+    BUKTI_BELUM_DIPERHITUNGKAN:'Bukti/dokumen belum diperhitungkan',
+    HALAMAN_BUKTI_TIDAK_TEPAT:'Halaman bukti yang digunakan tidak tepat',
+    LAINNYA:'Alasan lainnya'
+  };
+  return map[String(v||'').toUpperCase()]||String(v||'-').replaceAll('_',' ');
+}
+function appealDecisionLabel_(v){
+  const map={DITERIMA:'Keberatan diterima',DITOLAK:'Nilai dipertahankan',DIPERBAIKI:'Penilaian diperbaiki'};
+  return map[String(v||'').toUpperCase()]||String(v||'-').replaceAll('_',' ');
+}
+function closeAppealModalV232(){ document.getElementById('v232AppealModal')?.remove(); }
+function closeAppealDecisionModalV232(){ document.getElementById('v232AppealDecisionModal')?.remove(); }
+
+async function getAppealIndicatorsV232_(idAsesmen){
+  const row=(window.__appealRows||[]).find(x=>String(x.id_asesmen)===String(idAsesmen))||{};
+  try{
+    const r=await api('hitungIndikatorDariTemuan',{
+      idPeriode:row.id_periode||state.selectedPeriode||'',
+      npsn:row.npsn||ownNpsn()||'',
+      idAsesmen:idAsesmen
+    });
+    const data=Array.isArray(r?.data)?r.data:[];
+    if(data.length) return data;
+  }catch(e){ console.warn('Instrumen keberatan fallback:',e); }
+  const names=[
+    'Buku Kas Umum (BKU)','Buku Pembantu Bank','Buku Pembantu Kas Tunai','Buku Pembantu Pajak',
+    'Rekening Koran Bank','Invoice / Nota / Kuitansi','Bukti Pendukung Lainnya','SSP Pajak Pusat',
+    'SSP Pajak Daerah','Foto / Dokumentasi'
+  ];
+  const weights=[10,8,8,8,10,20,12,8,6,10];
+  return names.map((nama,i)=>({id_indikator:'',no_instrumen:i+1,kode_indikator:'I'+String(i+1).padStart(2,'0'),nama_indikator:nama,bobot:weights[i],skor:''}));
+}
+
+window.ajukanKeberatan=async function(idAsesmen){
+  document.getElementById('v232AppealModal')?.remove();
+  const indicators=await getAppealIndicatorsV232_(idAsesmen);
+  const row=(window.__appealRows||[]).find(x=>String(x.id_asesmen)===String(idAsesmen))||{};
+  const modal=document.createElement('div');
+  modal.id='v232AppealModal'; modal.className='simple-modal';
+  modal.innerHTML=`<div class="simple-modal-card v232-appeal-card">
+    <div class="v232-modal-head"><div><span class="v232-eyebrow">KEBERATAN PENILAIAN</span><h3>Pilih bagian yang perlu dikaji ulang</h3><p>Nilai saat ini <b>${esc(row.nilai_akhir??'-')}</b>. Pilih minimal satu instrumen agar Pengawas langsung mengetahui objek keberatan.</p></div><button class="v232-close" type="button" onclick="closeAppealModalV232()">×</button></div>
+    <div class="v232-instrument-grid">${indicators.map((d,i)=>{
+      const no=Number(d.no_instrumen||i+1),score=(d.skor===null||d.skor===''||d.skor===undefined)?'—':Number(d.skor).toFixed(2);
+      return `<label class="v232-instrument-choice"><input type="checkbox" class="v232-appeal-ind" data-json="${esc(JSON.stringify({id_indikator:d.id_indikator||'',no_instrumen:no,kode_indikator:d.kode_indikator||'',nama_indikator:d.nama_indikator||'',skor_sebelum:d.skor??'',bobot:d.bobot_efektif??d.bobot??''}))}"><span><b>${no}. ${esc(d.nama_indikator||d.kode_indikator||'Instrumen')}</b><small>Skor ${esc(score)}/4 • Bobot ${esc(d.bobot_efektif??d.bobot??'-')}%</small></span></label>`;
+    }).join('')}</div>
+    <div class="field"><label>Jenis keberatan</label><select id="v232AppealCategory"><option value="NILAI_TIDAK_SESUAI">Nilai tidak sesuai hasil pemeriksaan sekolah</option><option value="BUKTI_TIDAK_TEPAT">Bukti yang dinilai bukan bukti yang tepat</option><option value="BUKTI_BELUM_DIPERHITUNGKAN">Bukti/dokumen belum diperhitungkan</option><option value="HALAMAN_BUKTI_TIDAK_TEPAT">Halaman bukti yang digunakan tidak tepat</option><option value="LAINNYA">Lainnya</option></select></div>
+    <div class="field" style="margin-top:12px"><label>Penjelasan Sekolah</label><textarea id="v232AppealReason" rows="4" maxlength="1200" placeholder="Jelaskan secara singkat apa yang perlu dikaji ulang dan bukti yang mendukung."></textarea><small class="muted">Minimal 10 karakter. Gunakan fakta dan bukti yang dapat diperiksa Pengawas.</small></div>
+    <div id="v232AppealMsg" style="margin-top:10px"></div>
+    <div class="simple-modal-actions"><button class="btn btn-light" type="button" onclick="closeAppealModalV232()">Batal</button><button id="v232AppealSubmit" class="btn btn-primary" type="button">Kirim Keberatan</button></div>
+  </div>`;
+  document.body.appendChild(modal);
+  $('#v232AppealSubmit').onclick=async()=>{
+    const selected=[...document.querySelectorAll('.v232-appeal-ind:checked')].map(el=>{try{return JSON.parse(el.dataset.json||'{}')}catch(_){return {}}});
+    const alasan=$('#v232AppealReason')?.value?.trim()||'';
+    const kategori=$('#v232AppealCategory')?.value||'LAINNYA';
+    const box=$('#v232AppealMsg');
+    if(!selected.length){box.innerHTML=msg('Pilih minimal satu instrumen yang dipersoalkan.','warning');return;}
+    if(alasan.length<10){box.innerHTML=msg('Jelaskan alasan keberatan minimal 10 karakter.','warning');return;}
+    const btn=$('#v232AppealSubmit');btn.disabled=true;btn.textContent='Mengirim...';
+    try{
+      await api('ajukanKeberatanPenilaian',{data:{id_asesmen:idAsesmen,kategori_alasan:kategori,instrumen_keberatan:selected,alasan}});
+      toast('Keberatan berhasil dikirim. Pengawas akan melihat instrumen yang Anda pilih.','ok',4500);
+      closeAppealModalV232(); await renderKeberatanList();
+    }catch(e){box.innerHTML=msg(errorText(e),'error');btn.disabled=false;btn.textContent='Kirim Keberatan';}
+  };
+};
+
+window.selesaikanKajiUlang=async function(idPesan){
+  document.getElementById('v232AppealDecisionModal')?.remove();
+  const row=(window.__appealRows||[]).find(x=>String(x.id_pesan)===String(idPesan))||{};
+  const chosen=(row.instrumen_keberatan||[]).map(x=>`<span class="v232-chip">${esc((x.no_instrumen?x.no_instrumen+'. ':'')+(x.nama_indikator||x.kode_indikator||'Instrumen'))}${x.skor_sebelum!==''&&x.skor_sebelum!=null?' • '+esc(Number(x.skor_sebelum).toFixed(2))+'/4':''}</span>`).join('');
+  const modal=document.createElement('div');modal.id='v232AppealDecisionModal';modal.className='simple-modal';
+  modal.innerHTML=`<div class="simple-modal-card v232-appeal-card"><div class="v232-modal-head"><div><span class="v232-eyebrow">SELESAIKAN KAJI ULANG</span><h3>Catat keputusan Pengawas</h3><p>${esc(appealCategoryLabel_(row.kategori_alasan))}</p></div><button class="v232-close" onclick="closeAppealDecisionModalV232()">×</button></div>
+    ${chosen?`<div class="v232-chip-row">${chosen}</div>`:''}
+    <div class="v232-school-reason"><b>Alasan Sekolah</b><p>${esc(row.alasan||'-')}</p></div>
+    <div class="field"><label>Keputusan</label><select id="v232AppealDecision"><option value="">-- Pilih keputusan --</option><option value="DITERIMA">Keberatan diterima</option><option value="DIPERBAIKI">Penilaian diperbaiki</option><option value="DITOLAK">Nilai sebelumnya dipertahankan</option></select></div>
+    <div class="field" style="margin-top:12px"><label>Tanggapan Pengawas</label><textarea id="v232AppealResponse" rows="4" maxlength="1200" placeholder="Tuliskan dasar keputusan berdasarkan bukti dan hasil kaji ulang."></textarea><small class="muted">Minimal 10 karakter agar jejak audit mudah dipahami.</small></div>
+    <div id="v232AppealDecisionMsg" style="margin-top:10px"></div>
+    <div class="simple-modal-actions"><button class="btn btn-light" onclick="closeAppealDecisionModalV232()">Batal</button><button id="v232AppealDecisionSubmit" class="btn btn-primary">Selesaikan Kaji Ulang</button></div></div>`;
+  document.body.appendChild(modal);
+  $('#v232AppealDecisionSubmit').onclick=async()=>{
+    const keputusan=$('#v232AppealDecision')?.value||'',tanggapan=$('#v232AppealResponse')?.value?.trim()||'',box=$('#v232AppealDecisionMsg');
+    if(!keputusan){box.innerHTML=msg('Pilih keputusan kaji ulang.','warning');return;}
+    if(tanggapan.length<10){box.innerHTML=msg('Tanggapan Pengawas minimal 10 karakter.','warning');return;}
+    const btn=$('#v232AppealDecisionSubmit');btn.disabled=true;btn.textContent='Menyelesaikan...';
+    try{
+      const r=await api('selesaikanKajiUlangKeberatan',{data:{id_pesan:idPesan,keputusan,tanggapan_pengawas:tanggapan}});
+      toast(`Kaji ulang selesai. Nilai akhir: ${r.nilai_akhir??'-'}`,'ok',5000); closeAppealDecisionModalV232(); await renderKeberatanList();
+    }catch(e){box.innerHTML=msg(errorText(e),'error');btn.disabled=false;btn.textContent='Selesaikan Kaji Ulang';}
+  };
+};
+</script>
+
+<style id="v232DistinctRoleIdentity">
+/* ========================================================================== 
+   V23.2 — DISTINCT ROLE IDENTITY
+   Same clean banking layout, intentionally different chromatic identities.
+   DINAS = royal blue | PENGAWAS = burgundy | SEKOLAH = emerald green
+   ========================================================================== */
+body.theme-dinas{
+  --role-primary:#0757A6;--role-primary-2:#003E7D;--role-accent:#20A4F3;
+  --role-soft:#EAF3FC;--role-soft-2:#F5F9FE;--role-border:#BFD8F0;
+  --role-ink:#123B63;--role-topbar:#064D93;
+}
+body.theme-pengawas{
+  --role-primary:#9B2C45;--role-primary-2:#731D32;--role-accent:#D7637B;
+  --role-soft:#F9EDEF;--role-soft-2:#FFF8F9;--role-border:#E8C5CE;
+  --role-ink:#5C2432;--role-topbar:#7F2338;
+}
+body.theme-sekolah{
+  --role-primary:#188451;--role-primary-2:#0E633C;--role-accent:#43B77A;
+  --role-soft:#EAF7F0;--role-soft-2:#F5FBF8;--role-border:#BFE2CF;
+  --role-ink:#20553A;--role-topbar:#136E45;
+}
+body[data-role] .topbar{background:var(--role-topbar)!important;border-bottom-color:color-mix(in srgb,var(--role-primary-2) 70%,#000)!important}
+body[data-role] .sidebar{border-right:1px solid var(--role-border)!important}
+body[data-role] .brand-area{background:linear-gradient(145deg,var(--role-primary-2),var(--role-primary))!important}
+body[data-role] .sidebar .nav-btn.active,
+body[data-role] .sidebar .nav-submenu .nav-btn.active{
+  background:var(--role-soft)!important;color:var(--role-primary-2)!important;
+  box-shadow:inset 4px 0 0 var(--role-primary)!important;
+}
+body[data-role] .sidebar .nav-btn.active .nav-icon{color:var(--role-primary)!important}
+body[data-role] .section-title,body[data-role] .page-title,body[data-role] h1{color:var(--role-ink)!important}
+body[data-role] .btn-primary{background:var(--role-primary)!important;border-color:var(--role-primary)!important}
+body[data-role] .btn-primary:hover{background:var(--role-primary-2)!important;border-color:var(--role-primary-2)!important}
+body[data-role] .friendly-table th{background:var(--role-soft)!important;color:var(--role-ink)!important}
+body[data-role] .friendly-table tbody tr:hover td{background:var(--role-soft-2)!important}
+body[data-role] .stat{border-top:3px solid color-mix(in srgb,var(--role-primary) 75%,#fff)!important}
+body[data-role] .badge-info{background:var(--role-soft)!important;color:var(--role-primary-2)!important;border-color:var(--role-border)!important}
+body[data-role] .v11-hero,body[data-role] .ux-hero,body[data-role] .v211-office-hero{
+  background-image:linear-gradient(90deg,color-mix(in srgb,var(--role-primary-2) 95%,transparent),color-mix(in srgb,var(--role-primary) 78%,transparent),rgba(6,28,45,.18)),url('https://raw.githubusercontent.com/DikporaRembang/simpelspj/main/kantordindikpora.jpeg')!important;
+}
+/* Deliberately role-colored page accents: users should know their role at a glance. */
+body.theme-dinas .content{--role-page-glow:rgba(7,87,166,.055)}
+body.theme-pengawas .content{--role-page-glow:rgba(155,44,69,.055)}
+body.theme-sekolah .content{--role-page-glow:rgba(24,132,81,.055)}
+body[data-role] .content{background:linear-gradient(180deg,var(--role-page-glow),transparent 240px)!important}
+
+/* Structured appeal UI */
+.v232-appeal-card{width:min(860px,96vw)!important;max-height:90vh;overflow:auto}
+.v232-modal-head{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;margin-bottom:16px}
+.v232-modal-head h3{margin:3px 0 5px;font-size:1.25rem}.v232-modal-head p{margin:0;color:var(--app-muted);line-height:1.5}
+.v232-eyebrow{font-size:.68rem;font-weight:850;letter-spacing:.1em;color:var(--role-primary)}
+.v232-close{border:0;background:var(--role-soft);color:var(--role-primary-2);width:36px;height:36px;border-radius:10px;font-size:1.35rem;cursor:pointer}
+.v232-instrument-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-bottom:16px}
+.v232-instrument-choice{display:flex;gap:10px;align-items:flex-start;padding:11px 12px;border:1px solid var(--app-border);border-radius:11px;background:#fff;cursor:pointer}
+.v232-instrument-choice:has(input:checked){border-color:var(--role-primary);background:var(--role-soft-2);box-shadow:0 0 0 2px color-mix(in srgb,var(--role-primary) 10%,transparent)}
+.v232-instrument-choice input{margin-top:3px;accent-color:var(--role-primary)}
+.v232-instrument-choice b,.v232-instrument-choice small{display:block}.v232-instrument-choice b{font-size:.86rem;color:var(--app-text)}.v232-instrument-choice small{margin-top:3px;color:var(--app-muted);font-size:.74rem}
+.v232-chip-row{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px}.v232-chip{background:var(--role-soft);color:var(--role-primary-2);border:1px solid var(--role-border);border-radius:999px;padding:6px 9px;font-size:.75rem;font-weight:750}
+.v232-school-reason{padding:12px 14px;background:#f8fafc;border:1px solid var(--app-border);border-radius:11px;margin-bottom:14px}.v232-school-reason p{white-space:pre-wrap;margin:5px 0 0;line-height:1.55;color:var(--app-text)}
+@media(max-width:680px){.v232-instrument-grid{grid-template-columns:1fr}}
+</style>
+
 </body>
 </html>
