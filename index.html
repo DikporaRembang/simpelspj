@@ -6591,9 +6591,28 @@ window.autoFillSekolahByNpsn = async function(npsn) {
 };
 
 async function dbCheckView(){
-  $('#mainContent').innerHTML=head('Validasi Database','Memeriksa skema 14 tabel SIMPEL SPJ')+`<div class="panel"><button class="btn btn-primary" onclick="runDbCheck()">Jalankan Validasi</button><div id="dbResult" style="margin-top:16px">${msg('Klik untuk mulai.','ok')}</div></div>`;
+  $('#mainContent').innerHTML=head('Validasi Database','Memeriksa kontrak tabel dan integritas teknis SIMPEL SPJ')+`<div class="panel"><div class="toolbar"><button class="btn btn-primary" onclick="runDbCheck()">Jalankan Validasi</button><button class="btn btn-light" onclick="runTechnicalRepairV231()">Perbaiki Integritas Teknis</button></div><div id="dbResult" style="margin-top:16px">${msg('Klik validasi untuk memeriksa struktur database. Perbaikan teknis tidak mengubah skema password.','ok')}</div></div>`;
 }
-window.runDbCheck=async function(){const r=$('#dbResult');r.innerHTML=loading();try{const x=await api('validateDatabaseStructure');r.innerHTML=msg('Struktur 14 tabel database sehat dan lengkap!','ok');}catch(e){r.innerHTML=msg(errorText(e));}};
+window.runDbCheck=async function(){
+  const r=$('#dbResult');r.innerHTML=loading('Memvalidasi struktur database...');
+  try{
+    const x=await api('validateDatabaseStructure');
+    const invalid=(x.sheets||[]).filter(s=>!s.valid);
+    r.innerHTML=invalid.length
+      ? msg(`Validasi selesai. ${invalid.length} tabel masih memerlukan perhatian.`,'warning')
+      : msg(`Struktur database sehat. ${(x.sheets||[]).length} tabel kontrak tervalidasi.`,'ok');
+  }catch(e){r.innerHTML=msg(errorText(e));}
+};
+window.runTechnicalRepairV231=async function(){
+  const r=$('#dbResult');r.innerHTML=loading('Merapikan integritas teknis database...');
+  try{
+    const x=await api('repairTechnicalIntegrityV231');
+    const d=x||{};
+    const detail=d.rkas_import_detail||{};
+    const bku=d.bku_status||{};
+    r.innerHTML=msg(`Perbaikan teknis selesai. RKAS detail: ${detail.trimmed?'dirapikan menjadi '+detail.to+' kolom':'tidak perlu/ditahan untuk keamanan'}. Status snapshot BKU diperbarui: ${bku.updated||0}. Password tidak diubah.`,'ok');
+  }catch(e){r.innerHTML=msg(errorText(e));}
+};
 
 document.addEventListener('submit',e=>{if(e.target.id==='loginForm')doLogin(e);});
 window.addEventListener('DOMContentLoaded',restoreSession);
@@ -10312,5 +10331,313 @@ body.theme-sekolah .v221-book-summary{background:#F7F8FE}
 }
 </style>
 
+
+
+<style id="v231ProfessionalRoleTheme">
+/* ========================================================================== 
+   V23.1 — PROFESSIONAL ROLE THEME
+   Prinsip visual: clean banking UI, putih dominan, hierarchy jelas,
+   whitespace lega, border halus, dan warna role sebagai aksen.
+   Asset resmi SIMPEL SPJ tetap dipertahankan.
+   ========================================================================== */
+:root{
+  --app-bg:#f4f7fb;
+  --app-surface:#ffffff;
+  --app-surface-soft:#f8fafc;
+  --app-text:#17324d;
+  --app-muted:#6b7f93;
+  --app-border:#dde6ef;
+  --app-border-strong:#cbd8e5;
+  --app-shadow:0 7px 24px rgba(26,61,92,.07);
+  --app-shadow-hover:0 12px 30px rgba(26,61,92,.11);
+  --app-radius:14px;
+  --app-radius-sm:10px;
+
+  /* Default / public login */
+  --role-primary:#0066b3;
+  --role-primary-2:#004f91;
+  --role-accent:#00a2e9;
+  --role-soft:#eaf4fb;
+  --role-soft-2:#f4f9fd;
+  --role-border:#cfe3f2;
+  --role-on-primary:#ffffff;
+}
+
+/* DINAS — corporate blue */
+body.theme-dinas{
+  --role-primary:#0066b3;
+  --role-primary-2:#00518f;
+  --role-accent:#00a2e9;
+  --role-soft:#eaf4fb;
+  --role-soft-2:#f5faff;
+  --role-border:#c9e0f1;
+}
+/* PENGAWAS — teal */
+body.theme-pengawas{
+  --role-primary:#007b83;
+  --role-primary-2:#00636a;
+  --role-accent:#16a6ad;
+  --role-soft:#e9f7f7;
+  --role-soft-2:#f4fbfb;
+  --role-border:#c8e5e6;
+}
+/* SEKOLAH — green-blue */
+body.theme-sekolah{
+  --role-primary:#16745f;
+  --role-primary-2:#0e5b4a;
+  --role-accent:#26a27f;
+  --role-soft:#ebf7f2;
+  --role-soft-2:#f5fbf8;
+  --role-border:#cbe5db;
+}
+
+html,body{
+  background:var(--app-bg)!important;
+  color:var(--app-text)!important;
+  font-family:Inter,Manrope,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif!important;
+}
+body:before{display:none!important}
+
+/* ---------- LOGIN / REGISTER ---------- */
+.v219-auth-page,.v219-register-page,.auth{
+  background:#fff!important;
+}
+.v219-auth-photo,.v219-register-photo,.auth-side{
+  background-image:
+    linear-gradient(135deg,rgba(0,65,115,.91),rgba(0,111,162,.72)),
+    url('https://raw.githubusercontent.com/DikporaRembang/simpelspj/main/kantordindikpora.jpeg')!important;
+  background-position:center!important;
+  background-size:cover!important;
+}
+.v219-auth-card,.v219-register-card,.auth-card{
+  border:1px solid #e1e9f1!important;
+  border-radius:18px!important;
+  box-shadow:0 18px 52px rgba(18,58,91,.10)!important;
+  background:#fff!important;
+}
+.v219-auth-head h2,.v219-register-head h2,.auth-card h2{color:#153b5a!important}
+.v219-auth-brand strong,.v219-auth-intro h1,.v219-register-intro h1{letter-spacing:-.025em!important}
+
+/* ---------- APP SHELL ---------- */
+.topbar{
+  min-height:68px!important;
+  background:rgba(255,255,255,.98)!important;
+  border-bottom:1px solid var(--app-border)!important;
+  box-shadow:0 2px 12px rgba(20,54,84,.045)!important;
+  backdrop-filter:blur(14px)!important;
+}
+.topbar .brand h2,.brand-title,.brand-gold-title{
+  color:var(--role-primary)!important;
+  font-weight:800!important;
+  letter-spacing:-.025em!important;
+}
+.topbar .brand small,.brand-subtitle{color:var(--app-muted)!important}
+.app-logo{
+  background:#fff!important;
+  border:1px solid #e2eaf1!important;
+  box-shadow:0 4px 14px rgba(18,58,91,.08)!important;
+}
+
+.layout{background:var(--app-bg)!important}
+.sidebar{
+  background:linear-gradient(180deg,var(--role-primary-2) 0%,var(--role-primary) 100%)!important;
+  border-right:0!important;
+  box-shadow:6px 0 24px rgba(17,57,87,.08)!important;
+}
+.sidebar .nav-section-title{
+  color:rgba(255,255,255,.62)!important;
+  font-size:.64rem!important;
+  letter-spacing:.12em!important;
+}
+.nav-btn,.nav-group-toggle{
+  color:rgba(255,255,255,.87)!important;
+  border-radius:9px!important;
+  font-weight:650!important;
+}
+.nav-btn:hover,.nav-group-toggle:hover{
+  background:rgba(255,255,255,.10)!important;
+  color:#fff!important;
+  transform:none!important;
+}
+.nav-btn.active{
+  background:#fff!important;
+  color:var(--role-primary-2)!important;
+  box-shadow:0 5px 18px rgba(0,0,0,.11)!important;
+}
+.nav-submenu .nav-btn{color:rgba(255,255,255,.78)!important}
+.nav-submenu .nav-btn.active{color:var(--role-primary-2)!important}
+.sidebar-footer{border-top:1px solid rgba(255,255,255,.14)!important}
+
+.content{
+  max-width:1540px!important;
+  padding:26px clamp(18px,3vw,38px) 44px!important;
+}
+.page-head h1{
+  color:#17324d!important;
+  font-size:clamp(1.4rem,2vw,1.85rem)!important;
+  font-weight:800!important;
+  letter-spacing:-.035em!important;
+}
+.muted{color:var(--app-muted)!important}
+
+/* ---------- SURFACES ---------- */
+.panel,.stat,.v11-focus,.v11-stat,.school-summary-card,.school-directory-card,
+.assignment-group,.assessment-guide-card,.ux-workcard,.ux-todo-card{
+  background:var(--app-surface)!important;
+  border:1px solid var(--app-border)!important;
+  border-radius:var(--app-radius)!important;
+  box-shadow:var(--app-shadow)!important;
+}
+.panel:hover,.stat:hover,.school-directory-card:hover{
+  box-shadow:var(--app-shadow-hover)!important;
+  border-color:var(--role-border)!important;
+}
+.stat:after{background:var(--role-soft)!important}
+.stat strong,.school-summary-card strong,.assignment-total,.assignment-pagu{
+  color:var(--role-primary)!important;
+}
+.section-title{color:#17324d!important}
+
+/* ---------- BUTTONS ---------- */
+.btn{
+  border-radius:9px!important;
+  min-height:40px!important;
+  font-weight:700!important;
+  letter-spacing:0!important;
+  box-shadow:none!important;
+}
+.btn-primary{
+  background:var(--role-primary)!important;
+  border:1px solid var(--role-primary)!important;
+  color:#fff!important;
+}
+.btn-primary:hover{
+  background:var(--role-primary-2)!important;
+  border-color:var(--role-primary-2)!important;
+  filter:none!important;
+  box-shadow:0 6px 16px color-mix(in srgb,var(--role-primary) 18%,transparent)!important;
+}
+.btn-secondary{
+  background:var(--role-soft)!important;
+  color:var(--role-primary-2)!important;
+  border:1px solid var(--role-border)!important;
+}
+.btn-light{
+  background:#fff!important;
+  color:#37536b!important;
+  border:1px solid var(--app-border-strong)!important;
+}
+.btn-light:hover{background:#f7fafc!important;border-color:var(--role-border)!important;color:var(--role-primary)!important}
+
+/* ---------- INPUTS / SEARCH ---------- */
+.field input,.field select,.field textarea,
+.toolbar input,.toolbar select,.search-box input{
+  border:1px solid var(--app-border-strong)!important;
+  border-radius:9px!important;
+  background:#fff!important;
+  color:var(--app-text)!important;
+  box-shadow:none!important;
+}
+.field input:focus,.field select:focus,.field textarea:focus,
+.toolbar input:focus,.toolbar select:focus{
+  border-color:var(--role-primary)!important;
+  box-shadow:0 0 0 3px color-mix(in srgb,var(--role-primary) 12%,transparent)!important;
+}
+.top-search-wrap{
+  background:#f7f9fb!important;
+  border:1px solid var(--app-border)!important;
+  border-radius:10px!important;
+}
+.top-search-wrap:focus-within{
+  background:#fff!important;
+  border-color:var(--role-primary)!important;
+  box-shadow:0 0 0 3px color-mix(in srgb,var(--role-primary) 10%,transparent)!important;
+}
+.search-results{
+  border:1px solid var(--app-border)!important;
+  border-radius:12px!important;
+  box-shadow:0 18px 46px rgba(21,55,83,.13)!important;
+}
+.search-result:hover{background:var(--role-soft-2)!important}
+.search-result-icon{background:var(--role-soft)!important;color:var(--role-primary)!important}
+
+/* ---------- TABLES ---------- */
+.table-wrap{
+  border:1px solid var(--app-border)!important;
+  border-radius:11px!important;
+  box-shadow:none!important;
+  background:#fff!important;
+}
+.friendly-table{background:#fff!important}
+.friendly-table th{
+  background:#f4f7fa!important;
+  color:#405a70!important;
+  border-bottom:1px solid var(--app-border)!important;
+  font-size:.73rem!important;
+  font-weight:800!important;
+}
+.friendly-table td{
+  background:#fff!important;
+  border-bottom:1px solid #edf1f5!important;
+  color:#324d63!important;
+}
+.friendly-table tbody tr:hover td{background:var(--role-soft-2)!important}
+
+/* ---------- STATUS / BADGES ---------- */
+.badge,.status-badge{
+  border-radius:999px!important;
+  font-weight:750!important;
+  box-shadow:none!important;
+}
+.badge-info{background:#eef6fc!important;color:#176da4!important;border-color:#d2e6f3!important}
+.badge-success{background:#edf8f3!important;color:#137152!important;border-color:#cce7dc!important}
+.badge-warning{background:#fff8e8!important;color:#986511!important;border-color:#f0dfb8!important}
+.badge-danger{background:#fff1f0!important;color:#ad352d!important;border-color:#efcbc8!important}
+
+/* ---------- CONTEXT / FLOW ---------- */
+.ux-context,.school-next-action,.status-hero,.assignment-group-head,
+.tutorial-feed,.v225-home-next{
+  background:var(--role-soft-2)!important;
+  border-color:var(--role-border)!important;
+}
+.ux-context-mark,.assignment-group-icon{
+  background:var(--role-primary)!important;
+  color:#fff!important;
+}
+.status-progress>span,.school-progress-track>span{background:var(--role-primary)!important}
+.tutorial-step.current{background:var(--role-primary)!important;color:#fff!important}
+.tutorial-step{background:var(--role-soft)!important;color:var(--role-primary-2)!important}
+
+/* ---------- HERO: tetap menggunakan kantor Dindikpora ---------- */
+.v11-hero,.ux-hero,.v211-office-hero{
+  border-radius:20px!important;
+  box-shadow:0 14px 34px rgba(18,58,91,.12)!important;
+}
+.v11-hero{
+  background-image:
+    linear-gradient(90deg,color-mix(in srgb,var(--role-primary-2) 93%,transparent) 0%,color-mix(in srgb,var(--role-primary) 74%,transparent) 45%,rgba(7,38,61,.20) 100%),
+    url('https://raw.githubusercontent.com/DikporaRembang/simpelspj/main/kantordindikpora.jpeg')!important;
+}
+.v11-hero:before{background:transparent!important}
+.v11-kicker,.ux-hero-kicker{background:rgba(255,255,255,.14)!important;border-color:rgba(255,255,255,.24)!important;color:#fff!important}
+
+/* ---------- MODALS / TOAST ---------- */
+#modalNaOverlay>div>div,#modalUploadOverlay>div>div,#trxModal>div>div,#excelModal>div>div,
+.v16-modal-card{
+  border:1px solid var(--app-border)!important;
+  border-radius:16px!important;
+  box-shadow:0 24px 72px rgba(18,58,91,.18)!important;
+}
+.toast{background:#173b57!important;border-radius:10px!important}
+.toast.ok{background:#16745f!important}.toast.error{background:#a83e36!important}.toast.warning{background:#9b6a18!important}
+
+/* ---------- ACCESSIBILITY / RESPONSIVE ---------- */
+:focus-visible{outline:3px solid color-mix(in srgb,var(--role-primary) 25%,transparent)!important;outline-offset:2px}
+@media(max-width:760px){
+  .content{padding:16px 12px 30px!important}
+  .panel{border-radius:12px!important}
+  .sidebar{box-shadow:14px 0 40px rgba(17,57,87,.16)!important}
+}
+</style>
 </body>
 </html>
