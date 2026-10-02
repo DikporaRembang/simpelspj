@@ -1,9 +1,10 @@
 <!-- SIMPEL SPJ V9 FRONTEND: login mechanism intentionally preserved unchanged. -->
-<!doctype html>
+<!DOCTYPE html>
+
 <html lang="id">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta charset="utf-8"/>
+<meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"/>
 <title>SIMPEL SPJ — Kabupaten Rembang</title>
 <!-- SheetJS untuk membaca file Excel BKU secara lokal -->
 <script>
@@ -785,12 +786,10 @@ body{background:linear-gradient(180deg,#fbfaf6 0,#f4f2eb 100%)!important;color:v
 }
 
 </style>
-
 <style>
 /* V16 visual layer */
 .v16-breadcrumb{display:flex;align-items:center;gap:8px;margin:0 0 12px;color:#718078;font-size:.72rem;font-weight:700}.v16-back{border:0;background:#fff;border:1px solid #dfe7e2;color:#245744;border-radius:999px;padding:7px 11px;font:inherit;cursor:pointer;box-shadow:0 3px 10px rgba(20,50,38,.05)}.v16-back:hover{background:#f2f7f4}.v16-school-home{max-width:1080px;margin:0 auto;display:grid;gap:14px}.v16-hero{border-radius:24px;padding:25px 27px;display:flex;justify-content:space-between;gap:20px;align-items:flex-end;background:linear-gradient(135deg,#173d30 0%,#246b52 62%,#d2b76b 160%);color:#fff;box-shadow:0 18px 45px rgba(23,61,48,.16)}.v16-kicker,.v16-period small,.v16-next small,.v16-progress small{font-size:.63rem;letter-spacing:.12em;font-weight:900;opacity:.82}.v16-hero h1{margin:7px 0 6px;font-size:clamp(1.65rem,4vw,2.45rem);letter-spacing:-.04em}.v16-hero p{margin:0;max-width:620px;color:#e1eee8;line-height:1.55;font-size:.82rem}.v16-school-id{display:flex;gap:10px;align-items:center;min-width:230px;padding:12px 14px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.1);border-radius:15px}.v16-school-id>span{width:36px;height:36px;border-radius:11px;background:#fff;display:grid;place-items:center}.v16-school-id b,.v16-school-id small{display:block}.v16-school-id b{font-size:.76rem}.v16-school-id small{font-size:.65rem;color:#d8e7df;margin-top:2px}.v16-period{display:flex;justify-content:space-between;align-items:center;padding:13px 15px;background:#fff;border:1px solid #e0e7e3;border-radius:16px;box-shadow:0 7px 22px rgba(30,55,44,.05)}.v16-period strong{display:block;margin-top:3px;color:#234f3e;font-size:.92rem}.v16-next{display:flex;justify-content:space-between;align-items:center;gap:15px;padding:19px 20px;border-radius:19px;background:#f5faf7;border:1px solid #d7e7de}.v16-next.danger{background:#fff7f5;border-color:#f0cfca}.v16-next h2{margin:5px 0 4px;color:#244e3e;font-size:1.05rem}.v16-next p{margin:0;color:#6b7c74;font-size:.73rem}.v16-progress{padding:17px 19px;background:#fff;border:1px solid #e0e7e3;border-radius:17px}.v16-progress-head{display:flex;justify-content:space-between;align-items:flex-end;gap:12px}.v16-progress-head strong{display:block;font-size:1.45rem;color:#2e7659;margin-top:3px}.v16-progress-head>span{font-size:.68rem;color:#75847d}.v16-track{height:9px;background:#e8efeb;border-radius:999px;margin-top:9px;overflow:hidden}.v16-track i{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,#2e7659,#c8a95b)}.v16-steps{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.v16-steps button{display:flex;align-items:center;gap:10px;text-align:left;padding:14px;border:1px solid #e0e7e3;background:#fff;border-radius:16px;cursor:pointer;box-shadow:0 6px 18px rgba(30,55,44,.04)}.v16-steps button>span{width:30px;height:30px;border-radius:10px;background:#eef6f1;color:#28684f;display:grid;place-items:center;font-weight:900;font-size:.72rem}.v16-steps div{flex:1}.v16-steps b,.v16-steps small{display:block}.v16-steps b{font-size:.76rem;color:#25483a}.v16-steps small{font-size:.64rem;color:#78857f;margin-top:2px}.v16-steps em{font-style:normal;color:#2e7659;font-weight:900}.v16-tip{padding:12px 14px;border-radius:14px;background:#213f34;color:#e7f0eb;font-size:.7rem;line-height:1.5}.v16-modal{position:fixed;inset:0;background:rgba(17,39,31,.45);display:flex;align-items:center;justify-content:center;padding:16px;z-index:10050}.v16-modal-card{width:min(100%,430px);max-height:80vh;overflow:auto;background:#fff;border-radius:20px;padding:18px;box-shadow:0 24px 70px rgba(0,0,0,.22)}.v16-modal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}.v16-modal-head small{font-size:.62rem;color:#6f8178;font-weight:900;letter-spacing:.1em}.v16-modal-head h3{margin:4px 0 0}.v16-close{border:0;background:#f1f4f2;border-radius:50%;width:30px;height:30px;font-size:20px;cursor:pointer}.v16-period-choice{width:100%;display:block;text-align:left;border:1px solid #dfe7e2;background:#fff;border-radius:12px;padding:12px;margin-top:7px;cursor:pointer}.v16-period-choice.active{border-color:#2e7659;background:#eff7f2}.v16-period-choice b,.v16-period-choice small{display:block}.v16-period-choice small{font-size:.66rem;color:#7a8781;margin-top:2px}@media(max-width:760px){.v16-hero{padding:20px;display:grid;align-items:start}.v16-school-id{min-width:0}.v16-next{align-items:stretch;flex-direction:column}.v16-next .btn{width:100%}.v16-steps{grid-template-columns:1fr}.v16-period{align-items:stretch;gap:10px;flex-direction:column}.v16-period .btn{width:100%}.v16-progress-head{align-items:flex-start;flex-direction:column;gap:2px}}
 </style>
-
 <style id="v20BkuWorkbenchStyles">
 .v20-bku-workbench{display:flex;flex-direction:column;gap:14px;margin-bottom:4px}
 .v20-flowline{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:12px 14px;border:1px solid var(--border);border-radius:14px;background:#fff;font-size:.78rem;font-weight:800;color:var(--muted)}
@@ -807,7 +806,7 @@ body{background:linear-gradient(180deg,#fbfaf6 0,#f4f2eb 100%)!important;color:v
 </style>
 </head>
 <body>
-<div id="app" class="app"></div>
+<div class="app" id="app"></div>
 <script>
 'use strict';
 
@@ -1453,19 +1452,23 @@ function showWelcomeAnimation(){
     const old = document.querySelector('.welcome-overlay');
     if(old) old.remove();
 
+    const currentRole = String(state?.user?.role || 'SEKOLAH').toUpperCase();
+    const roleClass = currentRole === 'DINAS' ? 'welcome-dinas' : currentRole === 'PENGAWAS' ? 'welcome-pengawas' : 'welcome-sekolah';
+    const roleLabel = currentRole === 'DINAS' ? 'DINAS' : currentRole === 'PENGAWAS' ? 'PENGAWAS' : 'SEKOLAH';
+    const displayName = state?.user?.nama_pengguna || state?.user?.nama || state?.user?.username || '';
+
     const overlay = document.createElement('div');
-    overlay.className = 'welcome-overlay';
+    overlay.className = `welcome-overlay ${roleClass}`;
     overlay.style.opacity = '1';
     overlay.style.animation = 'none';
     overlay.innerHTML = `
-      <img src="bidangsd.png" class="welcome-logo-lg" alt="Logo">
-      <h1 class="welcome-title-anim">SELAMAT DATANG CEO SD</h1>
-      <div class="welcome-subtitle-anim">Pemeriksaan & Pertanggungjawaban SPJ Terintegrasi</div>
+      <img src="bidangsd.png" class="welcome-logo-lg" alt="Logo Bidang SD">
+      <div class="welcome-role-chip">${esc(roleLabel)}</div>
+      <h1 class="welcome-title-anim">SELAMAT DATANG ${esc(roleLabel)}</h1>
+      <div class="welcome-subtitle-anim">${displayName ? esc(displayName)+' • ' : ''}Pemeriksaan & Pertanggungjawaban SPJ Terintegrasi</div>
     `;
     document.body.appendChild(overlay);
 
-    // Login tertutup penuh oleh overlay. Setelah dashboard selesai dibangun,
-    // baru overlay menghilang secara halus sehingga perpindahannya terasa satu tahap.
     setTimeout(() => {
       overlay.style.transition = 'opacity .65s cubic-bezier(.16,1,.3,1)';
       overlay.style.opacity = '0';
@@ -4577,26 +4580,56 @@ async function penugasanView() {
   if(!c) return;
 
   if (isPengawas()) {
-    c.innerHTML = head('Sekolah Binaan Saya', 'Pilih sekolah binaan untuk langsung melakukan audit') + 
-                  `<div class="toolbar"><input id="searchBinaanInput" placeholder="🔍 Cari Sekolah Binaan..." style="max-width:320px"></div>
-                   <div id="binaanArea" style="margin-top:16px">${loading()}</div>`;
-    try {
-      const res = await api('getPenugasanPengawas'); 
-      const list = res.data || [];
-      window._cachedBinaan = list; 
-      renderBinaanCards(list);
-      
-      const searchInput = $('#searchBinaanInput');
-      if(searchInput) {
-        searchInput.oninput = e => {
-          const q = e.target.value.toLowerCase();
-          renderBinaanCards(window._cachedBinaan.filter(x => String(x.npsn).toLowerCase().includes(q) || String(x.nama_sekolah||'').toLowerCase().includes(q)));
-        };
-      }
-    } catch(e) { 
-      const binArea = $('#binaanArea');
-      if(binArea) binArea.innerHTML = msg(errorText(e)); 
+    const periods = await periodeSelect('readinessPeriod', true, 'bulan');
+    c.innerHTML = head('Antrian Pemeriksaan Sekolah Binaan', 'Lihat dengan cepat sekolah yang siap dinilai, belum lengkap, sedang diperiksa, atau perlu tindak lanjut') + `
+      <div class="v234-readiness-shell">
+        <section class="v234-readiness-hero">
+          <div>
+            <span class="v234-eyebrow">RUANG KERJA PENGAWAS</span>
+            <h2>Sekolah mana yang siap dinilai?</h2>
+            <p>Sistem memeriksa BKU aktif, kelengkapan komponen SPJ, perbaikan, dan status asesmen secara otomatis.</p>
+          </div>
+          <div class="v234-period-box">
+            <label>Periode Penilaian</label>
+            ${periods}
+          </div>
+        </section>
+
+        <section id="readinessSummary" class="v234-readiness-summary">
+          ${loading('Menghitung kesiapan sekolah binaan...')}
+        </section>
+
+        <section class="v234-readiness-toolbar">
+          <div class="v234-filter-tabs" id="readinessFilterTabs">
+            <button class="v234-filter active" data-filter="ALL" onclick="setPengawasReadinessFilter('ALL',this)">Semua</button>
+            <button class="v234-filter" data-filter="SIAP_DINILAI" onclick="setPengawasReadinessFilter('SIAP_DINILAI',this)">Siap Dinilai</button>
+            <button class="v234-filter" data-filter="BELUM_SIAP" onclick="setPengawasReadinessFilter('BELUM_SIAP',this)">Belum Siap</button>
+            <button class="v234-filter" data-filter="SEDANG_DINILAI" onclick="setPengawasReadinessFilter('SEDANG_DINILAI',this)">Sedang Dinilai</button>
+            <button class="v234-filter" data-filter="PERLU_PERBAIKAN" onclick="setPengawasReadinessFilter('PERLU_PERBAIKAN',this)">Perlu Perbaikan</button>
+            <button class="v234-filter" data-filter="KAJI_ULANG" onclick="setPengawasReadinessFilter('KAJI_ULANG',this)">Kaji Ulang</button>
+            <button class="v234-filter" data-filter="SELESAI" onclick="setPengawasReadinessFilter('SELESAI',this)">Selesai</button>
+          </div>
+          <input id="searchBinaanInput" placeholder="🔍 Cari sekolah / NPSN / kecamatan..." autocomplete="off">
+        </section>
+
+        <section id="binaanArea" class="v234-readiness-grid">${loading()}</section>
+      </div>`;
+
+    const periodSelect = $('#readinessPeriod');
+    if (periodSelect) {
+      if (state.selectedPeriode) periodSelect.value = state.selectedPeriode;
+      if (!periodSelect.value && periodSelect.options.length > 1) periodSelect.selectedIndex = 1;
+      state.selectedPeriode = periodSelect.value || state.selectedPeriode || '';
+      periodSelect.onchange = async () => {
+        state.selectedPeriode = periodSelect.value;
+        await loadPengawasReadiness();
+      };
     }
+
+    const searchInput = $('#searchBinaanInput');
+    if (searchInput) searchInput.oninput = () => renderPengawasReadinessCards();
+
+    await loadPengawasReadiness();
     return;
   }
 
@@ -4691,43 +4724,127 @@ async function penugasanView() {
   }
 }
 
-// renderBinaanCards dipertahankan satu definisi saja untuk mencegah override diam-diam.
-function renderBinaanCards(list) {
-  const area = $('#binaanArea');
-  if (!area) return;
-  
-  if (!list || list.length === 0) {
-    area.innerHTML = msg('Belum ada sekolah binaan yang ditugaskan kepada Anda di sistem. Silakan hubungi Dinas.', 'warning');
+// V23.4 — Readiness Dashboard Pengawas
+window._pengawasReadinessRows = window._pengawasReadinessRows || [];
+window._pengawasReadinessSummary = window._pengawasReadinessSummary || {};
+window._pengawasReadinessFilter = window._pengawasReadinessFilter || 'ALL';
+
+function readinessMeta_(status){
+  const map={
+    SIAP_DINILAI:{label:'SIAP DINILAI',icon:'✓',cls:'ready'},
+    BELUM_SIAP:{label:'BELUM SIAP',icon:'!',cls:'waiting'},
+    SEDANG_DINILAI:{label:'SEDANG DINILAI',icon:'▶',cls:'checking'},
+    PERLU_PERBAIKAN:{label:'PERLU PERBAIKAN',icon:'↻',cls:'repair'},
+    KAJI_ULANG:{label:'KAJI ULANG',icon:'↺',cls:'appeal'},
+    SELESAI:{label:'SELESAI DINILAI',icon:'✓',cls:'done'}
+  };
+  return map[String(status||'BELUM_SIAP').toUpperCase()]||map.BELUM_SIAP;
+}
+
+window.loadPengawasReadiness=async function(){
+  const area=$('#binaanArea'),summary=$('#readinessSummary');
+  const p=$('#readinessPeriod')?.value||state.selectedPeriode||'';
+  if(!p){
+    if(summary)summary.innerHTML=msg('Pilih periode penilaian terlebih dahulu.','warning');
+    if(area)area.innerHTML='';
+    return;
+  }
+  state.selectedPeriode=p;
+  if(summary)summary.innerHTML=loading('Menghitung kesiapan sekolah binaan...');
+  if(area)area.innerHTML=loading('Memeriksa BKU, bukti SPJ, dan status penilaian...');
+  try{
+    const r=await api('getKesiapanSekolahBinaan',{idPeriode:p});
+    window._pengawasReadinessRows=Array.isArray(r.data)?r.data:[];
+    window._pengawasReadinessSummary=r.summary||{};
+    renderPengawasReadinessSummary();
+    renderPengawasReadinessCards();
+  }catch(e){
+    if(summary)summary.innerHTML=msg(errorText(e),'error');
+    if(area)area.innerHTML='';
+  }
+};
+
+window.renderPengawasReadinessSummary=function(){
+  const host=$('#readinessSummary');if(!host)return;
+  const s=window._pengawasReadinessSummary||{};
+  const cards=[
+    ['SIAP DINILAI',s.SIAP_DINILAI||0,'ready','Mulai pemeriksaan sekarang','SIAP_DINILAI'],
+    ['BELUM SIAP',s.BELUM_SIAP||0,'waiting','BKU/bukti belum lengkap','BELUM_SIAP'],
+    ['SEDANG DINILAI',s.SEDANG_DINILAI||0,'checking','Pemeriksaan sudah berjalan','SEDANG_DINILAI'],
+    ['PERLU PERBAIKAN',s.PERLU_PERBAIKAN||0,'repair','Menunggu perbaikan bukti','PERLU_PERBAIKAN'],
+    ['KAJI ULANG',s.KAJI_ULANG||0,'appeal','Keberatan perlu ditindaklanjuti','KAJI_ULANG'],
+    ['SELESAI',s.SELESAI||0,'done','Penilaian telah final','SELESAI']
+  ];
+  host.innerHTML=cards.map(x=>`<button class="v234-summary-card ${x[2]}" onclick="setPengawasReadinessFilter('${x[4]}')"><small>${x[0]}</small><strong>${fmtNum(x[1])}</strong><span>${x[3]}</span></button>`).join('');
+};
+
+window.setPengawasReadinessFilter=function(filter){
+  window._pengawasReadinessFilter=filter||'ALL';
+  document.querySelectorAll('#readinessFilterTabs .v234-filter').forEach(x=>x.classList.toggle('active',x.dataset.filter===window._pengawasReadinessFilter));
+  renderPengawasReadinessCards();
+};
+
+window.renderPengawasReadinessCards=function(){
+  const area=$('#binaanArea');if(!area)return;
+  const filter=window._pengawasReadinessFilter||'ALL';
+  const q=String($('#searchBinaanInput')?.value||'').trim().toLowerCase();
+  const rows=(window._pengawasReadinessRows||[]).filter(x=>{
+    if(filter!=='ALL'&&String(x.readiness)!==filter)return false;
+    if(!q)return true;
+    return [x.npsn,x.nama_sekolah,x.kecamatan].some(v=>String(v||'').toLowerCase().includes(q));
+  });
+
+  if(!rows.length){
+    area.innerHTML=msg(filter==='SIAP_DINILAI'?'Belum ada sekolah binaan yang memenuhi seluruh syarat SIAP DINILAI pada periode ini.':'Tidak ada sekolah yang sesuai filter.','warning');
     return;
   }
 
-  // OPTIMASI: Menggunakan .map().join('') agar kartu binaan dirangkai sekali jalan di memori
-  const cardsHtml = list.map(x => {
-    const npsnVal = esc(x.npsn || x.NPSN || '');
-    const namaSekolahVal = esc(x.nama_sekolah || x.nama || 'Sekolah Binaan');
-    const kecamatanVal = esc(x.kecamatan || '-');
+  area.innerHTML=rows.map(x=>{
+    const m=readinessMeta_(x.readiness);
+    const reasons=(x.alasan_belum_siap||[]).slice(0,3);
+    let actionLabel='Lihat Pemeriksaan',target='pdfInteraktif';
+    if(x.readiness==='SIAP_DINILAI'){actionLabel='Mulai Penilaian →';target='pdfInteraktif';}
+    else if(x.readiness==='SEDANG_DINILAI'){actionLabel='Lanjutkan Pemeriksaan →';target='pdfInteraktif';}
+    else if(x.readiness==='KAJI_ULANG'){actionLabel='Buka Kaji Ulang →';target='kesepakatan';}
+    else if(x.readiness==='SELESAI'){actionLabel='Lihat Hasil →';target='arsipPenilaianV5';}
+    else if(x.readiness==='PERLU_PERBAIKAN'){actionLabel='Lihat Bukti/Perbaikan →';target='pdfInteraktif';}
+    else {actionLabel='Lihat Kekurangan →';target='pdfInteraktif';}
 
-    return `
-      <div class="panel" style="margin-top:12px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;">
-        <div>
-          <h3 style="margin:0 0 4px; color:var(--primary); font-size:1.1rem;">${namaSekolahVal}</h3>
-          <p class="muted" style="margin:0">NPSN: <b>${npsnVal}</b> | Kecamatan: ${kecamatanVal}</p>
-        </div>
-        <div>
-          <button class="btn btn-sm btn-primary" onclick="pilihSekolahBinaan('${npsnVal}')">
-            Pilih Sekolah Ini
-          </button>
-        </div>
-      </div>`;
+    return `<article class="v234-school-card ${m.cls}">
+      <div class="v234-school-status"><span>${m.icon}</span>${m.label}</div>
+      <div class="v234-school-head">
+        <div><h3>${esc(x.nama_sekolah||'Sekolah Binaan')}</h3><p>NPSN <b>${esc(x.npsn||'-')}</b> · ${esc(x.kecamatan||'-')}</p></div>
+        ${x.nilai_akhir!==''&&x.nilai_akhir!=null?`<div class="v234-score"><small>Nilai</small><strong>${esc(x.nilai_akhir)}</strong></div>`:''}
+      </div>
+      <div class="v234-school-metrics">
+        <div><small>Excel BKU</small><b class="${x.bku_ready?'ok':'no'}">${x.bku_ready?'AKTIF ✓':'BELUM'}</b><span>${x.bku_ready?fmtNum(x.total_transaksi||0)+' transaksi':'Belum ada snapshot aktif'}</span></div>
+        <div><small>Bukti SPJ</small><b>${fmtNum(x.spj_lengkap||0)}/${fmtNum(x.spj_wajib||0)}</b><span>${x.spj_na?fmtNum(x.spj_na)+' N/A':''}</span></div>
+        <div><small>Perbaikan</small><b class="${Number(x.perlu_perbaikan||0)?'warn':'ok'}">${fmtNum(x.perlu_perbaikan||0)}</b><span>${Number(x.perlu_perbaikan||0)?'perlu ditindaklanjuti':'tidak ada'}</span></div>
+        <div><small>Asesmen</small><b>${esc(x.status_asesmen||'BELUM DIMULAI')}</b><span>${x.id_asesmen?esc(x.id_asesmen):'belum dibuat'}</span></div>
+      </div>
+      ${reasons.length&&x.readiness==='BELUM_SIAP'?`<div class="v234-reasons"><b>Belum siap karena:</b>${reasons.map(r=>`<span>• ${esc(r)}</span>`).join('')}${(x.alasan_belum_siap||[]).length>3?`<small>+${(x.alasan_belum_siap||[]).length-3} lainnya</small>`:''}</div>`:''}
+      <div class="v234-school-actions">
+        <button class="btn btn-primary" onclick="openPengawasReadinessSchool('${esc(x.npsn)}','${target}')">${actionLabel}</button>
+      </div>
+    </article>`;
   }).join('');
+};
 
-  area.innerHTML = cardsHtml;
+window.openPengawasReadinessSchool=function(npsn,target){
+  state.selectedNpsn=String(npsn||'');
+  state.selectedPeriode=$('#readinessPeriod')?.value||state.selectedPeriode||'';
+  toast(`Sekolah ${state.selectedNpsn} dipilih.`, 'ok');
+  loadView(target||'pdfInteraktif');
+};
+
+// Kompatibilitas pemanggilan lama.
+function renderBinaanCards(list) {
+  window._pengawasReadinessRows=Array.isArray(list)?list:[];
+  renderPengawasReadinessCards();
 }
 
 window.pilihSekolahBinaan = function(npsn) {
-  state.selectedNpsn = npsn;
-  toast(`Sekolah binaan dengan NPSN ${npsn} dipilih.`, 'ok');
-  loadView('crosscheck');
+  openPengawasReadinessSchool(npsn,'pdfInteraktif');
 };
 
 function renderPenugasanTable(list){
@@ -6974,7 +7091,6 @@ window.exportGlobalMonExcel = async function(){
 };
 
 </script>
-
 <script>
 /* ============================================================================
  * SIMPEL SPJ V5 — TUTORIAL FEED + PAKET ARSIP PENILAIAN
@@ -7789,12 +7905,343 @@ body[data-role] .topbar i{
 </style>
 
 </head><body>${kop}${body}<script>window.onload=()=>setTimeout(()=>window.print(),350)<\/script>
+
+<style id="v236HomeTypographyAndSteps">
+body[data-role] .v225-home-hero .v225-home-copy{max-width:780px!important;padding:34px 36px!important;color:#fff!important}
+body[data-role] .v225-home-hero .v225-home-copy small{color:#fff!important;font-size:.66rem!important;font-weight:800!important;letter-spacing:.075em!important;background:rgba(255,255,255,.14)!important;border:1px solid rgba(255,255,255,.34)!important;box-shadow:0 4px 14px rgba(0,0,0,.08)!important}
+body[data-role] .v225-home-hero .v225-home-copy h1{color:#fff!important;-webkit-text-fill-color:#fff!important;margin:16px 0 12px!important;max-width:720px!important;font-family:Manrope,Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Arial,sans-serif!important;font-size:clamp(2rem,3.2vw,3rem)!important;line-height:1.08!important;letter-spacing:-.035em!important;font-weight:800!important;text-shadow:0 3px 18px rgba(0,0,0,.28)!important}
+body[data-role] .v225-home-hero .v225-home-copy p{color:rgba(255,255,255,.94)!important;opacity:1!important;margin:0!important;max-width:700px!important;font-size:.98rem!important;line-height:1.68!important;font-weight:500!important;text-shadow:0 2px 12px rgba(0,0,0,.30)!important}
+body.theme-dinas .v225-home-hero::after{background:linear-gradient(90deg,rgba(0,48,102,.95) 0%,rgba(0,87,184,.80) 52%,rgba(0,31,66,.28) 100%)!important}
+body.theme-pengawas .v225-home-hero::after{background:linear-gradient(90deg,rgba(79,15,36,.96) 0%,rgba(171,40,78,.81) 52%,rgba(55,8,24,.28) 100%)!important}
+body.theme-sekolah .v225-home-hero::after{background:linear-gradient(90deg,rgba(5,82,50,.96) 0%,rgba(20,148,91,.80) 52%,rgba(3,57,34,.26) 100%)!important}
+body[data-role] .v225-workflow-head h3{color:var(--ds-text)!important;font-size:1.08rem!important;line-height:1.25!important;font-weight:800!important;letter-spacing:-.015em!important}
+body[data-role] .v225-workflow-head p,body[data-role] .v225-home-next small,body[data-role] .v225-home-next .muted{color:var(--ds-muted)!important}
+body[data-role] .v225-home-next strong{color:var(--ds-text)!important;font-size:1rem!important;font-weight:800!important}
+body[data-role] .v225-steps{gap:12px!important}
+body[data-role] .v225-step{display:grid!important;grid-template-columns:42px minmax(0,1fr)!important;align-items:start!important;gap:12px!important;min-height:112px!important;padding:16px!important;background:#fff!important;border:1px solid var(--ds-border)!important;border-left:3px solid var(--role-primary)!important;border-radius:12px!important;box-shadow:0 3px 12px rgba(25,43,58,.045)!important;transition:transform .16s ease,border-color .16s ease,box-shadow .16s ease!important}
+body[data-role] .v225-step:hover{transform:translateY(-2px)!important;border-color:var(--role-border)!important;border-left-color:var(--role-primary)!important;box-shadow:0 9px 22px rgba(25,43,58,.09)!important}
+body[data-role] .v225-step .v225-step-num{display:inline-flex!important;align-items:center!important;justify-content:center!important;width:36px!important;min-width:36px!important;height:30px!important;padding:0!important;margin:0!important;border-radius:8px!important;background:var(--role-soft)!important;border:1px solid var(--role-border)!important;color:var(--role-primary-dark)!important;font-size:.72rem!important;line-height:1!important;font-weight:900!important;letter-spacing:.04em!important;box-shadow:none!important}
+body[data-role] .v225-step .v236-step-copy{display:block!important;min-width:0!important;color:var(--ds-text)!important}
+body[data-role] .v225-step .v236-step-copy b{display:block!important;margin:0 0 6px!important;color:var(--ds-text)!important;font-size:.91rem!important;line-height:1.3!important;font-weight:800!important;letter-spacing:-.01em!important}
+body[data-role] .v225-step .v236-step-desc{display:block!important;color:var(--ds-muted)!important;font-size:.75rem!important;line-height:1.55!important;font-weight:500!important}
+body[data-role] .v225-support{gap:8px!important}
+body[data-role] .v225-support button{min-height:38px!important;padding:0 12px!important;border-radius:9px!important;background:#fff!important;border:1px solid var(--ds-border-strong)!important;color:var(--ds-text)!important;font-size:.78rem!important;font-weight:750!important;box-shadow:none!important}
+body[data-role] .v225-support button:hover{background:var(--role-soft-2)!important;border-color:var(--role-border)!important;color:var(--role-primary-dark)!important}
+@media(max-width:760px){body[data-role] .v225-home-hero .v225-home-copy{padding:25px 22px!important}body[data-role] .v225-home-hero .v225-home-copy h1{font-size:2rem!important}body[data-role] .v225-home-hero .v225-home-copy p{font-size:.9rem!important;line-height:1.6!important}body[data-role] .v225-step{grid-template-columns:38px minmax(0,1fr)!important;padding:14px!important}body[data-role] .v225-step .v225-step-num{width:32px!important;min-width:32px!important;height:28px!important}}
+</style>
+
+
+<style id="v237ElegantRoleHomeFinal">
+/* ========================================================================
+   V23.7 — ELEGANT ROLE HOME, FINAL CASCADE LAYER
+   Deliberately placed at the very end of the document so legacy versions
+   cannot restyle the home screen after it renders.
+   ======================================================================== */
+
+body[data-role] .v225-home{
+  display:grid!important;
+  gap:18px!important;
+  max-width:1440px!important;
+  margin:0 auto!important;
+}
+
+/* ----- Premium compact hero ------------------------------------------------ */
+body[data-role] .v225-home-hero{
+  position:relative!important;
+  min-height:218px!important;
+  border-radius:22px!important;
+  overflow:hidden!important;
+  isolation:isolate!important;
+  border:1px solid rgba(255,255,255,.18)!important;
+  box-shadow:0 18px 42px rgba(20,35,52,.14)!important;
+  background:var(--role-primary-dark)!important;
+}
+body[data-role] .v225-home-hero img{
+  position:absolute!important;
+  inset:0!important;
+  width:100%!important;
+  height:100%!important;
+  object-fit:cover!important;
+  object-position:center 42%!important;
+  filter:saturate(.84) contrast(1.02)!important;
+  z-index:0!important;
+}
+body[data-role] .v225-home-hero::after{
+  content:""!important;
+  position:absolute!important;
+  inset:0!important;
+  z-index:1!important;
+  pointer-events:none!important;
+}
+body.theme-dinas .v225-home-hero::after{
+  background:linear-gradient(90deg,rgba(0,41,92,.97) 0%,rgba(0,87,184,.84) 42%,rgba(0,73,155,.49) 68%,rgba(0,30,66,.16) 100%)!important;
+}
+body.theme-pengawas .v225-home-hero::after{
+  background:linear-gradient(90deg,rgba(75,12,34,.97) 0%,rgba(159,36,72,.86) 42%,rgba(132,24,56,.50) 68%,rgba(47,7,21,.17) 100%)!important;
+}
+body.theme-sekolah .v225-home-hero::after{
+  background:linear-gradient(90deg,rgba(4,76,46,.97) 0%,rgba(17,139,84,.85) 42%,rgba(10,111,66,.49) 68%,rgba(3,50,30,.16) 100%)!important;
+}
+body[data-role] .v225-home-copy{
+  position:relative!important;
+  z-index:2!important;
+  max-width:720px!important;
+  padding:34px 38px!important;
+  color:#fff!important;
+}
+body[data-role] .v225-home-copy small{
+  display:inline-flex!important;
+  align-items:center!important;
+  min-height:28px!important;
+  padding:0 10px!important;
+  border-radius:999px!important;
+  border:1px solid rgba(255,255,255,.32)!important;
+  background:rgba(255,255,255,.12)!important;
+  color:#fff!important;
+  font-size:.64rem!important;
+  font-weight:800!important;
+  letter-spacing:.085em!important;
+  text-transform:uppercase!important;
+  backdrop-filter:blur(8px)!important;
+  box-shadow:none!important;
+}
+body[data-role] .v225-home-copy h1{
+  margin:16px 0 10px!important;
+  max-width:690px!important;
+  color:#fff!important;
+  -webkit-text-fill-color:#fff!important;
+  font-family:Inter,Manrope,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Arial,sans-serif!important;
+  font-size:clamp(1.85rem,2.5vw,2.65rem)!important;
+  line-height:1.08!important;
+  letter-spacing:-.038em!important;
+  font-weight:760!important;
+  text-shadow:0 2px 16px rgba(0,0,0,.18)!important;
+}
+body[data-role] .v225-home-copy p{
+  margin:0!important;
+  max-width:650px!important;
+  color:rgba(255,255,255,.92)!important;
+  font-size:.94rem!important;
+  line-height:1.65!important;
+  font-weight:430!important;
+  text-shadow:0 1px 10px rgba(0,0,0,.18)!important;
+}
+body[data-role] .v225-home-copy p b{color:#fff!important;font-weight:750!important}
+
+/* ----- Next action: one calm decision card -------------------------------- */
+body[data-role] .v225-home-next{
+  position:relative!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:space-between!important;
+  gap:22px!important;
+  padding:18px 20px 18px 24px!important;
+  border:1px solid #e3e9ef!important;
+  border-radius:16px!important;
+  background:#fff!important;
+  box-shadow:0 6px 20px rgba(20,35,52,.055)!important;
+  overflow:hidden!important;
+}
+body[data-role] .v225-home-next::before{
+  content:""!important;
+  position:absolute!important;
+  left:0!important;top:0!important;bottom:0!important;
+  width:4px!important;
+  background:var(--role-primary)!important;
+}
+body[data-role] .v225-home-next small{
+  display:block!important;
+  margin:0 0 5px!important;
+  color:#7b8794!important;
+  font-size:.65rem!important;
+  font-weight:800!important;
+  letter-spacing:.075em!important;
+}
+body[data-role] .v225-home-next strong{
+  display:block!important;
+  color:#172433!important;
+  font-size:1rem!important;
+  line-height:1.3!important;
+  font-weight:780!important;
+  letter-spacing:-.012em!important;
+}
+body[data-role] .v225-home-next .muted{
+  margin-top:5px!important;
+  color:#687586!important;
+  font-size:.78rem!important;
+  line-height:1.5!important;
+}
+body[data-role] .v225-home-next .btn-primary{
+  flex:0 0 auto!important;
+  min-height:42px!important;
+  padding:0 17px!important;
+  border-radius:10px!important;
+  box-shadow:none!important;
+  font-size:.78rem!important;
+  letter-spacing:0!important;
+}
+
+/* ----- Workflow: airy white surface, restrained cards --------------------- */
+body[data-role] .v225-workflow{
+  padding:22px!important;
+  background:#fff!important;
+  border:1px solid #e3e9ef!important;
+  border-radius:18px!important;
+  box-shadow:0 6px 22px rgba(20,35,52,.045)!important;
+}
+body[data-role] .v225-workflow-head{
+  margin-bottom:18px!important;
+  display:block!important;
+}
+body[data-role] .v225-workflow-head h3{
+  margin:0 0 5px!important;
+  color:#172433!important;
+  font-size:1.05rem!important;
+  line-height:1.3!important;
+  font-weight:780!important;
+  letter-spacing:-.018em!important;
+}
+body[data-role] .v225-workflow-head p{
+  margin:0!important;
+  color:#778394!important;
+  font-size:.76rem!important;
+  line-height:1.5!important;
+}
+body[data-role] .v225-steps{
+  display:grid!important;
+  grid-template-columns:repeat(var(--v225-cols,3),minmax(0,1fr))!important;
+  gap:12px!important;
+}
+body[data-role] .v225-step{
+  position:relative!important;
+  display:block!important;
+  min-height:128px!important;
+  padding:18px 18px 17px!important;
+  text-align:left!important;
+  border:1px solid #e4e9ef!important;
+  border-radius:14px!important;
+  background:#fff!important;
+  color:#172433!important;
+  box-shadow:none!important;
+  cursor:pointer!important;
+  overflow:hidden!important;
+  transition:transform .16s ease,border-color .16s ease,box-shadow .16s ease,background .16s ease!important;
+}
+body[data-role] .v225-step::before{
+  content:""!important;
+  position:absolute!important;
+  left:0!important;top:0!important;right:0!important;
+  height:3px!important;
+  background:var(--role-primary)!important;
+  opacity:.92!important;
+}
+body[data-role] .v225-step:hover{
+  transform:translateY(-2px)!important;
+  border-color:var(--role-border)!important;
+  background:var(--role-soft-2,#f8fafc)!important;
+  box-shadow:0 10px 24px rgba(20,35,52,.075)!important;
+}
+/* No circles. Step number is quiet typographic metadata. */
+body[data-role] .v225-step .v225-step-num{
+  display:block!important;
+  width:auto!important;
+  min-width:0!important;
+  height:auto!important;
+  padding:0!important;
+  margin:0 0 13px!important;
+  border:0!important;
+  border-radius:0!important;
+  background:transparent!important;
+  color:var(--role-primary)!important;
+  font-size:.68rem!important;
+  line-height:1!important;
+  font-weight:850!important;
+  letter-spacing:.12em!important;
+  box-shadow:none!important;
+}
+body[data-role] .v225-step .v236-step-copy{
+  display:block!important;
+  min-width:0!important;
+  color:#172433!important;
+}
+body[data-role] .v225-step .v236-step-copy b{
+  display:block!important;
+  margin:0 0 7px!important;
+  color:#172433!important;
+  font-size:.91rem!important;
+  line-height:1.32!important;
+  font-weight:760!important;
+  letter-spacing:-.012em!important;
+}
+body[data-role] .v225-step .v236-step-desc{
+  display:block!important;
+  color:#6d7988!important;
+  font-size:.735rem!important;
+  line-height:1.55!important;
+  font-weight:430!important;
+}
+
+/* ----- Secondary utilities should not compete with the workflow ----------- */
+body[data-role] .v225-support{
+  display:flex!important;
+  gap:8px!important;
+  flex-wrap:wrap!important;
+  padding:0!important;
+}
+body[data-role] .v225-support button{
+  min-height:36px!important;
+  padding:0 11px!important;
+  border:1px solid #dfe5eb!important;
+  border-radius:9px!important;
+  background:#fff!important;
+  color:#314154!important;
+  font-size:.75rem!important;
+  font-weight:680!important;
+  box-shadow:none!important;
+}
+body[data-role] .v225-support button:hover{
+  border-color:var(--role-border)!important;
+  background:var(--role-soft-2,#f7f9fb)!important;
+  color:var(--role-primary-dark)!important;
+}
+
+/* Preserve role identity without tinting every text element. */
+body.theme-dinas .v225-home{--home-role:#0667c9}
+body.theme-pengawas .v225-home{--home-role:#b3264e}
+body.theme-sekolah .v225-home{--home-role:#148c58}
+
+/* Guard against generic legacy heading/text rules declared anywhere else. */
+body[data-role] #mainContent .v225-home-hero .v225-home-copy h1,
+body[data-role] #mainContent .v225-home-hero .v225-home-copy h2,
+body[data-role] #mainContent .v225-home-hero .v225-home-copy h3{color:#fff!important;-webkit-text-fill-color:#fff!important}
+body[data-role] #mainContent .v225-home-hero .v225-home-copy p,
+body[data-role] #mainContent .v225-home-hero .v225-home-copy p *{color:rgba(255,255,255,.93)!important}
+body[data-role] #mainContent .v225-workflow h3,
+body[data-role] #mainContent .v225-step b,
+body[data-role] #mainContent .v225-home-next strong{color:#172433!important}
+
+@media(max-width:1100px){
+  body[data-role] .v225-steps{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+}
+@media(max-width:720px){
+  body[data-role] .v225-home{gap:13px!important}
+  body[data-role] .v225-home-hero{min-height:232px!important;border-radius:17px!important}
+  body[data-role] .v225-home-copy{padding:26px 23px!important}
+  body[data-role] .v225-home-copy h1{font-size:1.85rem!important}
+  body[data-role] .v225-home-copy p{font-size:.87rem!important}
+  body[data-role] .v225-home-next{align-items:flex-start!important;flex-direction:column!important;padding:16px 17px 16px 20px!important}
+  body[data-role] .v225-home-next .btn{width:100%!important}
+  body[data-role] .v225-workflow{padding:17px!important}
+  body[data-role] .v225-steps{grid-template-columns:1fr!important}
+  body[data-role] .v225-step{min-height:0!important}
+}
+</style>
+
 </body></html>`);
   w.document.close();
 }
 window.loadV5Archive=loadV5Archive;
 </script>
-
 <script>
 /* ============================================================================
  * UI PENGESAHAN ELEKTRONIK — V3
@@ -7961,7 +8408,6 @@ renderAssessment = function(a, indicators){
   renderPengesahanPanel(a.id_asesmen);
 };
 </script>
-
 <script>
 /* ============================================================================
  * V12 UX — fokus DINAS & SEKOLAH. Tidak mengubah API/database/business flow.
@@ -8067,7 +8513,6 @@ renderAssessment = function(a, indicators){
   document.addEventListener('keydown',e=>{if(e.altKey && e.key.toLowerCase()==='h'){e.preventDefault();if(window.state?.token) loadView('home')}});
 })();
 </script>
-
 <script>
 /* ============================================================================
  * RKAS REPLACE UI — FINAL17
@@ -8722,7 +9167,6 @@ window.executeRkasReplace=async function(){
   };
 })();
 </script>
-
 <style id="v21SimpleNavStyles">
 .v21-simple-flow{grid-template-columns:repeat(4,minmax(0,1fr))!important}
 .v21-school-steps{grid-template-columns:repeat(3,minmax(0,1fr))!important}
@@ -8732,8 +9176,6 @@ window.executeRkasReplace=async function(){
 @media(max-width:1050px){.v21-simple-flow{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
 @media(max-width:680px){.v21-simple-flow,.v21-school-steps{grid-template-columns:1fr!important}}
 </style>
-
-
 <style id="v211HomePhotoStyles">
 .v211-office-hero {
   position:relative;
@@ -8824,7 +9266,6 @@ window.executeRkasReplace=async function(){
   .v211-dinas-grid{grid-template-columns:1fr}
 }
 </style>
-
 <script>
 (function(){
   const OFFICE_PHOTO='https://raw.githubusercontent.com/DikporaRembang/simpelspj/main/kantordindikpora.jpeg';
@@ -8919,229 +9360,14 @@ window.executeRkasReplace=async function(){
 })();
 </script>
 
-
-<style id="v213RoleThemeForceFix">
-/* ==========================================================================
-   V21.13 FINAL ROLE OVERRIDE
-   Diletakkan PALING AKHIR untuk mengalahkan CSS hijau legacy.
-   ========================================================================== */
-
-/* Common layout */
-body.theme-dinas,
-body.theme-pengawas,
-body.theme-sekolah{
-  transition:background .18s ease,color .18s ease;
-}
-
-/* ========================= DINAS ========================= */
-body.theme-dinas{
-  --primary:#147D7E!important;
-  --primary-dark:#123B5D!important;
-  --primary-light:#43A3A5!important;
-  --emerald:#147D7E!important;
-  --emerald-2:#2A9394!important;
-  --gold:#D4B35A!important;
-  --bg:#F4F9FB!important;
-  --card:#ffffff!important;
-  --border:#BFD7DF!important;
-  --text:#183747!important;
-  --muted:#5D7480!important;
-  background:linear-gradient(135deg,#F8FCFD 0%,#EAF5F6 100%)!important;
-}
-body.theme-dinas .topbar{
-  background:linear-gradient(90deg,#123B5D 0%,#147D7E 68%,#43A3A5 145%)!important;
-  color:#fff!important;
-  border-bottom-color:#43A3A5!important;
-}
-body.theme-dinas .sidebar{
-  background:linear-gradient(180deg,#0E304D 0%,#123B5D 44%,#147D7E 100%)!important;
-}
-body.theme-dinas .btn-primary{
-  background:linear-gradient(135deg,#123B5D,#147D7E)!important;
-  border-color:#123B5D!important;
-  color:#fff!important;
-}
-body.theme-dinas .page-head h1,
-body.theme-dinas .stat strong,
-body.theme-dinas .panel h2,
-body.theme-dinas .panel h3{color:#183747!important}
-
-/* ======================= PENGAWAS ======================= */
-body.theme-pengawas{
-  --primary:#A63646!important;
-  --primary-dark:#641E2B!important;
-  --primary-light:#C55868!important;
-  --emerald:#A63646!important;
-  --emerald-2:#B94758!important;
-  --gold:#D7A253!important;
-  --bg:#FFF7F8!important;
-  --card:#ffffff!important;
-  --border:#E8C2C8!important;
-  --text:#4E1C25!important;
-  --muted:#7A5B61!important;
-  background:linear-gradient(135deg,#FFF9FA 0%,#F8E9EC 100%)!important;
-}
-body.theme-pengawas .topbar{
-  background:linear-gradient(90deg,#641E2B 0%,#842838 58%,#A63646 100%)!important;
-  color:#fff!important;
-  border-bottom-color:#C55868!important;
-}
-body.theme-pengawas .sidebar{
-  background:linear-gradient(180deg,#4E151F 0%,#641E2B 46%,#8C2D3D 100%)!important;
-}
-body.theme-pengawas .btn-primary{
-  background:linear-gradient(135deg,#641E2B,#A63646)!important;
-  border-color:#641E2B!important;
-  color:#fff!important;
-}
-body.theme-pengawas .page-head h1,
-body.theme-pengawas .stat strong,
-body.theme-pengawas .panel h2,
-body.theme-pengawas .panel h3{color:#4E1C25!important}
-
-/* ======================== SEKOLAH ======================= */
-body.theme-sekolah{
-  --primary:#4F68C8!important;
-  --primary-dark:#263B80!important;
-  --primary-light:#7188E3!important;
-  --emerald:#4F68C8!important;
-  --emerald-2:#6278D4!important;
-  --gold:#D2AA55!important;
-  --bg:#F6F8FF!important;
-  --card:#ffffff!important;
-  --border:#C8D2F0!important;
-  --text:#283560!important;
-  --muted:#657092!important;
-  background:linear-gradient(135deg,#FAFBFF 0%,#EDF1FD 100%)!important;
-}
-body.theme-sekolah .topbar{
-  background:linear-gradient(90deg,#263B80 0%,#3D55AA 58%,#4F68C8 100%)!important;
-  color:#fff!important;
-  border-bottom-color:#7188E3!important;
-  box-shadow:0 5px 24px rgba(38,59,128,.24)!important;
-}
-body.theme-sekolah .sidebar{
-  background:linear-gradient(180deg,#1F316C 0%,#263B80 42%,#4058B0 100%)!important;
-  box-shadow:8px 0 30px rgba(38,59,128,.24)!important;
-}
-body.theme-sekolah .btn-primary{
-  background:linear-gradient(135deg,#263B80,#4F68C8)!important;
-  border-color:#263B80!important;
-  color:#fff!important;
-}
-body.theme-sekolah .page-head h1,
-body.theme-sekolah .stat strong,
-body.theme-sekolah .panel h2,
-body.theme-sekolah .panel h3{color:#283560!important}
-
-/* ================== Shared high contrast ================== */
-body.theme-dinas .topbar *,
-body.theme-pengawas .topbar *,
-body.theme-sekolah .topbar *{
-  color:#fff!important;
-}
-body.theme-dinas .sidebar .nav-btn,
-body.theme-dinas .sidebar .nav-group-toggle,
-body.theme-pengawas .sidebar .nav-btn,
-body.theme-pengawas .sidebar .nav-group-toggle,
-body.theme-sekolah .sidebar .nav-btn,
-body.theme-sekolah .sidebar .nav-group-toggle{
-  color:#fff!important;
-}
-body.theme-dinas .sidebar .nav-section-title,
-body.theme-pengawas .sidebar .nav-section-title,
-body.theme-sekolah .sidebar .nav-section-title{
-  color:rgba(255,255,255,.67)!important;
-}
-body.theme-dinas .sidebar .nav-btn.active,
-body.theme-pengawas .sidebar .nav-btn.active,
-body.theme-sekolah .sidebar .nav-btn.active{
-  background:#fff!important;
-  color:var(--primary-dark)!important;
-}
-body.theme-dinas .sidebar .nav-btn:hover,
-body.theme-pengawas .sidebar .nav-btn:hover,
-body.theme-sekolah .sidebar .nav-btn:hover{
-  background:rgba(255,255,255,.13)!important;
-}
-body.theme-dinas .panel,
-body.theme-pengawas .panel,
-body.theme-sekolah .panel,
-body.theme-dinas .stat,
-body.theme-pengawas .stat,
-body.theme-sekolah .stat{
-  background:#fff!important;
-  color:var(--text)!important;
-  border-color:var(--border)!important;
-}
-body.theme-dinas .friendly-table th{background:#E3F0F2!important;color:#183747!important}
-body.theme-pengawas .friendly-table th{background:#F4E2E6!important;color:#4E1C25!important}
-body.theme-sekolah .friendly-table th{background:#E7EBFA!important;color:#283560!important}
-body.theme-dinas .friendly-table td,
-body.theme-pengawas .friendly-table td,
-body.theme-sekolah .friendly-table td{
-  background:#fff!important;
-  color:var(--text)!important;
-}
-body.theme-dinas .v211-office-hero::after{
-  background:linear-gradient(90deg,rgba(18,59,93,.95),rgba(20,125,126,.72),rgba(67,163,165,.18))!important;
-}
-body.theme-pengawas .v211-office-hero::after{
-  background:linear-gradient(90deg,rgba(100,30,43,.95),rgba(132,40,56,.74),rgba(166,54,70,.20))!important;
-}
-body.theme-sekolah .v211-office-hero::after{
-  background:linear-gradient(90deg,rgba(38,59,128,.95),rgba(61,85,170,.75),rgba(79,104,200,.20))!important;
-}
-body.theme-dinas .v211-office-copy *,
-body.theme-pengawas .v211-office-copy *,
-body.theme-sekolah .v211-office-copy *{color:#fff!important}
-
-/* Existing school hero was hard-coded green in older versions. Force it brown. */
-body.theme-sekolah .school-hero-v14,
-body.theme-sekolah .v16-hero,
-body.theme-sekolah .ux-hero,
-body.theme-sekolah .school-result-hero,
-body.theme-sekolah .v17-ph-hero{
-  background:linear-gradient(135deg,#263B80,#3D55AA,#4F68C8)!important;
-  border-color:#7188E3!important;
-  color:#fff!important;
-}
-body.theme-sekolah .school-hero-v14 *,
-body.theme-sekolah .v16-hero *,
-body.theme-sekolah .ux-hero *,
-body.theme-sekolah .school-result-hero *,
-body.theme-sekolah .v17-ph-hero *{
-  color:#fff!important;
-}
-
-/* Same protection for Pengawas legacy green heroes */
-body.theme-pengawas .v11-hero,
-body.theme-pengawas .ux-hero,
-body.theme-pengawas .v17-ph-hero{
-  background:linear-gradient(135deg,#641E2B,#842838,#A63646)!important;
-  color:#fff!important;
-}
-body.theme-pengawas .v11-hero *,
-body.theme-pengawas .ux-hero *,
-body.theme-pengawas .v17-ph-hero *{color:#fff!important}
-
-/* Dinas hero explicitly green */
-body.theme-dinas .v11-hero,
-body.theme-dinas .ux-hero,
-body.theme-dinas .v17-ph-hero{
-  background:linear-gradient(135deg,#123B5D,#147D7E,#43A3A5)!important;
-  color:#fff!important;
-}
-body.theme-dinas .v11-hero *,
-body.theme-dinas .ux-hero *,
-body.theme-dinas .v17-ph-hero *{color:#fff!important}
-</style>
-
 <script>
 /* V21.13 diagnostic: guarantee theme is reapplied after every view render. */
 (function(){
   window.applyRoleThemeV213=function(){
-    const r=String(window.state?.user?.role||'SEKOLAH').trim().toUpperCase();
+    // IMPORTANT: `state` is a lexical const, NOT window.state. Reading
+    // window.state made every post-render theme fall back to SEKOLAH.
+    const detected = (typeof role === 'function' ? role() : String(state?.user?.role || ''));
+    const r=String(detected||'SEKOLAH').trim().toUpperCase();
     document.body.dataset.role=r;
     document.body.classList.remove('theme-dinas','theme-pengawas','theme-sekolah');
     document.body.classList.add(r==='DINAS'?'theme-dinas':r==='PENGAWAS'?'theme-pengawas':'theme-sekolah');
@@ -9159,7 +9385,6 @@ body.theme-dinas .v17-ph-hero *{color:#fff!important}
   }
 })();
 </script>
-
 <style id="v219CleanAuth">
 /* ==========================================================================
    V21.19 — CLEAN AUTH FINAL
@@ -9353,162 +9578,6 @@ body.v219-auth-body::before{display:none!important}
 }
 </style>
 
-
-<style id="v220TopbarContrastFix">
-/* ==========================================================================
-   V21.20 — TOPBAR CONTRAST FIX
-   Prevent white search / logout controls from disappearing on colored topbars.
-   ========================================================================== */
-
-/* Search container on colored role topbars */
-body[data-role] .topbar .top-search-wrap{
-  background:rgba(8,22,35,.20)!important;
-  border:1px solid rgba(255,255,255,.30)!important;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.06)!important;
-  backdrop-filter:blur(9px);
-}
-body[data-role] .topbar .top-search-wrap:hover{
-  background:rgba(8,22,35,.27)!important;
-  border-color:rgba(255,255,255,.42)!important;
-}
-body[data-role] .topbar .top-search-wrap:focus-within{
-  background:rgba(255,255,255,.13)!important;
-  border-color:rgba(255,255,255,.72)!important;
-  box-shadow:0 0 0 3px rgba(255,255,255,.13)!important;
-}
-
-/* Search icon, input, placeholder */
-body[data-role] .topbar .top-search-icon{
-  color:rgba(255,255,255,.82)!important;
-}
-body[data-role] .topbar .top-search input{
-  color:#fff!important;
-  caret-color:#fff!important;
-  background:transparent!important;
-}
-body[data-role] .topbar .top-search input::placeholder{
-  color:rgba(255,255,255,.68)!important;
-  opacity:1!important;
-}
-
-/* Keyboard shortcut pill */
-body[data-role] .topbar .top-search-kbd{
-  color:#fff!important;
-  background:rgba(255,255,255,.10)!important;
-  border-color:rgba(255,255,255,.26)!important;
-}
-
-/* Search result dropdown must remain light/readable */
-body[data-role] .topbar .search-results{
-  background:#fff!important;
-  color:var(--text)!important;
-  border-color:var(--border)!important;
-}
-body[data-role] .topbar .search-result{
-  background:#fff!important;
-  color:var(--text)!important;
-}
-body[data-role] .topbar .search-result:hover{
-  background:var(--role-soft,#f5f7f8)!important;
-}
-body[data-role] .topbar .search-result strong{
-  color:var(--text)!important;
-}
-body[data-role] .topbar .search-result small,
-body[data-role] .topbar .search-result .muted{
-  color:var(--muted)!important;
-}
-
-/* User identity */
-body[data-role] .topbar .user-info,
-body[data-role] .topbar .user-info b,
-body[data-role] .topbar .user-info span,
-body[data-role] .topbar .top-user,
-body[data-role] .topbar .top-user b,
-body[data-role] .topbar .top-user span{
-  color:#fff!important;
-}
-
-/* Logout / light action buttons on topbar */
-body[data-role] .topbar .btn-light,
-body[data-role] .topbar button.btn-light{
-  background:rgba(8,22,35,.18)!important;
-  color:#fff!important;
-  border:1px solid rgba(255,255,255,.38)!important;
-  box-shadow:none!important;
-}
-body[data-role] .topbar .btn-light:hover,
-body[data-role] .topbar button.btn-light:hover{
-  background:rgba(255,255,255,.16)!important;
-  border-color:rgba(255,255,255,.66)!important;
-  color:#fff!important;
-}
-
-/* If logout has its own class/id in older frontend variants */
-body[data-role] .topbar .logout-btn,
-body[data-role] .topbar #logoutBtn,
-body[data-role] .topbar [onclick*="logout"]{
-  background:rgba(8,22,35,.18)!important;
-  color:#fff!important;
-  border:1px solid rgba(255,255,255,.40)!important;
-}
-body[data-role] .topbar .logout-btn:hover,
-body[data-role] .topbar #logoutBtn:hover,
-body[data-role] .topbar [onclick*="logout"]:hover{
-  background:rgba(255,255,255,.16)!important;
-  border-color:rgba(255,255,255,.68)!important;
-}
-
-/* Preserve icon contrast */
-body[data-role] .topbar .btn-light svg,
-body[data-role] .topbar .btn-light i,
-body[data-role] .topbar [onclick*="logout"] svg,
-body[data-role] .topbar [onclick*="logout"] i{
-  color:#fff!important;
-  stroke:currentColor!important;
-}
-
-/* DINAS */
-body.theme-dinas .topbar .top-search-wrap{
-  background:rgba(5,36,52,.28)!important;
-}
-body.theme-dinas .topbar .btn-light,
-body.theme-dinas .topbar [onclick*="logout"]{
-  background:rgba(7,42,58,.30)!important;
-}
-
-/* PENGAWAS */
-body.theme-pengawas .topbar .top-search-wrap{
-  background:rgba(65,8,18,.27)!important;
-}
-body.theme-pengawas .topbar .btn-light,
-body.theme-pengawas .topbar [onclick*="logout"]{
-  background:rgba(65,8,18,.28)!important;
-}
-
-/* SEKOLAH */
-body.theme-sekolah .topbar .top-search-wrap{
-  background:rgba(22,32,85,.28)!important;
-}
-body.theme-sekolah .topbar .btn-light,
-body.theme-sekolah .topbar [onclick*="logout"]{
-  background:rgba(22,32,85,.30)!important;
-}
-
-/* Mobile: keep controls distinct */
-@media(max-width:700px){
-  body[data-role] .topbar .top-search-wrap{
-    background:rgba(8,22,35,.25)!important;
-  }
-  body[data-role] .topbar .btn-light,
-  body[data-role] .topbar [onclick*="logout"]{
-    min-width:42px;
-    background:rgba(8,22,35,.25)!important;
-  }
-}
-</style>
-
-
 <style id="v221DocumentBookSummary">
 /* V21.21 — Excel BKU values directly inside document checklist */
 .v221-book-summary{
@@ -9573,8 +9642,6 @@ body.theme-sekolah .v221-book-summary{background:#F7F8FE}
   .v221-book-values strong{font-size:.9rem}
 }
 </style>
-
-
 <style id="v222EvidenceTargetMapping">
 .v222-support-summary{
   border-left:4px solid var(--primary)!important;
@@ -9629,8 +9696,6 @@ body.theme-sekolah .v221-book-summary{background:#F7F8FE}
   .v222-target-value{align-items:flex-start;flex-direction:column}
 }
 </style>
-
-
 <style id="v223TaxAuditFix">
 .v223-tax-audit{
   display:flex;
@@ -9649,8 +9714,6 @@ body.theme-sekolah .v221-book-summary{background:#F7F8FE}
 }
 .v223-tax-audit b{color:var(--text)}
 </style>
-
-
 <style id="v224PdfNavigationPolish">
 .v224-pdf-toolbar{
   position:sticky;
@@ -9781,8 +9844,6 @@ body.theme-sekolah .v221-book-summary{background:#F7F8FE}
   .v224-keyboard-hint{display:none}
 }
 </style>
-
-
 <style id="v225LinearRoleFlow">
 /* Old context bar created a second navigation system; hide it permanently. */
 .ux-context,.v16-breadcrumb{display:none!important}
@@ -9967,7 +10028,6 @@ body.theme-sekolah .v221-book-summary{background:#F7F8FE}
   .v225-home-copy{padding:24px}
 }
 </style>
-
 <script>
 /* ==========================================================================
    V21.25 — ONE LINEAR FLOW PER ROLE
@@ -10068,8 +10128,8 @@ body.theme-sekolah .v221-book-summary{background:#F7F8FE}
 
     const steps=flow.map((x,i)=>`
       <button class="v225-step" onclick="v225Go('${x.view}')">
-        <span class="v225-step-num">${i+1}</span>
-        <div><b>${esc(x.title)}</b><span>${esc(x.desc)}</span></div>
+        <span class="v225-step-num">${String(i+1).padStart(2,'0')}</span>
+        <div class="v236-step-copy"><b>${esc(x.title)}</b><span class="v236-step-desc">${esc(x.desc)}</span></div>
       </button>`).join('');
 
     const support=(SUPPORT[r]||[]).map(x=>`<button onclick="loadView('${x[0]}')">${x[1]}</button>`).join('');
@@ -10150,8 +10210,6 @@ body.theme-sekolah .v221-book-summary{background:#F7F8FE}
   }
 })();
 </script>
-
-
 <style id="v226AgreementAppealFlow">
 .v226-agreement-guide{
   display:grid;
@@ -10199,8 +10257,6 @@ body.theme-sekolah .v221-book-summary{background:#F7F8FE}
   .v226-agreement-guide{grid-template-columns:1fr}
 }
 </style>
-
-
 <style id="v227TripleQrApproval">
 .v227-lifecycle,.v227-signing-panel{
   border:1px solid var(--role-border,var(--border));
@@ -10297,8 +10353,6 @@ body.theme-sekolah .v221-book-summary{background:#F7F8FE}
   .v227-sign-card{min-height:auto}
 }
 </style>
-
-
 <style id="v228Scoring10">
 .v228-weight-map{
   display:flex;
@@ -10322,323 +10376,12 @@ body.theme-sekolah .v221-book-summary{background:#F7F8FE}
   background:var(--role-soft-2,#f8faf9);
 }
 </style>
-
-
 <style id="v230BkuValueScoring">
 .v230-components{
   margin-top:4px;
   line-height:1.45;
   font-size:.62rem;
   color:var(--muted);
-}
-</style>
-
-
-
-<style id="v231ProfessionalRoleTheme">
-/* ========================================================================== 
-   V23.1 — PROFESSIONAL ROLE THEME
-   Prinsip visual: clean banking UI, putih dominan, hierarchy jelas,
-   whitespace lega, border halus, dan warna role sebagai aksen.
-   Asset resmi SIMPEL SPJ tetap dipertahankan.
-   ========================================================================== */
-:root{
-  --app-bg:#f4f7fb;
-  --app-surface:#ffffff;
-  --app-surface-soft:#f8fafc;
-  --app-text:#17324d;
-  --app-muted:#6b7f93;
-  --app-border:#dde6ef;
-  --app-border-strong:#cbd8e5;
-  --app-shadow:0 7px 24px rgba(26,61,92,.07);
-  --app-shadow-hover:0 12px 30px rgba(26,61,92,.11);
-  --app-radius:14px;
-  --app-radius-sm:10px;
-
-  /* Default / public login */
-  --role-primary:#0066b3;
-  --role-primary-2:#004f91;
-  --role-accent:#00a2e9;
-  --role-soft:#eaf4fb;
-  --role-soft-2:#f4f9fd;
-  --role-border:#cfe3f2;
-  --role-on-primary:#ffffff;
-}
-
-/* DINAS — corporate blue */
-body.theme-dinas{
-  --role-primary:#0066b3;
-  --role-primary-2:#00518f;
-  --role-accent:#00a2e9;
-  --role-soft:#eaf4fb;
-  --role-soft-2:#f5faff;
-  --role-border:#c9e0f1;
-}
-/* PENGAWAS — teal */
-body.theme-pengawas{
-  --role-primary:#007b83;
-  --role-primary-2:#00636a;
-  --role-accent:#16a6ad;
-  --role-soft:#e9f7f7;
-  --role-soft-2:#f4fbfb;
-  --role-border:#c8e5e6;
-}
-/* SEKOLAH — green-blue */
-body.theme-sekolah{
-  --role-primary:#16745f;
-  --role-primary-2:#0e5b4a;
-  --role-accent:#26a27f;
-  --role-soft:#ebf7f2;
-  --role-soft-2:#f5fbf8;
-  --role-border:#cbe5db;
-}
-
-html,body{
-  background:var(--app-bg)!important;
-  color:var(--app-text)!important;
-  font-family:Inter,Manrope,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif!important;
-}
-body:before{display:none!important}
-
-/* ---------- LOGIN / REGISTER ---------- */
-.v219-auth-page,.v219-register-page,.auth{
-  background:#fff!important;
-}
-.v219-auth-photo,.v219-register-photo,.auth-side{
-  background-image:
-    linear-gradient(135deg,rgba(0,65,115,.91),rgba(0,111,162,.72)),
-    url('https://raw.githubusercontent.com/DikporaRembang/simpelspj/main/kantordindikpora.jpeg')!important;
-  background-position:center!important;
-  background-size:cover!important;
-}
-.v219-auth-card,.v219-register-card,.auth-card{
-  border:1px solid #e1e9f1!important;
-  border-radius:18px!important;
-  box-shadow:0 18px 52px rgba(18,58,91,.10)!important;
-  background:#fff!important;
-}
-.v219-auth-head h2,.v219-register-head h2,.auth-card h2{color:#153b5a!important}
-.v219-auth-brand strong,.v219-auth-intro h1,.v219-register-intro h1{letter-spacing:-.025em!important}
-
-/* ---------- APP SHELL ---------- */
-.topbar{
-  min-height:68px!important;
-  background:rgba(255,255,255,.98)!important;
-  border-bottom:1px solid var(--app-border)!important;
-  box-shadow:0 2px 12px rgba(20,54,84,.045)!important;
-  backdrop-filter:blur(14px)!important;
-}
-.topbar .brand h2,.brand-title,.brand-gold-title{
-  color:var(--role-primary)!important;
-  font-weight:800!important;
-  letter-spacing:-.025em!important;
-}
-.topbar .brand small,.brand-subtitle{color:var(--app-muted)!important}
-.app-logo{
-  background:#fff!important;
-  border:1px solid #e2eaf1!important;
-  box-shadow:0 4px 14px rgba(18,58,91,.08)!important;
-}
-
-.layout{background:var(--app-bg)!important}
-.sidebar{
-  background:linear-gradient(180deg,var(--role-primary-2) 0%,var(--role-primary) 100%)!important;
-  border-right:0!important;
-  box-shadow:6px 0 24px rgba(17,57,87,.08)!important;
-}
-.sidebar .nav-section-title{
-  color:rgba(255,255,255,.62)!important;
-  font-size:.64rem!important;
-  letter-spacing:.12em!important;
-}
-.nav-btn,.nav-group-toggle{
-  color:rgba(255,255,255,.87)!important;
-  border-radius:9px!important;
-  font-weight:650!important;
-}
-.nav-btn:hover,.nav-group-toggle:hover{
-  background:rgba(255,255,255,.10)!important;
-  color:#fff!important;
-  transform:none!important;
-}
-.nav-btn.active{
-  background:#fff!important;
-  color:var(--role-primary-2)!important;
-  box-shadow:0 5px 18px rgba(0,0,0,.11)!important;
-}
-.nav-submenu .nav-btn{color:rgba(255,255,255,.78)!important}
-.nav-submenu .nav-btn.active{color:var(--role-primary-2)!important}
-.sidebar-footer{border-top:1px solid rgba(255,255,255,.14)!important}
-
-.content{
-  max-width:1540px!important;
-  padding:26px clamp(18px,3vw,38px) 44px!important;
-}
-.page-head h1{
-  color:#17324d!important;
-  font-size:clamp(1.4rem,2vw,1.85rem)!important;
-  font-weight:800!important;
-  letter-spacing:-.035em!important;
-}
-.muted{color:var(--app-muted)!important}
-
-/* ---------- SURFACES ---------- */
-.panel,.stat,.v11-focus,.v11-stat,.school-summary-card,.school-directory-card,
-.assignment-group,.assessment-guide-card,.ux-workcard,.ux-todo-card{
-  background:var(--app-surface)!important;
-  border:1px solid var(--app-border)!important;
-  border-radius:var(--app-radius)!important;
-  box-shadow:var(--app-shadow)!important;
-}
-.panel:hover,.stat:hover,.school-directory-card:hover{
-  box-shadow:var(--app-shadow-hover)!important;
-  border-color:var(--role-border)!important;
-}
-.stat:after{background:var(--role-soft)!important}
-.stat strong,.school-summary-card strong,.assignment-total,.assignment-pagu{
-  color:var(--role-primary)!important;
-}
-.section-title{color:#17324d!important}
-
-/* ---------- BUTTONS ---------- */
-.btn{
-  border-radius:9px!important;
-  min-height:40px!important;
-  font-weight:700!important;
-  letter-spacing:0!important;
-  box-shadow:none!important;
-}
-.btn-primary{
-  background:var(--role-primary)!important;
-  border:1px solid var(--role-primary)!important;
-  color:#fff!important;
-}
-.btn-primary:hover{
-  background:var(--role-primary-2)!important;
-  border-color:var(--role-primary-2)!important;
-  filter:none!important;
-  box-shadow:0 6px 16px color-mix(in srgb,var(--role-primary) 18%,transparent)!important;
-}
-.btn-secondary{
-  background:var(--role-soft)!important;
-  color:var(--role-primary-2)!important;
-  border:1px solid var(--role-border)!important;
-}
-.btn-light{
-  background:#fff!important;
-  color:#37536b!important;
-  border:1px solid var(--app-border-strong)!important;
-}
-.btn-light:hover{background:#f7fafc!important;border-color:var(--role-border)!important;color:var(--role-primary)!important}
-
-/* ---------- INPUTS / SEARCH ---------- */
-.field input,.field select,.field textarea,
-.toolbar input,.toolbar select,.search-box input{
-  border:1px solid var(--app-border-strong)!important;
-  border-radius:9px!important;
-  background:#fff!important;
-  color:var(--app-text)!important;
-  box-shadow:none!important;
-}
-.field input:focus,.field select:focus,.field textarea:focus,
-.toolbar input:focus,.toolbar select:focus{
-  border-color:var(--role-primary)!important;
-  box-shadow:0 0 0 3px color-mix(in srgb,var(--role-primary) 12%,transparent)!important;
-}
-.top-search-wrap{
-  background:#f7f9fb!important;
-  border:1px solid var(--app-border)!important;
-  border-radius:10px!important;
-}
-.top-search-wrap:focus-within{
-  background:#fff!important;
-  border-color:var(--role-primary)!important;
-  box-shadow:0 0 0 3px color-mix(in srgb,var(--role-primary) 10%,transparent)!important;
-}
-.search-results{
-  border:1px solid var(--app-border)!important;
-  border-radius:12px!important;
-  box-shadow:0 18px 46px rgba(21,55,83,.13)!important;
-}
-.search-result:hover{background:var(--role-soft-2)!important}
-.search-result-icon{background:var(--role-soft)!important;color:var(--role-primary)!important}
-
-/* ---------- TABLES ---------- */
-.table-wrap{
-  border:1px solid var(--app-border)!important;
-  border-radius:11px!important;
-  box-shadow:none!important;
-  background:#fff!important;
-}
-.friendly-table{background:#fff!important}
-.friendly-table th{
-  background:#f4f7fa!important;
-  color:#405a70!important;
-  border-bottom:1px solid var(--app-border)!important;
-  font-size:.73rem!important;
-  font-weight:800!important;
-}
-.friendly-table td{
-  background:#fff!important;
-  border-bottom:1px solid #edf1f5!important;
-  color:#324d63!important;
-}
-.friendly-table tbody tr:hover td{background:var(--role-soft-2)!important}
-
-/* ---------- STATUS / BADGES ---------- */
-.badge,.status-badge{
-  border-radius:999px!important;
-  font-weight:750!important;
-  box-shadow:none!important;
-}
-.badge-info{background:#eef6fc!important;color:#176da4!important;border-color:#d2e6f3!important}
-.badge-success{background:#edf8f3!important;color:#137152!important;border-color:#cce7dc!important}
-.badge-warning{background:#fff8e8!important;color:#986511!important;border-color:#f0dfb8!important}
-.badge-danger{background:#fff1f0!important;color:#ad352d!important;border-color:#efcbc8!important}
-
-/* ---------- CONTEXT / FLOW ---------- */
-.ux-context,.school-next-action,.status-hero,.assignment-group-head,
-.tutorial-feed,.v225-home-next{
-  background:var(--role-soft-2)!important;
-  border-color:var(--role-border)!important;
-}
-.ux-context-mark,.assignment-group-icon{
-  background:var(--role-primary)!important;
-  color:#fff!important;
-}
-.status-progress>span,.school-progress-track>span{background:var(--role-primary)!important}
-.tutorial-step.current{background:var(--role-primary)!important;color:#fff!important}
-.tutorial-step{background:var(--role-soft)!important;color:var(--role-primary-2)!important}
-
-/* ---------- HERO: tetap menggunakan kantor Dindikpora ---------- */
-.v11-hero,.ux-hero,.v211-office-hero{
-  border-radius:20px!important;
-  box-shadow:0 14px 34px rgba(18,58,91,.12)!important;
-}
-.v11-hero{
-  background-image:
-    linear-gradient(90deg,color-mix(in srgb,var(--role-primary-2) 93%,transparent) 0%,color-mix(in srgb,var(--role-primary) 74%,transparent) 45%,rgba(7,38,61,.20) 100%),
-    url('https://raw.githubusercontent.com/DikporaRembang/simpelspj/main/kantordindikpora.jpeg')!important;
-}
-.v11-hero:before{background:transparent!important}
-.v11-kicker,.ux-hero-kicker{background:rgba(255,255,255,.14)!important;border-color:rgba(255,255,255,.24)!important;color:#fff!important}
-
-/* ---------- MODALS / TOAST ---------- */
-#modalNaOverlay>div>div,#modalUploadOverlay>div>div,#trxModal>div>div,#excelModal>div>div,
-.v16-modal-card{
-  border:1px solid var(--app-border)!important;
-  border-radius:16px!important;
-  box-shadow:0 24px 72px rgba(18,58,91,.18)!important;
-}
-.toast{background:#173b57!important;border-radius:10px!important}
-.toast.ok{background:#16745f!important}.toast.error{background:#a83e36!important}.toast.warning{background:#9b6a18!important}
-
-/* ---------- ACCESSIBILITY / RESPONSIVE ---------- */
-:focus-visible{outline:3px solid color-mix(in srgb,var(--role-primary) 25%,transparent)!important;outline-offset:2px}
-@media(max-width:760px){
-  .content{padding:16px 12px 30px!important}
-  .panel{border-radius:12px!important}
-  .sidebar{box-shadow:14px 0 40px rgba(17,57,87,.16)!important}
 }
 </style>
 
@@ -10753,67 +10496,477 @@ window.selesaikanKajiUlang=async function(idPesan){
 };
 </script>
 
-<style id="v232DistinctRoleIdentity">
+<style id="v233CleanRoleDesignSystem">
 /* ========================================================================== 
-   V23.2 — DISTINCT ROLE IDENTITY
-   Same clean banking layout, intentionally different chromatic identities.
-   DINAS = royal blue | PENGAWAS = burgundy | SEKOLAH = emerald green
+   V23.3 — CLEAN ROLE DESIGN SYSTEM
+   Consolidated role-color layer. Replaces V21.3/V22.0/V23.1/V23.2 theme
+   overrides while preserving all application behavior and markup.
+   DINAS = Royal Blue | PENGAWAS = Burgundy | SEKOLAH = Emerald
    ========================================================================== */
+:root{
+  --ds-bg:#f4f7fa;
+  --ds-surface:#ffffff;
+  --ds-text:#20364a;
+  --ds-muted:#6d7f90;
+  --ds-border:#dce5ed;
+  --ds-border-strong:#c9d6e1;
+  --ds-shadow:0 8px 24px rgba(26,54,80,.07);
+  --ds-shadow-hover:0 12px 28px rgba(26,54,80,.11);
+  --ds-radius:14px;
+}
+
+/* Strongly distinct role palettes. The legacy aliases make older components
+   follow the active role instead of staying green/navy from earlier versions. */
 body.theme-dinas{
-  --role-primary:#0757A6;--role-primary-2:#003E7D;--role-accent:#20A4F3;
-  --role-soft:#EAF3FC;--role-soft-2:#F5F9FE;--role-border:#BFD8F0;
-  --role-ink:#123B63;--role-topbar:#064D93;
+  --role-primary:#0057B8;
+  --role-primary-dark:#003B7A;
+  --role-primary-deep:#002A58;
+  --role-accent:#00A6E8;
+  --role-soft:#E7F2FF;
+  --role-soft-2:#F4F9FF;
+  --role-border:#B9D7F5;
+  --role-ink:#123E6D;
+  --role-page:#F1F7FD;
+  --role-sidebar:#003B7A;
+  --role-sidebar-2:#0057B8;
+  --role-topbar:#0057B8;
 }
 body.theme-pengawas{
-  --role-primary:#9B2C45;--role-primary-2:#731D32;--role-accent:#D7637B;
-  --role-soft:#F9EDEF;--role-soft-2:#FFF8F9;--role-border:#E8C5CE;
-  --role-ink:#5C2432;--role-topbar:#7F2338;
+  --role-primary:#A12648;
+  --role-primary-dark:#741B34;
+  --role-primary-deep:#521226;
+  --role-accent:#E36A87;
+  --role-soft:#FBEAF0;
+  --role-soft-2:#FFF6F8;
+  --role-border:#ECC1CE;
+  --role-ink:#64243A;
+  --role-page:#FFF4F7;
+  --role-sidebar:#66182F;
+  --role-sidebar-2:#98233F;
+  --role-topbar:#8B203B;
 }
 body.theme-sekolah{
-  --role-primary:#188451;--role-primary-2:#0E633C;--role-accent:#43B77A;
-  --role-soft:#EAF7F0;--role-soft-2:#F5FBF8;--role-border:#BFE2CF;
-  --role-ink:#20553A;--role-topbar:#136E45;
+  --role-primary:#138653;
+  --role-primary-dark:#0A603A;
+  --role-primary-deep:#07472B;
+  --role-accent:#42BD7B;
+  --role-soft:#E7F7EF;
+  --role-soft-2:#F3FBF7;
+  --role-border:#B9E1CD;
+  --role-ink:#205B3E;
+  --role-page:#F0FAF5;
+  --role-sidebar:#0A603A;
+  --role-sidebar-2:#138653;
+  --role-topbar:#117648;
 }
-body[data-role] .topbar{background:var(--role-topbar)!important;border-bottom-color:color-mix(in srgb,var(--role-primary-2) 70%,#000)!important}
-body[data-role] .sidebar{border-right:1px solid var(--role-border)!important}
-body[data-role] .brand-area{background:linear-gradient(145deg,var(--role-primary-2),var(--role-primary))!important}
+
+body[data-role]{
+  /* legacy color aliases */
+  --primary:var(--role-primary);
+  --primary-2:var(--role-primary-dark);
+  --emerald:var(--role-primary);
+  --emerald-2:var(--role-primary-dark);
+  --emerald-soft:var(--role-soft);
+  --green:var(--role-primary);
+  --green-2:var(--role-primary-dark);
+  --navy:var(--role-ink);
+  --ux-green:var(--role-primary);
+  --ux-green-2:var(--role-primary-dark);
+  --ux-cream:var(--role-page);
+  --ux-paper:#fff;
+  --app-bg:var(--role-page);
+  --app-surface:var(--ds-surface);
+  --app-text:var(--ds-text);
+  --app-muted:var(--ds-muted);
+  --app-border:var(--ds-border);
+  --app-border-strong:var(--ds-border-strong);
+  --app-shadow:var(--ds-shadow);
+  --app-shadow-hover:var(--ds-shadow-hover);
+  --app-radius:var(--ds-radius);
+  color:var(--ds-text);
+  background:var(--role-page);
+}
+body[data-role]:before{display:none!important}
+
+/* Shell — role identity is visible immediately, not only on buttons. */
+body[data-role] .layout{background:var(--role-page)!important}
+body[data-role] .topbar{
+  min-height:70px!important;
+  background:linear-gradient(100deg,var(--role-primary-dark),var(--role-topbar))!important;
+  border-bottom:0!important;
+  box-shadow:0 4px 18px color-mix(in srgb,var(--role-primary-deep) 22%,transparent)!important;
+  color:#fff!important;
+}
+body[data-role] .topbar .brand h2,
+body[data-role] .topbar .brand small,
+body[data-role] .topbar .brand-title,
+body[data-role] .topbar .brand-subtitle,
+body[data-role] .topbar .brand-gold-title,
+body[data-role] .topbar .user-info,
+body[data-role] .topbar .user-info *,
+body[data-role] .topbar .top-role,
+body[data-role] .topbar .top-name{color:#fff!important}
+body[data-role] .topbar .muted{color:rgba(255,255,255,.76)!important}
+body[data-role] .topbar .icon-btn,
+body[data-role] .topbar .menu-toggle{
+  color:#fff!important;
+  background:rgba(255,255,255,.10)!important;
+  border-color:rgba(255,255,255,.20)!important;
+}
+body[data-role] .topbar .icon-btn:hover,
+body[data-role] .topbar .menu-toggle:hover{background:rgba(255,255,255,.18)!important}
+body[data-role] .app-logo{background:#fff!important;border-color:rgba(255,255,255,.60)!important}
+
+body[data-role] .sidebar{
+  background:linear-gradient(180deg,var(--role-sidebar) 0%,var(--role-sidebar-2) 100%)!important;
+  color:#fff!important;
+  border-right:0!important;
+  box-shadow:7px 0 24px color-mix(in srgb,var(--role-primary-deep) 16%,transparent)!important;
+}
+body[data-role] .sidebar .nav-section-title{color:rgba(255,255,255,.58)!important}
+body[data-role] .sidebar .nav-btn,
+body[data-role] .sidebar .nav-group-toggle{color:rgba(255,255,255,.88)!important;background:transparent!important}
+body[data-role] .sidebar .nav-btn:hover,
+body[data-role] .sidebar .nav-group-toggle:hover{color:#fff!important;background:rgba(255,255,255,.10)!important}
 body[data-role] .sidebar .nav-btn.active,
 body[data-role] .sidebar .nav-submenu .nav-btn.active{
-  background:var(--role-soft)!important;color:var(--role-primary-2)!important;
-  box-shadow:inset 4px 0 0 var(--role-primary)!important;
+  color:var(--role-primary-dark)!important;
+  background:#fff!important;
+  box-shadow:0 5px 18px rgba(0,0,0,.12)!important;
 }
 body[data-role] .sidebar .nav-btn.active .nav-icon{color:var(--role-primary)!important}
-body[data-role] .section-title,body[data-role] .page-title,body[data-role] h1{color:var(--role-ink)!important}
-body[data-role] .btn-primary{background:var(--role-primary)!important;border-color:var(--role-primary)!important}
-body[data-role] .btn-primary:hover{background:var(--role-primary-2)!important;border-color:var(--role-primary-2)!important}
-body[data-role] .friendly-table th{background:var(--role-soft)!important;color:var(--role-ink)!important}
-body[data-role] .friendly-table tbody tr:hover td{background:var(--role-soft-2)!important}
-body[data-role] .stat{border-top:3px solid color-mix(in srgb,var(--role-primary) 75%,#fff)!important}
-body[data-role] .badge-info{background:var(--role-soft)!important;color:var(--role-primary-2)!important;border-color:var(--role-border)!important}
-body[data-role] .v11-hero,body[data-role] .ux-hero,body[data-role] .v211-office-hero{
-  background-image:linear-gradient(90deg,color-mix(in srgb,var(--role-primary-2) 95%,transparent),color-mix(in srgb,var(--role-primary) 78%,transparent),rgba(6,28,45,.18)),url('https://raw.githubusercontent.com/DikporaRembang/simpelspj/main/kantordindikpora.jpeg')!important;
-}
-/* Deliberately role-colored page accents: users should know their role at a glance. */
-body.theme-dinas .content{--role-page-glow:rgba(7,87,166,.055)}
-body.theme-pengawas .content{--role-page-glow:rgba(155,44,69,.055)}
-body.theme-sekolah .content{--role-page-glow:rgba(24,132,81,.055)}
-body[data-role] .content{background:linear-gradient(180deg,var(--role-page-glow),transparent 240px)!important}
+body[data-role] .sidebar-footer{border-top-color:rgba(255,255,255,.14)!important;color:rgba(255,255,255,.78)!important}
 
-/* Structured appeal UI */
+/* Page canvas has a clearly role-colored upper band/glow. */
+body[data-role] .content{
+  background:
+    linear-gradient(180deg,color-mix(in srgb,var(--role-soft) 88%,#fff) 0,var(--role-page) 220px,var(--role-page) 100%)!important;
+  padding:26px clamp(18px,3vw,38px) 44px!important;
+}
+body[data-role] .page-head,
+body[data-role] .ux-context{
+  border-color:var(--role-border)!important;
+}
+body[data-role] .page-head h1,
+body[data-role] .page-title,
+body[data-role] .section-title,
+body[data-role] h1{color:var(--role-ink)!important}
+
+/* Cards/surfaces — enough role color to distinguish screens while staying clean. */
+body[data-role] .panel,
+body[data-role] .stat,
+body[data-role] .v11-focus,
+body[data-role] .v11-stat,
+body[data-role] .school-summary-card,
+body[data-role] .school-directory-card,
+body[data-role] .assignment-group,
+body[data-role] .assessment-guide-card,
+body[data-role] .ux-workcard,
+body[data-role] .ux-todo-card{
+  background:#fff!important;
+  border:1px solid var(--ds-border)!important;
+  border-radius:var(--ds-radius)!important;
+  box-shadow:var(--ds-shadow)!important;
+}
+body[data-role] .panel:hover,
+body[data-role] .stat:hover,
+body[data-role] .school-directory-card:hover{border-color:var(--role-border)!important;box-shadow:var(--ds-shadow-hover)!important}
+body[data-role] .stat{border-top:4px solid var(--role-primary)!important}
+body[data-role] .stat:after{background:var(--role-soft)!important}
+body[data-role] .stat strong,
+body[data-role] .school-summary-card strong,
+body[data-role] .assignment-total,
+body[data-role] .assignment-pagu{color:var(--role-primary-dark)!important}
+body[data-role] .panel>h2:first-child,
+body[data-role] .panel>h3:first-child{color:var(--role-ink)!important}
+
+/* Controls */
+body[data-role] .btn{border-radius:9px!important;font-weight:700!important;box-shadow:none!important}
+body[data-role] .btn-primary{background:var(--role-primary)!important;border-color:var(--role-primary)!important;color:#fff!important}
+body[data-role] .btn-primary:hover{background:var(--role-primary-dark)!important;border-color:var(--role-primary-dark)!important}
+body[data-role] .btn-secondary{background:var(--role-soft)!important;color:var(--role-primary-dark)!important;border-color:var(--role-border)!important}
+body[data-role] .btn-light{background:#fff!important;color:#3d566a!important;border-color:var(--ds-border-strong)!important}
+body[data-role] .btn-light:hover{color:var(--role-primary-dark)!important;border-color:var(--role-border)!important;background:var(--role-soft-2)!important}
+body[data-role] input:focus,
+body[data-role] select:focus,
+body[data-role] textarea:focus{border-color:var(--role-primary)!important;box-shadow:0 0 0 3px color-mix(in srgb,var(--role-primary) 12%,transparent)!important}
+
+/* Tables — table headers now visibly follow the role. */
+body[data-role] .table-wrap{background:#fff!important;border-color:var(--ds-border)!important;border-radius:11px!important}
+body[data-role] .friendly-table th{
+  background:var(--role-soft)!important;
+  color:var(--role-ink)!important;
+  border-bottom:1px solid var(--role-border)!important;
+  font-weight:800!important;
+}
+body[data-role] .friendly-table td{background:#fff!important;color:#334d61!important;border-bottom-color:#edf1f5!important}
+body[data-role] .friendly-table tbody tr:hover td{background:var(--role-soft-2)!important}
+body[data-role] .friendly-table tbody tr:nth-child(even) td{background:color-mix(in srgb,var(--role-soft-2) 45%,#fff)!important}
+body[data-role] .friendly-table tbody tr:nth-child(even):hover td{background:var(--role-soft-2)!important}
+
+/* Informational UI */
+body[data-role] .badge-info,
+body[data-role] .status-badge.info{background:var(--role-soft)!important;color:var(--role-primary-dark)!important;border-color:var(--role-border)!important}
+body[data-role] .ux-context,
+body[data-role] .school-next-action,
+body[data-role] .status-hero,
+body[data-role] .assignment-group-head,
+body[data-role] .tutorial-feed,
+body[data-role] .v225-home-next{background:var(--role-soft-2)!important;border-color:var(--role-border)!important}
+body[data-role] .ux-context-mark,
+body[data-role] .assignment-group-icon{background:var(--role-primary)!important;color:#fff!important}
+body[data-role] .status-progress>span,
+body[data-role] .school-progress-track>span,
+body[data-role] .progress>i{background:var(--role-primary)!important}
+body[data-role] .tutorial-step.current{background:var(--role-primary)!important;color:#fff!important}
+body[data-role] .tutorial-step{background:var(--role-soft)!important;color:var(--role-primary-dark)!important}
+
+/* Role hero keeps the requested Dindikpora photo but uses a unique overlay. */
+body[data-role] .v11-hero,
+body[data-role] .ux-hero,
+body[data-role] .v211-office-hero{
+  background-image:
+    linear-gradient(90deg,color-mix(in srgb,var(--role-primary-deep) 96%,transparent) 0%,color-mix(in srgb,var(--role-primary) 80%,transparent) 52%,rgba(8,26,42,.12) 100%),
+    url('https://raw.githubusercontent.com/DikporaRembang/simpelspj/main/kantordindikpora.jpeg')!important;
+  border-color:color-mix(in srgb,var(--role-primary) 30%,transparent)!important;
+  box-shadow:0 14px 34px color-mix(in srgb,var(--role-primary-deep) 16%,transparent)!important;
+}
+
+/* Search and modals */
+body[data-role] .top-search-wrap{background:rgba(255,255,255,.12)!important;border-color:rgba(255,255,255,.24)!important}
+body[data-role] .top-search-wrap input{color:#fff!important;background:transparent!important}
+body[data-role] .top-search-wrap input::placeholder{color:rgba(255,255,255,.70)!important}
+body[data-role] .search-results{background:#fff!important;border-color:var(--role-border)!important}
+body[data-role] .search-result:hover{background:var(--role-soft-2)!important}
+body[data-role] .search-result-icon{background:var(--role-soft)!important;color:var(--role-primary)!important}
+body[data-role] .simple-modal-card,
+body[data-role] .v16-modal-card{border-color:var(--role-border)!important}
+
+/* V23.2 structured appeal UI, now sourced from the single role system. */
 .v232-appeal-card{width:min(860px,96vw)!important;max-height:90vh;overflow:auto}
 .v232-modal-head{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;margin-bottom:16px}
-.v232-modal-head h3{margin:3px 0 5px;font-size:1.25rem}.v232-modal-head p{margin:0;color:var(--app-muted);line-height:1.5}
+.v232-modal-head h3{margin:3px 0 5px;font-size:1.25rem}.v232-modal-head p{margin:0;color:var(--ds-muted);line-height:1.5}
 .v232-eyebrow{font-size:.68rem;font-weight:850;letter-spacing:.1em;color:var(--role-primary)}
-.v232-close{border:0;background:var(--role-soft);color:var(--role-primary-2);width:36px;height:36px;border-radius:10px;font-size:1.35rem;cursor:pointer}
+.v232-close{border:0;background:var(--role-soft);color:var(--role-primary-dark);width:36px;height:36px;border-radius:10px;font-size:1.35rem;cursor:pointer}
 .v232-instrument-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-bottom:16px}
-.v232-instrument-choice{display:flex;gap:10px;align-items:flex-start;padding:11px 12px;border:1px solid var(--app-border);border-radius:11px;background:#fff;cursor:pointer}
+.v232-instrument-choice{display:flex;gap:10px;align-items:flex-start;padding:11px 12px;border:1px solid var(--ds-border);border-radius:11px;background:#fff;cursor:pointer}
 .v232-instrument-choice:has(input:checked){border-color:var(--role-primary);background:var(--role-soft-2);box-shadow:0 0 0 2px color-mix(in srgb,var(--role-primary) 10%,transparent)}
 .v232-instrument-choice input{margin-top:3px;accent-color:var(--role-primary)}
-.v232-instrument-choice b,.v232-instrument-choice small{display:block}.v232-instrument-choice b{font-size:.86rem;color:var(--app-text)}.v232-instrument-choice small{margin-top:3px;color:var(--app-muted);font-size:.74rem}
-.v232-chip-row{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px}.v232-chip{background:var(--role-soft);color:var(--role-primary-2);border:1px solid var(--role-border);border-radius:999px;padding:6px 9px;font-size:.75rem;font-weight:750}
-.v232-school-reason{padding:12px 14px;background:#f8fafc;border:1px solid var(--app-border);border-radius:11px;margin-bottom:14px}.v232-school-reason p{white-space:pre-wrap;margin:5px 0 0;line-height:1.55;color:var(--app-text)}
-@media(max-width:680px){.v232-instrument-grid{grid-template-columns:1fr}}
-</style>
+.v232-instrument-choice b,.v232-instrument-choice small{display:block}.v232-instrument-choice b{font-size:.86rem;color:var(--ds-text)}.v232-instrument-choice small{margin-top:3px;color:var(--ds-muted);font-size:.74rem}
+.v232-chip-row{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px}.v232-chip{background:var(--role-soft);color:var(--role-primary-dark);border:1px solid var(--role-border);border-radius:999px;padding:6px 9px;font-size:.75rem;font-weight:750}
+.v232-school-reason{padding:12px 14px;background:var(--role-soft-2);border:1px solid var(--role-border);border-radius:11px;margin-bottom:14px}.v232-school-reason p{white-space:pre-wrap;margin:5px 0 0;line-height:1.55;color:var(--ds-text)}
 
+/* Explicit role marker: subtle but unmistakable. */
+body[data-role] .topbar:after{
+  content:attr(data-role-label);
+  display:none;
+}
+@media(max-width:760px){
+  body[data-role] .content{padding:16px 12px 30px!important}
+  .v232-instrument-grid{grid-template-columns:1fr}
+}
+
+/* ==========================================================================
+   V23.4 — DISTINCT ROLE IDENTITY + PENGAWAS READINESS DASHBOARD
+   ========================================================================== */
+.welcome-overlay.welcome-dinas{background:linear-gradient(135deg,rgba(0,42,88,.98),rgba(0,87,184,.93)),url('kantordindikpora.jpeg') center/cover!important}
+.welcome-overlay.welcome-pengawas{background:linear-gradient(135deg,rgba(70,13,32,.98),rgba(161,38,72,.92)),url('kantordindikpora.jpeg') center/cover!important}
+.welcome-overlay.welcome-sekolah{background:linear-gradient(135deg,rgba(5,70,42,.98),rgba(19,134,83,.92)),url('kantordindikpora.jpeg') center/cover!important}
+.welcome-overlay .welcome-role-chip{margin-bottom:12px;padding:7px 12px;border-radius:999px;border:1px solid rgba(255,255,255,.34);background:rgba(255,255,255,.12);color:#fff;font-size:.72rem;font-weight:900;letter-spacing:.14em}
+.welcome-overlay .welcome-title-anim{background:none!important;-webkit-background-clip:initial!important;-webkit-text-fill-color:#fff!important;color:#fff!important;text-shadow:0 12px 32px rgba(0,0,0,.34)!important}
+.welcome-overlay .welcome-subtitle-anim{color:rgba(255,255,255,.88)!important}
+
+body.theme-dinas .content{background:linear-gradient(180deg,#DDEEFF 0,#F2F8FF 240px,#F5F9FD 100%)!important}
+body.theme-pengawas .content{background:linear-gradient(180deg,#F9DCE5 0,#FFF2F6 240px,#FFF7F9 100%)!important}
+body.theme-sekolah .content{background:linear-gradient(180deg,#DCF3E7 0,#F0FAF5 240px,#F6FBF8 100%)!important}
+
+body[data-role] .v17-ph-hero{position:relative;overflow:hidden;color:#fff!important;border:1px solid color-mix(in srgb,var(--role-primary) 38%,transparent)!important;background-image:linear-gradient(100deg,color-mix(in srgb,var(--role-primary-deep) 98%,transparent),color-mix(in srgb,var(--role-primary) 85%,transparent) 62%,rgba(0,0,0,.12)),url('https://raw.githubusercontent.com/DikporaRembang/simpelspj/main/kantordindikpora.jpeg')!important;background-size:cover!important;background-position:center!important;box-shadow:0 16px 36px color-mix(in srgb,var(--role-primary-deep) 22%,transparent)!important}
+body[data-role] .v17-ph-hero h2{color:#fff!important}
+body[data-role] .v17-ph-hero p{color:rgba(255,255,255,.85)!important}
+body[data-role] .v17-ph-hero .v17-ph-kicker{color:#fff!important;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.24);display:inline-flex;padding:6px 9px;border-radius:999px}
+body[data-role] .v17-ph-hero .btn-primary{background:#fff!important;color:var(--role-primary-dark)!important;border-color:#fff!important}
+body[data-role] .v17-ph-stat{border-top:4px solid var(--role-primary)!important;border-color:var(--role-border)!important}
+body[data-role] .v17-ph-stat strong{color:var(--role-primary-dark)!important}
+body[data-role] .v17-ph-section,body[data-role] .v17-ph-card{border-color:var(--role-border)!important}
+body[data-role] .v17-ph-label,body[data-role] .v17-ph-step em{color:var(--role-primary)!important}
+body[data-role] .v17-ph-section-head h3,body[data-role] .v17-ph-step strong,body[data-role] .v17-ph-card h3{color:var(--role-ink)!important}
+body[data-role] .v17-ph-step{background:var(--role-soft-2)!important;border-color:var(--role-border)!important}
+body[data-role] .v17-ph-step>b{background:var(--role-primary)!important;color:#fff!important}
+body[data-role] .v17-ph-note{border-left-color:var(--role-primary)!important;background:var(--role-soft-2)!important;color:var(--role-ink)!important}
+
+.v234-readiness-shell{display:flex;flex-direction:column;gap:15px}
+.v234-readiness-hero{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(260px,.6fr);gap:22px;align-items:center;padding:24px;border-radius:20px;color:#fff;background:linear-gradient(125deg,var(--role-primary-deep),var(--role-primary));box-shadow:0 14px 34px color-mix(in srgb,var(--role-primary-deep) 22%,transparent)}
+.v234-readiness-hero h2{margin:6px 0 7px;color:#fff!important;font-size:1.65rem}
+.v234-readiness-hero p{margin:0;color:rgba(255,255,255,.83);line-height:1.55;max-width:780px}
+.v234-eyebrow{font-size:.68rem;font-weight:900;letter-spacing:.13em;color:#fff}
+.v234-period-box{padding:14px;border:1px solid rgba(255,255,255,.23);border-radius:14px;background:rgba(255,255,255,.10)}
+.v234-period-box>label{display:block;color:#fff;font-size:.74rem;font-weight:850;margin-bottom:7px}
+.v234-period-box .badge{background:rgba(255,255,255,.15)!important;color:#fff!important;border-color:rgba(255,255,255,.25)!important}
+.v234-period-box .muted{color:rgba(255,255,255,.73)!important}
+.v234-period-box select{background:#fff!important;color:#263746!important;border-color:#fff!important}
+
+.v234-readiness-summary{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px}
+.v234-summary-card{text-align:left;padding:14px;border-radius:14px;border:1px solid var(--ds-border);background:#fff;cursor:pointer;box-shadow:var(--ds-shadow);transition:.16s}
+.v234-summary-card:hover{transform:translateY(-2px);box-shadow:var(--ds-shadow-hover)}
+.v234-summary-card small{display:block;font-size:.61rem;font-weight:900;letter-spacing:.08em;color:#6b7a88}
+.v234-summary-card strong{display:block;font-size:1.55rem;margin:5px 0 2px;color:#233b50}
+.v234-summary-card span{font-size:.68rem;color:#7b8995;line-height:1.35}
+.v234-summary-card.ready{border-top:4px solid #14804A}.v234-summary-card.ready strong{color:#14804A}
+.v234-summary-card.waiting{border-top:4px solid #C28716}.v234-summary-card.waiting strong{color:#9B6909}
+.v234-summary-card.checking{border-top:4px solid var(--role-primary)}.v234-summary-card.checking strong{color:var(--role-primary-dark)}
+.v234-summary-card.repair{border-top:4px solid #D56A00}.v234-summary-card.repair strong{color:#A94F00}
+.v234-summary-card.appeal{border-top:4px solid #7357B3}.v234-summary-card.appeal strong{color:#5A4190}
+.v234-summary-card.done{border-top:4px solid #315F78}.v234-summary-card.done strong{color:#315F78}
+
+.v234-readiness-toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;padding:12px;background:#fff;border:1px solid var(--role-border);border-radius:14px}
+.v234-filter-tabs{display:flex;gap:6px;flex-wrap:wrap}
+.v234-filter{border:1px solid var(--ds-border-strong);background:#fff;color:#526678;border-radius:999px;padding:8px 11px;font-size:.72rem;font-weight:800;cursor:pointer}
+.v234-filter.active,.v234-filter:hover{color:#fff;background:var(--role-primary);border-color:var(--role-primary)}
+.v234-readiness-toolbar input{width:min(310px,100%)}
+
+.v234-readiness-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
+.v234-school-card{position:relative;background:#fff;border:1px solid var(--ds-border);border-radius:17px;padding:17px;box-shadow:var(--ds-shadow);overflow:hidden}
+.v234-school-card:before{content:"";position:absolute;left:0;top:0;bottom:0;width:5px;background:var(--role-primary)}
+.v234-school-card.ready:before{background:#14804A}.v234-school-card.waiting:before{background:#C28716}.v234-school-card.checking:before{background:var(--role-primary)}.v234-school-card.repair:before{background:#D56A00}.v234-school-card.appeal:before{background:#7357B3}.v234-school-card.done:before{background:#315F78}
+.v234-school-status{display:inline-flex;align-items:center;gap:6px;padding:6px 9px;border-radius:999px;font-size:.66rem;font-weight:900;letter-spacing:.05em;background:var(--role-soft);color:var(--role-primary-dark)}
+.v234-school-card.ready .v234-school-status{background:#E8F7EF;color:#126B40}.v234-school-card.waiting .v234-school-status{background:#FFF5DD;color:#8F6108}.v234-school-card.repair .v234-school-status{background:#FFF0E2;color:#9C4A00}.v234-school-card.appeal .v234-school-status{background:#F1ECFB;color:#5A4190}.v234-school-card.done .v234-school-status{background:#EAF1F5;color:#315F78}
+.v234-school-head{display:flex;justify-content:space-between;gap:12px;margin:11px 0 13px}.v234-school-head h3{margin:0 0 4px;color:var(--role-ink)!important;font-size:1rem}.v234-school-head p{margin:0;color:#70808d;font-size:.74rem}
+.v234-score{text-align:center;min-width:58px;padding:7px 9px;border-radius:10px;background:var(--role-soft)}.v234-score small,.v234-score strong{display:block}.v234-score small{font-size:.58rem;color:#738391}.v234-score strong{color:var(--role-primary-dark);font-size:1.15rem}
+.v234-school-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}
+.v234-school-metrics>div{padding:9px;border:1px solid #e9eef2;border-radius:10px;background:#fbfcfd;min-width:0}
+.v234-school-metrics small,.v234-school-metrics b,.v234-school-metrics span{display:block}
+.v234-school-metrics small{font-size:.58rem;color:#7b8995;text-transform:uppercase;font-weight:850;letter-spacing:.04em}
+.v234-school-metrics b{margin:4px 0 2px;font-size:.76rem;color:#304a5e;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.v234-school-metrics b.ok{color:#14804A}.v234-school-metrics b.no,.v234-school-metrics b.warn{color:#B25B00}
+.v234-school-metrics span{font-size:.62rem;color:#82909b;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.v234-reasons{margin-top:10px;padding:10px 11px;background:#FFF8E8;border:1px solid #F1DDA8;border-radius:10px;color:#72520C;font-size:.7rem}
+.v234-reasons b,.v234-reasons span{display:block}.v234-reasons span{margin-top:3px}.v234-reasons small{display:block;margin-top:5px;color:#8c7544}
+.v234-school-actions{display:flex;justify-content:flex-end;margin-top:12px}
+
+@media(max-width:1100px){.v234-readiness-summary{grid-template-columns:repeat(3,minmax(0,1fr))}.v234-school-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:760px){.v234-readiness-hero{grid-template-columns:1fr;padding:18px}.v234-readiness-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.v234-readiness-grid{grid-template-columns:1fr}.v234-readiness-toolbar{align-items:stretch}.v234-readiness-toolbar input{width:100%}}
+
+</style>
+<style id="v235RoleThemeBugfix">
+/* ==========================================================================
+   V23.5 — ROLE THEME BUGFIX + CONTRAST PASS
+   Fixes the V21.13 SEKOLAH fallback and keeps role color as an accent rather
+   than turning most dashboard text into the role color.
+   ========================================================================== */
+
+/* Core readable typography: role color is for identity/accent, not body copy. */
+body[data-role] .content,
+body[data-role] .panel,
+body[data-role] .stat,
+body[data-role] .school-summary-card,
+body[data-role] .v11-stat,
+body[data-role] .v17-ph-stat,
+body[data-role] .v17-ph-card,
+body[data-role] .v234-school-card{
+  color:var(--ds-text)!important;
+}
+body[data-role] .content p,
+body[data-role] .content li,
+body[data-role] .content td,
+body[data-role] .content label,
+body[data-role] .content .muted{
+  color:var(--ds-muted)!important;
+}
+body[data-role] .content h1,
+body[data-role] .content h2,
+body[data-role] .content h3,
+body[data-role] .content h4,
+body[data-role] .panel>h2:first-child,
+body[data-role] .panel>h3:first-child,
+body[data-role] .v17-ph-section-head h3,
+body[data-role] .v17-ph-step strong,
+body[data-role] .v17-ph-card h3{
+  color:var(--ds-text)!important;
+}
+
+/* KPI/value text remains readable and neutral; role is shown by border/icon. */
+body[data-role] .stat strong,
+body[data-role] .school-summary-card strong,
+body[data-role] .v11-stat .value,
+body[data-role] .v17-ph-stat strong,
+body[data-role] .school-progress-number,
+body[data-role] .school-result-percent,
+body[data-role] .school-quick-card>b,
+body[data-role] .assignment-total,
+body[data-role] .assignment-pagu{
+  color:var(--ds-text)!important;
+}
+
+/* Explicit role-colored text is reserved for labels and interactive accents. */
+body[data-role] .role-accent-text,
+body[data-role] .v17-ph-label,
+body[data-role] .v17-ph-step em,
+body[data-role] .v232-eyebrow{
+  color:var(--role-primary-dark)!important;
+}
+
+/* Hero/welcome areas always use on-color text, regardless of generic heading rules. */
+body[data-role] .v17-ph-hero h1,
+body[data-role] .v17-ph-hero h2,
+body[data-role] .v17-ph-hero h3,
+body[data-role] .v17-ph-hero p,
+body[data-role] .v17-ph-hero .v17-ph-kicker,
+body[data-role] .v11-hero h1,
+body[data-role] .v11-hero h2,
+body[data-role] .v11-hero h3,
+body[data-role] .v11-hero p,
+body[data-role] .ux-hero h1,
+body[data-role] .ux-hero h2,
+body[data-role] .ux-hero h3,
+body[data-role] .ux-hero p,
+body[data-role] .v211-office-hero h1,
+body[data-role] .v211-office-hero h2,
+body[data-role] .v211-office-hero h3,
+body[data-role] .v211-office-hero p,
+body[data-role] .v234-readiness-hero h1,
+body[data-role] .v234-readiness-hero h2,
+body[data-role] .v234-readiness-hero h3,
+body[data-role] .v234-readiness-hero p{
+  color:#fff!important;
+}
+body[data-role] .v17-ph-hero p,
+body[data-role] .v11-hero p,
+body[data-role] .ux-hero p,
+body[data-role] .v211-office-hero p,
+body[data-role] .v234-readiness-hero p{opacity:.9}
+
+/* Buttons must remain strongly contrasted per role. */
+body[data-role] .btn-primary{
+  background:var(--role-primary)!important;
+  border-color:var(--role-primary)!important;
+  color:#fff!important;
+  font-weight:800!important;
+}
+body[data-role] .btn-primary:hover{
+  background:var(--role-primary-dark)!important;
+  border-color:var(--role-primary-dark)!important;
+  color:#fff!important;
+}
+body[data-role] .btn-secondary{
+  background:var(--role-soft)!important;
+  color:var(--role-primary-dark)!important;
+  border:1px solid var(--role-border)!important;
+  font-weight:800!important;
+}
+
+/* Keep role identity obvious without sacrificing text contrast. */
+body.theme-dinas .topbar,body.theme-dinas .sidebar{--role-contrast:#fff}
+body.theme-pengawas .topbar,body.theme-pengawas .sidebar{--role-contrast:#fff}
+body.theme-sekolah .topbar,body.theme-sekolah .sidebar{--role-contrast:#fff}
+body[data-role] .topbar,
+body[data-role] .sidebar{color:var(--role-contrast,#fff)!important}
+
+/* SEKOLAH: green remains the identity color, but normal dashboard text is ink. */
+body.theme-sekolah .content .panel:not(.v17-ph-hero):not(.v11-hero):not(.ux-hero):not(.v211-office-hero) strong,
+body.theme-sekolah .content .school-summary-card strong,
+body.theme-sekolah .content .v11-stat .value{
+  color:var(--ds-text)!important;
+}
+</style>
 </body>
 </html>
