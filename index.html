@@ -2469,6 +2469,11 @@ window.instrumentPdfZoom = async function(delta){
   st.zoom=Math.max(.65,Math.min(2.2,st.zoom+Number(delta||0)));
   await renderInstrumentPdfPage(st.pageNo);
 };
+window.instrumentPdfResetZoom = async function(){
+  const st=window.__instrumentPdfState; if(!st) return;
+  st.zoom=1;
+  await renderInstrumentPdfPage(st.pageNo);
+};
 
 window.showInstrumentPdf=async function(btn){
   const targetId=btn?.dataset?.target||'';
@@ -2503,23 +2508,26 @@ window.showInstrumentPdf=async function(btn){
     wrap.dataset.page='1';
     wrap.dataset.zoom='1';
     wrap.innerHTML=`
-      <div class="instrument-pdf-toolbar" role="toolbar" aria-label="Navigasi PDF">
-        <div class="instrument-pdf-toolbar-group">
-          <button type="button" class="btn btn-light btn-sm instrument-pdf-prev" onclick="instrumentPdfGo(-1)" aria-label="Halaman sebelumnya">← Sebelumnya</button>
-          <button type="button" class="btn btn-light btn-sm instrument-pdf-next" onclick="instrumentPdfGo(1)" aria-label="Halaman berikutnya">Berikutnya →</button>
+      <div class="instrument-pdf-toolbar v239-pdf-toolbar" role="toolbar" aria-label="Navigasi PDF">
+        <div class="v239-pdf-nav" aria-label="Navigasi halaman">
+          <button type="button" class="v239-pdf-icon-btn" onclick="renderInstrumentPdfPage(1)" aria-label="Halaman pertama" title="Halaman pertama">⇤</button>
+          <button type="button" class="v239-pdf-icon-btn instrument-pdf-prev" onclick="instrumentPdfGo(-1)" aria-label="Halaman sebelumnya" title="Halaman sebelumnya">‹</button>
+          <div class="instrument-pdf-page-control v239-pdf-page-pill">
+            <span class="v239-pdf-page-label">Hal.</span>
+            <input class="instrument-pdf-page-input" type="number" min="1" max="${pdf.numPages}" value="1" inputmode="numeric" aria-label="Nomor halaman" onkeydown="if(event.key==='Enter'){event.preventDefault();instrumentPdfGoInput(this)}" onchange="instrumentPdfGoInput(this)">
+            <span class="instrument-pdf-page-info">/ ${pdf.numPages}</span>
+          </div>
+          <button type="button" class="v239-pdf-icon-btn instrument-pdf-next" onclick="instrumentPdfGo(1)" aria-label="Halaman berikutnya" title="Halaman berikutnya">›</button>
+          <button type="button" class="v239-pdf-icon-btn" onclick="renderInstrumentPdfPage(window.__instrumentPdfState?.pdf?.numPages||1)" aria-label="Halaman terakhir" title="Halaman terakhir">⇥</button>
         </div>
-        <div class="instrument-pdf-page-control">
-          <span>Halaman</span>
-          <input class="instrument-pdf-page-input" type="number" min="1" max="${pdf.numPages}" value="1" inputmode="numeric" aria-label="Nomor halaman" onkeydown="if(event.key==='Enter'){event.preventDefault();instrumentPdfGoInput(this)}" onchange="instrumentPdfGoInput(this)">
-          <span class="instrument-pdf-page-info">dari ${pdf.numPages}</span>
+        <div class="v239-pdf-toolbar-divider" aria-hidden="true"></div>
+        <div class="v239-pdf-zoom" aria-label="Kontrol zoom">
+          <button type="button" class="v239-pdf-icon-btn" onclick="instrumentPdfZoom(-.1)" aria-label="Perkecil PDF" title="Perkecil">−</button>
+          <button type="button" class="instrument-pdf-zoom-info v239-pdf-zoom-value" onclick="instrumentPdfResetZoom()" title="Reset ke 100%" aria-label="Reset zoom ke 100%">100%</button>
+          <button type="button" class="v239-pdf-icon-btn" onclick="instrumentPdfZoom(.1)" aria-label="Perbesar PDF" title="Perbesar">+</button>
         </div>
-        <div class="instrument-pdf-toolbar-group">
-          <button type="button" class="btn btn-light btn-sm" onclick="instrumentPdfZoom(-.1)" aria-label="Perkecil PDF">−</button>
-          <span class="instrument-pdf-zoom-info">100%</span>
-          <button type="button" class="btn btn-light btn-sm" onclick="instrumentPdfZoom(.1)" aria-label="Perbesar PDF">+</button>
-        </div>
+        <div class="v239-pdf-hint"><span>← → halaman</span><span>•</span><span>+ − zoom</span><span>•</span><span>0 reset</span></div>
       </div>
-      <div class="instrument-pdf-shortcuts">Keyboard: <kbd>←</kbd>/<kbd>→</kbd> pindah halaman · <kbd>Page Up</kbd>/<kbd>Page Down</kbd> · <kbd>Home</kbd>/<kbd>End</kbd></div>
       <div class="instrument-pdf-stage" tabindex="0" aria-label="Tampilan PDF"></div>`;
     window.__instrumentPdfState={viewer,wrap,pdf,pageNo:1,zoom:1};
     await renderInstrumentPdfPage(1);
@@ -2541,6 +2549,9 @@ if(!window.__instrumentPdfKeyboardBound){
     else if(e.key==='ArrowRight' || e.key==='PageDown') await instrumentPdfGo(1);
     else if(e.key==='Home') await renderInstrumentPdfPage(1);
     else if(e.key==='End') await renderInstrumentPdfPage(st.pdf.numPages);
+    else if(e.key==='+' || e.key==='=') await instrumentPdfZoom(.1);
+    else if(e.key==='-' || e.key==='_') await instrumentPdfZoom(-.1);
+    else if(e.key==='0') await instrumentPdfResetZoom();
     else handled=false;
     if(handled) e.preventDefault();
   });
@@ -11244,6 +11255,42 @@ body[data-role] #mainContent .v225-support button:hover{
   body[data-role] #mainContent .v225-home-next .btn{width:100%!important}
   body[data-role] #mainContent .v225-workflow{padding:16px!important}
   body[data-role] #mainContent .v225-steps{grid-template-columns:1fr!important}
+}
+</style>
+
+<style id="v239ElegantPdfToolbar">
+/* V23.9 — Elegant PDF navigation: final cascade layer */
+.instrument-pdf-inline{margin-top:14px;border:1px solid color-mix(in srgb,var(--role-primary) 15%,#dce5ea);border-radius:16px;overflow:hidden;background:#fff;box-shadow:0 14px 34px rgba(16,42,67,.08)}
+.instrument-pdf-inline-head{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 16px;background:#fff;border-bottom:1px solid #e8edf1}
+.instrument-pdf-inline-head>div{min-width:0}.instrument-pdf-inline-head strong{display:block;color:#17212b;font-size:.92rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.instrument-pdf-inline-head .muted{margin-top:3px;font-size:.74rem;color:#71808d}
+.instrument-pdf-inline-head>.btn{height:34px;padding:0 12px;border-radius:9px;border:1px solid #d9e1e7;background:#fff;color:#40515f;font-size:.75rem;font-weight:750;box-shadow:none}
+.instrument-pdf-inline-head>.btn:hover{background:#f6f8fa;border-color:#c8d3db;color:#17212b}
+.instrument-pdf-inline-frame{background:#eef2f5!important}
+.instrument-pdf-toolbar.v239-pdf-toolbar{position:sticky;top:0;z-index:7;display:flex!important;align-items:center!important;justify-content:center!important;gap:10px!important;flex-wrap:wrap!important;padding:9px 12px!important;background:rgba(255,255,255,.98)!important;border-bottom:1px solid #dde5ea!important;box-shadow:0 4px 16px rgba(16,42,67,.05)!important;backdrop-filter:blur(10px)}
+.v239-pdf-nav,.v239-pdf-zoom{display:flex;align-items:center;gap:4px;padding:3px;border:1px solid #dce4e9;border-radius:11px;background:#f8fafb}
+.v239-pdf-icon-btn{width:32px;height:32px;display:grid;place-items:center;border:0;border-radius:8px;background:transparent;color:#334552;font:700 1.05rem/1 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;cursor:pointer;transition:background .15s,color .15s,transform .15s}
+.v239-pdf-icon-btn:hover:not(:disabled){background:#fff;color:var(--role-primary);box-shadow:0 2px 7px rgba(16,42,67,.09)}
+.v239-pdf-icon-btn:active:not(:disabled){transform:scale(.95)}
+.v239-pdf-icon-btn:disabled{opacity:.28;cursor:not-allowed}
+.instrument-pdf-page-control.v239-pdf-page-pill{display:flex!important;align-items:center!important;gap:5px!important;padding:0 8px!important;min-width:auto!important;color:#5f6f7b!important;font-size:.73rem!important;background:#fff;border-radius:8px;box-shadow:0 1px 3px rgba(16,42,67,.06)}
+.v239-pdf-page-label{font-weight:700;color:#7b8994}
+.instrument-pdf-page-input{width:42px!important;height:30px!important;padding:0 3px!important;border:0!important;border-radius:6px!important;background:#f1f5f7!important;color:#17212b!important;text-align:center!important;font-size:.78rem!important;font-weight:800!important;box-shadow:none!important;appearance:textfield}
+.instrument-pdf-page-input::-webkit-inner-spin-button,.instrument-pdf-page-input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+.instrument-pdf-page-input:focus{outline:2px solid color-mix(in srgb,var(--role-primary) 22%,transparent)!important;outline-offset:1px!important;background:#fff!important}
+.instrument-pdf-page-info{font-weight:700;color:#7b8994;white-space:nowrap}
+.v239-pdf-toolbar-divider{width:1px;height:24px;background:#dce4e9}
+.instrument-pdf-zoom-info.v239-pdf-zoom-value{min-width:52px!important;height:32px!important;border:0!important;border-radius:8px!important;background:#fff!important;color:#334552!important;font-size:.73rem!important;font-weight:800!important;cursor:pointer;box-shadow:0 1px 3px rgba(16,42,67,.06)}
+.instrument-pdf-zoom-info.v239-pdf-zoom-value:hover{color:var(--role-primary)!important}
+.v239-pdf-hint{display:flex;align-items:center;gap:5px;margin-left:2px;color:#8a98a3;font-size:.63rem;white-space:nowrap}
+.instrument-pdf-stage{padding:18px!important;background:linear-gradient(#edf2f5,#e7edf1)!important}
+.instrument-pdf-single-canvas{border:0!important;border-radius:3px;box-shadow:0 16px 38px rgba(16,42,67,.18)!important}
+@media(max-width:760px){
+  .instrument-pdf-inline-head{padding:11px 12px}.instrument-pdf-inline-head .muted{display:none}
+  .instrument-pdf-toolbar.v239-pdf-toolbar{justify-content:space-between!important;padding:7px 8px!important;gap:6px!important}
+  .v239-pdf-toolbar-divider,.v239-pdf-hint{display:none}
+  .v239-pdf-nav{flex:1;justify-content:center}.v239-pdf-zoom{flex:0 0 auto}
+  .v239-pdf-icon-btn{width:30px;height:30px}.instrument-pdf-page-control.v239-pdf-page-pill{padding:0 5px!important}
+  .v239-pdf-page-label{display:none}.instrument-pdf-stage{padding:8px!important}
 }
 </style>
 </body>
