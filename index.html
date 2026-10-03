@@ -227,7 +227,7 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
   position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;
   flex-direction:column;padding:24px;text-align:center;
   background:
-    linear-gradient(135deg,rgba(16,42,67,.97),rgba(8,127,91,.95)),
+    linear-gradient(135deg,rgba(0,0,0,.96),rgba(29,29,31,.94)),
     url('kantordindikpora.jpeg') center/cover;
   animation:smoothWelcome 3.2s cubic-bezier(.16,1,.3,1) forwards
 }
@@ -237,7 +237,7 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
 }
 .welcome-title-anim{
   font-size:clamp(1.8rem,4.5vw,3.25rem);font-weight:900;text-transform:uppercase;
-  background:linear-gradient(90deg,#FFF8D6,#C8A24A,#FFF8D6,#B38728);
+  background:linear-gradient(90deg,#FFFFFF,#D2D2D7,#FFFFFF);
   -webkit-background-clip:text;-webkit-text-fill-color:transparent;
   letter-spacing:1.8px;margin:0;text-shadow:0 10px 30px rgba(0,0,0,.3)
 }
@@ -345,8 +345,7 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
 }
 .topbar .brand{margin:0}.top-actions{display:flex;align-items:center;gap:9px}
 .layout{display:grid;grid-template-columns:272px minmax(0,1fr);min-height:calc(100vh - 72px)}
-.sidebar{
-  background:linear-gradient(180deg,#102A43 0%,#0D3B3A 58%,#087F5B 150%);
+.sidebar{background:#1D1D1F;color:#FFFFFF;
   color:#e2e8f0;padding:22px 14px;display:flex;flex-direction:column;justify-content:space-between;
   border-right:1px solid rgba(255,255,255,.06)
 }
@@ -862,7 +861,7 @@ body{background:linear-gradient(180deg,#fbfaf6 0,#f4f2eb 100%)!important;color:v
 <style>
 /* SIMPEL SPJ Clean Button & Navigation Theme V1 */
 :root{
-  --role-primary:#0B8F6A;
+  --role-primary:#1D1D1F;
   --btn-radius:16px;
 }
 
@@ -909,15 +908,15 @@ button:active,
 }
 
 .role-dinas{
-  --role-primary:#0B8F6A;
+  --role-primary:#1D1D1F;
 }
 
 .role-sekolah{
-  --role-primary:#2563EB;
+  --role-primary:#1D1D1F;
 }
 
 .role-pengawas{
-  --role-primary:#7C3AED;
+  --role-primary:#1D1D1F;
 }
 
 .clean-card{
@@ -1056,6 +1055,752 @@ button:hover,
 .role-accent{
   width:8px;
   border-radius:99px;
+}
+</style>
+
+
+<style>
+/* SIMPEL SPJ Design System V1 Applied */
+
+:root{
+ --spj-bg:#F5F5F7;
+ --spj-surface:#FFFFFF;
+ --spj-text:#1D1D1F;
+ --spj-muted:#6E6E73;
+ --spj-border:#D2D2D7;
+ --role-dinas:#166534;
+ --role-sekolah:#1D4ED8;
+ --role-pengawas:#4338CA;
+}
+
+body{
+ background:var(--spj-bg)!important;
+ color:var(--spj-text);
+}
+
+.spj-premium-card,
+.card,
+.panel{
+ border-radius:22px!important;
+ background:var(--spj-surface)!important;
+ border:1px solid rgba(0,0,0,.05)!important;
+ box-shadow:0 10px 30px rgba(0,0,0,.05)!important;
+}
+
+button,
+.btn,
+.action-btn,
+input[type="submit"]{
+ border-radius:16px!important;
+ transition:all .2s ease!important;
+}
+
+button:hover,
+.btn:hover,
+.action-btn:hover{
+ transform:translateY(-2px);
+}
+
+input,
+select,
+textarea{
+ border-radius:14px!important;
+ border-color:var(--spj-border)!important;
+}
+
+.nav-item.active,
+.sidebar-item.active,
+.menu-item.active{
+ border-radius:14px!important;
+}
+
+</style>
+
+
+<style>
+/* SIMPEL SPJ Monochrome Header Identity V1 */
+
+:root{
+  --mono-bg:#F5F5F7;
+  --mono-surface:#FFFFFF;
+  --mono-text:#1D1D1F;
+
+  --dinas-accent:#0F3D32;
+  --sekolah-accent:#14213D;
+  --pengawas-accent:#312E4A;
+}
+
+.role-header{
+  background:#FFFFFF;
+  border-radius:24px;
+  box-shadow:0 10px 30px rgba(0,0,0,.06);
+  padding:22px;
+  position:relative;
+  overflow:hidden;
+}
+
+.role-header::after{
+  content:"";
+  position:absolute;
+  left:0;
+  right:0;
+  bottom:0;
+  height:5px;
+}
+
+.role-dinas .role-header::after{
+  background:var(--dinas-accent);
+}
+
+.role-sekolah .role-header::after{
+  background:var(--sekolah-accent);
+}
+
+.role-pengawas .role-header::after{
+  background:var(--pengawas-accent);
+}
+
+.role-badge{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding:7px 14px;
+  border-radius:999px;
+  background:#F5F5F7;
+  font-weight:600;
+}
+
+.role-dinas .role-badge{
+  color:var(--dinas-accent);
+}
+
+.role-sekolah .role-badge{
+  color:var(--sekolah-accent);
+}
+
+.role-pengawas .role-badge{
+  color:var(--pengawas-accent);
+}
+
+.sidebar-item.active,
+.nav-item.active,
+.menu-item.active{
+  border-left:4px solid currentColor;
+  background:#F5F5F7!important;
+}
+
+.role-dinas .sidebar-item.active,
+.role-dinas .nav-item.active{
+  color:var(--dinas-accent)!important;
+}
+
+.role-sekolah .sidebar-item.active,
+.role-sekolah .nav-item.active{
+  color:var(--sekolah-accent)!important;
+}
+
+.role-pengawas .sidebar-item.active,
+.role-pengawas .nav-item.active{
+  color:var(--pengawas-accent)!important;
+}
+</style>
+
+
+<style>
+/* SIMPEL SPJ Monochrome Dashboard V2 */
+
+body{
+  background:#F5F5F7 !important;
+}
+
+/* Header reset */
+header,
+.topbar,
+.app-header{
+  background:#FFFFFF !important;
+  color:#1D1D1F !important;
+  border-bottom:1px solid #D2D2D7 !important;
+}
+
+/* Sidebar clean */
+.sidebar,
+aside{
+  background:#FFFFFF !important;
+  color:#1D1D1F !important;
+  border-right:1px solid #E5E5EA !important;
+}
+
+.sidebar a,
+.nav-item,
+.menu-item{
+  color:#515154 !important;
+}
+
+.sidebar a:hover,
+.nav-item:hover,
+.menu-item:hover{
+  background:#F5F5F7 !important;
+}
+
+/* Active role line */
+.nav-item.active,
+.menu-item.active,
+.sidebar-item.active{
+  background:#F5F5F7 !important;
+  border-left:4px solid #0F3D32 !important;
+  color:#0F3D32 !important;
+}
+
+/* Hero premium overlay */
+.hero,
+.hero-banner{
+  border-radius:28px !important;
+  overflow:hidden;
+  box-shadow:0 15px 40px rgba(0,0,0,.08);
+}
+
+.hero::before,
+.hero-banner::before{
+  background:linear-gradient(
+    90deg,
+    rgba(0,0,0,.65),
+    rgba(0,0,0,.25)
+  ) !important;
+}
+
+/* Cards */
+.card,
+.panel,
+.workflow-card{
+  background:#FFFFFF !important;
+  border:1px solid #E5E5EA !important;
+  box-shadow:0 8px 24px rgba(0,0,0,.05) !important;
+  border-radius:22px !important;
+}
+
+/* Primary button DINAS example */
+.primary-btn,
+.btn-primary{
+  background:#0F3D32 !important;
+  border-color:#0F3D32 !important;
+}
+
+</style>
+
+
+<style>
+/* SIMPEL SPJ Monochrome Core V1
+   One elegant theme, three role identities
+*/
+
+:root{
+  --mono-black:#1D1D1F;
+  --mono-gray:#6E6E73;
+  --mono-bg:#F5F5F7;
+  --mono-white:#FFFFFF;
+  --mono-border:#D2D2D7;
+
+  --role-dinas:#3A6B5C;
+  --role-sekolah:#405A78;
+  --role-pengawas:#5A536B;
+}
+
+body{
+ background:var(--mono-bg)!important;
+ color:var(--mono-black)!important;
+}
+
+/* Remove strong role coloring */
+header,
+.topbar,
+.app-header,
+.sidebar,
+aside{
+ background:var(--mono-white)!important;
+ color:var(--mono-black)!important;
+}
+
+/* Minimal role identity */
+.role-signature{
+ display:inline-flex;
+ align-items:center;
+ gap:8px;
+ font-weight:600;
+ color:var(--mono-black);
+}
+
+.role-signature::before{
+ content:"";
+ width:7px;
+ height:7px;
+ border-radius:50%;
+ background:#777;
+}
+
+.role-dinas .role-signature::before{
+ background:var(--role-dinas);
+}
+
+.role-sekolah .role-signature::before{
+ background:var(--role-sekolah);
+}
+
+.role-pengawas .role-signature::before{
+ background:var(--role-pengawas);
+}
+
+/* Neutral buttons */
+button,
+.btn,
+.action-btn,
+input[type="submit"]{
+ background:#FFFFFF!important;
+ color:#1D1D1F!important;
+ border:1px solid var(--mono-border)!important;
+ border-radius:14px!important;
+}
+
+button:hover,
+.btn:hover,
+.action-btn:hover{
+ background:#F5F5F7!important;
+}
+
+/* Main action only */
+.primary-action{
+ background:#1D1D1F!important;
+ color:#FFFFFF!important;
+ border-color:#1D1D1F!important;
+}
+
+/* Cards */
+.card,
+.panel,
+.workflow-card{
+ background:#FFFFFF!important;
+ border:1px solid rgba(0,0,0,.08)!important;
+ box-shadow:0 10px 30px rgba(0,0,0,.05)!important;
+}
+</style>
+
+
+<style>
+/* SIMPEL SPJ Monochrome Core V2 - Strong Override */
+
+:root{
+ --apple-bg:#F5F5F7;
+ --apple-white:#FFFFFF;
+ --apple-black:#1D1D1F;
+ --apple-gray:#86868B;
+ --apple-border:#D2D2D7;
+}
+
+/* Global monochrome reset */
+body{
+ background:var(--apple-bg)!important;
+ color:var(--apple-black)!important;
+}
+
+/* Force old blue theme removal */
+header,
+.topbar,
+.app-header,
+.sidebar,
+aside,
+nav{
+ background:var(--apple-white)!important;
+ color:var(--apple-black)!important;
+ border-color:var(--apple-border)!important;
+}
+
+/* Header identity */
+.app-header *,
+.topbar *{
+ color:var(--apple-black)!important;
+}
+
+/* Sidebar */
+.sidebar a,
+.sidebar button,
+.nav-item,
+.menu-item{
+ color:#515154!important;
+ background:transparent!important;
+}
+
+.sidebar .active,
+.nav-item.active,
+.menu-item.active{
+ background:#F5F5F7!important;
+ color:#1D1D1F!important;
+ border-left:3px solid #1D1D1F!important;
+}
+
+/* Hero: keep image, remove blue dominance */
+.hero,
+.hero-banner{
+ filter:none!important;
+}
+
+.hero::before,
+.hero-banner::before{
+ background:linear-gradient(
+   90deg,
+   rgba(0,0,0,.65),
+   rgba(0,0,0,.18)
+ )!important;
+}
+
+/* Buttons */
+button,
+.btn,
+.action-btn,
+input[type="submit"]{
+ background:#FFFFFF!important;
+ color:#1D1D1F!important;
+ border:1px solid #D2D2D7!important;
+}
+
+button:hover,
+.btn:hover,
+.action-btn:hover{
+ background:#F5F5F7!important;
+}
+
+.primary-action,
+.btn-primary{
+ background:#1D1D1F!important;
+ color:#FFFFFF!important;
+}
+
+/* Workflow cards */
+.card,
+.panel,
+.workflow-card{
+ background:#FFFFFF!important;
+ border:1px solid #E5E5EA!important;
+}
+
+.workflow-card::before{
+ background:#1D1D1F!important;
+}
+
+/* Role identity only */
+.role-badge,
+.role-signature{
+ background:#FFFFFF!important;
+ color:#1D1D1F!important;
+ border:1px solid #D2D2D7!important;
+}
+
+</style>
+
+
+<style id="apple-mono-master-final">
+body{background:#F5F5F7!important;color:#1D1D1F!important}
+.sidebar{background:#1D1D1F!important;color:#fff!important}
+.sidebar .nav-btn,.sidebar .nav-group-toggle{color:#fff!important}
+.sidebar .nav-btn.active{background:#fff!important;color:#1D1D1F!important;box-shadow:none!important}
+.sidebar .nav-btn:hover{background:rgba(255,255,255,.12)!important}
+.welcome-overlay{background:linear-gradient(135deg,#000,#1D1D1F)!important}
+.welcome-title-anim{background:none!important;-webkit-text-fill-color:#fff!important;color:#fff!important}
+.auth-side{background:linear-gradient(135deg,rgba(0,0,0,.86),rgba(29,29,31,.72)),url('kantordindikpora.jpeg') center/cover!important}
+.btn-primary{background:#1D1D1F!important;border-color:#1D1D1F!important;color:#fff!important}
+.v17-ph-hero,.v225-home-hero{background-color:#111!important}
+</style>
+
+
+<style id="apple-mono-single-engine-v2">
+/* SINGLE APPLE MONO ENGINE */
+
+:root{
+ --apple-black:#1D1D1F;
+ --apple-white:#FFFFFF;
+ --apple-bg:#F5F5F7;
+ --apple-gray:#6E6E73;
+ --apple-border:#D2D2D7;
+}
+
+body{
+ background:var(--apple-bg)!important;
+ color:var(--apple-black)!important;
+}
+
+/* Dark sidebar */
+.sidebar{
+ background:var(--apple-black)!important;
+ color:white!important;
+}
+
+.sidebar *{
+ color:inherit;
+}
+
+.sidebar .nav-btn,
+.sidebar .nav-group-toggle,
+.sidebar .nav-submenu .nav-btn{
+ color:white!important;
+ background:transparent!important;
+}
+
+.sidebar .nav-btn:hover,
+.sidebar .nav-group-toggle:hover{
+ background:rgba(255,255,255,.12)!important;
+}
+
+.sidebar .nav-btn.active,
+.sidebar .nav-submenu .nav-btn.active{
+ background:white!important;
+ color:var(--apple-black)!important;
+ border-radius:14px!important;
+}
+
+/* Welcome engine */
+.welcome-overlay{
+ background:
+ linear-gradient(135deg,#000000,#1D1D1F)!important;
+}
+
+.welcome-overlay h1,
+.welcome-overlay h2{
+ color:white!important;
+}
+
+.welcome-overlay p{
+ color:#D2D2D7!important;
+}
+
+/* Hero */
+.v17-ph-hero,
+.v211-office-hero,
+.v225-home-hero{
+ background:#111!important;
+ box-shadow:0 24px 50px rgba(0,0,0,.15)!important;
+}
+
+.v17-ph-hero::after,
+.v211-office-hero::after,
+.v225-home-hero::after{
+ background:linear-gradient(
+ 90deg,
+ rgba(0,0,0,.78),
+ rgba(0,0,0,.25)
+ )!important;
+}
+
+.v17-ph-hero h1,
+.v211-office-copy,
+.v225-home-copy,
+.v225-home-copy h1,
+.v225-home-copy p{
+ color:white!important;
+ text-shadow:0 3px 18px rgba(0,0,0,.5)!important;
+}
+
+/* Remove gold/green visual leftovers */
+.gold,
+.emerald,
+.navy,
+.role-color,
+.role-accent{
+ color:var(--apple-black)!important;
+}
+</style>
+
+
+<style id="apple-mono-contrast-fix-v3">
+/* KONTRAS FINAL - APPLE MONO */
+
+/* global text */
+body,
+body *{
+  text-shadow:none;
+}
+
+body{
+  color:#1D1D1F!important;
+}
+
+h1,h2,h3,h4,h5,
+strong,b,
+.page-title,
+.card-title{
+  color:#1D1D1F!important;
+}
+
+/* muted text */
+p,
+small,
+label,
+.helper,
+.hint,
+.muted,
+.text-muted{
+  color:#6E6E73!important;
+}
+
+/* sidebar */
+.sidebar{
+  background:#1D1D1F!important;
+}
+
+.sidebar .nav-btn,
+.sidebar .nav-group-toggle,
+.sidebar .nav-submenu .nav-btn{
+  color:#FFFFFF!important;
+}
+
+.sidebar .nav-btn.active,
+.sidebar .nav-submenu .nav-btn.active{
+  color:#1D1D1F!important;
+  background:#FFFFFF!important;
+}
+
+/* header */
+.topbar,
+.header{
+  background:#FFFFFF!important;
+  color:#1D1D1F!important;
+}
+
+.topbar *,
+.header *{
+  color:#1D1D1F!important;
+}
+
+/* cards */
+.panel,
+.card,
+.stat,
+.table-wrap{
+  background:#FFFFFF!important;
+  color:#1D1D1F!important;
+  border-color:#D2D2D7!important;
+}
+
+/* tutorial / alert boxes */
+.tutorial,
+.guide-box,
+.info-box{
+  background:#FFFFFF!important;
+  color:#1D1D1F!important;
+  border-color:#D2D2D7!important;
+}
+
+.tutorial *,
+.guide-box *,
+.info-box *{
+  color:#1D1D1F!important;
+}
+
+/* hero text */
+.v225-home-copy h1,
+.v225-home-copy p,
+.v211-office-copy,
+.v211-office-copy *,
+.v17-ph-hero h1,
+.v17-ph-hero p{
+  color:#FFFFFF!important;
+}
+
+/* loading */
+.loading,
+.loading *,
+.empty-state,
+.empty-state *{
+  color:#1D1D1F!important;
+}
+
+/* buttons */
+button,
+.btn{
+  color:#1D1D1F;
+}
+
+.btn-primary,
+button.btn-primary{
+  background:#1D1D1F!important;
+  color:#FFFFFF!important;
+}
+
+.btn-light{
+  background:#FFFFFF!important;
+  color:#1D1D1F!important;
+}
+</style>
+
+
+<style id="sidebar-contrast-lock-v4">
+/* SIDEBAR CONTRAST HARD LOCK */
+
+.sidebar,
+aside.sidebar,
+#sidebar{
+  background:#1D1D1F!important;
+  color:#FFFFFF!important;
+  opacity:1!important;
+}
+
+.sidebar *,
+aside.sidebar *,
+#sidebar *{
+  opacity:1!important;
+  text-shadow:none!important;
+}
+
+.sidebar .nav-section-title,
+.sidebar .section-title{
+  color:#A1A1A6!important;
+  font-weight:700!important;
+}
+
+.sidebar .nav-btn,
+.sidebar .nav-group-toggle,
+.sidebar .nav-submenu .nav-btn,
+.sidebar a{
+  color:#FFFFFF!important;
+  background:transparent!important;
+  font-weight:600!important;
+}
+
+.sidebar .nav-btn span,
+.sidebar .nav-group-toggle span,
+.sidebar .nav-submenu .nav-btn span{
+  color:#FFFFFF!important;
+}
+
+.sidebar .nav-btn svg,
+.sidebar .nav-group-toggle svg,
+.sidebar .nav-submenu .nav-btn svg,
+.sidebar i{
+  color:#FFFFFF!important;
+  opacity:1!important;
+}
+
+.sidebar .nav-btn:hover,
+.sidebar .nav-group-toggle:hover,
+.sidebar .nav-submenu .nav-btn:hover{
+  background:rgba(255,255,255,.14)!important;
+  color:#FFFFFF!important;
+}
+
+.sidebar .nav-btn.active,
+.sidebar .nav-submenu .nav-btn.active{
+  background:#FFFFFF!important;
+  color:#1D1D1F!important;
+}
+
+.sidebar .nav-btn.active *,
+.sidebar .nav-submenu .nav-btn.active *{
+  color:#1D1D1F!important;
+}
+
+/* footer logos/text */
+.sidebar .brand,
+.sidebar .footer,
+.sidebar .institution,
+.sidebar small{
+  color:#FFFFFF!important;
 }
 </style>
 
@@ -1385,7 +2130,7 @@ function generateMathCaptcha(){
     answer=hasil;
   }
   state.captchaAns=answer;
-  state.captchaQuestion=`Berapa hasil ${a} ${op} ${b} ?`;
+  state.captchaQuestion=`Geser tombol untuk verifikasi keamanan`;
   return state.captchaQuestion;
 }
 
@@ -1420,11 +2165,11 @@ function authView(notice=''){
           <div class="v219-auth-agency">
             <div>
               <img src="logorembang.png" alt="Kabupaten Rembang">
-              <span><b>DINDIKPORA REMBANG</b><small>PEMERINTAH KABUPATEN REMBANG</small></span>
+              <span><b>DINDIKPORA REMBANG</b><small>Pemerintah Kabupaten Rembang</small></span>
             </div>
             <div>
               <img src="logopendidikan.png" alt="Kemdikdasmen">
-              <span><b>DIREKTORAT SEKOLAH DASAR</b><small>KEMENDIKDASMEN RI</small></span>
+              <span><b>KEMENDIKDASMEN RI</b><small>Direktorat Sekolah Dasar</small></span>
             </div>
           </div>
         </div>
@@ -10837,47 +11582,14 @@ window.selesaikanKajiUlang=async function(idPesan){
 
 /* Strongly distinct role palettes. The legacy aliases make older components
    follow the active role instead of staying green/navy from earlier versions. */
-body.theme-dinas{
-  --role-primary:#0057B8;
-  --role-primary-dark:#003B7A;
-  --role-primary-deep:#002A58;
-  --role-accent:#00A6E8;
-  --role-soft:#E7F2FF;
-  --role-soft-2:#F4F9FF;
-  --role-border:#B9D7F5;
-  --role-ink:#123E6D;
-  --role-page:#F1F7FD;
-  --role-sidebar:#003B7A;
-  --role-sidebar-2:#0057B8;
-  --role-topbar:#0057B8;
-}
-body.theme-pengawas{
-  --role-primary:#A12648;
-  --role-primary-dark:#741B34;
-  --role-primary-deep:#521226;
-  --role-accent:#E36A87;
-  --role-soft:#FBEAF0;
-  --role-soft-2:#FFF6F8;
-  --role-border:#ECC1CE;
-  --role-ink:#64243A;
-  --role-page:#FFF4F7;
-  --role-sidebar:#66182F;
-  --role-sidebar-2:#98233F;
-  --role-topbar:#8B203B;
-}
+body.theme-dinas,body.theme-pengawas,body.theme-dinas,
+body.theme-pengawas,
 body.theme-sekolah{
-  --role-primary:#138653;
-  --role-primary-dark:#0A603A;
-  --role-primary-deep:#07472B;
-  --role-accent:#42BD7B;
-  --role-soft:#E7F7EF;
-  --role-soft-2:#F3FBF7;
-  --role-border:#B9E1CD;
-  --role-ink:#205B3E;
-  --role-page:#F0FAF5;
-  --role-sidebar:#0A603A;
-  --role-sidebar-2:#138653;
-  --role-topbar:#117648;
+  --role-primary:#1D1D1F;
+  --role-primary-dark:#000000;
+  --role-primary-deep:#000000;
+  --role-soft:#F5F5F7;
+  --role-border:#D2D2D7;
 }
 
 body[data-role]{
