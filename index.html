@@ -982,6 +982,83 @@ button:active,
 }
 </style>
 
+
+<style>
+/* SIMPEL SPJ Clean Theme V2 - Neutral Premium Base */
+:root{
+  --surface:#FFFFFF;
+  --background:#F5F5F7;
+  --text-primary:#1D1D1F;
+  --text-secondary:#6E6E73;
+  --border:#D2D2D7;
+  --role-dinas:#167A5C;
+  --role-sekolah:#2563EB;
+  --role-pengawas:#5B5FC7;
+}
+
+body{
+  background:var(--background) !important;
+  color:var(--text-primary);
+}
+
+.card,
+.panel,
+.modal,
+.document-toolbar,
+.pdf-toolbar,
+.pdf-actions{
+  background:var(--surface) !important;
+  border:1px solid rgba(0,0,0,.06) !important;
+  box-shadow:0 8px 30px rgba(0,0,0,.05) !important;
+  border-radius:22px !important;
+}
+
+h1,h2,h3,h4{
+  color:var(--text-primary);
+  letter-spacing:-.02em;
+}
+
+.muted,
+.text-muted{
+  color:var(--text-secondary) !important;
+}
+
+button,
+.btn,
+.action-btn,
+input[type="submit"]{
+  border-radius:16px !important;
+  box-shadow:none;
+}
+
+button:hover,
+.btn:hover,
+.action-btn:hover{
+  transform:translateY(-2px);
+}
+
+/* Role accent only, not full theme */
+.role-dinas .active,
+.role-dinas .badge-role{
+  color:var(--role-dinas) !important;
+}
+
+.role-sekolah .active,
+.role-sekolah .badge-role{
+  color:var(--role-sekolah) !important;
+}
+
+.role-pengawas .active,
+.role-pengawas .badge-role{
+  color:var(--role-pengawas) !important;
+}
+
+.role-accent{
+  width:8px;
+  border-radius:99px;
+}
+</style>
+
 </head>
 <body>
 <div class="app" id="app"></div>
