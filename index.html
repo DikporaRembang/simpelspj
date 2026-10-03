@@ -804,6 +804,184 @@ body{background:linear-gradient(180deg,#fbfaf6 0,#f4f2eb 100%)!important;color:v
 @media(max-width:1000px){.v20-summary-cards{grid-template-columns:repeat(2,minmax(0,1fr))}.v20-ledger-grid{grid-template-columns:1fr}}
 @media(max-width:600px){.v20-summary-cards{grid-template-columns:1fr}.v20-flowline b{display:none}.v20-flowline span{flex:1 1 45%;text-align:center}}
 </style>
+
+<style>
+/* Welcome Animation V1 - lightweight */
+.welcome-animate{
+  animation: welcomeFade .7s ease-out both;
+}
+.welcome-logo-animate{
+  animation: logoFloat .9s ease-out both;
+}
+.welcome-status{
+  animation: welcomeFade .8s .25s ease-out both;
+}
+@keyframes welcomeFade{
+  from{opacity:0;transform:translateY(10px)}
+  to{opacity:1;transform:translateY(0)}
+}
+@keyframes logoFloat{
+  from{opacity:0;transform:translateY(16px) scale(.96)}
+  to{opacity:1;transform:translateY(0) scale(1)}
+}
+</style>
+
+
+<style>
+/* Secure Logo Check Captcha V1 */
+.secure-check-card{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:8px;
+  padding:14px;
+  border-radius:18px;
+  border:1px solid rgba(200,162,74,.35);
+  background:rgba(255,255,255,.75);
+}
+.secure-check-logo{
+  width:58px;
+  height:58px;
+  object-fit:contain;
+  cursor:pointer;
+  transition:.25s ease;
+}
+.secure-check-logo:hover{
+  transform:scale(1.05);
+}
+.secure-check-logo.checked{
+  filter:drop-shadow(0 0 12px rgba(200,162,74,.8));
+  transform:scale(1.08);
+}
+.secure-check-status{
+  font-size:.82rem;
+  color:#667;
+}
+</style>
+
+<style>
+/* SIMPEL SPJ Clean Button & Navigation Theme V1 */
+:root{
+  --role-primary:#0B8F6A;
+  --btn-radius:16px;
+}
+
+button,
+.btn,
+.action-btn,
+input[type="submit"]{
+  border-radius:16px !important;
+  transition:transform .2s ease, box-shadow .2s ease, opacity .2s ease !important;
+}
+
+button:hover,
+.btn:hover,
+.action-btn:hover,
+input[type="submit"]:hover{
+  transform:translateY(-2px);
+}
+
+button:active,
+.btn:active,
+.action-btn:active{
+  transform:scale(.98);
+}
+
+.nav-item,
+.sidebar-item,
+.menu-item{
+  border-radius:14px !important;
+  transition:background .2s ease, transform .2s ease !important;
+}
+
+.nav-item:hover,
+.sidebar-item:hover,
+.menu-item:hover{
+  transform:translateX(3px);
+}
+
+.nav-item.active,
+.sidebar-item.active,
+.menu-item.active{
+  background:rgba(11,143,106,.12) !important;
+  color:var(--role-primary) !important;
+  font-weight:700;
+}
+
+.role-dinas{
+  --role-primary:#0B8F6A;
+}
+
+.role-sekolah{
+  --role-primary:#2563EB;
+}
+
+.role-pengawas{
+  --role-primary:#7C3AED;
+}
+
+.clean-card{
+  border-radius:22px;
+  box-shadow:0 8px 30px rgba(0,0,0,.06);
+}
+</style>
+
+
+<style>
+/* SIMPEL SPJ PDF Experience Theme V1 */
+.pdf-toolbar,
+.pdf-nav,
+.pdf-actions,
+.document-toolbar{
+  border-radius:18px !important;
+  background:rgba(255,255,255,.92) !important;
+  box-shadow:0 8px 28px rgba(0,0,0,.06) !important;
+  padding:10px !important;
+}
+
+.pdf-toolbar button,
+.pdf-nav button,
+.pdf-actions button,
+.document-toolbar button{
+  border-radius:14px !important;
+  min-height:38px;
+  transition:.2s ease !important;
+}
+
+.pdf-toolbar button:hover,
+.pdf-nav button:hover,
+.pdf-actions button:hover,
+.document-toolbar button:hover{
+  transform:translateY(-2px);
+}
+
+.pdf-status{
+  border-radius:14px !important;
+  padding:8px 14px;
+  font-weight:600;
+}
+
+.role-dinas .pdf-status{
+  color:#0B8F6A;
+  background:rgba(11,143,106,.10);
+}
+
+.role-sekolah .pdf-status{
+  color:#2563EB;
+  background:rgba(37,99,235,.10);
+}
+
+.role-pengawas .pdf-status{
+  color:#7C3AED;
+  background:rgba(124,58,237,.10);
+}
+
+.pdf-action-primary{
+  border-radius:16px !important;
+  font-weight:700;
+}
+</style>
+
 </head>
 <body>
 <div class="app" id="app"></div>
@@ -1212,8 +1390,18 @@ function authView(notice=''){
 
             <div class="field">
               <label>Verifikasi Keamanan</label>
-              <div class="captcha-question v219-auth-captcha">${generateMathCaptcha()}</div>
-              <input id="captchaInput" type="number" required inputmode="numeric" autocomplete="off" placeholder="Masukkan hasil perhitungan">
+              
+<div class="secure-check-card">
+  <img class="secure-check-logo"
+       id="secureCaptchaLogo"
+       src="bidangsd.png"
+       alt="Verifikasi SIMPEL SPJ">
+  <div id="secureCaptchaStatus" class="secure-check-status">
+    Klik logo untuk verifikasi keamanan
+  </div>
+</div>
+<input id="captchaInput" type="hidden" value="">
+
             </div>
 
             <div id="authMsg"></div>
@@ -1234,9 +1422,45 @@ function authView(notice=''){
       </section>
     </main>`;
 }
+
+function initSecureCaptcha(){
+  const bind = ()=>{
+    const logo=document.getElementById('secureCaptchaLogo');
+    const input=document.getElementById('captchaInput');
+    const status=document.getElementById('secureCaptchaStatus');
+    if(!logo || !input || !status) return false;
+
+    logo.onclick=()=>{
+      input.value='verified';
+      logo.classList.add('checked');
+      status.textContent='✓ Verifikasi keamanan berhasil';
+    };
+    return true;
+  };
+
+  if(!bind()){
+    setTimeout(bind,300);
+  }
+}
+
+// Fallback event delegation agar tetap aktif walaupun form login dirender ulang.
+document.addEventListener('click',function(e){
+  const logo=e.target.closest('#secureCaptchaLogo');
+  if(!logo) return;
+  const input=document.getElementById('captchaInput');
+  const status=document.getElementById('secureCaptchaStatus');
+  if(input && status){
+    input.value='verified';
+    logo.classList.add('checked');
+    status.textContent='✓ Verifikasi keamanan berhasil';
+  }
+});
+
+initSecureCaptcha();
+
 async function doLogin(e){
   e.preventDefault();
-  if(Number($('#captchaInput').value)!==state.captchaAns){
+  if($('#captchaInput').value !== 'verified'){
     $('#authMsg').innerHTML=msg('Jawaban verifikasi salah. CAPTCHA baru telah dibuat.');
     const captchaLabel=document.querySelector('#loginForm .captcha-question');
     if(captchaLabel) captchaLabel.textContent=generateMathCaptcha();
@@ -1542,11 +1766,19 @@ async function logout(){
 async function startApp(){
   document.body.style.background='var(--bg)';
   renderShell();
-  await ensurePaketPemeriksaan(true).catch(()=>null);
+
+  // FAST START TEST:
+  // Beranda tampil lebih dahulu, proses tambahan berjalan di belakang.
   await loadView('home');
 
-  // Tambahkan baris ini di sini:
-  await updateUnreadMessageBadge();
+  setTimeout(async()=>{
+    try{
+      await ensurePaketPemeriksaan(true);
+      await updateUnreadMessageBadge();
+    }catch(e){
+      console.warn('Background startup task skipped:', e);
+    }
+  },100);
 }
 
 function renderShell(){
