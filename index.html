@@ -1819,6 +1819,7 @@ const API_URL = 'https://script.google.com/macros/s/AKfycbyWvJXKr1QZ1zwbeJDoULTU
 window.ROLE_MENUS = {
   DINAS: [
     { id:'home', label:'🏠 Beranda' },
+    { id:'jadwalTahapan', label:'🗓️ Jadwal & Tahapan' },
     { group:'ALUR UTAMA', items:[
       { id:'masterSpj', label:'1. ⚙️ Periode & Master SPJ' },
       { id:'sekolah', label:'2. 🏫 Data Sekolah' },
@@ -1837,6 +1838,7 @@ window.ROLE_MENUS = {
   ],
   PENGAWAS: [
     { id:'home', label:'🏠 Beranda' },
+    { id:'jadwalTahapan', label:'🗓️ Jadwal & Tahapan' },
     { group:'ALUR PEMERIKSAAN', items:[
       { id:'penugasan', label:'1. 🏫 Pilih Sekolah Binaan' },
       { id:'pdfInteraktif', label:'2. 🔎 Periksa BKU & Bukti PDF' },
@@ -1853,6 +1855,7 @@ window.ROLE_MENUS = {
   ],
   SEKOLAH: [
     { id:'home', label:'🏠 Beranda' },
+    { id:'jadwalTahapan', label:'🗓️ Jadwal & Tahapan' },
     { group:'ALUR SPJ', items:[
       { id:'transaksi', label:'1. 📊 Tetapkan Excel BKU' },
       { id:'dokumenBulanan', label:'2. 📁 Lengkapi Bukti & Cross-check' },
@@ -1869,6 +1872,7 @@ window.ROLE_MENUS = {
 const ROLE_MENUS = window.ROLE_MENUS;
 
 const SUBMENU_TUTORIALS = {
+  jadwalTahapan: {title:'Jadwal & Tahapan',text:'DINAS menetapkan rentang kerja, masa toleransi, dan perpanjangan. Semua user dapat melihat jadwal yang berlaku untuk dirinya.',flow:['Pendaftaran','Pendelegasian','Input','Penilaian','Sanggah','Final'],current:0},
   masterSpj: {title:'Master SPJ & Periode',text:'Dinas menetapkan komponen SPJ, indikator pemeriksaan, dan periode aktif. Ini menjadi fondasi agar seluruh sekolah dinilai dengan standar yang sama.',flow:['Master SPJ','Indikator','Periode','Penilaian'],current:0},
   sekolah: {title:'Data Sekolah',text:'Pastikan identitas satuan pendidikan dan NPSN benar sebelum dokumen, temuan, dan nilai dikaitkan ke sekolah yang diperiksa.',flow:['Identitas sekolah','Dokumen','Pemeriksaan','Nilai'],current:0},
   penugasan: {title:'Penugasan Pengawas',text:'Penugasan menentukan pengawas yang berwenang memeriksa sekolah dan menjadi penghubung ke proses pemeriksaan serta asesmen.',flow:['Sekolah','Pengawas','Periode','Asesmen'],current:1},
@@ -2354,9 +2358,11 @@ window.showRegisterView = function(e) {
               </select>
             </div>
 
+            <div id="registrationWindowInfo" class="workflow-registration-info"></div>
+
             <div class="field" id="fieldNpsnGroup">
               <label>NPSN Sekolah</label>
-              <input id="regNpsn" placeholder="Contoh: 20301234" onblur="autoFillSekolahByNpsn(this.value)">
+              <input id="regNpsn" placeholder="Contoh: 20301234" onblur="autoFillSekolahByNpsn(this.value); loadPublicRegistrationWindow()">
               <small class="muted">Ketik NPSN lalu klik di luar kotak untuk mengisi nama sekolah otomatis.</small>
             </div>
 
@@ -2401,6 +2407,7 @@ window.showRegisterView = function(e) {
     </main>`;
 
   toggleRegisterFields();
+  loadPublicRegistrationWindow();
 
   $('#registerForm').onsubmit = async ev => {
     ev.preventDefault();
@@ -2439,6 +2446,25 @@ window.showRegisterView = function(e) {
     }
   };
 };
+
+window.loadPublicRegistrationWindow = async function(){
+  const box=$('#registrationWindowInfo');
+  if(!box) return;
+  const roleVal=$('#regRole')?.value||'SEKOLAH';
+  const npsn=roleVal==='SEKOLAH'?($('#regNpsn')?.value||'').trim():'';
+  box.innerHTML='<div class="workflow-reg-chip">Memeriksa jadwal pendaftaran...</div>';
+  try{
+    const r=await api('getPublicRegistrationWindow',{role:roleVal,npsn:npsn});
+    const d=r?.data||{};
+    const meta=workflowPhaseMeta(d.phase);
+    const row=d.row||{};
+    const dateText=row.mulai_utama?`${fmtWorkflowDate(row.mulai_utama)} – ${fmtWorkflowDate(row.selesai_utama)}${row.selesai_toleransi?` · toleransi s.d. ${fmtWorkflowDate(row.selesai_toleransi)}`:''}`:'Belum ada jadwal khusus';
+    box.innerHTML=`<div class="workflow-reg-chip ${meta.cls}"><b>${esc(meta.label)}</b><span>${esc(dateText)}</span></div>`;
+  }catch(e){
+    box.innerHTML=`<div class="workflow-reg-chip danger"><b>Jadwal belum dapat diperiksa</b><span>${esc(errorText(e))}</span></div>`;
+  }
+};
+
 window.syncPengawasUsername = function(val) {
   const usernameField = $('#regUsername');
   if(usernameField) {
@@ -2491,6 +2517,7 @@ window.toggleRegisterFields = function() {
       inpUsername.value = $('#regNip')?.value.trim() || '';
     }
   }
+  loadPublicRegistrationWindow();
 };
 
 function showWelcomeAnimation(){
@@ -2858,6 +2885,7 @@ async function renderViewSafely(view){
 
   const map = {
     home: homeView,
+    jadwalTahapan: jadwalTahapanView,
     dokumenBulanan: dokumenBulananView,
     statusSpj: statusSpjView,
     statusSekolah: statusSekolahView,
@@ -5665,6 +5693,120 @@ function formatTanggalPenugasan(v){
 // Cache lokal frontend untuk penugasan pengawas
 window._cachedPenugasanGlobal = null;
 
+
+
+/* ========================================================================== 
+   V23.5 — JADWAL & TAHAPAN TERPUSAT
+   ========================================================================== */
+const WORKFLOW_STAGE_UI = [
+  ['REGISTRASI_SEKOLAH','Pendaftaran Sekolah','Akun sekolah dapat dibuat pada rentang ini.'],
+  ['REGISTRASI_PENGAWAS','Pendaftaran Pengawas','Akun pengawas dapat dibuat pada rentang ini.'],
+  ['PENDELEGASIAN','Pendelegasian','DINAS membagi sekolah kepada pengawas.'],
+  ['INPUT_SEKOLAH','Input Sekolah','Sekolah menetapkan BKU dan melengkapi bukti SPJ.'],
+  ['PENILAIAN_PENGAWAS','Penilaian Pengawas','Pengawas memeriksa dan memfinalisasi penilaian.'],
+  ['MASA_SANGGAH','Masa Sanggah','Sekolah dapat mengajukan keberatan dan pengawas melakukan kaji ulang.'],
+  ['PERSETUJUAN','Persetujuan','Sekolah dan pengawas menandatangani hasil yang telah selesai.'],
+  ['FINALISASI_DINAS','Finalisasi DINAS','DINAS memberikan pengesahan akhir hasil penilaian.']
+];
+
+function workflowPhaseMeta(phase){
+  const p=String(phase||'BELUM_DIATUR').toUpperCase();
+  const map={
+    AKTIF:{label:'AKTIF',cls:'active'},TOLERANSI:{label:'MASA TOLERANSI',cls:'tolerance'},OVERRIDE:{label:'PERPANJANGAN KHUSUS',cls:'override'},
+    BELUM_DIBUKA:{label:'BELUM DIBUKA',cls:'upcoming'},DITUTUP:{label:'DITUTUP',cls:'closed'},BELUM_DIJADWALKAN:{label:'BELUM DIJADWALKAN',cls:'closed'},
+    BELUM_DIATUR:{label:'BELUM DIATUR',cls:'neutral'},KONFIGURASI_TIDAK_VALID:{label:'KONFIGURASI TIDAK VALID',cls:'danger'}
+  };
+  return map[p]||{label:p,cls:'neutral'};
+}
+function fmtWorkflowDate(v){
+  if(!v) return '-';
+  const d=new Date(v);
+  if(!isNaN(d.getTime())) return d.toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'});
+  const m=String(v).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if(m){ const x=new Date(Number(m[1]),Number(m[2])-1,Number(m[3])); return x.toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'}); }
+  return String(v);
+}
+function workflowDateInput(v){
+  if(!v)return'';
+  const m=String(v).match(/^(\d{4})-(\d{2})-(\d{2})/); if(m)return`${m[1]}-${m[2]}-${m[3]}`;
+  const d=new Date(v); if(isNaN(d.getTime()))return'';
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function workflowTargetLabel(x){
+  const t=String(x?.target_type||'SEMUA').toUpperCase();
+  const v=x?.target_label||x?.target_value||'';
+  if(t==='SEMUA')return'Semua user terkait';
+  if(t==='ROLE')return`Role ${v}`;
+  if(t==='KECAMATAN')return`Kecamatan ${v}`;
+  if(t==='SEKOLAH')return`Sekolah ${v}`;
+  if(t==='PENGAWAS')return`Pengawas ${v}`;
+  return v||t;
+}
+
+async function jadwalTahapanView(){
+  const c=$('#mainContent'); if(!c)return;
+  const year=Number(window._workflowSelectedYear||new Date().getFullYear());
+  c.innerHTML=head('Jadwal & Tahapan','Kalender operasional SIMPEL SPJ: jadwal utama, toleransi, perpanjangan, dan status proses.')+
+    `<div id="workflowPage">${loading('Memuat jadwal operasional...')}</div>`;
+  try{
+    const r=await api('getWorkflowOverview',{tahun:year});
+    window._workflowOverview=r;
+    window._workflowSelectedYear=Number(r.year||year);
+    renderWorkflowPage(r);
+  }catch(e){ $('#workflowPage').innerHTML=msg(errorText(e)); }
+}
+
+function renderWorkflowPage(r){
+  const host=$('#workflowPage'); if(!host)return;
+  const resolved=r.resolved||{}, year=Number(r.year||new Date().getFullYear()), lock=r.delegation_lock||{};
+  const cards=WORKFLOW_STAGE_UI.map(([id,label,desc])=>{
+    const x=resolved[id]||{},meta=workflowPhaseMeta(x.phase),row=x.row||{};
+    let dates='Belum diatur';
+    if(row.mulai_utama) dates=`${fmtWorkflowDate(row.mulai_utama)} – ${fmtWorkflowDate(row.selesai_utama)}`+(row.selesai_toleransi?` · toleransi ${fmtWorkflowDate(row.selesai_toleransi)}`:'');
+    return `<article class="workflow-stage-card ${meta.cls}"><div class="workflow-stage-top"><small>${esc(id.replaceAll('_',' '))}</small><span class="workflow-status ${meta.cls}">${esc(meta.label)}</span></div><h3>${esc(label)}</h3><p>${esc(desc)}</p><div class="workflow-stage-date">${esc(dates)}</div>${row.target_type?`<div class="workflow-stage-target">${esc(workflowTargetLabel(row))}</div>`:''}</article>`;
+  }).join('');
+  const common=`<section class="workflow-hero"><div><span>TAHUN OPERASIONAL ${fmtNum(year)}</span><h2>${isDinas()?'Kendali Tahapan SIMPEL SPJ':'Jadwal Kerja Anda'}</h2><p>${isDinas()?'Atur rentang utama, toleransi, dan perpanjangan tanpa mengunci sistem secara permanen.':'Jadwal ini ditetapkan DINAS. Akses pada masa toleransi tetap dibuka dan ditandai sebagai keterlambatan.'}</p></div>${isDinas()?`<div class="workflow-year-box"><label>Tahun aktif</label><div><input id="workflowActiveYear" type="number" min="2000" max="2100" value="${esc(r.active_year||year)}"><button class="btn btn-primary btn-sm" onclick="saveWorkflowActiveYear()">Tetapkan</button></div></div>`:''}</section><div class="workflow-stage-grid">${cards}</div>`;
+  if(!isDinas()){
+    host.innerHTML=common+`<section class="panel workflow-note"><b>Informasi akses</b><p>Jika tahap berada pada <b>Masa Toleransi</b>, Anda masih dapat bekerja sampai batas toleransi. Jika sudah ditutup, DINAS dapat memberikan perpanjangan khusus tanpa mengubah jadwal semua user.</p></section>`;
+    return;
+  }
+  const schedules=(r.schedules||[]).map((x,i)=>`<tr><td>${esc(WORKFLOW_STAGE_UI.find(a=>a[0]===String(x.tahap).toUpperCase())?.[1]||x.tahap)}</td><td>${esc(workflowTargetLabel(x))}</td><td>${esc(fmtWorkflowDate(x.mulai_utama))}</td><td>${esc(fmtWorkflowDate(x.selesai_utama))}</td><td>${esc(fmtWorkflowDate(x.selesai_toleransi||x.selesai_utama))}</td><td><button class="btn btn-light btn-sm" onclick="openWorkflowScheduleModal('${esc(x.id_jadwal)}')">Edit</button> <button class="btn btn-light btn-sm" onclick="deactivateWorkflowScheduleUi('${esc(x.id_jadwal)}')">Nonaktif</button></td></tr>`).join('');
+  const overrides=(r.overrides||[]).map(x=>`<tr><td>${esc(WORKFLOW_STAGE_UI.find(a=>a[0]===String(x.tahap).toUpperCase())?.[1]||x.tahap)}</td><td>${esc(workflowTargetLabel(x))}</td><td>${esc(fmtWorkflowDate(x.mulai))} – ${esc(fmtWorkflowDate(x.selesai))}</td><td>${esc(x.alasan||'-')}</td><td><button class="btn btn-light btn-sm" onclick="deactivateWorkflowOverrideUi('${esc(x.id_override)}')">Nonaktif</button></td></tr>`).join('');
+  host.innerHTML=common+`
+    <section class="workflow-control-grid">
+      <div class="panel"><div class="workflow-panel-head"><div><small>PENJADWALAN</small><h3>Rentang kerja</h3></div><button class="btn btn-primary" onclick="openWorkflowScheduleModal()">+ Tambah Jadwal</button></div><div class="table-wrap"><table class="friendly-table"><thead><tr><th>Tahap</th><th>Target</th><th>Mulai</th><th>Batas Utama</th><th>Toleransi</th><th>Aksi</th></tr></thead><tbody>${schedules||emptyRow(6,'Belum ada jadwal tahun ini.')}</tbody></table></div></div>
+      <div class="panel"><div class="workflow-panel-head"><div><small>PERPANJANGAN</small><h3>Override khusus</h3></div><button class="btn btn-light" onclick="openWorkflowOverrideModal()">+ Perpanjangan</button></div><div class="table-wrap"><table class="friendly-table"><thead><tr><th>Tahap</th><th>Target</th><th>Rentang</th><th>Alasan</th><th>Aksi</th></tr></thead><tbody>${overrides||emptyRow(5,'Belum ada override aktif.')}</tbody></table></div></div>
+    </section>
+    <section class="panel workflow-lock-card ${lock.locked?'locked':'open'}"><div><small>PENDELEGASIAN PENGAWAS</small><h3>${lock.locked?'🔒 Pendelegasian dikunci':'🔓 Pendelegasian belum dikunci'}</h3><p>${esc(lock.reason||'Kunci dapat dibuka kembali oleh DINAS dengan alasan yang tercatat pada audit.')}</p></div><button class="btn ${lock.locked?'btn-light':'btn-primary'}" onclick="toggleDelegationLockFromWorkflow(${lock.locked?'false':'true'})">${lock.locked?'Buka Kunci':'Kunci Pendelegasian'}</button></section>`;
+}
+
+window.saveWorkflowActiveYear=async function(){
+  const y=Number($('#workflowActiveYear')?.value); if(!y)return;
+  try{ await api('setWorkflowActiveYear',{tahun:y}); window._workflowSelectedYear=y; toast('Tahun operasional diperbarui.','ok'); await jadwalTahapanView(); }catch(e){toast(errorText(e),'error');}
+};
+window.openWorkflowScheduleModal=function(id=''){
+  const rows=window._workflowOverview?.schedules||[],x=rows.find(r=>String(r.id_jadwal)===String(id))||{};
+  const modal=document.createElement('div');modal.id='workflowScheduleModal';
+  modal.innerHTML=`<div class="workflow-modal-backdrop"><div class="workflow-modal-card"><h3>${id?'Edit':'Tambah'} Jadwal Tahap</h3><div class="form-grid"><div class="field"><label>Tahap</label><select id="wfStage">${WORKFLOW_STAGE_UI.map(a=>`<option value="${a[0]}" ${String(x.tahap||'')===a[0]?'selected':''}>${esc(a[1])}</option>`).join('')}</select></div><div class="field"><label>Tahun</label><input id="wfYear" type="number" value="${esc(x.tahun||window._workflowSelectedYear||new Date().getFullYear())}"></div><div class="field"><label>Target</label><select id="wfTargetType" onchange="updateWorkflowTargetHint()">${['SEMUA','ROLE','KECAMATAN','SEKOLAH','PENGAWAS'].map(t=>`<option ${String(x.target_type||'SEMUA')===t?'selected':''}>${t}</option>`).join('')}</select></div><div class="field"><label>Nilai Target</label><input id="wfTargetValue" value="${esc(x.target_value||'')}" placeholder="Contoh: Rembang / 20301234 / ID Pengawas"></div><div class="field"><label>Mulai Utama</label><input id="wfStart" type="date" value="${workflowDateInput(x.mulai_utama)}"></div><div class="field"><label>Batas Utama</label><input id="wfEnd" type="date" value="${workflowDateInput(x.selesai_utama)}"></div><div class="field"><label>Batas Toleransi</label><input id="wfTolerance" type="date" value="${workflowDateInput(x.selesai_toleransi||x.selesai_utama)}"></div><div class="field"><label>Label Target</label><input id="wfTargetLabel" value="${esc(x.target_label||'')}" placeholder="Nama yang tampil"></div></div><div class="field"><label>Catatan</label><textarea id="wfNote" rows="3">${esc(x.catatan||'')}</textarea></div><div id="wfModalMsg"></div><div class="workflow-modal-actions"><button class="btn btn-light" onclick="$('#workflowScheduleModal').remove()">Batal</button><button class="btn btn-primary" onclick="saveWorkflowScheduleUi('${esc(id)}')">Simpan Jadwal</button></div></div></div>`;
+  document.body.appendChild(modal); updateWorkflowTargetHint();
+};
+window.updateWorkflowTargetHint=function(){ const t=$('#wfTargetType')?.value,el=$('#wfTargetValue'); if(!el)return; el.disabled=t==='SEMUA'; if(t==='SEMUA')el.value=''; };
+window.saveWorkflowScheduleUi=async function(id=''){
+  const data={id_jadwal:id||'',tahun:Number($('#wfYear').value),tahap:$('#wfStage').value,target_type:$('#wfTargetType').value,target_value:$('#wfTargetValue').value.trim(),target_label:$('#wfTargetLabel').value.trim(),mulai_utama:$('#wfStart').value,selesai_utama:$('#wfEnd').value,selesai_toleransi:$('#wfTolerance').value,catatan:$('#wfNote').value.trim()};
+  try{await api('saveWorkflowSchedule',{data});$('#workflowScheduleModal').remove();toast('Jadwal tersimpan.','ok');await jadwalTahapanView();}catch(e){$('#wfModalMsg').innerHTML=msg(errorText(e));}
+};
+window.deactivateWorkflowScheduleUi=async function(id){if(!confirm('Nonaktifkan jadwal ini?'))return;try{await api('deactivateWorkflowSchedule',{idJadwal:id});toast('Jadwal dinonaktifkan.','ok');await jadwalTahapanView();}catch(e){toast(errorText(e),'error');}};
+window.openWorkflowOverrideModal=function(){
+  const modal=document.createElement('div');modal.id='workflowOverrideModal';
+  modal.innerHTML=`<div class="workflow-modal-backdrop"><div class="workflow-modal-card"><h3>Perpanjangan / Override Khusus</h3><div class="form-grid"><div class="field"><label>Tahap</label><select id="wfoStage">${WORKFLOW_STAGE_UI.map(a=>`<option value="${a[0]}">${esc(a[1])}</option>`).join('')}</select></div><div class="field"><label>Tahun</label><input id="wfoYear" type="number" value="${esc(window._workflowSelectedYear||new Date().getFullYear())}"></div><div class="field"><label>Target</label><select id="wfoTargetType" onchange="updateWorkflowOverrideTarget()"><option>SEKOLAH</option><option>PENGAWAS</option><option>KECAMATAN</option><option>ROLE</option><option>SEMUA</option></select></div><div class="field"><label>Nilai Target</label><input id="wfoTargetValue" placeholder="NPSN / ID Pengawas / Kecamatan"></div><div class="field"><label>Mulai</label><input id="wfoStart" type="date"></div><div class="field"><label>Selesai</label><input id="wfoEnd" type="date"></div></div><div class="field"><label>Alasan perpanjangan</label><textarea id="wfoReason" rows="3" placeholder="Contoh: gangguan jaringan / kendala teknis / kebijakan DINAS"></textarea></div><div id="wfoMsg"></div><div class="workflow-modal-actions"><button class="btn btn-light" onclick="$('#workflowOverrideModal').remove()">Batal</button><button class="btn btn-primary" onclick="saveWorkflowOverrideUi()">Simpan Override</button></div></div></div>`;
+  document.body.appendChild(modal);
+};
+window.updateWorkflowOverrideTarget=function(){const t=$('#wfoTargetType')?.value,el=$('#wfoTargetValue');if(!el)return;el.disabled=t==='SEMUA';if(t==='SEMUA')el.value='';};
+window.saveWorkflowOverrideUi=async function(){const data={tahun:Number($('#wfoYear').value),tahap:$('#wfoStage').value,target_type:$('#wfoTargetType').value,target_value:$('#wfoTargetValue').value.trim(),mulai:$('#wfoStart').value,selesai:$('#wfoEnd').value,alasan:$('#wfoReason').value.trim()};try{await api('saveWorkflowOverride',{data});$('#workflowOverrideModal').remove();toast('Perpanjangan tersimpan.','ok');await jadwalTahapanView();}catch(e){$('#wfoMsg').innerHTML=msg(errorText(e));}};
+window.deactivateWorkflowOverrideUi=async function(id){if(!confirm('Nonaktifkan override ini?'))return;try{await api('deactivateWorkflowOverride',{idOverride:id});toast('Override dinonaktifkan.','ok');await jadwalTahapanView();}catch(e){toast(errorText(e),'error');}};
+window.toggleDelegationLockFromWorkflow=async function(lockIt){const reason=prompt(lockIt?'Catatan penguncian (opsional):':'Alasan membuka kembali pendelegasian (wajib):','')||'';if(!lockIt&&!reason.trim())return;try{await api('setDelegationLock',{data:{locked:!!lockIt,reason:reason.trim()}});toast(lockIt?'Pendelegasian dikunci.':'Kunci dibuka kembali.','ok');window._cachedPenugasanGlobal=null;await jadwalTahapanView();}catch(e){toast(errorText(e),'error');}};
+
+
 async function penugasanView() {
   const c = $('#mainContent');
   if(!c) return;
@@ -5729,19 +5871,17 @@ async function penugasanView() {
          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap:wrap; gap:12px;">
            <h3 style="margin:0">Daftar Penugasan Aktif</h3>
            <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
-             <button class="btn btn-primary" onclick="triggerDistribusiPenugasanAdil(false)">
-               ⚡ Distribusi Otomatis Adil & Lintas Kecamatan
-             </button>
-             <button class="btn btn-light" onclick="triggerDistribusiPenugasanAdil(true)" title="Menyusun ulang penugasan dengan urutan acak, tetap menggunakan algoritma distribusi lintas kecamatan.">
-               🔀 Acak Ulang
-             </button>
+             <button class="btn btn-primary" id="btnDelegationFair" onclick="triggerDistribusiPenugasan('ADIL_PAGU')">⚖️ Adil Berdasarkan Pagu</button>
+             <button class="btn btn-light" id="btnDelegationRandom" onclick="triggerDistribusiPenugasan('ACAK')">🎲 Acak Merata</button>
+             <button class="btn btn-light" id="btnDelegationLock" onclick="toggleDelegationLockFromPenugasan()">🔒 Kunci Pendelegasian</button>
            </div>
          </div>
          
+         <div id="delegationLockState" class="delegation-lock-state">${loading('Memeriksa status kunci...')}</div>
          <div id="distribusiResult" style="display:none; margin-bottom:16px;"></div>
          
          <div class="toolbar" style="margin-top:12px">
-           <button class="btn btn-primary" onclick="openTambahPenugasanModal()">+ Tambah Penugasan</button>
+           <button class="btn btn-primary" id="btnManualDelegation" onclick="openTambahPenugasanModal()">+ Tambah Penugasan</button>
            <input id="searchPenugasanInput" placeholder="🔍 Cari NPSN atau Pengawas..." style="max-width:320px">
          </div>
          
@@ -5749,6 +5889,7 @@ async function penugasanView() {
        </div>`;
        
     try {
+      await refreshDelegationLockState();
       // OPTIMASI: Gunakan cache memori lokal jika sudah ada untuk menghindari request berulang
       if (!window._cachedPenugasanGlobal) {
         const res = await api('getPenugasanPengawas');
@@ -6076,54 +6217,42 @@ window.diagnoseSelectedPagu = async function(){
 
 window.toggleAssignmentGroup=function(id){const el=document.getElementById(id);if(el)el.classList.toggle('collapsed');};
 
-window.triggerDistribusiPenugasanAdil = async function(acakUlang = false) {
-  const question = acakUlang
-    ? 'Acak ulang semua sekolah NON-BEKU? Baris BEKU akan tetap dipertahankan. Sistem akan menyeimbangkan jumlah sekolah, total pagu, dan sebaran kecamatan antar pengawas.'
-    : 'Jalankan distribusi adil lintas kecamatan? Sistem akan menyeimbangkan jumlah sekolah dan total pagu antar pengawas.';
-  if (!confirm(question)) return;
-
-  const resultBox = $('#distribusiResult');
-  if (resultBox) {
-    resultBox.style.display = 'block';
-    resultBox.innerHTML = loading(acakUlang
-      ? 'Mengacak ulang sekolah NON-BEKU dan menyeimbangkan sekolah + pagu...'
-      : 'Menjalankan distribusi adil lintas kecamatan...');
-  }
-
-  try {
-    const action = acakUlang ? 'acakUlangPenugasanAdil' : 'generatePenugasanAdil';
-    const res = await api(action);
-    const stats = res.statistik_beban || {};
-    const balance = res.keseimbangan || {};
-
-    let html = `<div style="background:#f0fdf4;border:1px solid #bbf7d0;padding:16px;border-radius:12px;color:var(--success)">
-      <strong>${esc(res.message || 'Distribusi berhasil dijalankan.')}</strong>
-      <div class="muted" style="margin-top:6px">Sekolah diproses: <b>${fmtNum(res.reassigned_count || 0)}</b> · Baris BEKU dipertahankan: <b>${fmtNum(res.frozen_count || 0)}</b> · Kecamatan: <b>${fmtNum(res.kecamatan_tercakup || 0)}</b></div>
-      <div style="margin-top:12px;display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px">
-        <div class="stat"><small>Selisih jumlah sekolah</small><strong>${fmtNum(balance.selisih_sekolah || 0)}</strong></div>
-        <div class="stat"><small>Pagu minimum</small><strong>${fmtRupiah(balance.min_pagu || 0)}</strong></div>
-        <div class="stat"><small>Pagu maksimum</small><strong>${fmtRupiah(balance.max_pagu || 0)}</strong></div>
-        <div class="stat"><small>Selisih pagu</small><strong>${fmtRupiah(balance.selisih_pagu || 0)}</strong></div>
-      </div>
-      <div style="font-size:.92rem;color:var(--text);margin-top:14px"><b>Distribusi per Pengawas:</b><ul>`;
-    Object.keys(stats).forEach(pid => {
-      const item = stats[pid] || {};
-      const kec = item.kecamatan || {};
-      const kecText = Object.keys(kec).sort().map(k => `${esc(k)} (${fmtNum(kec[k])})`).join(', ') || '-';
-      html += `<li><b>${esc(item.nama_pengawas || pid)}</b>: ${fmtNum(item.jumlah_sekolah || 0)} sekolah · ${fmtRupiah(item.total_beban || 0)} · ${fmtNum(item.jumlah_kecamatan || 0)} kecamatan<br><span class="muted">${kecText}</span></li>`;
-    });
-    html += `</ul></div></div>`;
-    if (resultBox) resultBox.innerHTML = html;
-    else alert(res.message || 'Distribusi berhasil dijalankan.');
-
-    setTimeout(() => { if (typeof penugasanView === 'function') penugasanView(); }, 700);
-  } catch (err) {
-    if (resultBox) resultBox.innerHTML = msg(errorText(err));
-    else alert('Gagal: ' + errorText(err));
-  }
+window.refreshDelegationLockState=async function(){
+  const box=$('#delegationLockState');
+  try{
+    const r=await api('getDelegationLock'); const d=r.data||{}; window._delegationLocked=!!d.locked;
+    if(box)box.innerHTML=`<div><b>${d.locked?'🔒 Pendelegasian terkunci':'🔓 Pendelegasian dapat diubah'}</b><span>${esc(d.reason||'DINAS dapat mengunci hasil pembagian setelah dianggap final.')}</span></div>`;
+    ['btnDelegationFair','btnDelegationRandom','btnManualDelegation'].forEach(id=>{const el=$('#'+id);if(el)el.disabled=!!d.locked;});
+    const lockBtn=$('#btnDelegationLock');if(lockBtn)lockBtn.textContent=d.locked?'🔓 Buka Kunci':'🔒 Kunci Pendelegasian';
+    return d;
+  }catch(e){if(box)box.innerHTML=msg(errorText(e),'warning');return{locked:false};}
 };
+window.toggleDelegationLockFromPenugasan=async function(){
+  const lockIt=!window._delegationLocked;
+  const reason=prompt(lockIt?'Catatan penguncian (opsional):':'Alasan membuka kembali pendelegasian (wajib):','')||'';
+  if(!lockIt&&!reason.trim())return;
+  try{await api('setDelegationLock',{data:{locked:lockIt,reason:reason.trim()}});toast(lockIt?'Pendelegasian dikunci.':'Kunci pendelegasian dibuka kembali.','ok');await refreshDelegationLockState();}catch(e){toast(errorText(e),'error');}
+};
+window.triggerDistribusiPenugasan = async function(mode='ADIL_PAGU') {
+  if(window._delegationLocked){toast('Pendelegasian sedang dikunci. Buka kunci terlebih dahulu.','warning');return;}
+  const isRandom=mode==='ACAK';
+  const question=isRandom?'Acak pembagian sekolah secara merata antar pengawas? Jumlah sekolah dijaga seimbang, tetapi pagu tidak menjadi prioritas utama.':'Jalankan pembagian adil berdasarkan pagu? Sekolah berpagu besar dibagikan untuk menyeimbangkan beban anggaran antar pengawas.';
+  if(!confirm(question))return;
+  const resultBox=$('#distribusiResult'); if(resultBox){resultBox.style.display='block';resultBox.innerHTML=loading(isRandom?'Mengacak pembagian sekolah...':'Menyeimbangkan beban pagu...');}
+  try{
+    const res=await api(isRandom?'generatePenugasanAcak':'generatePenugasanAdil');
+    window._cachedPenugasanGlobal=null; window._cachedPenugasan=null; window._cachedPaguSekolah=null;
+    const stats=res.statistik_beban||{},balance=res.keseimbangan||{};
+    let html=`<div style="background:#f0fdf4;border:1px solid #bbf7d0;padding:16px;border-radius:12px;color:var(--success)"><strong>${esc(res.message||'Distribusi berhasil.')}</strong><div class="muted" style="margin-top:6px">Diproses: <b>${fmtNum(res.reassigned_count||0)}</b> sekolah · Pagu min ${fmtRupiah(balance.min_pagu||0)} · Pagu max ${fmtRupiah(balance.max_pagu||0)}</div><div style="font-size:.9rem;color:var(--text);margin-top:10px"><ul>`;
+    Object.keys(stats).forEach(pid=>{const x=stats[pid]||{};html+=`<li><b>${esc(x.nama_pengawas||pid)}</b>: ${fmtNum(x.jumlah_sekolah||0)} sekolah · ${fmtRupiah(x.total_beban||0)}</li>`;});
+    html+='</ul></div></div>'; if(resultBox)resultBox.innerHTML=html;
+    setTimeout(()=>penugasanView(),500);
+  }catch(e){if(resultBox)resultBox.innerHTML=msg(errorText(e));else toast(errorText(e),'error');}
+};
+window.triggerDistribusiPenugasanAdil=async function(acakUlang=false){return triggerDistribusiPenugasan(acakUlang?'ADIL_PAGU':'ADIL_PAGU');};
 
 window.openTambahPenugasanModal = function() {
+  if(window._delegationLocked){toast('Pendelegasian sedang dikunci. Buka kunci terlebih dahulu.','warning');return;}
   const wrap = document.createElement('div'); wrap.id = 'penugasanModal';
   wrap.innerHTML = `<div style="position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:999;padding:16px"><div style="background:#fff;padding:28px;border-radius:24px;width:min(100%,480px);box-shadow:0 20px 40px rgba(0,0,0,.2)"><h3 style="margin-top:0;color:var(--primary)">Tambah Penugasan Pengawas</h3><form id="formPenugasanBaru"><div class="field"><label>ID Pengawas</label><input id="penugasanPengawasId" required placeholder="pengawas01"></div><div class="field"><label>NPSN Sekolah</label><input id="penugasanNpsn" required placeholder="20301234"></div><div class="form-grid"><div class="field"><label>Mulai</label><input id="penugasanMulai" type="date" required></div><div class="field"><label>Selesai</label><input id="penugasanSelesai" type="date" required></div></div><div id="penugasanMsg"></div><div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px"><button type="button" class="btn btn-light" onclick="$('#penugasanModal').remove()">Batal</button><button class="btn btn-primary">Simpan</button></div></form></div></div>`;
   document.body.appendChild(wrap);
@@ -9327,6 +9456,9 @@ body[data-role] #mainContent .v225-home-next strong{color:#172433!important}
 }
 </style>
 
+
+
+
 </body></html>`);
   w.document.close();
 }
@@ -12338,6 +12470,27 @@ body[data-role] #mainContent .v225-support button:hover{
   .v239-pdf-icon-btn{width:30px;height:30px}.instrument-pdf-page-control.v239-pdf-page-pill{padding:0 5px!important}
   .v239-pdf-page-label{display:none}.instrument-pdf-stage{padding:8px!important}
 }
+</style>
+<style id="v240WorkflowAndHeaderFix">
+/* V23.5 final cascade — header contrast fix promised in RKAS patch */
+body[data-role] .topbar{background:#fff!important;color:#172433!important;border-bottom:1px solid #dfe6ec!important;box-shadow:0 5px 20px rgba(25,43,58,.07)!important}
+body[data-role] .topbar .brand-gold-title{color:#172433!important;-webkit-text-fill-color:#172433!important;text-shadow:none!important}
+body[data-role] .topbar .brand small,body[data-role] .topbar .brand b{color:#667684!important;-webkit-text-fill-color:#667684!important}
+body[data-role] .top-search-wrap{background:#f5f7f9!important;border:1px solid #dce4ea!important}
+body[data-role] .top-search-wrap:focus-within{background:#fff!important;border-color:var(--role-primary)!important;box-shadow:0 0 0 4px color-mix(in srgb,var(--role-primary) 10%,transparent)!important}
+body[data-role] .top-search-wrap input{color:#172433!important;-webkit-text-fill-color:#172433!important;background:transparent!important}
+body[data-role] .top-search-wrap input::placeholder{color:#748391!important;-webkit-text-fill-color:#748391!important;opacity:1!important}
+body[data-role] .top-search-icon{color:#526574!important}.top-search-kbd{background:#fff!important;color:#526574!important;border-color:#d4dde4!important}
+body[data-role] .topbar .top-actions,body[data-role] .topbar .top-actions b,body[data-role] .topbar .top-actions .muted{color:#172433!important;-webkit-text-fill-color:#172433!important}
+body[data-role] .topbar .top-actions .btn-light{background:#fff!important;color:#314657!important;border-color:#cfd9e1!important}
+
+.workflow-hero{display:flex;justify-content:space-between;gap:20px;align-items:center;padding:24px;border-radius:20px;background:linear-gradient(120deg,var(--role-primary-deep),var(--role-primary));color:#fff;margin-bottom:15px;box-shadow:0 14px 32px color-mix(in srgb,var(--role-primary-deep) 18%,transparent)}
+.workflow-hero span{font-size:.68rem;font-weight:900;letter-spacing:.12em}.workflow-hero h2{margin:6px 0;color:#fff!important}.workflow-hero p{margin:0;max-width:760px;color:rgba(255,255,255,.86)!important}.workflow-year-box{min-width:230px;padding:12px;border:1px solid rgba(255,255,255,.25);border-radius:13px;background:rgba(255,255,255,.1)}.workflow-year-box label{display:block;font-size:.7rem;font-weight:850;margin-bottom:6px}.workflow-year-box>div{display:flex;gap:7px}.workflow-year-box input{min-width:0;width:110px;background:#fff;border:0;border-radius:9px;padding:8px;color:#172433}
+.workflow-stage-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:15px}.workflow-stage-card{padding:15px;border:1px solid #e1e7ec;border-radius:15px;background:#fff;box-shadow:0 5px 16px rgba(25,43,58,.045);border-top:4px solid #aab5be}.workflow-stage-card.active{border-top-color:#16804b}.workflow-stage-card.tolerance{border-top-color:#d28a00}.workflow-stage-card.override{border-top-color:#7256b0}.workflow-stage-card.closed{border-top-color:#bd4b4b}.workflow-stage-card.upcoming{border-top-color:#497a9a}.workflow-stage-top{display:flex;justify-content:space-between;gap:7px;align-items:center}.workflow-stage-top small{font-size:.58rem;color:#7b8994;font-weight:850}.workflow-stage-card h3{font-size:.91rem!important;margin:9px 0 5px!important}.workflow-stage-card p{font-size:.71rem!important;line-height:1.45;margin:0 0 11px!important}.workflow-stage-date{font-size:.72rem;font-weight:800;color:#344b5d}.workflow-stage-target{font-size:.66rem;color:#7a8995;margin-top:5px}.workflow-status{font-size:.58rem;font-weight:900;padding:4px 7px;border-radius:999px;background:#eef2f5;color:#566775}.workflow-status.active{background:#e7f7ef;color:#126c42}.workflow-status.tolerance{background:#fff3d7;color:#8e6000}.workflow-status.override{background:#f0eafb;color:#5b438e}.workflow-status.closed{background:#fdeaea;color:#9a3434}.workflow-status.upcoming{background:#e9f2f8;color:#37627e}
+.workflow-control-grid{display:grid;grid-template-columns:1.35fr 1fr;gap:13px}.workflow-panel-head{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:12px}.workflow-panel-head small,.workflow-lock-card small{font-size:.62rem;letter-spacing:.1em;color:#7a8995;font-weight:900}.workflow-panel-head h3,.workflow-lock-card h3{margin:3px 0 0!important}.workflow-lock-card{display:flex;justify-content:space-between;align-items:center;gap:15px;margin-top:13px;border-left:5px solid #16804b!important}.workflow-lock-card.locked{border-left-color:#b54a46!important}.workflow-lock-card p{margin:5px 0 0!important}.workflow-note{margin-top:13px}.workflow-note p{margin-bottom:0!important}
+.workflow-modal-backdrop{position:fixed;inset:0;background:rgba(15,26,36,.55);z-index:12000;display:flex;align-items:center;justify-content:center;padding:16px}.workflow-modal-card{width:min(780px,96vw);max-height:92vh;overflow:auto;background:#fff;border-radius:20px;padding:22px;box-shadow:0 24px 70px rgba(0,0,0,.22)}.workflow-modal-card h3{margin-top:0}.workflow-modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:15px}.delegation-lock-state{margin:0 0 12px;padding:11px 13px;border:1px solid #dfe6eb;border-radius:11px;background:#f8fafb}.delegation-lock-state div{display:flex;gap:10px;align-items:center;justify-content:space-between}.delegation-lock-state span{font-size:.75rem;color:#71808d}.workflow-registration-info{margin:-2px 0 13px}.workflow-reg-chip{display:flex;justify-content:space-between;gap:10px;padding:10px 11px;border-radius:10px;border:1px solid #dfe6eb;background:#f8fafb;font-size:.74rem}.workflow-reg-chip.active{background:#eaf7ef;border-color:#bde4cc}.workflow-reg-chip.tolerance{background:#fff6df;border-color:#efdca6}.workflow-reg-chip.closed,.workflow-reg-chip.danger{background:#fff0ef;border-color:#efc5c1}.workflow-reg-chip.override{background:#f2edfb;border-color:#d8cdef}.workflow-reg-chip span{color:#667684;text-align:right}
+@media(max-width:1100px){.workflow-stage-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.workflow-control-grid{grid-template-columns:1fr}}
+@media(max-width:760px){.workflow-hero{align-items:flex-start;flex-direction:column}.workflow-year-box{width:100%}.workflow-stage-grid{grid-template-columns:1fr}.workflow-reg-chip{flex-direction:column}.workflow-reg-chip span{text-align:left}.delegation-lock-state div{align-items:flex-start;flex-direction:column}}
 </style>
 </body>
 </html>
