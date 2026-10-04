@@ -2582,6 +2582,7 @@ async function restoreSession(){
 async function logout(){
   stopSessionHeartbeat();
   try{if(state.token) await api('logout');}catch(e){}
+  invalidateRkasFrontendCaches();
   state.token=''; state.user=null; sessionStorage.removeItem('simpel_token'); authView(msg('Anda telah keluar dari aplikasi.','ok'));
 }
 
@@ -3943,6 +3944,24 @@ async function transaksiView(){
 // Variabel cache lokal frontend untuk daftar sekolah Dinas
 let _cachedDinasSchools = null;
 
+// V23.3 — satu pintu invalidasi state/cache frontend yang bergantung pada RKAS.
+// Dipanggil setelah setiap mutasi RKAS agar user tidak perlu refresh/logout-login.
+function invalidateRkasFrontendCaches(){
+  _cachedDinasSchools = null;
+
+  window._schoolDirectoryCache = null;
+  window._schoolDirectoryData = null;
+
+  window._cachedPenugasanGlobal = null;
+  window._cachedPenugasan = null;
+  window._cachedPaguSekolah = null;
+  window._paguRkasMeta = null;
+
+  window._currentDinasRkasList = null;
+  window._renderedDinasRkasList = null;
+  window._selectedDinasRkasPackage = null;
+}
+
 async function renderTransaksi(page = 1){
   const p = $('#periodeSelect').value, area = $('#trxArea'); 
   if (!p) return;
@@ -4752,6 +4771,7 @@ window.commitRkasImportFromPreview=async function(){
     const payload={id_import:p.response.id_import,rows};
     if(isDinas()) payload.npsn=normalizeNpsnClient($('#rkasImportTargetNpsn')?.value||p.response.npsn||'');
     const r=await api('commitRKASImport',{data:payload});
+    invalidateRkasFrontendCaches();
     toast(r.message||`RKAS ${fmtNum(rows.length)} baris berhasil disimpan.`,'ok',5000);
     const modal=$('#rkasImportModal');if(modal)modal.remove();
     if(isDinas()) await renderDinasRkasReview(); else await renderSchoolRkasAndRealisasi();
@@ -5136,6 +5156,7 @@ async function renderSchoolRkasAndRealisasi(){
           if(!confirm('Apakah Anda yakin ingin menghapus item/usulan RKAS ini?')) return;
           try{
             await api('hapusDetailRKAS', { idRkas });
+            invalidateRkasFrontendCaches();
             toast('Item RKAS berhasil dihapus.', 'ok');
             await renderSchoolRkasAndRealisasi();
           }catch(err){
@@ -5207,6 +5228,7 @@ window.hapusRkasSekolah = async function(){
 
   try{
     const result = await api('hapusRkasSekolah', {});
+    invalidateRkasFrontendCaches();
     toast(result.message || 'RKAS sekolah berhasil dihapus.','ok',5000);
     await renderSchoolRkasAndRealisasi();
   }catch(err){
@@ -5264,6 +5286,7 @@ window.openEditRkasItem = function(idRkas, uraianLama, paguLama, kodeLama){
     };
     try {
       await api('updateItemRKAS', { data: payload });
+      invalidateRkasFrontendCaches();
       toast('Nilai pagu RKAS berhasil diperbarui.','ok');
       $('#editRkasModal').remove();
       await renderSchoolRkasAndRealisasi();
@@ -5314,6 +5337,7 @@ window.openTambahItemRkasModal = function(){
     };
     try {
       await api('tambahUsulanItemRKAS', { data: payload });
+      invalidateRkasFrontendCaches();
       toast('Usulan item RKAS baru berhasil diajukan ke Dinas untuk diverifikasi.','ok');
       $('#tambahItemModal').remove();
       await renderSchoolRkasAndRealisasi();
@@ -5504,6 +5528,7 @@ window.doReviewRkas = async function(versiRkas, keputusan) {
   if (!confirm(`Yakin ${label} RKAS versi ${versiRkas}?`)) return;
   try {
     await api('reviewRKAS', { versiRkas, keputusan });
+    invalidateRkasFrontendCaches();
     toast('Keputusan review RKAS berhasil disimpan.', 'ok');
     await renderDinasRkasReview();
   } catch (err) {
@@ -9995,6 +10020,7 @@ window.executeRkasReplace=async function(){
       scope:p.scope,
       npsn:p.scope==='ONE'?p.selectedNpsn:''
     }});
+    invalidateRkasFrontendCaches();
 
     msgHost.innerHTML=msg(
       `Berhasil. ${fmtNum(fin.jumlah_baris)} detail menjadi APPROVED. `+
