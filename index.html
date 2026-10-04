@@ -1820,6 +1820,7 @@ window.ROLE_MENUS = {
   DINAS: [
     { id:'home', label:'🏠 Beranda' },
     { id:'jadwalTahapan', label:'🗓️ Jadwal & Tahapan' },
+    { id:'manajemenUser', label:'👤 Manajemen User & Kesiapan' },
     { group:'ALUR UTAMA', items:[
       { id:'masterSpj', label:'1. ⚙️ Periode & Master SPJ' },
       { id:'sekolah', label:'2. 🏫 Data Sekolah' },
@@ -1873,6 +1874,7 @@ const ROLE_MENUS = window.ROLE_MENUS;
 
 const SUBMENU_TUTORIALS = {
   jadwalTahapan: {title:'Jadwal & Tahapan',text:'DINAS menetapkan rentang kerja, masa toleransi, dan perpanjangan. Semua user dapat melihat jadwal yang berlaku untuk dirinya.',flow:['Pendaftaran','Pendelegasian','Input','Penilaian','Sanggah','Final'],current:0},
+  manajemenUser: {title:'Manajemen User & Kesiapan',text:'DINAS memantau apakah seluruh sekolah dan pengawas resmi sudah memiliki akun aktif sebelum pendelegasian dimulai.',flow:['Master sekolah/pengawas','Registrasi akun','Verifikasi kesiapan','Pendelegasian'],current:1},
   masterSpj: {title:'Master SPJ & Periode',text:'Dinas menetapkan komponen SPJ, indikator pemeriksaan, dan periode aktif. Ini menjadi fondasi agar seluruh sekolah dinilai dengan standar yang sama.',flow:['Master SPJ','Indikator','Periode','Penilaian'],current:0},
   sekolah: {title:'Data Sekolah',text:'Pastikan identitas satuan pendidikan dan NPSN benar sebelum dokumen, temuan, dan nilai dikaitkan ke sekolah yang diperiksa.',flow:['Identitas sekolah','Dokumen','Pemeriksaan','Nilai'],current:0},
   penugasan: {title:'Penugasan Pengawas',text:'Penugasan menentukan pengawas yang berwenang memeriksa sekolah dan menjadi penghubung ke proses pemeriksaan serta asesmen.',flow:['Sekolah','Pengawas','Periode','Asesmen'],current:1},
@@ -2886,6 +2888,7 @@ async function renderViewSafely(view){
   const map = {
     home: homeView,
     jadwalTahapan: jadwalTahapanView,
+    manajemenUser: manajemenUserView,
     dokumenBulanan: dokumenBulananView,
     statusSpj: statusSpjView,
     statusSekolah: statusSekolahView,
@@ -5714,6 +5717,7 @@ function workflowPhaseMeta(phase){
   const map={
     AKTIF:{label:'AKTIF',cls:'active'},TOLERANSI:{label:'MASA TOLERANSI',cls:'tolerance'},OVERRIDE:{label:'PERPANJANGAN KHUSUS',cls:'override'},
     BELUM_DIBUKA:{label:'BELUM DIBUKA',cls:'upcoming'},DITUTUP:{label:'DITUTUP',cls:'closed'},BELUM_DIJADWALKAN:{label:'BELUM DIJADWALKAN',cls:'closed'},
+    PENDAFTARAN_SELESAI:{label:'PENDAFTARAN SELESAI',cls:'closed'},
     BELUM_DIATUR:{label:'BELUM DIATUR',cls:'neutral'},KONFIGURASI_TIDAK_VALID:{label:'KONFIGURASI TIDAK VALID',cls:'danger'}
   };
   return map[p]||{label:p,cls:'neutral'};
@@ -5878,6 +5882,7 @@ async function penugasanView() {
          </div>
          
          <div id="delegationLockState" class="delegation-lock-state">${loading('Memeriksa status kunci...')}</div>
+         <div id="delegationReadinessState" class="delegation-lock-state">${loading('Memeriksa kesiapan akun...')}</div>
          <div id="distribusiResult" style="display:none; margin-bottom:16px;"></div>
          
          <div class="toolbar" style="margin-top:12px">
@@ -5890,6 +5895,7 @@ async function penugasanView() {
        
     try {
       await refreshDelegationLockState();
+      await refreshDelegationReadinessState();
       // OPTIMASI: Gunakan cache memori lokal jika sudah ada untuk menghindari request berulang
       if (!window._cachedPenugasanGlobal) {
         const res = await api('getPenugasanPengawas');
@@ -6227,11 +6233,24 @@ window.refreshDelegationLockState=async function(){
     return d;
   }catch(e){if(box)box.innerHTML=msg(errorText(e),'warning');return{locked:false};}
 };
+window.refreshDelegationReadinessState=async function(){
+  const box=$('#delegationReadinessState');if(!box)return null;
+  try{
+    const r=await api('getUserReadiness');const s=r.summary||{},a=s.schools||{},p=s.pengawas||{};
+    const gate=!!s.pengawas_target_configured||!!s.workflow_registration_configured;
+    const blocked=gate&&(!s.registration_completed||!s.all_ready);
+    box.innerHTML=blocked
+      ? `<div><b>⚠️ Pendaftaran belum siap untuk pendelegasian</b><span>Sekolah ${fmtNum(a.ready||0)}/${fmtNum(a.target||0)} · Pengawas ${fmtNum(p.ready||0)}/${fmtNum(p.target||0)}. <button class="btn btn-light btn-sm" onclick="loadView('manajemenUser')">Buka Manajemen User</button></span></div>`
+      : `<div><b>${gate?'✓ Kesiapan akun terverifikasi':'ℹ️ Mode kompatibilitas'}</b><span>${gate?'Pendaftaran selesai dan seluruh akun target aktif.':'Master pengawas/jadwal registrasi belum dipakai; pendelegasian mengikuti mode lama.'}</span></div>`;
+    if(blocked){['btnDelegationFair','btnDelegationRandom','btnManualDelegation'].forEach(id=>{const el=$('#'+id);if(el)el.disabled=true;});}
+    return {blocked};
+  }catch(e){box.innerHTML=msg(errorText(e),'warning');return null;}
+};
 window.toggleDelegationLockFromPenugasan=async function(){
   const lockIt=!window._delegationLocked;
   const reason=prompt(lockIt?'Catatan penguncian (opsional):':'Alasan membuka kembali pendelegasian (wajib):','')||'';
   if(!lockIt&&!reason.trim())return;
-  try{await api('setDelegationLock',{data:{locked:lockIt,reason:reason.trim()}});toast(lockIt?'Pendelegasian dikunci.':'Kunci pendelegasian dibuka kembali.','ok');await refreshDelegationLockState();}catch(e){toast(errorText(e),'error');}
+  try{await api('setDelegationLock',{data:{locked:lockIt,reason:reason.trim()}});toast(lockIt?'Pendelegasian dikunci.':'Kunci pendelegasian dibuka kembali.','ok');await refreshDelegationLockState();await refreshDelegationReadinessState();}catch(e){toast(errorText(e),'error');}
 };
 window.triggerDistribusiPenugasan = async function(mode='ADIL_PAGU') {
   if(window._delegationLocked){toast('Pendelegasian sedang dikunci. Buka kunci terlebih dahulu.','warning');return;}
@@ -12471,6 +12490,140 @@ body[data-role] #mainContent .v225-support button:hover{
   .v239-pdf-page-label{display:none}.instrument-pdf-stage{padding:8px!important}
 }
 </style>
+<script id="v236UserReadinessLogic">
+/* ==========================================================================
+   V23.6 — MANAJEMEN USER & KESIAPAN REGISTRASI
+   ========================================================================== */
+window._userReadinessData = null;
+window._userReadinessFilter = 'ALL';
+window._userReadinessQuery = '';
+
+function readinessUserBadge(status){
+  const st=String(status||'BELUM_MENDAFTAR').toUpperCase();
+  const meta={SIAP:['SIAP','success'],BELUM_MENDAFTAR:['BELUM DAFTAR','warning'],NONAKTIF:['NONAKTIF','danger'],DUPLIKAT:['DUPLIKAT','danger']}[st]||[st,'info'];
+  return badge(meta[0],meta[1]);
+}
+function readinessPct(v){return Math.max(0,Math.min(100,Number(v||0))).toFixed(1)+'%';}
+function readinessDate(v){if(!v)return'-';try{return formatTanggalPenugasan(v)||'-';}catch(_){return String(v||'-');}}
+
+async function manajemenUserView(){
+  const c=$('#mainContent'); if(!c)return;
+  if(!isDinas()){c.innerHTML=msg('Modul Manajemen User hanya tersedia untuk DINAS.','warning');return;}
+  c.innerHTML=head('Manajemen User & Kesiapan','Pastikan seluruh sekolah dan pengawas resmi sudah memiliki satu akun aktif sebelum pendelegasian dimulai.')+
+    `<div id="userReadinessPage">${loading('Menghitung kesiapan akun...')}</div>`;
+  await reloadUserReadiness();
+}
+
+async function reloadUserReadiness(){
+  const host=$('#userReadinessPage'); if(host)host.innerHTML=loading('Menghitung kesiapan akun...');
+  try{
+    const year=Number(window._workflowSelectedYear||0)||undefined;
+    const r=await api('getUserReadiness',year?{tahun:year}:{});
+    window._userReadinessData=r;
+    window._workflowSelectedYear=Number(r.year||window._workflowSelectedYear||new Date().getFullYear());
+    renderUserReadiness();
+  }catch(e){if(host)host.innerHTML=msg(errorText(e));}
+}
+
+function renderUserReadiness(){
+  const host=$('#userReadinessPage'),r=window._userReadinessData;if(!host||!r)return;
+  const sum=r.summary||{},s=sum.schools||{},p=sum.pengawas||{};
+  const allReady=!!sum.all_ready,completed=!!sum.registration_completed;
+  const pengawasConfigured=!!sum.pengawas_target_configured;
+  const completionClass=completed?'complete':allReady?'ready':'waiting';
+  const completionLabel=completed?'PENDAFTARAN SELESAI':allReady?'SEMUA AKUN SIAP':'BELUM LENGKAP';
+  const orphanCount=(r.orphan_school_accounts||[]).length+(r.orphan_pengawas_accounts||[]).length;
+  host.innerHTML=`
+    <section class="ur-hero ${completionClass}">
+      <div><span>TAHUN OPERASIONAL ${fmtNum(r.year||0)}</span><h2>Kesiapan Registrasi Pengguna</h2><p>Target sekolah diambil dari NPSN unik master sekolah. Target pengawas diambil dari master NIP pengawas DINAS.</p></div>
+      <div class="ur-state"><small>STATUS</small><strong>${esc(completionLabel)}</strong><span>${completed?'Tahap pendelegasian dapat dilanjutkan.':allReady?'DINAS dapat menyatakan pendaftaran selesai.':'Lengkapi akun yang masih bermasalah.'}</span></div>
+    </section>
+    <section class="ur-summary-grid">
+      ${userReadinessSummaryCard('🏫','SEKOLAH',s)}
+      ${userReadinessSummaryCard('🧑‍💼','PENGAWAS',p,!pengawasConfigured)}
+      <article class="ur-summary-card"><small>KONTROL REGISTRASI</small><strong>${completed?'TERKUNCI SELESAI':'MASIH TERBUKA'}</strong><span>${completed_at_text(sum.registration_completed_at)}</span><div class="ur-card-action"><button class="btn ${completed?'btn-light':'btn-primary'} btn-sm" ${(!completed&&!allReady)?'disabled':''} onclick="toggleRegistrationCompletionUI()">${completed?'↩ Buka Kembali':'✓ Nyatakan Selesai'}</button></div></article>
+      <article class="ur-summary-card ${orphanCount?'warn':''}"><small>ANOMALI IDENTITAS</small><strong>${fmtNum(orphanCount)}</strong><span>Akun di luar master resmi</span><div class="ur-card-action">${orphanCount?'<span class="badge badge-warning">Perlu diperiksa</span>':'<span class="badge badge-success">Bersih</span>'}</div></article>
+    </section>
+    ${!pengawasConfigured?`<div class="message error"><b>Master pengawas belum diisi.</b> Tambahkan daftar NIP pengawas resmi agar sistem dapat mengetahui target registrasi pengawas secara pasti.</div>`:''}
+    <section class="panel ur-toolbar">
+      <div><b>Daftar Kesiapan</b><div class="muted">Gunakan filter untuk menemukan akun yang belum mendaftar, nonaktif, atau duplikat.</div></div>
+      <div class="ur-toolbar-actions"><select id="urFilter" onchange="setUserReadinessFilter(this.value)"><option value="ALL">Semua status</option><option value="BELUM_MENDAFTAR">Belum mendaftar</option><option value="NONAKTIF">Nonaktif</option><option value="DUPLIKAT">Duplikat</option><option value="SIAP">Siap</option></select><input id="urSearch" placeholder="🔍 Cari NPSN, NIP, nama, kecamatan..." oninput="setUserReadinessQuery(this.value)"><button class="btn btn-primary" onclick="openMasterPengawasModal()">+ Master Pengawas</button></div>
+    </section>
+    <section class="ur-two-col">
+      <div class="panel"><div class="ur-section-head"><div><small>SEKOLAH</small><h3>Registrasi Akun Sekolah</h3></div><span>${fmtNum(s.ready||0)} / ${fmtNum(s.target||0)}</span></div><div id="urSchoolsTable"></div></div>
+      <div class="panel"><div class="ur-section-head"><div><small>PENGAWAS</small><h3>Registrasi Akun Pengawas</h3></div><span>${fmtNum(p.ready||0)} / ${fmtNum(p.target||0)}</span></div><div id="urPengawasTable"></div></div>
+    </section>
+    <section class="panel" style="margin-top:14px"><div class="ur-section-head"><div><small>MASTER RESMI</small><h3>Daftar NIP Pengawas DINAS</h3></div><button class="btn btn-light btn-sm" onclick="openMasterPengawasModal()">+ Tambah</button></div><div id="urMasterPengawasTable"></div></section>
+    ${renderUserReadinessOrphans(r)}
+  `;
+  const filter=$('#urFilter');if(filter)filter.value=window._userReadinessFilter||'ALL';
+  const search=$('#urSearch');if(search)search.value=window._userReadinessQuery||'';
+  renderUserReadinessTables();
+}
+
+function completed_at_text(v){return v?'Ditetapkan '+readinessDate(v):'Belum dinyatakan selesai';}
+function userReadinessSummaryCard(icon,label,x,notConfigured){
+  x=x||{};const target=Number(x.target||0),ready=Number(x.ready||0),missing=Number(x.missing||0),inactive=Number(x.inactive||0),dup=Number(x.duplicates||0);
+  return `<article class="ur-summary-card ${notConfigured?'warn':''}"><small>${icon} ${esc(label)}</small><strong>${fmtNum(ready)} / ${fmtNum(target)}</strong><span>${notConfigured?'Target belum dikonfigurasi':readinessPct(x.progress)+' siap'}</span><div class="ur-progress"><i style="width:${Math.max(0,Math.min(100,Number(x.progress||0)))}%"></i></div><div class="ur-mini"><span>Belum ${fmtNum(missing)}</span><span>Nonaktif ${fmtNum(inactive)}</span><span>Duplikat ${fmtNum(dup)}</span></div></article>`;
+}
+
+function setUserReadinessFilter(v){window._userReadinessFilter=String(v||'ALL');renderUserReadinessTables();}
+function setUserReadinessQuery(v){window._userReadinessQuery=String(v||'').trim().toLowerCase();renderUserReadinessTables();}
+function readinessRowVisible(x){
+  const f=window._userReadinessFilter||'ALL',q=window._userReadinessQuery||'';
+  if(f!=='ALL'&&String(x.readiness||'').toUpperCase()!==f)return false;
+  if(!q)return true;
+  return Object.values(x||{}).some(v=>String(v??'').toLowerCase().includes(q));
+}
+function renderUserReadinessTables(){
+  const r=window._userReadinessData;if(!r)return;
+  const schools=(r.schools||[]).filter(readinessRowVisible);
+  const pengawas=(r.pengawas||[]).filter(readinessRowVisible);
+  const sHost=$('#urSchoolsTable'),pHost=$('#urPengawasTable'),mHost=$('#urMasterPengawasTable');
+  if(sHost)sHost.innerHTML=`<div class="table-wrap ur-table"><table class="friendly-table"><thead><tr><th>NPSN / Sekolah</th><th>Akun</th><th>Status</th><th>Login Terakhir</th><th>Aksi</th></tr></thead><tbody>${schools.map(x=>`<tr><td><b>${esc(x.npsn)}</b><div>${esc(x.nama_sekolah||'-')}</div><small>${esc(x.kecamatan||'-')}</small></td><td>${x.username?`<code>${esc(x.username)}</code><small>${esc(x.nama_pengguna||'')}</small>`:'-'}</td><td>${readinessUserBadge(x.readiness)}</td><td>${esc(readinessDate(x.last_login))}</td><td>${managedUserAction(x)}</td></tr>`).join('')||emptyRow(5,'Tidak ada sekolah sesuai filter.')}</tbody></table></div>`;
+  if(pHost)pHost.innerHTML=`<div class="table-wrap ur-table"><table class="friendly-table"><thead><tr><th>NIP / Pengawas</th><th>Akun</th><th>Status</th><th>Login Terakhir</th><th>Aksi</th></tr></thead><tbody>${pengawas.map(x=>`<tr><td><b>${esc(x.nip)}</b><div>${esc(x.nama_pengawas||'-')}</div></td><td>${x.username?`<code>${esc(x.username)}</code><small>${esc(x.nama_pengguna||'')}</small>`:'-'}</td><td>${readinessUserBadge(x.readiness)}</td><td>${esc(readinessDate(x.last_login))}</td><td>${managedUserAction(x)}</td></tr>`).join('')||emptyRow(5,'Tidak ada pengawas sesuai filter.')}</tbody></table></div>`;
+  const master=(r.master_pengawas_all||[]);
+  if(mHost)mHost.innerHTML=`<div class="table-wrap ur-table"><table class="friendly-table"><thead><tr><th>NIP</th><th>Nama</th><th>Status Master</th><th>Catatan</th><th>Aksi</th></tr></thead><tbody>${master.map(x=>`<tr><td><code>${esc(x.nip)}</code></td><td><b>${esc(x.nama_pengawas||'-')}</b></td><td>${badge(x.master_status||'AKTIF',(x.master_status||'AKTIF')==='AKTIF'?'success':'danger')}</td><td>${esc(x.catatan||'-')}</td><td><div class="ur-actions"><button class="btn btn-light btn-sm" onclick="openMasterPengawasModal('${esc(x.nip)}')">Edit</button><button class="btn btn-light btn-sm" onclick="toggleMasterPengawasStatusUI('${esc(x.nip)}','${(x.master_status||'AKTIF')==='AKTIF'?'NONAKTIF':'AKTIF'}')">${(x.master_status||'AKTIF')==='AKTIF'?'Nonaktifkan':'Aktifkan'}</button></div></td></tr>`).join('')||emptyRow(5,'Belum ada master pengawas.')}</tbody></table></div>`;
+}
+function managedUserAction(x){
+  if(!x.user_id)return '<span class="muted">Menunggu registrasi</span>';
+  const active=String(x.account_status||'').toUpperCase()==='AKTIF';
+  return `<button class="btn btn-light btn-sm" onclick="toggleManagedUserStatusUI('${esc(x.user_id)}','${active?'NONAKTIF':'AKTIF'}')">${active?'Nonaktifkan':'Aktifkan'}</button>`;
+}
+function renderUserReadinessOrphans(r){
+  const s=r.orphan_school_accounts||[],p=r.orphan_pengawas_accounts||[];if(!s.length&&!p.length)return'';
+  return `<section class="panel ur-orphans"><div class="ur-section-head"><div><small>ANOMALI</small><h3>Akun yang tidak cocok dengan master</h3></div></div>${s.length?`<p><b>Sekolah:</b> ${s.map(x=>esc(x.npsn)).join(', ')}</p>`:''}${p.length?`<p><b>Pengawas:</b> ${p.map(x=>esc(x.nip)).join(', ')}</p>`:''}</section>`;
+}
+
+window.openMasterPengawasModal=function(nip=''){
+  const r=window._userReadinessData||{},row=(r.master_pengawas_all||[]).find(x=>String(x.nip)===String(nip))||{};
+  const wrap=document.createElement('div');wrap.id='masterPengawasModal';wrap.className='workflow-modal-backdrop';
+  wrap.innerHTML=`<div class="workflow-modal-card" style="width:min(520px,96vw)"><h3>${nip?'Edit':'Tambah'} Master Pengawas</h3><div class="field"><label>NIP (18 digit)</label><input id="mpNip" value="${esc(row.nip||'')}" ${nip?'readonly':''} placeholder="198001012005011001"></div><div class="field"><label>Nama Pengawas</label><input id="mpNama" value="${esc(row.nama_pengawas||'')}" placeholder="Nama lengkap dan gelar"></div><div class="field"><label>Catatan</label><textarea id="mpCatatan" rows="3" placeholder="Opsional">${esc(row.catatan||'')}</textarea></div><div id="mpMsg"></div><div class="workflow-modal-actions"><button class="btn btn-light" onclick="$('#masterPengawasModal').remove()">Batal</button><button class="btn btn-primary" onclick="saveMasterPengawasUI()">Simpan</button></div></div>`;
+  document.body.appendChild(wrap);
+};
+window.saveMasterPengawasUI=async function(){
+  try{
+    const nip=$('#mpNip').value.trim(),nama=$('#mpNama').value.trim(),catatan=$('#mpCatatan').value.trim();
+    await api('saveMasterPengawas',{data:{nip,nama_pengawas:nama,catatan,status:'AKTIF'}});
+    $('#masterPengawasModal')?.remove();toast('Master pengawas tersimpan.','ok');await reloadUserReadiness();
+  }catch(e){const box=$('#mpMsg');if(box)box.innerHTML=msg(errorText(e));else toast(errorText(e),'error');}
+};
+window.toggleMasterPengawasStatusUI=async function(nip,status){
+  if(!confirm(`${status==='AKTIF'?'Aktifkan':'Nonaktifkan'} NIP ${nip} pada master pengawas?`))return;
+  try{await api('setMasterPengawasStatus',{data:{nip,status}});toast('Status master pengawas diperbarui.','ok');await reloadUserReadiness();}catch(e){toast(errorText(e),'error');}
+};
+window.toggleManagedUserStatusUI=async function(userId,status){
+  let alasan='';if(status==='NONAKTIF'){alasan=prompt('Alasan menonaktifkan akun:','')||'';if(!alasan.trim())return;}
+  try{await api('setManagedUserStatus',{data:{user_id:userId,status,alasan}});toast('Status akun diperbarui.','ok');await reloadUserReadiness();}catch(e){toast(errorText(e),'error');}
+};
+window.toggleRegistrationCompletionUI=async function(){
+  const r=window._userReadinessData||{},sum=r.summary||{},completed=!!sum.registration_completed;
+  let reason='';
+  if(completed){reason=prompt('Alasan membuka kembali pendaftaran (wajib):','')||'';if(!reason.trim())return;}
+  else if(!confirm('Semua akun sudah siap. Nyatakan pendaftaran selesai dan lanjutkan ke tahap pendelegasian?'))return;
+  try{await api('setRegistrationCompletion',{data:{tahun:r.year,completed:!completed,reason}});toast(completed?'Pendaftaran dibuka kembali.':'Pendaftaran dinyatakan selesai.','ok');await reloadUserReadiness();}catch(e){toast(errorText(e),'error');}
+};
+</script>
 <style id="v240WorkflowAndHeaderFix">
 /* V23.5 final cascade — header contrast fix promised in RKAS patch */
 body[data-role] .topbar{background:#fff!important;color:#172433!important;border-bottom:1px solid #dfe6ec!important;box-shadow:0 5px 20px rgba(25,43,58,.07)!important}
@@ -12491,6 +12644,17 @@ body[data-role] .topbar .top-actions .btn-light{background:#fff!important;color:
 .workflow-modal-backdrop{position:fixed;inset:0;background:rgba(15,26,36,.55);z-index:12000;display:flex;align-items:center;justify-content:center;padding:16px}.workflow-modal-card{width:min(780px,96vw);max-height:92vh;overflow:auto;background:#fff;border-radius:20px;padding:22px;box-shadow:0 24px 70px rgba(0,0,0,.22)}.workflow-modal-card h3{margin-top:0}.workflow-modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:15px}.delegation-lock-state{margin:0 0 12px;padding:11px 13px;border:1px solid #dfe6eb;border-radius:11px;background:#f8fafb}.delegation-lock-state div{display:flex;gap:10px;align-items:center;justify-content:space-between}.delegation-lock-state span{font-size:.75rem;color:#71808d}.workflow-registration-info{margin:-2px 0 13px}.workflow-reg-chip{display:flex;justify-content:space-between;gap:10px;padding:10px 11px;border-radius:10px;border:1px solid #dfe6eb;background:#f8fafb;font-size:.74rem}.workflow-reg-chip.active{background:#eaf7ef;border-color:#bde4cc}.workflow-reg-chip.tolerance{background:#fff6df;border-color:#efdca6}.workflow-reg-chip.closed,.workflow-reg-chip.danger{background:#fff0ef;border-color:#efc5c1}.workflow-reg-chip.override{background:#f2edfb;border-color:#d8cdef}.workflow-reg-chip span{color:#667684;text-align:right}
 @media(max-width:1100px){.workflow-stage-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.workflow-control-grid{grid-template-columns:1fr}}
 @media(max-width:760px){.workflow-hero{align-items:flex-start;flex-direction:column}.workflow-year-box{width:100%}.workflow-stage-grid{grid-template-columns:1fr}.workflow-reg-chip{flex-direction:column}.workflow-reg-chip span{text-align:left}.delegation-lock-state div{align-items:flex-start;flex-direction:column}}
+
+
+/* V23.6 — User readiness dashboard */
+.ur-hero{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:22px 24px;margin-bottom:14px;border-radius:19px;background:linear-gradient(120deg,#233c52,#315f78);color:#fff;box-shadow:0 14px 30px rgba(25,43,58,.12)}
+.ur-hero.ready{background:linear-gradient(120deg,#12633d,#16804b)}.ur-hero.complete{background:linear-gradient(120deg,#134b38,#1c7655)}.ur-hero.waiting{background:linear-gradient(120deg,#6f520d,#a87910)}
+.ur-hero>div:first-child span{font-size:.66rem;font-weight:900;letter-spacing:.12em}.ur-hero h2{margin:6px 0!important;color:#fff!important}.ur-hero p{margin:0!important;color:rgba(255,255,255,.86)!important}.ur-state{min-width:245px;padding:12px 14px;border-radius:13px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.1)}.ur-state small,.ur-state strong,.ur-state span{display:block}.ur-state small{font-size:.61rem;letter-spacing:.12em;font-weight:900}.ur-state strong{margin:4px 0;font-size:.92rem}.ur-state span{font-size:.7rem;color:rgba(255,255,255,.78)}
+.ur-summary-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:14px}.ur-summary-card{padding:15px;border:1px solid #e1e7ec;border-radius:15px;background:#fff;box-shadow:0 5px 16px rgba(25,43,58,.045)}.ur-summary-card.warn{border-top:4px solid #ca8512}.ur-summary-card>small{display:block;font-size:.62rem;color:#71808d;font-weight:900;letter-spacing:.07em}.ur-summary-card>strong{display:block;margin:7px 0 3px;color:#172433!important;font-size:1.25rem}.ur-summary-card>span{font-size:.71rem;color:#748391}.ur-progress{height:6px;border-radius:999px;background:#edf1f4;margin-top:10px;overflow:hidden}.ur-progress i{display:block;height:100%;border-radius:999px;background:var(--role-primary)}.ur-mini{display:flex;gap:7px;flex-wrap:wrap;margin-top:9px}.ur-mini span{font-size:.62rem;color:#71808d}.ur-card-action{margin-top:10px}
+.ur-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}.ur-toolbar-actions{display:flex;gap:7px;align-items:center;flex-wrap:wrap}.ur-toolbar select,.ur-toolbar input{min-height:38px;border:1px solid #d8e1e7;border-radius:9px;padding:7px 9px;background:#fff}.ur-toolbar input{min-width:280px}.ur-two-col{display:grid;grid-template-columns:1fr 1fr;gap:14px}.ur-section-head{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:11px}.ur-section-head small{font-size:.61rem;color:#748391;font-weight:900;letter-spacing:.1em}.ur-section-head h3{margin:3px 0 0!important}.ur-section-head>span{font-size:.83rem;font-weight:900;color:var(--role-primary-dark)}.ur-table{max-height:480px;overflow:auto}.ur-table td small{display:block;color:#7d8993;margin-top:3px;font-size:.66rem}.ur-actions{display:flex;gap:5px;flex-wrap:wrap}.ur-orphans{margin-top:14px;border-left:4px solid #c17a0a!important}.ur-orphans p{font-size:.78rem!important}
+@media(max-width:1150px){.ur-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.ur-two-col{grid-template-columns:1fr}}
+@media(max-width:760px){.ur-hero{align-items:flex-start;flex-direction:column}.ur-state{width:100%;box-sizing:border-box}.ur-summary-grid{grid-template-columns:1fr}.ur-toolbar{align-items:stretch;flex-direction:column}.ur-toolbar-actions{align-items:stretch;flex-direction:column}.ur-toolbar input,.ur-toolbar select,.ur-toolbar .btn{width:100%;min-width:0}}
+
 </style>
 </body>
 </html>
