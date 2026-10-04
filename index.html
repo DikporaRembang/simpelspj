@@ -4591,7 +4591,7 @@ window.openRkasImportModal=async function(){
   wrap.innerHTML=`<div style="position:fixed;inset:0;background:rgba(0,0,0,.58);display:flex;align-items:center;justify-content:center;z-index:1000;padding:14px;overflow:auto">
     <div style="background:#fff;padding:26px;border-radius:22px;width:min(1100px,100%);max-height:94vh;overflow:auto;box-shadow:0 24px 60px rgba(0,0,0,.24)">
       <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap">
-        <div><h2 style="margin:0;color:var(--primary)">Upload & Mapping RKAS</h2><p class="muted" style="margin:6px 0 0">File Excel dibaca di browser, kemudian setiap baris dipetakan ke kegiatan dan referensi barang sebelum disimpan.</p></div>
+        <div><h2 style="margin:0;color:var(--primary)">Upload & Mapping RKAS</h2><p class="muted" style="margin:6px 0 0">File Excel dibaca di browser, kemudian setiap baris dipetakan ke kegiatan dan referensi barang sebelum disimpan.</p>${isDinas() ? `<div class="message warning" style="margin-top:10px"><b>Mode DINAS:</b> setelah disimpan, paket ini menjadi RKAS aktif sekolah. Paket APPROVED sebelumnya akan diarsipkan sebagai <code>ARCHIVED_REPLACED</code>, bukan dihapus. BKU tetap dapat memakai histori RKAS bila kode lama diperlukan.</div>` : ``}</div>
         <button class="btn btn-light" onclick="$('#rkasImportModal').remove()">✕ Tutup</button>
       </div>
       <div class="panel" style="margin-top:16px;background:rgba(23,75,67,.045)">
@@ -4772,7 +4772,7 @@ window.commitRkasImportFromPreview=async function(){
     if(isDinas()) payload.npsn=normalizeNpsnClient($('#rkasImportTargetNpsn')?.value||p.response.npsn||'');
     const r=await api('commitRKASImport',{data:payload});
     invalidateRkasFrontendCaches();
-    toast(r.message||`RKAS ${fmtNum(rows.length)} baris berhasil disimpan.`,'ok',5000);
+    toast((r.message||`RKAS ${fmtNum(rows.length)} baris berhasil disimpan.`)+(r.archived_lama?` ${fmtNum(r.archived_lama)} baris RKAS lama diarsipkan.`:''),'ok',6500);
     const modal=$('#rkasImportModal');if(modal)modal.remove();
     if(isDinas()) await renderDinasRkasReview(); else await renderSchoolRkasAndRealisasi();
   }catch(e){
@@ -10024,8 +10024,7 @@ window.executeRkasReplace=async function(){
 
     msgHost.innerHTML=msg(
       `Berhasil. ${fmtNum(fin.jumlah_baris)} detail menjadi APPROVED. `+
-      `${fmtNum(fin.deleted_lama)} baris RKAS lama dihapus`+
-      (fin.archived_karena_transaksi?`; ${fmtNum(fin.archived_karena_transaksi)} baris lama dipertahankan karena dipakai transaksi SPJ.`:'')+'.',
+      `${fmtNum(fin.archived_karena_transaksi||0)} baris RKAS APPROVED lama diarsipkan sebagai histori; tidak ada RKAS lama yang dihapus fisik.`,
       'ok'
     );
     toast('RKAS berhasil diganti.','ok',6000);
