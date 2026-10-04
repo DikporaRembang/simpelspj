@@ -3510,7 +3510,7 @@ async function renderDokumenTable(){
       <div class="panel">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px">
           <h3 style="margin:0">Dokumen SPJ ${total ? `(${total} komponen)` : ''}</h3>
-          <span class="muted">PDF · satu komponen satu berkas</span>
+          <div class="v242-document-actions"><span class="muted">PDF · satu komponen satu berkas</span>${isSchool()?`<button class="btn btn-light btn-sm" type="button" onclick="state.selectedPeriode=$('#periodeSelect')?.value||state.selectedPeriode;loadView('pdfInteraktif')">Buka viewer terpadu →</button>`:''}</div>
         </div>
         <div class="instrument-document-list">
           ${rows || msg('Master SPJ belum tersedia.')}
@@ -7152,8 +7152,15 @@ async function pdfInteraktifView(){
     const schools = await getCachedAuditSchools_();
     schoolOptions=`<div class="field"><label>Pilih Sekolah</label><select id="pdfInteractiveNpsn"><option value="">-- Pilih --</option>${schools.map(x=>`<option value="${esc(x.npsn)}" ${String(state.selectedNpsn)===String(x.npsn)?'selected':''}>${esc(x.npsn)} - ${esc(x.nama_sekolah||'-')}</option>`).join('')}</select></div>`;
   }
-  $('#mainContent').innerHTML=head(isPengawas()?'Pemeriksaan SPJ Berbasis BKU':'Dokumen & Nilai SPJ','RKAS menjadi acuan anggaran, BKU menjadi ledger utama transaksi, lalu sistem membentuk Buku Bank/Kas/Pajak sebagai view turunan untuk diperiksa terhadap bukti PDF.')+
-    `<div class="panel"><div class="form-grid"><div class="field"><label>Periode</label>${periods}</div>${schoolOptions}</div><div class="toolbar"><button class="btn btn-primary" onclick="openPdfInteractive({reset:true})">📊 Buka Workbench BKU</button></div><div id="pdfInteractiveArea">${msg('Pilih periode dan sekolah. Sistem akan memulai dari RKAS → BKU → Buku Pembantu → Bukti PDF.','ok')}</div></div>`;
+  const pdfTitle=isPengawas()?'Pemeriksaan SPJ Berbasis BKU':isSchool()?'Viewer Bukti PDF & Hasil Pemeriksaan':'Dokumen & Nilai SPJ';
+  const pdfDesc=isPengawas()
+    ? 'Periksa BKU sebagai ledger utama, cocokkan bukti PDF, tautkan halaman bukti, verifikasi temuan, lalu nilai indikator dalam satu workbench.'
+    : isSchool()
+      ? 'Lihat BKU, dokumen PDF, halaman bukti, temuan, dan hasil pemeriksaan sekolah Anda dalam mode baca tanpa mengubah penilaian Pengawas.'
+      : 'Lihat hubungan RKAS, BKU, dokumen PDF, dan hasil pemeriksaan dalam mode monitoring.';
+  const openLabel=isPengawas()?'Buka Workbench Pemeriksaan':isSchool()?'Buka Viewer Bukti PDF':'Buka Viewer PDF';
+  $('#mainContent').innerHTML=head(pdfTitle,pdfDesc)+
+    `<div class="panel"><div class="form-grid"><div class="field"><label>Periode</label>${periods}</div>${schoolOptions}</div><div class="toolbar"><button class="btn btn-primary" onclick="openPdfInteractive({reset:true})">${isPengawas()?'✓':'◉'} ${openLabel}</button></div><div id="pdfInteractiveArea">${msg(isPengawas()?'Pilih periode dan sekolah binaan untuk memulai pemeriksaan.':isSchool()?'Pilih periode untuk melihat BKU dan bukti PDF sekolah Anda.':'Pilih periode dan sekolah untuk membuka viewer PDF.','ok')}</div></div>`;
   $('#pdfInteractivePeriod').value=state.selectedPeriode||'';
   if(state.selectedNpsn && $('#pdfInteractiveNpsn')) $('#pdfInteractiveNpsn').value=state.selectedNpsn;
 }
@@ -7204,7 +7211,8 @@ function renderV20BkuWorkbenchHtml_(wb, docs){
   const pdfBtn=(type,obj)=>{
     if(type==='PAJAK' && Number(obj.count||0)===0) return '<span class="badge badge-info">Tidak ada pajak</span>';
     if(!obj.document?.file_id) return '<span class="badge badge-warning">PDF belum upload</span>';
-    return `<button class="btn btn-light btn-sm" onclick="runDerivedPdfCrossCheck('${type}','${esc(obj.document.file_id)}')">🔎 Cross-check PDF</button>`;
+    if(!isPengawas()) return '<span class="badge badge-success">PDF tersedia</span>';
+    return `<button class="btn btn-light btn-sm" onclick="runDerivedPdfCrossCheck('${type}','${esc(obj.document.file_id)}')">Cross-check PDF</button>`;
   };
   const bankRows=derived.bank?.rows||[], cashRows=derived.cash?.rows||[], taxRows=derived.tax?.rows||[];
   const statusIcon=v=>v?'✓':'⚠'; const statusClass=v=>v?'badge-success':'badge-danger';
@@ -7318,20 +7326,22 @@ function renderPdfInteractive(x){
 
   area.innerHTML=renderV20BkuWorkbenchHtml_(x.workbench||{},docs)+`<div class="panel" style="padding:0;overflow:hidden;margin-top:16px">
     <div style="padding:14px 16px;border-bottom:1px solid #e5e7eb;display:flex;gap:12px;justify-content:space-between;align-items:center;flex-wrap:wrap">
-      <div><b>Bukti PDF & Pemeriksaan</b><div class="muted">Transaksi penilaian berasal dari Excel BKU; PDF hanya bukti/cross-check • ${esc(x.n)} • ${esc(x.p)}</div></div>
-      <select id="interactiveDocSelect" style="min-width:min(360px,100%)" onchange="changeInteractivePdf()">${docOptions}</select>
+      <div><b>${isPengawas()?'Bukti PDF & Penilaian Pengawas':isSchool()?'Bukti PDF Sekolah':'Bukti PDF & Monitoring'}</b><div class="muted">Transaksi berasal dari Excel BKU; PDF hanya bukti/cross-check • ${esc(x.n)} • ${esc(x.p)}</div></div>
+      <div class="v242-pdf-context"><span class="v242-mode-pill ${isPengawas()?'assess':'view'}">${isPengawas()?'MODE PENILAIAN':isSchool()?'MODE LIHAT SEKOLAH':'MODE LIHAT'}</span><select id="interactiveDocSelect" style="min-width:min(360px,100%)" onchange="changeInteractivePdf()">${docOptions}</select></div>
     </div>
     <div class="pdf-interactive-grid" style="display:grid;grid-template-columns:minmax(0,1.55fr) minmax(340px,.95fr);min-height:72vh">
       <section style="background:#eef1f3;min-width:0;padding:10px">
         <div class="interactive-pdf-toolbar v224-pdf-toolbar">
           <div class="v224-nav-group">
-            <button id="interactivePrevBtn" class="v224-icon-btn" onclick="interactivePdfPrev()" title="Halaman sebelumnya (← / Page Up)" aria-label="Halaman sebelumnya">←</button>
+            <button id="interactiveFirstBtn" class="v224-icon-btn" onclick="renderInteractivePdfPage(1)" title="Halaman pertama (Home)" aria-label="Halaman pertama">⇤</button>
+            <button id="interactivePrevBtn" class="v224-icon-btn" onclick="interactivePdfPrev()" title="Halaman sebelumnya (← / Page Up)" aria-label="Halaman sebelumnya">‹</button>
             <div class="v224-page-box">
               <span>Halaman</span>
               <input id="interactivePage" type="number" min="1" value="${Math.max(1,Number(ui.page)||1)}" onkeydown="if(event.key==='Enter'){event.preventDefault();goInteractivePage()}">
               <span id="interactivePageInfo">/ …</span>
             </div>
-            <button id="interactiveNextBtn" class="v224-icon-btn" onclick="interactivePdfNext()" title="Halaman berikutnya (→ / Page Down)" aria-label="Halaman berikutnya">→</button>
+            <button id="interactiveNextBtn" class="v224-icon-btn" onclick="interactivePdfNext()" title="Halaman berikutnya (→ / Page Down)" aria-label="Halaman berikutnya">›</button>
+            <button id="interactiveLastBtn" class="v224-icon-btn" onclick="renderInteractivePdfPage(window.__pdfInteractiveUiState?.totalPages||1)" title="Halaman terakhir (End)" aria-label="Halaman terakhir">⇥</button>
           </div>
 
           <div class="v224-zoom-group">
@@ -7340,7 +7350,7 @@ function renderPdfInteractive(x){
             <button class="v224-icon-btn" onclick="interactivePdfZoom(.1)" title="Perbesar (+)" aria-label="Perbesar">+</button>
           </div>
 
-          <button class="v224-ocr-btn" onclick="ocrCurrentInteractivePdf()" title="OCR hanya membaca bukti PDF; bukan sumber transaksi BKU">🔎 OCR</button>
+          ${isPengawas()?`<button class="v224-ocr-btn" onclick="ocrCurrentInteractivePdf()" title="OCR hanya membaca bukti PDF; bukan sumber transaksi BKU">OCR halaman</button>`:''}
         </div>
         <div id="interactivePdfFrame" tabindex="0" class="v224-pdf-frame"><div class="muted" style="padding:40px;text-align:center">Memuat PDF secara aman...</div></div>
         <div class="v224-keyboard-hint">
@@ -7354,7 +7364,7 @@ function renderPdfInteractive(x){
       </section>
       <aside style="padding:16px;overflow:auto;max-height:78vh">
         <div class="cards" style="grid-template-columns:1fr 1fr"><div class="stat"><small>Status</small><strong>${esc(a.status_asesmen||'DRAFT')}</strong></div><div class="stat"><small>Nilai akhir</small><strong>${esc(a.nilai_akhir??'-')}</strong></div></div>
-        ${isPengawas()?`<div class="message ok" style="margin-top:12px"><b>Mode pemeriksaan.</b> Dokumen dan halaman aktif akan dipertahankan setelah Anda menyimpan penilaian atau memverifikasi temuan.</div>`:''}
+        ${isPengawas()?`<div class="message ok" style="margin-top:12px"><b>Mode penilaian Pengawas.</b> Halaman aktif dipertahankan saat skor, temuan, atau bukti disimpan.</div>`:`<div class="message info v242-view-note" style="margin-top:12px"><b>Mode lihat.</b> ${isSchool()?'Sekolah dapat membaca bukti dan hasil pemeriksaan, tetapi tidak dapat mengubah skor atau temuan Pengawas.':'Viewer ini tidak mengubah penilaian.'}</div>`}
         <div class="panel" style="margin-top:10px;background:#f7faf9"><b>Bukti pada halaman ini</b><div id="pageEvidenceSummary" class="muted" style="margin-top:7px">Memuat keterkaitan bukti...</div></div>
         <div class="panel" style="margin-top:14px;background:#fafafa"><b>Temuan periode</b><div style="margin-top:8px;max-height:220px;overflow:auto">${findings.length?findings.map(f=>`<div style="padding:9px;border-bottom:1px solid #eee"><b>${esc(f.kode_temuan||'-')}</b> ${badge(f.level_temuan||'INFO','warning')}<div class="muted">${esc(f.catatan_sistem||'-')}</div><div style="margin-top:4px">Verifikasi: <b>${esc(f.hasil_verifikasi||'BELUM')}</b></div>${isPengawas()?`<div class="toolbar" style="margin-top:6px"><button class="btn btn-sm btn-primary" onclick="verifyFindingDirect('${esc(f.id_temuan)}','TERBUKTI')">✓ TERBUKTI</button><button class="btn btn-sm btn-light" onclick="verifyFindingDirect('${esc(f.id_temuan)}','TIDAK_TERBUKTI')">Tidak Terbukti</button><button class="btn btn-sm btn-light" onclick="markFindingEvidenceV10('${esc(f.id_temuan)}')">📌 Tandai Halaman</button></div>`:''}</div>`).join(''):'<div class="muted">Belum ada temuan.</div>'}</div></div>
         ${isPengawas()?`<div class="panel" style="margin-top:14px"><b>Penilaian indikator</b><div class="muted" style="margin-top:4px">Skor otomatis tetap menjadi dasar; koreksi manual wajib disertai alasan.</div><div id="interactiveIndicators" style="margin-top:10px">Memuat indikator...</div></div>`:''}
@@ -7412,8 +7422,10 @@ window.renderInteractivePdfPage=async function(pageNo){
     wrap.dataset.page=String(safePage);wrap.dataset.fileId=ui.docId;
     const info=$('#interactivePageInfo');if(info)info.textContent=`/ ${pdf.numPages}`;
     const zi=$('#interactiveZoomInfo');if(zi)zi.textContent=`${Math.round(ui.zoom*100)}%`;
+    const first=$('#interactiveFirstBtn');if(first)first.disabled=safePage<=1;
     const prev=$('#interactivePrevBtn');if(prev)prev.disabled=safePage<=1;
     const next=$('#interactiveNextBtn');if(next)next.disabled=safePage>=pdf.numPages;
+    const last=$('#interactiveLastBtn');if(last)last.disabled=safePage>=pdf.numPages;
     renderInteractiveEvidenceSummary_();
     setTimeout(()=>prefetchInteractivePdfNeighbors_(pdf,safePage),0);
     if(document.activeElement===document.body || !document.activeElement){
@@ -8364,133 +8376,105 @@ async function tutorialV5View(){
   const rawUrl='https://raw.githubusercontent.com/DikporaRembang/simpelspj/main/tutorial_simpelspj.pdf';
 
   c.innerHTML=head('Tutorial SIMPEL SPJ','Panduan resmi penggunaan aplikasi SIMPEL SPJ')+
-    `<div class="panel" style="border-left:4px solid var(--gold);">
-      <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap">
-        <div><h2 style="margin:0">📖 Tutorial SIMPEL SPJ</h2><div class="muted">Panduan resmi aplikasi — DINAS, PENGAWAS, dan SEKOLAH.</div></div>
+    `<div class="panel v242-tutorial-shell">
+      <div class="v242-tutorial-head">
+        <div><small>PANDUAN RESMI</small><h2>Tutorial SIMPEL SPJ</h2><p>DINAS, PENGAWAS, dan SEKOLAH • gunakan tombol halaman atau keyboard untuk membaca.</p></div>
+        <span class="v242-reader-badge">PDF READER</span>
       </div>
-      <div id="v5TutorialFeed" style="margin-top:14px">${loading('Menyiapkan pembaca tutorial...')}</div>
+      <div id="v5TutorialFeed">${loading('Menyiapkan pembaca tutorial...')}</div>
     </div>`;
 
   const area=$('#v5TutorialFeed');
   if(!area) return;
 
   try{
-    /*
-     * Jangan gunakan iframe/raw PDF di sini. GitHub/Raw dapat mengirim PDF sebagai
-     * attachment sehingga browser mengunduhnya. PDF.js membaca byte PDF lalu
-     * menggambar halaman ke canvas, sehingga tutorial benar-benar tampil di feed.
-     */
-    if(!window.pdfjsLib){
-      await new Promise((resolve,reject)=>{
-        const sc=document.createElement('script');
-        sc.src='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
-        sc.onload=resolve; sc.onerror=()=>reject(new Error('Library pembaca PDF gagal dimuat.'));
-        document.head.appendChild(sc);
-      });
-    }
-    if(!window.pdfjsLib) throw new Error('PDF.js tidak tersedia.');
-    window.pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-
-    area.innerHTML=`<div id="v5PdfReader" style="background:#eef2f4;border:1px solid var(--border);border-radius:14px;overflow:hidden">
-      <div style="position:sticky;top:0;z-index:2;background:#fff;border-bottom:1px solid var(--border);padding:10px 12px;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
-        <div>
-          <b>📖 Tutorial lengkap</b>
-          <div class="muted" id="v5PdfPageInfo">Menyiapkan seluruh halaman...</div>
-        </div>
-        <div style="display:flex;align-items:center;gap:7px">
-          <button class="btn btn-light btn-sm" id="v5PdfZoomOut" title="Perkecil">−</button>
-          <span id="v5PdfZoomInfo" class="muted">100%</span>
-          <button class="btn btn-light btn-sm" id="v5PdfZoomIn" title="Perbesar">+</button>
-        </div>
-      </div>
-      <div id="v5PdfCanvasWrap" style="padding:18px;min-height:72vh;max-height:78vh;overflow:auto;background:#dfe4e6;scroll-behavior:smooth">
-        <div class="loading-container" style="min-height:55vh">${loading('Membaca PDF dari GitHub...')}</div>
-      </div>
-    </div>
-    <div class="muted" style="margin-top:8px">Seluruh halaman ditampilkan vertikal. Halaman berikutnya dimuat otomatis saat Anda menggulir agar aplikasi tetap ringan.</div>`;
-
+    await ensurePdfJs();
     const pdf=await window.pdfjsLib.getDocument({url:rawUrl,withCredentials:false}).promise;
-    let zoom=1;
-    const wrap=$('#v5PdfCanvasWrap'), info=$('#v5PdfPageInfo'), zoomInfo=$('#v5PdfZoomInfo');
-    if(!wrap) return;
+    window.__tutorialPdfState={pdf,page:1,zoom:1};
 
-    const slots=[];
-    wrap.innerHTML='';
-    for(let pageNo=1;pageNo<=pdf.numPages;pageNo++){
-      const slot=document.createElement('section');
-      slot.className='v5-pdf-page-slot';
-      slot.dataset.page=String(pageNo);
-      slot.dataset.rendered='0';
-      slot.style.cssText='width:100%;max-width:1040px;margin:0 auto 18px;min-height:420px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:7px;';
-      slot.innerHTML=`<div class="muted" style="width:100%;max-width:980px;text-align:left;font-weight:750">Halaman ${pageNo} / ${pdf.numPages}</div><div class="v5-pdf-placeholder" style="width:100%;min-height:390px;border:1px dashed #bdc8cc;border-radius:10px;background:rgba(255,255,255,.45);display:grid;place-items:center"><span class="muted">Halaman ${pageNo} akan dimuat saat diperlukan…</span></div>`;
-      wrap.appendChild(slot);
-      slots.push(slot);
-    }
-    info.textContent=`${pdf.numPages} halaman • gulir untuk membaca`;
+    area.innerHTML=`<div id="v5PdfReader" class="v242-pdf-reader">
+      <div class="v239-pdf-toolbar v242-pdf-toolbar" role="toolbar" aria-label="Navigasi tutorial PDF">
+        <div class="v239-pdf-nav" aria-label="Navigasi halaman">
+          <button type="button" class="v239-pdf-icon-btn" id="v5PdfFirst" title="Halaman pertama (Home)" aria-label="Halaman pertama">⇤</button>
+          <button type="button" class="v239-pdf-icon-btn" id="v5PdfPrev" title="Halaman sebelumnya" aria-label="Halaman sebelumnya">‹</button>
+          <div class="v239-pdf-page-pill v242-page-pill">
+            <span class="v239-pdf-page-label">Hal.</span>
+            <input id="v5PdfPageInput" type="number" min="1" max="${pdf.numPages}" value="1" inputmode="numeric" aria-label="Nomor halaman">
+            <span id="v5PdfPageInfo">/ ${pdf.numPages}</span>
+          </div>
+          <button type="button" class="v239-pdf-icon-btn" id="v5PdfNext" title="Halaman berikutnya" aria-label="Halaman berikutnya">›</button>
+          <button type="button" class="v239-pdf-icon-btn" id="v5PdfLast" title="Halaman terakhir (End)" aria-label="Halaman terakhir">⇥</button>
+        </div>
+        <div class="v239-pdf-toolbar-divider" aria-hidden="true"></div>
+        <div class="v239-pdf-zoom" aria-label="Kontrol zoom">
+          <button type="button" class="v239-pdf-icon-btn" id="v5PdfZoomOut" title="Perkecil" aria-label="Perkecil PDF">−</button>
+          <button type="button" class="v239-pdf-zoom-value" id="v5PdfZoomInfo" title="Reset ke 100% (0)" aria-label="Reset zoom ke 100%">100%</button>
+          <button type="button" class="v239-pdf-icon-btn" id="v5PdfZoomIn" title="Perbesar" aria-label="Perbesar PDF">+</button>
+        </div>
+        <div class="v239-pdf-hint"><span>← → halaman</span><span>•</span><span>Home / End</span><span>•</span><span>+ − zoom</span><span>•</span><span>0 reset</span></div>
+      </div>
+      <div id="v5PdfCanvasWrap" class="v242-pdf-stage" tabindex="0" aria-label="Halaman tutorial PDF">
+        <div class="loading-container" style="min-height:55vh">${loading('Membaca halaman pertama...')}</div>
+      </div>
+    </div>`;
 
-    let renderGeneration=0;
-    async function renderSlot(slot, force=false){
-      if(!slot || (slot.dataset.rendered==='1' && !force)) return;
-      if(slot.dataset.rendering==='1') return;
-      slot.dataset.rendering='1';
-      const generation=renderGeneration;
-      const pageNo=Number(slot.dataset.page)||1;
-      try{
-        const page=await pdf.getPage(pageNo);
-        if(generation!==renderGeneration && !force) return;
-        const base=page.getViewport({scale:1});
-        const available=Math.max(300,Math.min((wrap.clientWidth||1020)-44,980));
-        const fitScale=Math.min(available/base.width,1.55);
-        const viewport=page.getViewport({scale:fitScale*zoom});
-        const canvas=document.createElement('canvas');
-        canvas.className='v5-pdf-page-canvas';
-        canvas.width=Math.ceil(viewport.width);
-        canvas.height=Math.ceil(viewport.height);
-        canvas.style.cssText='display:block;max-width:100%;height:auto;background:#fff;box-shadow:0 8px 25px rgba(16,42,67,.12);border:1px solid #d7e0e5;';
-        const label=slot.querySelector('.muted');
-        slot.innerHTML='';
-        if(label) slot.appendChild(label);
-        else {
-          const lbl=document.createElement('div');
-          lbl.className='muted';
-          lbl.style.cssText='width:100%;max-width:980px;text-align:left;font-weight:750';
-          lbl.textContent=`Halaman ${pageNo} / ${pdf.numPages}`;
-          slot.appendChild(lbl);
-        }
-        slot.appendChild(canvas);
-        await page.render({canvasContext:canvas.getContext('2d'),viewport}).promise;
-        slot.dataset.rendered='1';
-      }catch(err){
-        const holder=slot.querySelector('.v5-pdf-placeholder');
-        if(holder) holder.innerHTML=`<span class="muted">Gagal memuat halaman ${pageNo}. Gulir kembali untuk mencoba lagi.</span>`;
-      }finally{
-        slot.dataset.rendering='0';
-      }
-    }
+    window.renderTutorialPdfPageV242=async function(pageNo){
+      const st=window.__tutorialPdfState;
+      const wrap=$('#v5PdfCanvasWrap');
+      if(!st?.pdf||!wrap||state.view!=='tutorialV5') return;
+      st.page=Math.max(1,Math.min(st.pdf.numPages,Number(pageNo)||1));
+      const input=$('#v5PdfPageInput'), info=$('#v5PdfPageInfo'), zoomInfo=$('#v5PdfZoomInfo');
+      const first=$('#v5PdfFirst'), prev=$('#v5PdfPrev'), next=$('#v5PdfNext'), last=$('#v5PdfLast');
+      if(input){input.value=String(st.page);input.max=st.pdf.numPages;}
+      if(info) info.textContent=`/ ${st.pdf.numPages}`;
+      if(zoomInfo) zoomInfo.textContent=`${Math.round(st.zoom*100)}%`;
+      if(first) first.disabled=st.page<=1;
+      if(prev) prev.disabled=st.page<=1;
+      if(next) next.disabled=st.page>=st.pdf.numPages;
+      if(last) last.disabled=st.page>=st.pdf.numPages;
+      wrap.innerHTML=loading(`Memuat halaman ${st.page} dari ${st.pdf.numPages}...`);
+      const page=await st.pdf.getPage(st.page);
+      const base=page.getViewport({scale:1});
+      const available=Math.max(280,Math.min((wrap.clientWidth||1040)-36,1120));
+      const fitScale=Math.min(available/base.width,1.65);
+      const viewport=page.getViewport({scale:fitScale*st.zoom});
+      const canvas=document.createElement('canvas');
+      canvas.className='v242-pdf-canvas';
+      canvas.width=Math.ceil(viewport.width); canvas.height=Math.ceil(viewport.height);
+      wrap.innerHTML=''; wrap.appendChild(canvas);
+      await page.render({canvasContext:canvas.getContext('2d'),viewport}).promise;
+    };
 
-    const observer=new IntersectionObserver(entries=>{
-      entries.forEach(entry=>{
-        if(entry.isIntersecting) renderSlot(entry.target);
+    const input=$('#v5PdfPageInput');
+    $('#v5PdfFirst').onclick=()=>renderTutorialPdfPageV242(1);
+    $('#v5PdfPrev').onclick=()=>renderTutorialPdfPageV242((window.__tutorialPdfState?.page||1)-1);
+    $('#v5PdfNext').onclick=()=>renderTutorialPdfPageV242((window.__tutorialPdfState?.page||1)+1);
+    $('#v5PdfLast').onclick=()=>renderTutorialPdfPageV242(window.__tutorialPdfState?.pdf?.numPages||1);
+    input.onchange=()=>renderTutorialPdfPageV242(Number(input.value)||1);
+    input.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();renderTutorialPdfPageV242(Number(input.value)||1);}};
+    $('#v5PdfZoomOut').onclick=()=>{const st=window.__tutorialPdfState;if(!st)return;st.zoom=Math.max(.7,st.zoom-.1);renderTutorialPdfPageV242(st.page);};
+    $('#v5PdfZoomIn').onclick=()=>{const st=window.__tutorialPdfState;if(!st)return;st.zoom=Math.min(2.2,st.zoom+.1);renderTutorialPdfPageV242(st.page);};
+    $('#v5PdfZoomInfo').onclick=()=>{const st=window.__tutorialPdfState;if(!st)return;st.zoom=1;renderTutorialPdfPageV242(st.page);};
+
+    if(!window.__tutorialPdfKeyboardBound){
+      window.__tutorialPdfKeyboardBound=true;
+      document.addEventListener('keydown',e=>{
+        if(state.view!=='tutorialV5'||!document.getElementById('v5PdfReader')) return;
+        const tag=String(e.target?.tagName||'').toUpperCase();
+        if(e.target?.isContentEditable||['INPUT','TEXTAREA','SELECT'].includes(tag)) return;
+        const st=window.__tutorialPdfState;if(!st?.pdf)return;
+        if(e.key==='ArrowLeft'||e.key==='PageUp'){e.preventDefault();renderTutorialPdfPageV242(st.page-1);}
+        else if(e.key==='ArrowRight'||e.key==='PageDown'){e.preventDefault();renderTutorialPdfPageV242(st.page+1);}
+        else if(e.key==='Home'){e.preventDefault();renderTutorialPdfPageV242(1);}
+        else if(e.key==='End'){e.preventDefault();renderTutorialPdfPageV242(st.pdf.numPages);}
+        else if(e.key==='+'||e.key==='='){e.preventDefault();st.zoom=Math.min(2.2,st.zoom+.1);renderTutorialPdfPageV242(st.page);}
+        else if(e.key==='-'||e.key==='_'){e.preventDefault();st.zoom=Math.max(.7,st.zoom-.1);renderTutorialPdfPageV242(st.page);}
+        else if(e.key==='0'){e.preventDefault();st.zoom=1;renderTutorialPdfPageV242(st.page);}
       });
-    },{root:wrap,rootMargin:'700px 0px',threshold:0.01});
-    slots.forEach(slot=>observer.observe(slot));
-
-    // Pastikan halaman pertama langsung tersedia walau IntersectionObserver belum mengeksekusi callback.
-    await renderSlot(slots[0]);
-    if(slots[1]) renderSlot(slots[1]);
-
-    async function applyZoom(nextZoom){
-      zoom=Math.max(.75,Math.min(1.8,nextZoom));
-      zoomInfo.textContent=`${Math.round(zoom*100)}%`;
-      renderGeneration++;
-      const visibleOrRendered=slots.filter(slot=>slot.dataset.rendered==='1' || Math.abs(slot.getBoundingClientRect().top-wrap.getBoundingClientRect().top)<(wrap.clientHeight+900));
-      visibleOrRendered.forEach(slot=>{slot.dataset.rendered='0';slot.dataset.rendering='0';});
-      for(const slot of visibleOrRendered) await renderSlot(slot,true);
     }
 
-    $('#v5PdfZoomOut').onclick=()=>applyZoom(zoom-.1);
-    $('#v5PdfZoomIn').onclick=()=>applyZoom(zoom+.1);
-    zoomInfo.textContent='100%';
+    await renderTutorialPdfPageV242(1);
+    $('#v5PdfCanvasWrap')?.focus({preventScroll:true});
   }catch(e){
     area.innerHTML=msg('Tutorial belum dapat ditampilkan. Periksa koneksi lalu buka kembali menu Tutorial. Detail: '+errorText(e),'error');
   }
@@ -12904,6 +12888,20 @@ body[data-role="DINAS"] .v241-recap-control{padding:20px!important}.v241-recap-c
 @media(max-width:1180px){.v241-recap-stats{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:760px){.v241-officials-grid,.v241-official-signatures{grid-template-columns:1fr}.v241-recap-control-head,.v241-recap-table-head{align-items:flex-start;flex-direction:column}.v241-recap-table-head>.muted{text-align:left}.v241-recap-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.v241-recap-toolbar>select,.v241-recap-toolbar>input,.v241-recap-toolbar>.btn{width:100%;min-width:0}.v241-recap-table{min-width:980px!important}}
 @media(max-width:480px){.v241-recap-stats{grid-template-columns:1fr 1fr}.v241-officials-card{padding:14px}}
+</style>
+
+<style id="v242UnifiedPdfNavigation">
+/* V24.2 — unified paged PDF navigation across Tutorial, School view and Pengawas assessment. */
+.v242-tutorial-shell{padding:0!important;overflow:hidden!important;border-radius:24px!important}
+.v242-tutorial-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:22px 24px 18px;border-bottom:1px solid #e5e5ea;background:#fff}
+.v242-tutorial-head small{display:block;color:#8e8e93;font-size:.62rem;letter-spacing:.12em;font-weight:750}.v242-tutorial-head h2{margin:5px 0 4px!important;font-size:1.35rem!important;letter-spacing:-.035em!important}.v242-tutorial-head p{margin:0;color:#6e6e73;font-size:.76rem;line-height:1.5}.v242-reader-badge,.v242-mode-pill{display:inline-flex;align-items:center;justify-content:center;min-height:26px;padding:0 9px;border-radius:999px;background:#f2f2f7;color:#6e6e73;font-size:.6rem;font-weight:750;letter-spacing:.08em;white-space:nowrap}.v242-mode-pill.assess{background:var(--ui-accent-soft,#edf6f1);color:var(--ui-accent,#0f513b)}
+.v242-pdf-reader{overflow:hidden;background:#e8e8ed}.v242-pdf-toolbar{position:sticky!important;top:0!important;z-index:8!important;justify-content:center!important;min-height:54px!important;border-radius:0!important;border:0!important;border-bottom:1px solid #d8d8dd!important;background:rgba(250,250,252,.96)!important;backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}
+.v242-page-pill{display:flex;align-items:center;gap:5px;min-height:34px;padding:0 9px;border-radius:10px;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.05);font-size:.72rem;color:#6e6e73}.v242-page-pill input{width:48px!important;min-height:28px!important;padding:2px 4px!important;text-align:center!important;border:0!important;background:#f5f5f7!important;box-shadow:none!important;font-weight:700!important}.v242-page-pill input:focus{outline:2px solid var(--ui-accent,#0f513b);outline-offset:1px}
+.v242-pdf-stage{height:72vh;min-height:520px;overflow:auto;display:flex;align-items:flex-start;justify-content:center;padding:22px;background:#e8e8ed;outline:none;scrollbar-color:#c7c7cc transparent;scrollbar-width:thin}.v242-pdf-stage:focus-visible{box-shadow:inset 0 0 0 3px color-mix(in srgb,var(--ui-accent,#0f513b) 16%,transparent)}.v242-pdf-canvas{display:block;max-width:none;height:auto;background:#fff;border-radius:2px;box-shadow:0 24px 55px rgba(0,0,0,.16)}
+.v242-pdf-context{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.v242-pdf-context select{min-width:min(360px,100%)}.v242-view-note{border-color:#dce7ef!important;background:#f6f9fb!important}.v242-document-actions{display:flex;align-items:center;gap:9px;flex-wrap:wrap;justify-content:flex-end}
+body[data-role="SEKOLAH"] .pdf-interactive-grid aside .v11-assessment-form,body[data-role="SEKOLAH"] .pdf-interactive-grid aside .v11-assessment-actions{display:none!important}
+@media(max-width:900px){.v242-pdf-stage{height:66vh;min-height:430px;padding:12px}.v242-pdf-toolbar{justify-content:space-between!important;padding:7px 8px!important;gap:6px!important}.v242-pdf-toolbar .v239-pdf-hint{display:none!important}.v242-pdf-context{width:100%;justify-content:space-between}.v242-pdf-context select{flex:1 1 240px}}
+@media(max-width:600px){.v242-tutorial-head{padding:18px 16px;flex-direction:column}.v242-pdf-stage{height:62vh;min-height:390px;padding:7px}.v242-pdf-toolbar .v239-pdf-toolbar-divider{display:none!important}.v242-page-pill{padding:0 6px}.v242-page-pill .v239-pdf-page-label{display:none}.v242-document-actions{width:100%;justify-content:flex-start}.v242-document-actions .btn{width:100%}.v242-pdf-context{align-items:stretch;flex-direction:column}.v242-pdf-context select{width:100%;min-width:0}}
 </style>
 </body>
 </html>
