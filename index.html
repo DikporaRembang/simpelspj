@@ -1804,6 +1804,32 @@ aside.sidebar *,
 }
 </style>
 
+
+<style id="v243OfficialReportLetterheadStyle">
+/* V24.3 — Kop resmi laporan penilaian */
+#v5PrintableArchive .v243-letterhead-wrap{background:#fff;margin:0 0 16px;padding:12px 14px 0;border-radius:16px 16px 0 0}
+#v5PrintableArchive .official-letterhead{display:grid;grid-template-columns:104px minmax(0,1fr) 104px;align-items:center;min-height:116px}
+#v5PrintableArchive .letterhead-logo{display:flex;align-items:center;justify-content:center}
+#v5PrintableArchive .letterhead-logo img{width:82px;height:100px;object-fit:contain}
+#v5PrintableArchive .letterhead-text{text-align:center;color:#050505;padding:0 6px}
+#v5PrintableArchive .letterhead-line{font-weight:900;line-height:1.12;letter-spacing:-.2px;text-transform:uppercase}
+#v5PrintableArchive .line-government{font-size:clamp(1.12rem,1.8vw,1.55rem)}
+#v5PrintableArchive .line-agency{font-size:clamp(1.15rem,1.9vw,1.62rem);margin-top:2px}
+#v5PrintableArchive .letterhead-school{font-size:clamp(1rem,1.5vw,1.3rem);font-weight:900;text-transform:uppercase;margin-top:5px;line-height:1.14}
+#v5PrintableArchive .letterhead-address{font-size:.94rem;line-height:1.25;margin-top:5px}
+#v5PrintableArchive .letterhead-contact{font-size:.88rem;line-height:1.22;margin-top:3px}
+#v5PrintableArchive .letterhead-rule{height:7px;border-top:4px solid #111;border-bottom:1px solid #111;margin:5px 0 17px}
+@media(max-width:760px){
+  #v5PrintableArchive .v243-letterhead-wrap{padding:10px 8px 0}
+  #v5PrintableArchive .official-letterhead{grid-template-columns:72px minmax(0,1fr) 0;min-height:96px}
+  #v5PrintableArchive .letterhead-logo img{width:58px;height:74px}
+  #v5PrintableArchive .line-government{font-size:.86rem}
+  #v5PrintableArchive .line-agency{font-size:.9rem}
+  #v5PrintableArchive .letterhead-school{font-size:.82rem}
+  #v5PrintableArchive .letterhead-address{font-size:.72rem}
+  #v5PrintableArchive .letterhead-contact{font-size:.68rem}
+}
+</style>
 </head>
 <body>
 <div class="app" id="app"></div>
@@ -8649,6 +8675,47 @@ async function arsipPenilaianV5View(){
   }
 }
 
+/* ==========================================================================
+   V24.3 — KOP LAPORAN RESMI DINAMIS BERDASARKAN ROLE
+   DINAS/PENGAWAS = kop Dindikpora; SEKOLAH = kop identitas sekolah.
+   ========================================================================== */
+function v243ReportRole_(){
+  return String(state?.user?.role || (typeof role==='function'?role():'SEKOLAH') || 'SEKOLAH').trim().toUpperCase();
+}
+function v243ReportLogoSrc_(){
+  const el=document.querySelector('img[src*="logorembang"], img[alt="Rembang"], img[alt="Kabupaten Rembang"]');
+  return el?.src || 'logorembang.png';
+}
+function v243OfficialLetterheadHtml_(reportRole, school, logoSrc){
+  const r=String(reportRole||'SEKOLAH').trim().toUpperCase();
+  const isSchoolRole=r==='SEKOLAH';
+  const s=school||{};
+  const namaSekolah=s.nama_sekolah||s.nama||s.npsn||'NAMA SEKOLAH';
+  const alamat=s.alamat_lengkap||s.alamat||'Alamat sekolah belum tersedia';
+  const kecamatan=s.kecamatan||s.nama_kecamatan||'Kecamatan belum tersedia';
+  const thirdLine=isSchoolRole?`<div class="letterhead-school">${esc(namaSekolah)}</div>`:'';
+  const addressLine=isSchoolRole
+    ? `<div class="letterhead-address school-address">${esc(alamat)}</div>`
+    : `<div class="letterhead-address office-address"><i>Jl. Pemuda Km. 2 Telp. (0295) 691326, Fax (0295) 691326 Rembang 59218</i></div>`;
+  const contactLine=isSchoolRole
+    ? `<div class="letterhead-contact">Kecamatan ${esc(kecamatan)}</div>`
+    : `<div class="letterhead-contact">Surel : dindikpora@rembangkab.go.id; Laman : http://dindikpora.rembangkab.go.id</div>`;
+  return `<div class="v243-letterhead-wrap" data-report-role="${esc(r)}">
+    <div class="official-letterhead">
+      <div class="letterhead-logo"><img src="${esc(logoSrc||'logorembang.png')}" alt="Lambang Kabupaten Rembang"></div>
+      <div class="letterhead-text">
+        <div class="letterhead-line line-government">PEMERINTAH KABUPATEN REMBANG</div>
+        <div class="letterhead-line line-agency">DINAS PENDIDIKAN, PEMUDA DAN OLAHRAGA</div>
+        ${thirdLine}
+        ${addressLine}
+        ${contactLine}
+      </div>
+      <div class="letterhead-spacer" aria-hidden="true"></div>
+    </div>
+    <div class="letterhead-rule"></div>
+  </div>`;
+}
+
 async function loadV5Archive(){
   const npsn = $('#v5ArchiveNpsn')?.value.trim();
   const p = $('#v5ArchivePeriode')?.value;
@@ -8672,6 +8739,7 @@ async function loadV5Archive(){
     
     area.innerHTML = `
       <div id="v5PrintableArchive" class="v5-print-sheet">
+        ${v243OfficialLetterheadHtml_(v243ReportRole_(), d.sekolah||{}, v243ReportLogoSrc_())}
         <div class="panel" style="border-top:5px solid var(--primary)">
           <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap">
             <div>
@@ -8751,38 +8819,24 @@ function printV5Archive(){
 
   const sekolah=d.sekolah||{};
   const namaSekolah=sekolah.nama_sekolah||sekolah.nama||npsn||'NAMA SD';
-  const alamat=sekolah.alamat_lengkap||sekolah.alamat||'Alamat Lengkap sekolah';
-  const kecamatan=sekolah.kecamatan||sekolah.nama_kecamatan||'Nama Kecamatan';
-  const logoEl=document.querySelector('img[src*="logorembang"], img[alt="Rembang"]');
-  const logoSrc=logoEl?.src || 'logorembang.png';
-
-  const kop = `
-    <div class="official-letterhead">
-      <div class="letterhead-logo"><img src="${esc(logoSrc)}" alt="Lambang Kabupaten Rembang"></div>
-      <div class="letterhead-text">
-        <div class="letterhead-line">PEMERINTAH KABUPATEN REMBANG</div>
-        <div class="letterhead-line">DINAS PENDIDIKAN, PEMUDA DAN OLAHRAGA</div>
-        <div class="letterhead-school">${esc(namaSekolah)}</div>
-        <div class="letterhead-address">${esc(alamat)}${kecamatan && kecamatan !== '-' ? ' • '+esc(kecamatan) : ''}</div>
-      </div>
-      <div></div>
-    </div>
-    <div class="letterhead-rule"></div>
-  `;
 
   w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Lembar Penilaian SPJ - ${esc(namaSekolah)} - ${esc(p)}</title>
   <style>
   @page{size:A4;margin:12mm 14mm 14mm}
   *{box-sizing:border-box}
   body{font-family:Arial,sans-serif;color:#17212b;font-size:10px;line-height:1.35;margin:0}
-  .official-letterhead{display:grid;grid-template-columns:78px 1fr 78px;align-items:center;min-height:91px;margin:0 0 3px}
+  .v243-letterhead-wrap{background:#fff;margin:0 0 13px;padding:0}
+  .official-letterhead{display:grid;grid-template-columns:88px 1fr 88px;align-items:center;min-height:102px;margin:0}
   .letterhead-logo{grid-column:1;display:flex;align-items:center;justify-content:center}
-  .letterhead-logo img{width:66px;height:78px;object-fit:contain}
-  .letterhead-text{grid-column:2;text-align:center;padding:0 4px}
-  .letterhead-line{font-size:15px;line-height:1.15;font-weight:500;letter-spacing:.1px}
-  .letterhead-school{font-size:18px;line-height:1.18;font-weight:800;margin-top:2px;text-transform:uppercase}
-  .letterhead-address{font-size:11px;line-height:1.2;margin-top:2px}
-  .letterhead-rule{height:2px;background:#0b5f91;margin:3px 0 13px;border-bottom:1px solid #0b5f91}
+  .letterhead-logo img{width:72px;height:88px;object-fit:contain}
+  .letterhead-text{grid-column:2;text-align:center;padding:0 3px;color:#000}
+  .letterhead-line{line-height:1.12;font-weight:900;letter-spacing:.15px;text-transform:uppercase}
+  .line-government{font-size:17px}
+  .line-agency{font-size:18px;margin-top:1px}
+  .letterhead-school{font-size:15px;line-height:1.15;font-weight:900;margin-top:3px;text-transform:uppercase}
+  .letterhead-address{font-size:11px;line-height:1.22;margin-top:3px;color:#111}
+  .letterhead-contact{font-size:10.5px;line-height:1.2;margin-top:2px;color:#111}
+  .letterhead-rule{height:6px;border-top:3px solid #111;border-bottom:1px solid #111;margin:3px 0 14px}
   h2{font-size:18px}h3{font-size:13px;border-bottom:1px solid #ddd;padding-bottom:5px}
   .panel{border:1px solid #ddd;border-radius:8px;padding:10px;margin:0 0 10px;break-inside:avoid}
   .muted{color:#667085}.assessment-guide{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.assessment-guide-card{border:1px solid #ddd;padding:8px}
@@ -9254,7 +9308,7 @@ body[data-role] .topbar i{
 }
 </style>
 
-</head><body>${kop}${body}<script>window.onload=()=>setTimeout(()=>window.print(),350)<\/script>
+</head><body>${body}<script>window.onload=()=>setTimeout(()=>window.print(),350)<\/script>
 
 <style id="v236HomeTypographyAndSteps">
 body[data-role] .v225-home-hero .v225-home-copy{max-width:780px!important;padding:34px 36px!important;color:#fff!important}
