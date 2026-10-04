@@ -2454,7 +2454,7 @@ window.showRegisterView = function(e) {
 
             <div class="field" id="fieldNipGroup" style="display:none">
               <label>NIP / ID Pengawas</label>
-              <input id="regNip" placeholder="Contoh: 196611061986081001" oninput="syncPengawasUsername(this.value)">
+              <input id="regNip" placeholder="Contoh: 196611061986081001" oninput="syncPengawasUsername(this.value)" onblur="loadPublicRegistrationWindow()">
               <small class="muted">Username login akan terisi otomatis dari NIP/ID.</small>
             </div>
 
@@ -2539,6 +2539,7 @@ window.loadPublicRegistrationWindow = async function(){
   if(!box) return;
   const roleVal=$('#regRole')?.value||'SEKOLAH';
   const npsn=roleVal==='SEKOLAH'?($('#regNpsn')?.value||'').trim():'';
+  const nip=roleVal==='PENGAWAS'?($('#regNip')?.value||'').trim():'';
   const submitBtn=document.querySelector('#registerForm button[type="submit"]');
   if(submitBtn){
     submitBtn.disabled=true;
@@ -2547,24 +2548,35 @@ window.loadPublicRegistrationWindow = async function(){
   }
   box.innerHTML='<div class="workflow-reg-chip">Memeriksa jadwal pendaftaran...</div>';
   try{
-    const r=await api('getPublicRegistrationWindow',{role:roleVal,npsn:npsn});
+    const r=await api('getPublicRegistrationWindow',{role:roleVal,npsn:npsn,nip:nip});
     const d=r?.data||{};
     const meta=workflowPhaseMeta(d.phase);
     const row=d.row||{};
     let dateText='DINAS belum menetapkan jadwal pendaftaran.';
     if(row.mulai_utama){
       dateText=`${fmtWorkflowDate(row.mulai_utama)} – ${fmtWorkflowDate(row.selesai_utama)}${row.selesai_toleransi?` · toleransi s.d. ${fmtWorkflowDate(row.selesai_toleransi)}`:''}`;
-    } else if(d.phase==='PENDAFTARAN_SELESAI') {
+    }
+    if(d.phase==='PENDAFTARAN_SELESAI') {
       dateText='Pendaftaran telah dinyatakan selesai oleh DINAS.';
+    } else if(d.phase==='PERLU_IDENTITAS') {
+      dateText=d.identity_message || (roleVal==='SEKOLAH'?'Masukkan NPSN untuk memeriksa jadwal pendaftaran.':'Masukkan NIP untuk memeriksa jadwal pendaftaran.');
     } else if(d.phase==='BELUM_DIJADWALKAN') {
-      dateText='Pendaftaran belum dibuka untuk Anda. Tunggu jadwal dari DINAS.';
+      if(d.source==='REGISTRATION_NOT_SCHEDULED') {
+        dateText=`DINAS belum menetapkan jadwal pendaftaran ${roleVal==='SEKOLAH'?'Sekolah':'Pengawas'}.`;
+      } else {
+        dateText=roleVal==='SEKOLAH'
+          ? 'Jadwal pendaftaran ada, tetapi belum berlaku untuk NPSN ini.'
+          : 'Jadwal pendaftaran ada, tetapi belum berlaku untuk NIP ini.';
+      }
     }
     box.innerHTML=`<div class="workflow-reg-chip ${meta.cls}"><b>${esc(meta.label)}</b><span>${esc(dateText)}</span></div>`;
     if(submitBtn){
       const allowed=!!d.allowed;
       submitBtn.disabled=!allowed;
       submitBtn.dataset.scheduleLocked=allowed?'0':'1';
-      submitBtn.textContent=allowed?'Daftarkan Akun Sekarang':'Pendaftaran Belum Dibuka';
+      if(allowed) submitBtn.textContent='Daftarkan Akun Sekarang';
+      else if(d.phase==='PERLU_IDENTITAS') submitBtn.textContent=roleVal==='SEKOLAH'?'Masukkan NPSN untuk Cek Jadwal':'Masukkan NIP untuk Cek Jadwal';
+      else submitBtn.textContent='Pendaftaran Belum Dibuka';
     }
   }catch(e){
     box.innerHTML=`<div class="workflow-reg-chip danger"><b>Jadwal belum dapat diperiksa</b><span>${esc(errorText(e))}</span></div>`;
@@ -5774,6 +5786,7 @@ function workflowPhaseMeta(phase){
   const map={
     AKTIF:{label:'AKTIF',cls:'active'},TOLERANSI:{label:'MASA TOLERANSI',cls:'tolerance'},OVERRIDE:{label:'PERPANJANGAN KHUSUS',cls:'override'},
     BELUM_DIBUKA:{label:'BELUM DIBUKA',cls:'upcoming'},DITUTUP:{label:'DITUTUP',cls:'closed'},BELUM_DIJADWALKAN:{label:'BELUM DIJADWALKAN',cls:'closed'},
+    PERLU_IDENTITAS:{label:'PERIKSA IDENTITAS',cls:'upcoming'},
     PENDAFTARAN_SELESAI:{label:'PENDAFTARAN SELESAI',cls:'closed'},
     BELUM_DIATUR:{label:'BELUM DIATUR',cls:'neutral'},KONFIGURASI_TIDAK_VALID:{label:'KONFIGURASI TIDAK VALID',cls:'danger'}
   };
@@ -5845,13 +5858,46 @@ window.saveWorkflowActiveYear=async function(){
   const y=Number($('#workflowActiveYear')?.value); if(!y)return;
   try{ await api('setWorkflowActiveYear',{tahun:y}); window._workflowSelectedYear=y; toast('Tahun operasional diperbarui.','ok'); await jadwalTahapanView(); }catch(e){toast(errorText(e),'error');}
 };
+function workflowTargetOptionText(t){
+  const labels={
+    SEMUA:'Semua peserta tahap ini',ROLE:'Role tertentu',KECAMATAN:'Kecamatan tertentu',
+    SEKOLAH:'Sekolah tertentu (NPSN)',PENGAWAS:'Pengawas tertentu (NIP/ID)'
+  };
+  return labels[String(t||'').toUpperCase()]||t;
+}
+window.syncWorkflowScheduleTargetUi=function(resetForStage){
+  const stage=$('#wfStage')?.value||'';
+  const typeEl=$('#wfTargetType');
+  const valueEl=$('#wfTargetValue');
+  if(resetForStage && typeEl && (stage==='REGISTRASI_SEKOLAH'||stage==='REGISTRASI_PENGAWAS')){
+    typeEl.value='SEMUA';
+    if(valueEl)valueEl.value='';
+  }
+  updateWorkflowTargetHint();
+};
+
 window.openWorkflowScheduleModal=function(id=''){
   const rows=window._workflowOverview?.schedules||[],x=rows.find(r=>String(r.id_jadwal)===String(id))||{};
   const modal=document.createElement('div');modal.id='workflowScheduleModal';
-  modal.innerHTML=`<div class="workflow-modal-backdrop"><div class="workflow-modal-card"><h3>${id?'Edit':'Tambah'} Jadwal Tahap</h3><div class="form-grid"><div class="field"><label>Tahap</label><select id="wfStage">${WORKFLOW_STAGE_UI.map(a=>`<option value="${a[0]}" ${String(x.tahap||'')===a[0]?'selected':''}>${esc(a[1])}</option>`).join('')}</select></div><div class="field"><label>Tahun</label><input id="wfYear" type="number" value="${esc(x.tahun||window._workflowSelectedYear||new Date().getFullYear())}"></div><div class="field"><label>Target</label><select id="wfTargetType" onchange="updateWorkflowTargetHint()">${['SEMUA','ROLE','KECAMATAN','SEKOLAH','PENGAWAS'].map(t=>`<option ${String(x.target_type||'SEMUA')===t?'selected':''}>${t}</option>`).join('')}</select></div><div class="field"><label>Nilai Target</label><input id="wfTargetValue" value="${esc(x.target_value||'')}" placeholder="Contoh: Rembang / 20301234 / ID Pengawas"></div><div class="field"><label>Mulai Utama</label><input id="wfStart" type="date" value="${workflowDateInput(x.mulai_utama)}"></div><div class="field"><label>Batas Utama</label><input id="wfEnd" type="date" value="${workflowDateInput(x.selesai_utama)}"></div><div class="field"><label>Batas Toleransi</label><input id="wfTolerance" type="date" value="${workflowDateInput(x.selesai_toleransi||x.selesai_utama)}"></div><div class="field"><label>Label Target</label><input id="wfTargetLabel" value="${esc(x.target_label||'')}" placeholder="Nama yang tampil"></div></div><div class="field"><label>Catatan</label><textarea id="wfNote" rows="3">${esc(x.catatan||'')}</textarea></div><div id="wfModalMsg"></div><div class="workflow-modal-actions"><button class="btn btn-light" onclick="$('#workflowScheduleModal').remove()">Batal</button><button class="btn btn-primary" onclick="saveWorkflowScheduleUi('${esc(id)}')">Simpan Jadwal</button></div></div></div>`;
-  document.body.appendChild(modal); updateWorkflowTargetHint();
+  modal.innerHTML=`<div class="workflow-modal-backdrop"><div class="workflow-modal-card"><h3>${id?'Edit':'Tambah'} Jadwal Tahap</h3><div class="form-grid"><div class="field"><label>Tahap</label><select id="wfStage" onchange="syncWorkflowScheduleTargetUi(true)">${WORKFLOW_STAGE_UI.map(a=>`<option value="${a[0]}" ${String(x.tahap||'')===a[0]?'selected':''}>${esc(a[1])}</option>`).join('')}</select></div><div class="field"><label>Tahun</label><input id="wfYear" type="number" value="${esc(x.tahun||window._workflowSelectedYear||new Date().getFullYear())}"></div><div class="field"><label>Target</label><select id="wfTargetType" onchange="updateWorkflowTargetHint()">${['SEMUA','ROLE','KECAMATAN','SEKOLAH','PENGAWAS'].map(t=>`<option value="${t}" ${String(x.target_type||'SEMUA')===t?'selected':''}>${esc(workflowTargetOptionText(t))}</option>`).join('')}</select></div><div class="field"><label>Nilai Target</label><input id="wfTargetValue" value="${esc(x.target_value||'')}" placeholder="Contoh: Rembang / 20301234 / NIP Pengawas"><small id="wfTargetHelp" class="muted"></small></div><div class="field"><label>Mulai Utama</label><input id="wfStart" type="date" value="${workflowDateInput(x.mulai_utama)}"></div><div class="field"><label>Batas Utama</label><input id="wfEnd" type="date" value="${workflowDateInput(x.selesai_utama)}"></div><div class="field"><label>Batas Toleransi</label><input id="wfTolerance" type="date" value="${workflowDateInput(x.selesai_toleransi||x.selesai_utama)}"></div><div class="field"><label>Label Target</label><input id="wfTargetLabel" value="${esc(x.target_label||'')}" placeholder="Nama yang tampil"></div></div><div class="field"><label>Catatan</label><textarea id="wfNote" rows="3">${esc(x.catatan||'')}</textarea></div><div id="wfModalMsg"></div><div class="workflow-modal-actions"><button class="btn btn-light" onclick="$('#workflowScheduleModal').remove()">Batal</button><button class="btn btn-primary" onclick="saveWorkflowScheduleUi('${esc(id)}')">Simpan Jadwal</button></div></div></div>`;
+  document.body.appendChild(modal); if(!id) syncWorkflowScheduleTargetUi(false); else updateWorkflowTargetHint();
 };
-window.updateWorkflowTargetHint=function(){ const t=$('#wfTargetType')?.value,el=$('#wfTargetValue'); if(!el)return; el.disabled=t==='SEMUA'; if(t==='SEMUA')el.value=''; };
+window.updateWorkflowTargetHint=function(){
+  const t=$('#wfTargetType')?.value,stage=$('#wfStage')?.value,el=$('#wfTargetValue'),help=$('#wfTargetHelp'); if(!el)return;
+  el.disabled=t==='SEMUA';
+  if(t==='SEMUA')el.value='';
+  const placeholders={ROLE:'SEKOLAH / PENGAWAS / DINAS',KECAMATAN:'Contoh: Rembang',SEKOLAH:'NPSN 8 digit',PENGAWAS:'NIP 18 digit / ID Pengawas'};
+  el.placeholder=placeholders[t]||'Tidak perlu diisi';
+  let note='';
+  if(stage==='REGISTRASI_SEKOLAH') note=t==='SEMUA'
+    ? 'Membuka pendaftaran untuk seluruh sekolah. Gunakan “Sekolah tertentu” hanya jika ingin membatasi ke satu NPSN.'
+    : 'Tahap ini khusus registrasi sekolah. Target Sekolah berarti satu NPSN tertentu, bukan seluruh role SEKOLAH.';
+  else if(stage==='REGISTRASI_PENGAWAS') note=t==='SEMUA'
+    ? 'Membuka pendaftaran untuk seluruh Pengawas resmi.'
+    : 'Tahap ini khusus registrasi Pengawas. Untuk target individual gunakan NIP 18 digit.';
+  else note='Target menentukan siapa yang memperoleh rentang kerja ini.';
+  if(help)help.textContent=note;
+};
 window.saveWorkflowScheduleUi=async function(id=''){
   const data={id_jadwal:id||'',tahun:Number($('#wfYear').value),tahap:$('#wfStage').value,target_type:$('#wfTargetType').value,target_value:$('#wfTargetValue').value.trim(),target_label:$('#wfTargetLabel').value.trim(),mulai_utama:$('#wfStart').value,selesai_utama:$('#wfEnd').value,selesai_toleransi:$('#wfTolerance').value,catatan:$('#wfNote').value.trim()};
   try{await api('saveWorkflowSchedule',{data});$('#workflowScheduleModal').remove();toast('Jadwal tersimpan.','ok');await jadwalTahapanView();}catch(e){$('#wfModalMsg').innerHTML=msg(errorText(e));}
@@ -7961,33 +8007,38 @@ function formatPengawasLabel(idPengawas, namaPengguna = '') {
 }
 
 window.autoFillSekolahByNpsn = async function(npsn) {
-  if(!npsn || npsn.trim().length < 4) return;
-  const cleanNpsn = npsn.trim();
+  const raw = String(npsn || '').trim();
+  if(!raw || raw.length < 4) return;
+
+  // Gunakan key NPSN kanonik 8 digit agar number/text Google Sheets tetap cocok.
+  const digits = raw.replace(/\D/g,'');
+  const cleanNpsn = digits.length === 8 ? digits : raw;
   const namaSekolahInput = $('#regNamaSekolah');
   const usernameInput = $('#regUsername');
-  
+
   if(namaSekolahInput) namaSekolahInput.value = 'Mencari data sekolah...';
   if(usernameInput) usernameInput.value = cleanNpsn;
 
   try {
-    const response = await fetch(API_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action: 'getSekolah' })
-    });
-    const res = await response.json();
-    const list = Array.isArray(res) ? res : (res.data || res.sekolah || []);
-    const found = list.find(s => String(s.npsn || s.NPSN || '').trim() === cleanNpsn);
-    if(found) {
-      const namaVal = found.nama_sekolah || found.nama_satuan_pendidikan || found.nama || found.sekolah || '';
-      if(namaSekolahInput) namaSekolahInput.value = namaVal;
-    } else {
-      if(namaSekolahInput) namaSekolahInput.value = '';
-      alert('NPSN tidak ditemukan di database tabel sekolah. Silakan ketik nama satuan pendidikan secara manual.');
+    // Endpoint publik khusus lookup satu NPSN. getSekolah membutuhkan session,
+    // sedangkan halaman registrasi memang belum mempunyai session login.
+    const res = await api('getSekolahByNpsnPublic', { npsn: cleanNpsn });
+    const found = res?.data || null;
+    if(!found || !found.npsn) throw new Error('NPSN tidak ditemukan di database sekolah.');
+
+    const namaVal = found.nama_sekolah || found.nama_satuan_pendidikan || found.nama || found.sekolah || '';
+    if(namaSekolahInput) {
+      namaSekolahInput.value = namaVal;
+      namaSekolahInput.dataset.lookupOk = '1';
     }
+    if(usernameInput) usernameInput.value = String(found.npsn || cleanNpsn).trim();
   } catch(e) {
-    if(namaSekolahInput) namaSekolahInput.value = '';
-    console.warn('Gagal memuat otomatis nama sekolah:', e.message);
+    if(namaSekolahInput) {
+      namaSekolahInput.value = '';
+      namaSekolahInput.dataset.lookupOk = '0';
+    }
+    console.warn('Gagal memuat otomatis nama sekolah:', e?.message || e);
+    alert(errorText(e) || 'NPSN tidak ditemukan di database sekolah.');
   }
 };
 
