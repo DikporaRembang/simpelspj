@@ -2400,7 +2400,7 @@ window.showRegisterView = function(e) {
 
             <div id="regMsg"></div>
 
-            <button class="v219-register-submit" type="submit">Daftarkan Akun Sekarang</button>
+            <button class="v219-register-submit" type="submit" disabled data-schedule-locked="1">Memeriksa Jadwal...</button>
             <button class="v219-register-back" type="button" onclick="authView()">← Kembali ke Halaman Masuk</button>
           </form>
         </div>
@@ -2425,6 +2425,7 @@ window.showRegisterView = function(e) {
 
     const msgBox = $('#regMsg');
     const submitBtn = document.querySelector('#registerForm button[type="submit"]');
+    if(submitBtn?.dataset.scheduleLocked==='1') return;
     if(submitBtn?.disabled) return;
     if(submitBtn){
       submitBtn.disabled = true;
@@ -2441,8 +2442,9 @@ window.showRegisterView = function(e) {
     } catch(err) {
       msgBox.innerHTML = msg(errorText(err));
       if(submitBtn){
-        submitBtn.disabled = false;
-        submitBtn.textContent = submitBtn.dataset.originalText || 'Daftarkan Akun Sekarang';
+        const scheduleLocked=submitBtn.dataset.scheduleLocked==='1';
+        submitBtn.disabled = scheduleLocked;
+        submitBtn.textContent = scheduleLocked ? 'Pendaftaran Belum Dibuka' : (submitBtn.dataset.originalText || 'Daftarkan Akun Sekarang');
       }
     }
   };
@@ -2453,16 +2455,36 @@ window.loadPublicRegistrationWindow = async function(){
   if(!box) return;
   const roleVal=$('#regRole')?.value||'SEKOLAH';
   const npsn=roleVal==='SEKOLAH'?($('#regNpsn')?.value||'').trim():'';
+  const submitBtn=document.querySelector('#registerForm button[type="submit"]');
+  if(submitBtn){
+    submitBtn.disabled=true;
+    submitBtn.dataset.scheduleLocked='1';
+    submitBtn.textContent='Memeriksa Jadwal...';
+  }
   box.innerHTML='<div class="workflow-reg-chip">Memeriksa jadwal pendaftaran...</div>';
   try{
     const r=await api('getPublicRegistrationWindow',{role:roleVal,npsn:npsn});
     const d=r?.data||{};
     const meta=workflowPhaseMeta(d.phase);
     const row=d.row||{};
-    const dateText=row.mulai_utama?`${fmtWorkflowDate(row.mulai_utama)} – ${fmtWorkflowDate(row.selesai_utama)}${row.selesai_toleransi?` · toleransi s.d. ${fmtWorkflowDate(row.selesai_toleransi)}`:''}`:'Belum ada jadwal khusus';
+    let dateText='DINAS belum menetapkan jadwal pendaftaran.';
+    if(row.mulai_utama){
+      dateText=`${fmtWorkflowDate(row.mulai_utama)} – ${fmtWorkflowDate(row.selesai_utama)}${row.selesai_toleransi?` · toleransi s.d. ${fmtWorkflowDate(row.selesai_toleransi)}`:''}`;
+    } else if(d.phase==='PENDAFTARAN_SELESAI') {
+      dateText='Pendaftaran telah dinyatakan selesai oleh DINAS.';
+    } else if(d.phase==='BELUM_DIJADWALKAN') {
+      dateText='Pendaftaran belum dibuka untuk Anda. Tunggu jadwal dari DINAS.';
+    }
     box.innerHTML=`<div class="workflow-reg-chip ${meta.cls}"><b>${esc(meta.label)}</b><span>${esc(dateText)}</span></div>`;
+    if(submitBtn){
+      const allowed=!!d.allowed;
+      submitBtn.disabled=!allowed;
+      submitBtn.dataset.scheduleLocked=allowed?'0':'1';
+      submitBtn.textContent=allowed?'Daftarkan Akun Sekarang':'Pendaftaran Belum Dibuka';
+    }
   }catch(e){
     box.innerHTML=`<div class="workflow-reg-chip danger"><b>Jadwal belum dapat diperiksa</b><span>${esc(errorText(e))}</span></div>`;
+    if(submitBtn){submitBtn.disabled=true;submitBtn.dataset.scheduleLocked='1';submitBtn.textContent='Pendaftaran Belum Dibuka';}
   }
 };
 
@@ -9406,6 +9428,9 @@ body[data-role] #mainContent .v225-home-next strong{color:#172433!important}
 
 
 
+
+
+
 </body></html>`);
   w.document.close();
 }
@@ -12007,7 +12032,7 @@ function renderUserReadinessTables(){
 function managedUserAction(x){
   if(!x.user_id)return '<span class="muted">Menunggu registrasi</span>';
   const active=String(x.account_status||'').toUpperCase()==='AKTIF';
-  return `<button class="btn btn-light btn-sm" onclick="toggleManagedUserStatusUI('${esc(x.user_id)}','${active?'NONAKTIF':'AKTIF'}')">${active?'Nonaktifkan':'Aktifkan'}</button>`;
+  return `<div class="ur-actions"><button class="btn btn-light btn-sm" onclick="toggleManagedUserStatusUI('${esc(x.user_id)}','${active?'NONAKTIF':'AKTIF'}')">${active?'Nonaktifkan':'Aktifkan Kembali'}</button><button class="btn btn-light btn-sm" onclick="openManagedUserPasswordReset('${esc(x.user_id)}')">Reset Password</button></div>`;
 }
 function renderUserReadinessOrphans(r){
   const s=r.orphan_school_accounts||[],p=r.orphan_pengawas_accounts||[];if(!s.length&&!p.length)return'';
@@ -12035,6 +12060,27 @@ window.toggleManagedUserStatusUI=async function(userId,status){
   let alasan='';if(status==='NONAKTIF'){alasan=prompt('Alasan menonaktifkan akun:','')||'';if(!alasan.trim())return;}
   try{await api('setManagedUserStatus',{data:{user_id:userId,status,alasan}});toast('Status akun diperbarui.','ok');await reloadUserReadiness();}catch(e){toast(errorText(e),'error');}
 };
+window.openManagedUserPasswordReset=function(userId){
+  const r=window._userReadinessData||{};
+  const all=[...(r.schools||[]),...(r.pengawas||[])];
+  const row=all.find(x=>String(x.user_id||'')===String(userId))||{};
+  const label=row.nama_sekolah||row.nama_pengawas||row.nama_pengguna||row.username||'pengguna';
+  const wrap=document.createElement('div');wrap.id='managedUserPasswordModal';wrap.className='workflow-modal-backdrop';
+  wrap.innerHTML=`<div class="workflow-modal-card account-reset-modal"><div class="account-reset-head"><div><small>ADMINISTRASI AKUN</small><h3>Reset Password</h3><p>${esc(label)}${row.username?` · ${esc(row.username)}`:''}</p></div><button type="button" class="account-reset-close" onclick="$('#managedUserPasswordModal').remove()" aria-label="Tutup">×</button></div><div class="field"><label>Password Baru</label><input id="managedNewPassword" type="password" autocomplete="new-password" placeholder="Minimal 6 karakter"></div><div class="field"><label>Konfirmasi Password Baru</label><input id="managedConfirmPassword" type="password" autocomplete="new-password" placeholder="Ulangi password baru"></div><div class="message warning account-reset-note">Reset tidak membuat akun baru. NPSN/NIP dan seluruh histori akun tetap sama.</div><div id="managedPasswordMsg"></div><div class="workflow-modal-actions"><button class="btn btn-light" onclick="$('#managedUserPasswordModal').remove()">Batal</button><button class="btn btn-primary" onclick="submitManagedUserPasswordReset('${esc(userId)}')">Simpan Password Baru</button></div></div>`;
+  document.body.appendChild(wrap);
+  setTimeout(()=>$('#managedNewPassword')?.focus(),0);
+};
+window.submitManagedUserPasswordReset=async function(userId){
+  const password=$('#managedNewPassword')?.value||'',confirmPw=$('#managedConfirmPassword')?.value||'',box=$('#managedPasswordMsg');
+  if(password.length<6){if(box)box.innerHTML=msg('Password baru minimal 6 karakter.');return;}
+  if(password!==confirmPw){if(box)box.innerHTML=msg('Konfirmasi password baru tidak sama.');return;}
+  try{
+    await api('resetManagedUserPassword',{data:{user_id:userId,password_baru:password}});
+    $('#managedUserPasswordModal')?.remove();
+    toast('Password akun berhasil direset.','ok');
+  }catch(e){if(box)box.innerHTML=msg(errorText(e));else toast(errorText(e),'error');}
+};
+
 window.toggleRegistrationCompletionUI=async function(){
   const r=window._userReadinessData||{},sum=r.summary||{},completed=!!sum.registration_completed;
   let reason='';
@@ -12074,6 +12120,38 @@ body[data-role] .topbar .top-actions .btn-light{background:#fff!important;color:
 @media(max-width:1150px){.ur-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.ur-two-col{grid-template-columns:1fr}}
 @media(max-width:760px){.ur-hero{align-items:flex-start;flex-direction:column}.ur-state{width:100%;box-sizing:border-box}.ur-summary-grid{grid-template-columns:1fr}.ur-toolbar{align-items:stretch;flex-direction:column}.ur-toolbar-actions{align-items:stretch;flex-direction:column}.ur-toolbar input,.ur-toolbar select,.ur-toolbar .btn{width:100%;min-width:0}}
 
+</style>
+<style id="v238RegistrationSidebarPolish">
+/* V23.8 — final layout/registration polish. Keep this as the last cascade layer. */
+@media (min-width:761px){
+  .dashboard{height:100dvh!important;min-height:0!important;overflow:hidden!important;display:flex!important;flex-direction:column!important}
+  .dashboard>.topbar{flex:0 0 auto!important;position:relative!important;top:auto!important}
+  .dashboard>.layout{flex:1 1 auto!important;min-height:0!important;height:auto!important;overflow:hidden!important}
+  .dashboard .sidebar{align-self:stretch!important;min-height:0!important;height:auto!important;overflow:hidden!important;justify-content:flex-start!important}
+  .dashboard .sidebar>.nav-group{flex:1 1 auto!important;min-height:0!important;overflow-y:auto!important;overflow-x:hidden!important;overscroll-behavior:contain;padding-right:4px;scrollbar-gutter:stable}
+  .dashboard .sidebar-footer{flex:0 0 auto!important;margin-top:12px!important;padding-top:12px!important;background:inherit;position:relative;z-index:2}
+  .dashboard .content{min-height:0!important;height:auto!important;overflow-y:auto!important;overflow-x:hidden!important;overscroll-behavior:contain;scrollbar-gutter:stable}
+}
+.dashboard .sidebar>.nav-group::-webkit-scrollbar,.dashboard .content::-webkit-scrollbar{width:8px}
+.dashboard .sidebar>.nav-group::-webkit-scrollbar-thumb,.dashboard .content::-webkit-scrollbar-thumb{background:rgba(120,135,145,.28);border-radius:999px}
+.dashboard .sidebar>.nav-group::-webkit-scrollbar-track,.dashboard .content::-webkit-scrollbar-track{background:transparent}
+
+#registerForm .v219-register-submit:disabled{cursor:not-allowed!important;opacity:.62!important;filter:saturate(.55);box-shadow:none!important;transform:none!important}
+.workflow-reg-chip.closed,.workflow-reg-chip.upcoming,.workflow-reg-chip.danger{background:#fff0ef!important;border-color:#efc5c1!important;color:#8d3530!important}
+.workflow-reg-chip.closed span,.workflow-reg-chip.upcoming span,.workflow-reg-chip.danger span{color:#8d514d!important}
+.account-reset-modal{width:min(520px,96vw)!important}
+.account-reset-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:14px}
+.account-reset-head small{display:block;font-size:.62rem;font-weight:900;letter-spacing:.1em;color:#748391;margin-bottom:4px}
+.account-reset-head h3{margin:0!important}.account-reset-head p{margin:4px 0 0!important;color:#748391!important;font-size:.76rem!important}
+.account-reset-close{border:0;background:#f2f5f7;color:#526574;width:34px;height:34px;border-radius:10px;font-size:1.25rem;line-height:1;cursor:pointer;flex:0 0 auto}
+.account-reset-close:hover{background:#e8edf1;color:#172433}.account-reset-note{margin:12px 0 0!important;font-size:.76rem!important}
+@media(max-width:760px){
+  .dashboard{height:auto!important;min-height:100vh!important;overflow:visible!important;display:block!important}
+  .dashboard>.layout{height:auto!important;min-height:calc(100vh - 64px)!important;overflow:visible!important}
+  .dashboard .content{height:auto!important;overflow:visible!important}
+  .dashboard .sidebar>.nav-group{overflow:visible!important;padding-right:0!important}
+  .dashboard .sidebar-footer{margin-top:14px!important}
+}
 </style>
 </body>
 </html>
