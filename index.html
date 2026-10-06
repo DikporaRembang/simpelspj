@@ -13097,7 +13097,7 @@ async function rkasSekolahView(){
   c.innerHTML=head('RKAS Sekolah Read Only','Referensi RKAS sebelum upload Excel BKU.')+loading('Memuat RKAS...');
   try{
     const res=await safeApi('rkasSekolah',{});;
-    renderRKASAccordionCleanV5(res);
+    renderRKASAccordionCleanV6(res);
   }catch(e){
     c.innerHTML=msg(errorText(e));
   }
@@ -13176,4 +13176,60 @@ function toggleRKASV5(idx,btn){
  if(arrow) arrow.textContent=open?'▶':'▼';
 }
 
+</script>
+
+<style>
+.rkas-v6-wrap{margin-top:18px;display:flex;flex-direction:column;gap:10px}
+.rkas-v6-total{background:#f8fafc;border:1px solid #e2e8f0;border-radius:14px;padding:16px;margin:12px 0;font-size:16px}
+.rkas-v6-total b{display:block;font-size:28px;margin-top:5px}
+.rkas-v6-item{border:1px solid #dbe3ef;border-radius:14px;overflow:hidden;background:white}
+.rkas-v6-head{width:100%;border:0;background:#fff;padding:14px 18px;display:flex;align-items:center;gap:12px;cursor:pointer;text-align:left;font-size:14px}
+.rkas-v6-head:hover{background:#f8fafc}
+.rkas-v6-arrow{width:22px;font-size:16px}
+.rkas-v6-name{flex:1;font-weight:600;color:#334155}
+.rkas-v6-total-item{font-weight:700;color:#0f172a;white-space:nowrap}
+.rkas-v6-body{display:none;padding:0 14px 14px;background:#fafafa}
+.rkas-v6-body table{margin-top:10px}
+</style>
+<script>
+function renderRKASAccordionCleanV6(res){
+ const groups={};
+ (res.data||[]).forEach(r=>{
+   const k=r.rincian_obyek||'Tanpa Kategori';
+   (groups[k] ||= []).push(r);
+ });
+ let body='';
+ Object.entries(groups).forEach(([key,list],idx)=>{
+   const total=list.reduce((a,b)=>a+Number(b.pagu||0),0);
+   body += `
+   <div class="rkas-v6-item">
+    <button class="rkas-v6-head" onclick="toggleRKASV6(${idx},this)">
+      <span class="rkas-v6-arrow">▶</span>
+      <span class="rkas-v6-name">${esc(key)}<br><small>${list.length} item RKAS</small></span>
+      <span class="rkas-v6-total-item">${fmtRupiah(total)}</span>
+    </button>
+    <div id="rkas-v6-${idx}" class="rkas-v6-body">
+      <table class="friendly-table">
+       <thead><tr><th>No</th><th>Uraian</th><th>Pagu</th></tr></thead>
+       <tbody>${list.map((x,i)=>`<tr><td>${i+1}</td><td>${esc(x.uraian||'-')}</td><td>${fmtRupiah(x.pagu||0)}</td></tr>`).join('')}</tbody>
+      </table>
+    </div>
+   </div>`;
+ });
+ $('#mainContent').innerHTML=`
+ <div class="card">
+  <h2>📊 RKAS Sekolah</h2>
+  <p>Read Only • Referensi sebelum upload Excel BKU</p>
+  <div class="rkas-v6-total">Total RKAS <b>${fmtRupiah(res.total_pagu||0)}</b></div>
+  <div class="rkas-v6-wrap">${body}</div>
+ </div>`;
+}
+function toggleRKASV6(idx,btn){
+ const el=document.getElementById('rkas-v6-'+idx);
+ if(!el)return;
+ const arrow=btn.querySelector('.rkas-v6-arrow');
+ const open=el.style.display==='block';
+ el.style.display=open?'none':'block';
+ if(arrow)arrow.textContent=open?'▶':'▼';
+}
 </script>
