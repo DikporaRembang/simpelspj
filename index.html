@@ -13053,7 +13053,7 @@ function renderRKASSekolahSubtotal(res){
  const ringkasan = Object.keys(subtotal).map(k=>`
  <tr>
    <td>${esc(k)}</td>
-   <td>${formatRupiah(subtotal[k])}</td>
+   <td>${fmtRupiah(subtotal[k])}</td>
  </tr>`).join("");
 
  const detail = (res.data||[]).map((x,i)=>`
@@ -13061,7 +13061,7 @@ function renderRKASSekolahSubtotal(res){
   <td>${i+1}</td>
   <td>${esc(x.rincian_obyek||"-")}</td>
   <td>${esc(x.uraian||x.nama_belanja||"-")}</td>
-  <td>${formatRupiah(x.pagu||0)}</td>
+  <td>${fmtRupiah(x.pagu||0)}</td>
  </tr>`).join("");
 
  $('#mainContent').innerHTML = `
@@ -13073,7 +13073,7 @@ function renderRKASSekolahSubtotal(res){
    <tfoot>
     <tr>
      <th>Total RKAS</th>
-     <th>${formatRupiah(res.total_pagu||0)}</th>
+     <th>${fmtRupiah(res.total_pagu||0)}</th>
     </tr>
    </tfoot>
   </table>
@@ -13096,7 +13096,7 @@ async function rkasSekolahView(){
   const c=$('#mainContent');
   c.innerHTML=head('RKAS Sekolah Read Only','Referensi RKAS sebelum upload Excel BKU.')+loading('Memuat RKAS...');
   try{
-    const res=await safeApi('rkasSekolah',{},{});
+    const res=await safeApi('rkasSekolah',{});;
     renderRKASSekolahSubtotal(res);
   }catch(e){
     c.innerHTML=msg(errorText(e));
