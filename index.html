@@ -1924,11 +1924,11 @@ window.ROLE_MENUS = {
     { id:'home', label:'Beranda' },
     { id:'jadwalTahapan', label:'Jadwal & Tahapan' },
     { group:'ALUR SPJ', items:[
-      { id:'rkasReview', label:'1. RKAS & Anggaran Sekolah' },
-      { id:'transaksi', label:'2. Tetapkan Excel BKU' },
-      { id:'dokumenBulanan', label:'3. Lengkapi Bukti & Cross-check' },
-      { id:'statusSpj', label:'4. Status & Hasil Penilaian' },
-      { id:'kesepakatan', label:'5. Persetujuan / Keberatan' }
+      { id:'rkasSekolah', label:'0. Lihat RKAS Sekolah (Read Only)' },
+      { id:'transaksi', label:'1. Tetapkan Excel BKU' },
+      { id:'dokumenBulanan', label:'2. Lengkapi Bukti & Cross-check' },
+      { id:'statusSpj', label:'3. Status & Hasil Penilaian' },
+      { id:'kesepakatan', label:'4. Persetujuan / Keberatan' }
     ]},
     { group:'PENDUKUNG', items:[
       { id:'pesan', label:'Pesan & Koordinasi' },
@@ -1945,6 +1945,7 @@ const SUBMENU_TUTORIALS = {
   masterSpj: {title:'Master SPJ & Periode',text:'Dinas menetapkan komponen SPJ, indikator pemeriksaan, dan periode aktif. Ini menjadi fondasi agar seluruh sekolah dinilai dengan standar yang sama.',flow:['Master SPJ','Indikator','Periode','Penilaian'],current:0},
   sekolah: {title:'Data Sekolah',text:'Pastikan identitas satuan pendidikan dan NPSN benar sebelum dokumen, temuan, dan nilai dikaitkan ke sekolah yang diperiksa.',flow:['Identitas sekolah','Dokumen','Pemeriksaan','Nilai'],current:0},
   penugasan: {title:'Penugasan Pengawas',text:'Penugasan menentukan pengawas yang berwenang memeriksa sekolah dan menjadi penghubung ke proses pemeriksaan serta asesmen.',flow:['Sekolah','Pengawas','Periode','Asesmen'],current:1},
+  rkasSekolah: {title:'RKAS Sekolah Read Only',text:'Melihat RKAS sekolah sebagai referensi sebelum upload BKU. Data tidak dapat diubah oleh sekolah.',flow:['RKAS','BKU','SPJ'],current:0},
   rkasReview: {title:'Referensi RKAS',text:'Gunakan RKAS sebagai acuan kesesuaian penggunaan dana sebelum mencocokkan transaksi dan bukti SPJ.',flow:['RKAS','Transaksi','Bukti','Temuan'],current:0},
   transaksi: {title:'Tetapkan Excel BKU',text:'Excel BKU ARKAS adalah sumber transaksi resmi untuk penilaian. Pilih periode, unggah Excel BKU, validasi, lalu tetapkan snapshot aktif.',flow:['Periode','Excel BKU','Bukti SPJ','Penilaian'],current:1},
   dokumenBulanan: {title:'Lengkapi Bukti SPJ',text:'Setelah Excel BKU ditetapkan, unggah dokumen bukti yang diperlukan. Bukti dipakai untuk verifikasi transaksi, bukan sebagai sumber transaksi utama.',flow:['Excel BKU','Bukti SPJ','Pemeriksaan','Hasil'],current:1},
@@ -3047,6 +3048,7 @@ async function renderViewSafely(view){
     sekolah: sekolahView,
     penugasan: penugasanView,
     dinasMonitoring: dinasMonitoringView,
+    rkasSekolah: rkasSekolahView,
     rkasReview: rkasReview,
     masterSpj: masterSpjView,
     crosscheck: crosscheckView,
@@ -13041,3 +13043,63 @@ body[data-role="SEKOLAH"] .pdf-interactive-grid aside .v11-assessment-form,body[
 </style>
 </body>
 </html>
+
+
+<script>
+function renderRKASSekolahSubtotal(res){
+
+ const subtotal = res.subtotal || {};
+
+ const ringkasan = Object.keys(subtotal).map(k=>`
+ <tr>
+   <td>${esc(k)}</td>
+   <td>${formatRupiah(subtotal[k])}</td>
+ </tr>`).join("");
+
+ const detail = (res.data||[]).map((x,i)=>`
+ <tr>
+  <td>${i+1}</td>
+  <td>${esc(x.rincian_obyek||"-")}</td>
+  <td>${esc(x.uraian||x.nama_belanja||"-")}</td>
+  <td>${formatRupiah(x.pagu||0)}</td>
+ </tr>`).join("");
+
+ $('#mainContent').innerHTML = `
+ <div class="card">
+  <h2>📊 Ringkasan RKAS Sekolah</h2>
+  <table class="friendly-table">
+   <thead><tr><th>Rincian Obyek</th><th>Subtotal</th></tr></thead>
+   <tbody>${ringkasan}</tbody>
+   <tfoot>
+    <tr>
+     <th>Total RKAS</th>
+     <th>${formatRupiah(res.total_pagu||0)}</th>
+    </tr>
+   </tfoot>
+  </table>
+ </div>
+
+ <div class="card">
+  <h3>Detail RKAS</h3>
+  <table class="friendly-table">
+   <thead>
+    <tr><th>No</th><th>Rincian Obyek</th><th>Uraian</th><th>Pagu</th></tr>
+   </thead>
+   <tbody>${detail}</tbody>
+  </table>
+ </div>`;
+}
+</script>
+
+<script>
+async function rkasSekolahView(){
+  const c=$('#mainContent');
+  c.innerHTML=head('RKAS Sekolah Read Only','Referensi RKAS sebelum upload Excel BKU.')+loading('Memuat RKAS...');
+  try{
+    const res=await safeApi('rkasSekolah',{},{});
+    renderRKASSekolahSubtotal(res);
+  }catch(e){
+    c.innerHTML=msg(errorText(e));
+  }
+}
+</script>
