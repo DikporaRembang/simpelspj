@@ -13220,3 +13220,121 @@ function toggleRKASAccordion(id){
 
 }
 </script>
+
+
+<script>
+function renderRKASAccordionCleanV3(res){
+
+  const rows = res.data || {};
+  const groups = {};
+
+  rows.forEach(r=>{
+    const key = r.rincian_obyek || "Tanpa Kategori";
+    if(!groups[key]) groups[key] = [];
+    groups[key].push(r);
+  });
+
+  let total = 0;
+
+  const htmlGroup = Object.entries(groups).map(([key,list],i)=>{
+
+    const subtotal = list.reduce(
+      (a,b)=>a + Number(b.pagu || 0),0
+    );
+
+    total += subtotal;
+
+    return `
+    <div class="rkas-v3-item">
+
+      <button class="rkas-v3-header"
+       onclick="toggleRKASV3(${i})">
+
+        <span>
+          ${key}
+        </span>
+
+        <strong>
+          ${fmtRupiah(subtotal)}
+        </strong>
+
+      </button>
+
+
+      <div id="rkas-v3-${i}"
+           class="rkas-v3-body"
+           style="display:none">
+
+        <table class="friendly-table">
+
+        <thead>
+        <tr>
+          <th>No</th>
+          <th>Uraian</th>
+          <th>Pagu</th>
+        </tr>
+        </thead>
+
+        <tbody>
+
+        ${list.map((x,n)=>`
+          <tr>
+            <td>${n+1}</td>
+            <td>${esc(x.uraian || "-")}</td>
+            <td>${fmtRupiah(x.pagu || 0)}</td>
+          </tr>
+        `).join("")}
+
+        </tbody>
+
+        </table>
+
+      </div>
+
+    </div>`;
+
+  }).join("");
+
+
+  $('#mainContent').innerHTML = `
+
+  <div class="card">
+
+    <h2>📊 RKAS Sekolah</h2>
+
+    <p>
+      Read Only • Referensi sebelum upload Excel BKU
+    </p>
+
+    <div class="rkas-total-v3">
+      Total RKAS:
+      <b>${fmtRupiah(res.total_pagu || total)}</b>
+    </div>
+
+
+    <div class="rkas-v3-list">
+      ${htmlGroup}
+    </div>
+
+  </div>
+
+  `;
+
+}
+
+
+function toggleRKASV3(i){
+
+ const el=document.getElementById(
+   "rkas-v3-"+i
+ );
+
+ if(!el) return;
+
+ el.style.display =
+ el.style.display==="none"
+ ? "block"
+ : "none";
+
+}
+</script>
