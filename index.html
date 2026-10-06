@@ -13049,57 +13049,174 @@ body[data-role="SEKOLAH"] .pdf-interactive-grid aside .v11-assessment-form,body[
 function renderRKASSekolahSubtotal(res){
 
  const subtotal = res.subtotal || {};
+ const total = Number(res.total_pagu || 0);
 
- const ringkasan = Object.keys(subtotal).map(k=>`
+ const cards = Object.entries(subtotal).map(([k,v])=>`
+   <div class="card" style="padding:16px;min-width:220px;flex:1">
+     <small style="color:#6e6e73">${esc(k)}</small>
+     <h3 style="margin:8px 0 0">${fmtRupiah(v)}</h3>
+   </div>`).join('');
+
+ const ringkasan = Object.entries(subtotal).map(([k,v])=>`
  <tr>
    <td>${esc(k)}</td>
-   <td>${fmtRupiah(subtotal[k])}</td>
- </tr>`).join("");
+   <td style="text-align:right;font-weight:700">${fmtRupiah(v)}</td>
+ </tr>`).join('');
 
  const detail = (res.data||[]).map((x,i)=>`
  <tr>
   <td>${i+1}</td>
-  <td>${esc(x.rincian_obyek||"-")}</td>
-  <td>${esc(x.uraian||x.nama_belanja||"-")}</td>
-  <td>${fmtRupiah(x.pagu||0)}</td>
- </tr>`).join("");
+  <td>${esc(x.rincian_obyek||'-')}</td>
+  <td>${esc(x.uraian||x.nama_belanja||'-')}</td>
+  <td style="text-align:right">${fmtRupiah(x.pagu||0)}</td>
+ </tr>`).join('');
 
  $('#mainContent').innerHTML = `
  <div class="card">
-  <h2>📊 Ringkasan RKAS Sekolah</h2>
+  <h2>📊 RKAS Sekolah</h2>
+  <p style="color:#6e6e73">Read Only • Referensi sebelum upload Excel BKU</p>
+  <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:16px">
+    <div class="card" style="padding:16px;flex:1;min-width:220px">
+      <small>Total Pagu RKAS</small>
+      <h2>${fmtRupiah(total)}</h2>
+    </div>
+    ${cards}
+  </div>
+ </div>
+
+ <div class="card">
+  <h3>Ringkasan Rincian Obyek</h3>
+  <div class="table-wrap">
   <table class="friendly-table">
-   <thead><tr><th>Rincian Obyek</th><th>Subtotal</th></tr></thead>
+   <thead><tr><th>Rincian Obyek</th><th style="text-align:right">Subtotal</th></tr></thead>
    <tbody>${ringkasan}</tbody>
-   <tfoot>
-    <tr>
-     <th>Total RKAS</th>
-     <th>${fmtRupiah(res.total_pagu||0)}</th>
-    </tr>
-   </tfoot>
   </table>
+  </div>
  </div>
 
  <div class="card">
   <h3>Detail RKAS</h3>
+  <div class="table-wrap" style="max-height:520px;overflow:auto">
   <table class="friendly-table">
-   <thead>
-    <tr><th>No</th><th>Rincian Obyek</th><th>Uraian</th><th>Pagu</th></tr>
+   <thead style="position:sticky;top:0;background:#fff;z-index:1">
+    <tr><th>No</th><th>Rincian Obyek</th><th>Uraian</th><th style="text-align:right">Pagu</th></tr>
    </thead>
    <tbody>${detail}</tbody>
   </table>
+  </div>
  </div>`;
 }
-</script>
 
-<script>
 async function rkasSekolahView(){
   const c=$('#mainContent');
   c.innerHTML=head('RKAS Sekolah Read Only','Referensi RKAS sebelum upload Excel BKU.')+loading('Memuat RKAS...');
   try{
-    const res=await safeApi('rkasSekolah',{});;
+    const res=await safeApi('rkasSekolah',{});
     renderRKASSekolahSubtotal(res);
   }catch(e){
     c.innerHTML=msg(errorText(e));
   }
+}
+</script>
+
+
+<script>
+function renderRKASAccordionReadonly(res){
+
+  const rows = res.data || [];
+  const groups = {};
+
+  rows.forEach((r)=>{
+    const key = r.rincian_obyek || 'Tanpa Kategori';
+    if(!groups[key]) groups[key] = [];
+    groups[key].push(r);
+  });
+
+  const subtotalHtml = Object.keys(groups).map((key,idx)=>{
+
+    const total = groups[key].reduce((a,b)=>
+      a + Number(b.pagu || 0),0);
+
+    return `
+    <section class="rkas-accordion-item">
+
+      <button class="rkas-accordion-toggle"
+        onclick="toggleRKASAccordion('rkas-detail-${idx}')">
+
+        <span>
+          ${key}
+        </span>
+
+        <strong>
+          ${fmtRupiah(total)}
+        </strong>
+
+      </button>
+
+      <div id="rkas-detail-${idx}"
+           class="rkas-accordion-detail"
+           style="display:none">
+
+        <table class="friendly-table">
+
+          <thead>
+            <tr>
+              <th>No</th>
+              <th>Uraian</th>
+              <th>Pagu</th>
+            </tr>
+          </thead>
+
+          <tbody>
+          ${groups[key].map((x,i)=>`
+            <tr>
+              <td>${i+1}</td>
+              <td>${x.uraian || '-'}</td>
+              <td>${fmtRupiah(x.pagu || 0)}</td>
+            </tr>
+          `).join('')}
+          </tbody>
+
+        </table>
+
+      </div>
+
+    </section>`;
+
+  }).join('');
+
+  $('#mainContent').innerHTML = `
+    <div class="card">
+
+      <h2>📊 RKAS Sekolah</h2>
+      <p class="text-muted">
+        Read Only • Referensi sebelum upload Excel BKU
+      </p>
+
+      <div class="rkas-total-box">
+        Total RKAS :
+        <strong>${fmtRupiah(res.total_pagu || 0)}</strong>
+      </div>
+
+      <div class="rkas-accordion">
+        ${subtotalHtml}
+      </div>
+
+    </div>
+  `;
+}
+
+
+function toggleRKASAccordion(id){
+
+  const el=document.getElementById(id);
+
+  if(!el) return;
+
+  el.style.display =
+    el.style.display === 'none'
+    ? 'block'
+    : 'none';
+
 }
 </script>
