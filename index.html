@@ -1924,7 +1924,6 @@ window.ROLE_MENUS = {
     { id:'home', label:'Beranda' },
     { id:'jadwalTahapan', label:'Jadwal & Tahapan' },
     { group:'ALUR SPJ', items:[
-      { id:'rkasSekolah', label:'0. Lihat RKAS Sekolah' },
       { id:'transaksi', label:'1. Tetapkan Excel BKU' },
       { id:'dokumenBulanan', label:'2. Lengkapi Bukti & Cross-check' },
       { id:'statusSpj', label:'3. Status & Hasil Penilaian' },
@@ -3043,7 +3042,6 @@ async function renderViewSafely(view){
     dokumenBulanan: dokumenBulananView,
     statusSpj: statusSpjView,
     statusSekolah: statusSekolahView,
-    rkasSekolah: rkasSekolahView,
     transaksi: transaksiView,
     sekolah: sekolahView,
     penugasan: penugasanView,
@@ -4038,52 +4036,6 @@ async function renderStatus(){
       <div class="school-status-list"><div class="school-list-head"><h3>Komponen SPJ</h3><span class="muted">${fmtNum(total)} komponen</span></div>${rows||msg('Belum ada komponen SPJ.','warning')}</div>
       <div class="toolbar" style="margin-top:14px;justify-content:flex-end"><button class="btn btn-light" onclick="loadView('dokumenBulanan')">📁 Kelola SPJ</button></div>`;
   }catch(e){area.innerHTML=msg(errorText(e));}
-}
-
-
-async function rkasSekolahView(){
-  const c = $('#mainContent');
-  c.innerHTML = head('RKAS Sekolah','Referensi anggaran sebelum menetapkan Excel BKU.') +
-    loading('Memuat RKAS sekolah...');
-
-  try{
-    const res = await safeApi('rkasAktif', {}, {data:[]});
-    const rows = res.data || [];
-    const total = rows.reduce((a,b)=>a + Number(b.pagu || 0), 0);
-
-    c.innerHTML = head('RKAS Sekolah','Lihat pagu RKAS sebagai referensi sebelum upload Excel BKU.') +
-    `
-    <div class="card">
-      <h3>📊 RKAS Aktif Sekolah</h3>
-      <p>NPSN: <b>${esc(res.npsn || ownNpsn())}</b></p>
-      <p>Total Pagu: <b>${fmtRupiah(total)}</b></p>
-      <div class="table-wrap">
-      <table class="friendly-table">
-        <thead>
-          <tr>
-            <th>No</th>
-            <th>Kode Rekening</th>
-            <th>Uraian</th>
-            <th>Volume</th>
-            <th>Pagu</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${rows.map((x,i)=>`
-          <tr>
-            <td>${i+1}</td>
-            <td>${esc(x.kode_rekening||'-')}</td>
-            <td>${esc(x.uraian||x.nama_belanja_asli||'-')}</td>
-            <td>${esc(x.volume||'-')}</td>
-            <td>${fmtRupiah(x.pagu||0)}</td>
-          </tr>`).join('')}
-        </tbody>
-      </table>
-      </div>
-    </div>`;
-  }catch(e){
-    c.innerHTML = msg(errorText(e));
-  }
 }
 
 async function transaksiView(){
@@ -13088,3 +13040,50 @@ body[data-role="SEKOLAH"] .pdf-interactive-grid aside .v11-assessment-form,body[
 </style>
 </body>
 </html>
+
+
+<script>
+function renderRKASSekolahSubtotal(res){
+
+ const subtotal = res.subtotal || {};
+
+ const ringkasan = Object.keys(subtotal).map(k=>`
+ <tr>
+   <td>${esc(k)}</td>
+   <td>${formatRupiah(subtotal[k])}</td>
+ </tr>`).join("");
+
+ const detail = (res.data||[]).map((x,i)=>`
+ <tr>
+  <td>${i+1}</td>
+  <td>${esc(x.rincian_obyek||"-")}</td>
+  <td>${esc(x.uraian||x.nama_belanja||"-")}</td>
+  <td>${formatRupiah(x.pagu||0)}</td>
+ </tr>`).join("");
+
+ $('#mainContent').innerHTML = `
+ <div class="card">
+  <h2>📊 Ringkasan RKAS Sekolah</h2>
+  <table class="friendly-table">
+   <thead><tr><th>Rincian Obyek</th><th>Subtotal</th></tr></thead>
+   <tbody>${ringkasan}</tbody>
+   <tfoot>
+    <tr>
+     <th>Total RKAS</th>
+     <th>${formatRupiah(res.total_pagu||0)}</th>
+    </tr>
+   </tfoot>
+  </table>
+ </div>
+
+ <div class="card">
+  <h3>Detail RKAS</h3>
+  <table class="friendly-table">
+   <thead>
+    <tr><th>No</th><th>Rincian Obyek</th><th>Uraian</th><th>Pagu</th></tr>
+   </thead>
+   <tbody>${detail}</tbody>
+  </table>
+ </div>`;
+}
+</script>
