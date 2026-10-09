@@ -3869,6 +3869,11 @@ window.openNaModal = function(idSpj, namaSpj) {
 };
 
 window.openUpload = function(idSpj, namaSpj) {
+  const wfStatus = window.currentWorkflowStatus || '';
+  if (!workflowUploadGuard(wfStatus)) {
+    toast(workflowUploadMessage(wfStatus),'warning');
+    return;
+  }
   const periode = $('#periodeSelect')?.value || state.selectedPeriode;
   if (!periode) { toast('Pilih periode SPJ terlebih dahulu.','warning'); return; }
   const wrap = document.createElement('div');
