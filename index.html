@@ -48,6 +48,23 @@ function ensureXlsxLib(){
   });
   return _xlsxLoaderPromise;
 }
+
+// WORKFLOW UI PATCH V2
+// Hanya mengatur tampilan upload berdasarkan status workflow.
+// Tidak mengubah API, upload, penilaian, atau logika bisnis lainnya.
+function workflowUploadGuard(status){
+  const s = String(status||'').toUpperCase();
+  return !(s==='BELUM_DIJADWALKAN' || s==='BELUM_DIATUR' || s==='DITUTUP');
+}
+
+function workflowUploadMessage(status){
+  const s = String(status||'').toUpperCase();
+  if(s==='BELUM_DIJADWALKAN') return 'Upload SPJ menunggu penetapan jadwal dari DINAS.';
+  if(s==='BELUM_DIATUR') return 'Jadwal SPJ belum dibuat oleh DINAS.';
+  if(s==='DITUTUP') return 'Masa upload SPJ telah ditutup.';
+  return '';
+}
+
 </script>
 <style>
 /* SIMPEL SPJ V14 — consolidated design system */
