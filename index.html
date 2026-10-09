@@ -13577,3 +13577,133 @@ window.SPJ_FINAL_ROUTE = {
 
 })();
 </script>
+
+<!-- =====================================================
+ SIMPEL SPJ EXECUTION PATCH
+ Fix:
+ 1. Sidebar merge aktif
+ 2. Home renderer hook
+ 3. Workflow route resolver
+ ===================================================== -->
+<script>
+(function(){
+
+/* ===============================
+ 1. SIDEBAR MERGE FIX
+ =============================== */
+
+window.applySPJWorkflowSidebar = function(){
+
+  const currentRole =
+    String(typeof role === "function" ? role() : "SEKOLAH")
+    .toUpperCase();
+
+  const original =
+    window.SPJ_ORIGINAL_ROLE_MENUS?.[currentRole]
+    || window.ROLE_MENUS?.[currentRole]
+    || [];
+
+  if(typeof mergeSPJWorkflowMenu === "function"){
+    window.ROLE_MENUS[currentRole] =
+      mergeSPJWorkflowMenu(currentRole, original);
+  }
+};
+
+
+/* ===============================
+ 2. ROUTE FIX
+ =============================== */
+
+window.SPJ_FINAL_ROUTE = Object.assign(
+  window.SPJ_FINAL_ROUTE || {},
+  {
+    workflow_sekolah_binaan:"sekolah",
+    workflow_pemeriksaan:"crosscheck",
+    workflow_temuan:"temuan",
+    workflow_penilaian:"asesmen",
+
+    workflow_kirim:"laporanTahap1",
+
+    workflow_laporan:"laporanTahap1",
+    workflow_review:"reviewLaporan",
+    workflow_tahap2:"asesmenTahap2",
+    workflow_final:"kesepakatan",
+    workflow_pengesahan:"arsipPenilaianV5"
+  }
+);
+
+
+const oldLoadView =
+  window.loadView;
+
+window.loadView = function(view){
+
+  const mapped =
+    window.SPJ_FINAL_ROUTE?.[view]
+    || view;
+
+  return oldLoadView.apply(this,[mapped]);
+};
+
+
+/* ===============================
+ 3. HOME RENDER HOOK
+ =============================== */
+
+window.renderSPJWorkflowHome = function(){
+
+ const host=document.querySelector("#mainContent");
+ if(!host) return;
+
+ const currentRole =
+ String(typeof role==="function"?role():"SEKOLAH")
+ .toUpperCase();
+
+ if(currentRole==="SEKOLAH"){
+   return;
+ }
+
+ const wf=window.SPJ_WORKFLOW_STATE||{};
+
+ host.innerHTML = `
+ <section class="workflow-dashboard">
+   <h1>
+   ${currentRole==="DINAS"
+     ? "Dashboard Pengelolaan SPJ Dinas"
+     : "Dashboard Pemeriksaan SPJ Pengawas"}
+   </h1>
+
+   <div>
+    Tahap Aktif:
+    <b>${wf.tahap_aktif||"-"}</b>
+   </div>
+
+   <div>
+    Status Laporan:
+    <b>${wf.laporan_tahap1_status||"-"}</b>
+   </div>
+
+   <div>
+    Status Tahap 2:
+    <b>${wf.status_tahap2||"-"}</b>
+   </div>
+
+   <div>
+    Status Akhir:
+    <b>${wf.status_final||"-"}</b>
+   </div>
+ </section>`;
+};
+
+
+window.executeSPJFinalIntegration = function(){
+  applySPJWorkflowSidebar();
+
+  if(typeof renderSPJWorkflowHome==="function"){
+     // dipanggil oleh home controller jika tersedia
+  }
+};
+
+
+})();
+</script>
