@@ -3056,15 +3056,25 @@ async function renderViewSafely(view){
     dbCheck: dbCheckView,
     pesan: pesanView,
     monitoringGlobal: renderMonitoringGlobalView,
-    tutorialV5: tutorialV5View,
-    arsipPenilaianV5: arsipPenilaianV5View,
-    pdfInteraktif: pdfInteraktifView,
-    ubahPassword: ubahPasswordView
+    tutorialV5: (typeof tutorialV5View === 'function') ? tutorialV5View : null,
+    arsipPenilaianV5: (typeof arsipPenilaianV5View === 'function') ? arsipPenilaianV5View : null,
+    pdfInteraktif: (typeof pdfInteraktifView === 'function') ? pdfInteraktifView : null,
+    ubahPassword: (typeof ubahPasswordView === 'function') ? ubahPasswordView : null
   };
 
   try{
-    if(!map[view]) throw new Error('Modul belum tersedia: ' + view);
-    await map[view]();
+    if(typeof map[view] !== 'function'){
+      throw new Error('Modul belum tersedia: ' + view);
+    }
+    await Promise.race([
+      map[view](),
+      new Promise((_, reject) =>
+        setTimeout(
+          () => reject(new Error('Modul terlalu lama dimuat. Silakan coba kembali.')),
+          20000
+        )
+      )
+    ]);
   }catch(e){
     // Hanya tampilkan error bila modul yang gagal masih merupakan modul aktif.
     if(state.view === view) c.innerHTML = msg(errorText(e));
@@ -9721,6 +9731,7 @@ body[data-role] #mainContent .v225-home-next strong{color:#172433!important}
   body[data-role] .v225-step{min-height:0!important}
 }
 </style>
+
 
 
 
