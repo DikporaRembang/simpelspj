@@ -1909,11 +1909,11 @@ window.ROLE_MENUS = {
     { id:'jadwalTahapan', label:'Jadwal & Tahapan' },
     { group:'ALUR PEMERIKSAAN', items:[
       { id:'penugasan', label:'1. Pilih Sekolah Binaan' },
-      { id:'pdfInteraktif', label:'2. Periksa BKU & Bukti PDF' },
+      { id:'pdfInteraktif', label:'2. Pemeriksaan SPJ Tahap 1' },
       { id:'temuan', label:'3. Temuan & Tindak Lanjut' },
-      { id:'asesmen', label:'4. Penilaian & Finalisasi' },
-      { id:'kesepakatan', label:'5. Persetujuan / Keberatan / Pengesahan' },
-      { id:'arsipPenilaianV5', label:'6. Hasil / Arsip Penilaian' }
+      { id:'asesmen', label:'4. Penilaian SPJ Tahap 1' },
+      { id:'kesepakatan', label:'5. Kirim Laporan Tahap 1 ke DINAS' },
+      { id:'arsipPenilaianV5', label:'6. Status Laporan & Arsip' }
     ]},
     { group:'PENDUKUNG', items:[
       { id:'pesan', label:'Pesan & Koordinasi' },
@@ -2122,7 +2122,15 @@ window.togglePageTutorial=function(){
   if(btn) btn.textContent=collapsed?'ⓘ Tampilkan panduan':'Sembunyikan';
 };
 function tutorialHtml(){
-  const info=SUBMENU_TUTORIALS[state.view];
+  let info=SUBMENU_TUTORIALS[state.view];
+  if(isPengawas() && state.view==='jadwalTahapan'){
+    info={
+      title:'Jadwal & Tahapan',
+      text:'DINAS menetapkan periode kerja. Halaman ini menampilkan tahapan yang relevan untuk alur pemeriksaan Pengawas.',
+      flow:['Pilih Sekolah','Pemeriksaan Tahap 1','Temuan','Penilaian Tahap 1','Kirim Laporan','Status / Arsip'],
+      current:-1
+    };
+  }
   if(!info) return '';
   let collapsed=false;
   try{collapsed=localStorage.getItem(tutorialPreferenceKey())==='1';}catch(e){}
@@ -5859,8 +5867,113 @@ async function jadwalTahapanView(){
   }catch(e){ $('#workflowPage').innerHTML=msg(errorText(e)); }
 }
 
+function renderPengawasWorkflowPage(r){
+  const host=$('#workflowPage'); if(!host)return;
+  const resolved=r.resolved||{}, year=Number(r.year||new Date().getFullYear());
+
+  const steps=[
+    {
+      no:'01', source:'PENDELEGASIAN',
+      title:'Pilih Sekolah Binaan',
+      desc:'Sekolah binaan ditetapkan DINAS sebelum pemeriksaan dimulai.'
+    },
+    {
+      no:'02', source:'PENILAIAN_PENGAWAS',
+      title:'Pemeriksaan SPJ Tahap 1',
+      desc:'Periksa BKU, transaksi, buku turunan, bukti PDF, dan cross-check dokumen sekolah.'
+    },
+    {
+      no:'03', source:'PENILAIAN_PENGAWAS',
+      title:'Temuan & Tindak Lanjut',
+      desc:'Catat temuan berbasis bukti dan pantau tindak lanjut sekolah pada periode pemeriksaan.'
+    },
+    {
+      no:'04', source:'PENILAIAN_PENGAWAS',
+      title:'Penilaian SPJ Tahap 1',
+      desc:'Selesaikan penilaian Pengawas berdasarkan pemeriksaan dan temuan yang telah terverifikasi.'
+    },
+    {
+      no:'05', source:'PENILAIAN_PENGAWAS',
+      title:'Kirim Laporan Tahap 1 ke DINAS',
+      desc:'Tuntaskan hasil Tahap 1 dan kirim laporan resmi Pengawas kepada DINAS.'
+    },
+    {
+      no:'06', source:null,
+      title:'Status Laporan & Arsip',
+      desc:'Pantau status laporan setelah dikirim dan buka arsip hasil pemeriksaan Pengawas.'
+    }
+  ];
+
+  const cards=steps.map(step=>{
+    if(!step.source){
+      return `<article class="workflow-stage-card neutral">
+        <div class="workflow-stage-top">
+          <small>LANGKAH ${step.no}</small>
+          <span class="workflow-status neutral">SETELAH DIKIRIM</span>
+        </div>
+        <h3>${esc(step.title)}</h3>
+        <p>${esc(step.desc)}</p>
+        <div class="workflow-stage-date">Mengikuti status laporan yang diterima DINAS</div>
+      </article>`;
+    }
+
+    const x=resolved[step.source]||{}, meta=workflowPhaseMeta(x.phase), row=x.row||{};
+    let dates='Belum diatur';
+    if(row.mulai_utama){
+      dates=`${fmtWorkflowDate(row.mulai_utama)} – ${fmtWorkflowDate(row.selesai_utama)}`+
+        (row.selesai_toleransi?` · toleransi ${fmtWorkflowDate(row.selesai_toleransi)}`:'');
+    }
+
+    return `<article class="workflow-stage-card ${meta.cls}">
+      <div class="workflow-stage-top">
+        <small>LANGKAH ${step.no}</small>
+        <span class="workflow-status ${meta.cls}">${esc(meta.label)}</span>
+      </div>
+      <h3>${esc(step.title)}</h3>
+      <p>${esc(step.desc)}</p>
+      <div class="workflow-stage-date">${esc(dates)}</div>
+      ${row.target_type?`<div class="workflow-stage-target">${esc(workflowTargetLabel(row))}</div>`:''}
+    </article>`;
+  }).join('');
+
+  const input=resolved.INPUT_SEKOLAH||{};
+  const inputMeta=workflowPhaseMeta(input.phase);
+
+  host.innerHTML=`
+    <section class="workflow-hero">
+      <div>
+        <span>TAHUN OPERASIONAL ${fmtNum(year)}</span>
+        <h2>Jadwal Kerja Pengawas</h2>
+        <p>DINAS menetapkan periode kerja. Di sini hanya ditampilkan tahapan yang relevan untuk pemeriksaan Pengawas.</p>
+      </div>
+    </section>
+
+    <div class="workflow-stage-grid">${cards}</div>
+
+    <section class="panel workflow-note">
+      <b>Prasyarat pemeriksaan</b>
+      <p>
+        Input Sekolah saat ini:
+        <b>${esc(inputMeta.label)}</b>.
+        Pemeriksaan SPJ Tahap 1 dilakukan setelah BKU dan bukti SPJ sekolah siap diperiksa.
+      </p>
+    </section>
+
+    <section class="panel workflow-note">
+      <b>Batas kewenangan Pengawas</b>
+      <p>
+        Penilaian SPJ Tahap 2, finalisasi, dan pengesahan akhir merupakan proses DINAS,
+        sehingga tidak ditampilkan sebagai tahapan kerja Pengawas pada halaman ini.
+      </p>
+    </section>`;
+}
+
 function renderWorkflowPage(r){
   const host=$('#workflowPage'); if(!host)return;
+  if(isPengawas()){
+    renderPengawasWorkflowPage(r);
+    return;
+  }
   const resolved=r.resolved||{}, year=Number(r.year||new Date().getFullYear()), lock=r.delegation_lock||{};
   const cards=WORKFLOW_STAGE_UI.map(([id,label,desc])=>{
     const x=resolved[id]||{},meta=workflowPhaseMeta(x.phase),row=x.row||{};
@@ -11041,12 +11154,12 @@ body.theme-sekolah .v221-book-summary{background:#F7F8FE}
     ],
     PENGAWAS:[
       {view:'jadwalTahapan',title:'Jadwal & Tahapan',desc:'Lihat periode kerja, masa toleransi, dan perpanjangan yang berlaku untuk Anda.'},
-      {view:'penugasan',title:'Pilih Sekolah Binaan',desc:'Tetapkan sekolah yang akan diperiksa.'},
-      {view:'pdfInteraktif',title:'Periksa BKU & Bukti PDF',desc:'Periksa transaksi, buku turunan, bukti PDF, dan cross-check dalam satu workbench.'},
-      {view:'temuan',title:'Temuan & Tindak Lanjut',desc:'Verifikasi temuan dan tindak lanjut sekolah.'},
-      {view:'asesmen',title:'Penilaian & Finalisasi',desc:'Finalisasi nilai berdasarkan bukti dan temuan terverifikasi.'},
-      {view:'kesepakatan',title:'Persetujuan / Keberatan / Pengesahan',desc:'Tunggu tanggapan Sekolah, kaji ulang bila perlu, lalu sahkan penilaian.'},
-      {view:'arsipPenilaianV5',title:'Hasil / Arsip Penilaian',desc:'Buka hasil final yang telah melalui proses kesepakatan dan pengesahan.'}
+      {view:'penugasan',title:'Pilih Sekolah Binaan',desc:'Tetapkan sekolah binaan yang akan diperiksa pada periode aktif.'},
+      {view:'pdfInteraktif',title:'Pemeriksaan SPJ Tahap 1',desc:'Periksa BKU, transaksi, buku turunan, bukti PDF, dan cross-check dokumen sekolah.'},
+      {view:'temuan',title:'Temuan & Tindak Lanjut',desc:'Catat temuan pemeriksaan dan pantau tindak lanjut sekolah sampai siap dinilai.'},
+      {view:'asesmen',title:'Penilaian SPJ Tahap 1',desc:'Berikan penilaian Pengawas berdasarkan hasil pemeriksaan, bukti, dan temuan terverifikasi.'},
+      {view:'kesepakatan',title:'Kirim Laporan Tahap 1 ke DINAS',desc:'Tuntaskan hasil pemeriksaan Tahap 1 dan teruskan hasil Pengawas untuk proses DINAS.'},
+      {view:'arsipPenilaianV5',title:'Status Laporan & Arsip',desc:'Pantau status hasil pemeriksaan dan buka arsip penilaian Pengawas.'}
     ],
     DINAS:[
       {view:'jadwalTahapan',title:'Jadwal & Tahapan',desc:'Tetapkan kalender operasional, toleransi, dan perpanjangan setiap tahap.'},
@@ -11098,7 +11211,7 @@ body.theme-sekolah .v221-book-summary{background:#F7F8FE}
     if(r==='PENGAWAS')return {
       kicker:'ALUR PEMERIKSAAN PENGAWAS',
       title:'Satu sekolah, satu alur pemeriksaan',
-      desc:'Lihat jadwal kerja, pilih sekolah binaan, periksa BKU dan bukti, selesaikan temuan, finalisasi nilai, lalu tuntaskan pengesahan.'
+      desc:'Lihat jadwal kerja, pilih sekolah binaan, lakukan Pemeriksaan SPJ Tahap 1, selesaikan temuan, lakukan Penilaian SPJ Tahap 1, lalu kirim hasil ke DINAS.'
     };
     return {
       kicker:'ALUR PENGELOLAAN DINAS',
