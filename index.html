@@ -1874,7 +1874,7 @@ aside.sidebar *,
 <script>
 'use strict';
 
-const V10_VERSION = 'V17.3-PENGAWAS-SIMPLE-LOGIN-FIX';
+const V10_VERSION = 'V17.3-CLEAN-DINAS-TAHAP2-STABLE';
 
 const API_URL = window.SIMPEL_API_URL || 'https://script.google.com/macros/s/AKfycbyWvJXKr1QZ1zwbeJDoULTUihycj1771SsDlGFy8jnuF4i3DsEbHXlcJU48VDAg17fqDA/exec';
 
@@ -1884,18 +1884,19 @@ window.ROLE_MENUS = {
   DINAS: [
     { id:'home', label:'Beranda' },
     { group:'PERSIAPAN', items:[
-      { id:'jadwalTahapan', label:'1. Jadwal & Tahapan' },
-      { id:'sekolah', label:'2. Data Sekolah' },
-      { id:'manajemenUser', label:'3. Manajemen User & Kesiapan' },
-      { id:'penugasan', label:'4. Penugasan Pengawas' },
-      { id:'masterSpj', label:'5. Periode & Master SPJ' },
-      { id:'rkasReview', label:'6. RKAS & Anggaran' }
+      { id:'jadwalTahapan', label:'Jadwal & Tahapan' },
+      { id:'sekolah', label:'Data Sekolah' },
+      { id:'manajemenUser', label:'Manajemen User & Kesiapan' },
+      { id:'penugasan', label:'Penugasan Pengawas' },
+      { id:'masterSpj', label:'Periode & Master SPJ' },
+      { id:'rkasReview', label:'RKAS & Anggaran' }
     ]},
     { group:'PELAKSANAAN & HASIL', items:[
-      { id:'monitoringGlobal', label:'7. Monitoring Proses SPJ' },
-      { id:'temuan', label:'8. Temuan & Tindak Lanjut' },
-      { id:'kesepakatan', label:'9. Pengesahan Akhir DINAS' },
-      { id:'arsipPenilaianV5', label:'10. Rekap Hasil & Laporan' }
+      { id:'monitoringGlobal', label:'Monitoring Proses SPJ' },
+      { id:'temuan', label:'Temuan & Tindak Lanjut' },
+      { id:'asesmen', label:'Penilaian SPJ Tahap 2' },
+      { id:'kesepakatan', label:'Pengesahan Akhir DINAS' },
+      { id:'arsipPenilaianV5', label:'Hasil Penilaian & Cetak' }
     ]},
     { group:'PENDUKUNG', items:[
       { id:'pesan', label:'Pesan & Koordinasi' },
@@ -3064,7 +3065,10 @@ async function renderViewSafely(view){
 
   try{
     if(!map[view]) throw new Error('Modul belum tersedia: ' + view);
-    await map[view]();
+    await Promise.race([
+      Promise.resolve().then(() => map[view]()),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Modul terlalu lama dimuat: ' + view)), 20000))
+    ]);
   }catch(e){
     // Hanya tampilkan error bila modul yang gagal masih merupakan modul aktif.
     if(state.view === view) c.innerHTML = msg(errorText(e));
@@ -6920,7 +6924,7 @@ async function asesmenView(){
   const periods = await periodeSelect('periodeSelect', true, 'bulan'); 
   let schoolOptions = '';
   
-  if(isPengawas()){
+  if(isDinas() || isPengawas()){
     const schools = await getCachedAuditSchools_();
     // OPTIMASI: Rendering opsi sekolah menggunakan .map().join('') secara bersih
     const optionsHtml = schools.map(x => `
@@ -6938,7 +6942,7 @@ async function asesmenView(){
       </div>`;
   }
   
-  $('#mainContent').innerHTML = head('Asesmen SPJ', 'Lembar penilaian kualitas') + `
+  $('#mainContent').innerHTML = head(isDinas() ? 'Penilaian SPJ Tahap 2' : 'Asesmen SPJ', isDinas() ? 'Review dan validasi penilaian tahap kedua oleh DINAS' : 'Lembar penilaian kualitas') + `
     <div class="panel">
       <div class="form-grid">
         <div class="field"><label>Periode SPJ</label>${periods}</div>
@@ -11050,8 +11054,9 @@ body.theme-sekolah .v221-book-summary{background:#F7F8FE}
       {view:'penugasan',title:'Penugasan Pengawas',desc:'Bagi sekolah kepada pengawas secara adil lalu kunci pendelegasian.'},
       {view:'masterSpj',title:'Periode & Master SPJ',desc:'Tetapkan periodisasi dan standar komponen pemeriksaan.'},
       {view:'rkasReview',title:'RKAS & Anggaran',desc:'Kelola referensi anggaran yang menjadi konteks realisasi dan impor BKU.'},
-      {view:'monitoringGlobal',title:'Monitoring Proses SPJ',desc:'Pantau progres input, pemeriksaan, sanggah, dan penyelesaian.'},
-      {view:'kesepakatan',title:'Pengesahan Akhir DINAS',desc:'Sahkan hasil akhir setelah proses persetujuan dan kaji ulang selesai.'},
+      {view:'monitoringGlobal',title:'Monitoring Proses SPJ',desc:'Pantau progres input, pemeriksaan, temuan, tindak lanjut, dan penyelesaian.'},
+      {view:'asesmen',title:'Penilaian SPJ Tahap 2',desc:'Review hasil pemeriksaan Pengawas, validasi komponen SPJ, dan lakukan penilaian tahap kedua oleh DINAS.'},
+      {view:'kesepakatan',title:'Pengesahan Akhir DINAS',desc:'Sahkan hasil akhir setelah Penilaian SPJ Tahap 2 dan proses persetujuan selesai.'},
       {view:'arsipPenilaianV5',title:'Hasil Penilaian & Cetak',desc:'Lihat dan cetak penilaian final yang telah disahkan DINAS.'}
     ]
   };
@@ -11098,7 +11103,7 @@ body.theme-sekolah .v221-book-summary{background:#F7F8FE}
     return {
       kicker:'ALUR PENGELOLAAN DINAS',
       title:'Kelola SPJ dari persiapan sampai laporan',
-      desc:'Tetapkan jadwal, pastikan kesiapan user, kunci pendelegasian, lalu pantau pemeriksaan sampai pengesahan dan hasil final.'
+      desc:'Tetapkan jadwal, pastikan kesiapan user, kunci pendelegasian, pantau pemeriksaan, lakukan Penilaian SPJ Tahap 2, lalu selesaikan pengesahan dan hasil final.'
     };
   }
 
@@ -13040,670 +13045,3 @@ body[data-role="SEKOLAH"] .pdf-interactive-grid aside .v11-assessment-form,body[
 </style>
 </body>
 </html>
-
-
-<!-- =====================================================
- SIMPEL SPJ WORKFLOW FINAL INTEGRATION
- ===================================================== -->
-<script>
-window.SPJ_WORKFLOW_STATE = window.SPJ_WORKFLOW_STATE || {};
-
-function getWorkflowAwareMenu(role, workflow){
-  role = String(role || "").toUpperCase();
-  workflow = workflow || {};
-
-  if(role === "PENGAWAS"){
-    return [
-      {id:"dashboard",label:"Beranda"},
-      {id:"sekolah_binaan",label:"Sekolah Binaan"},
-      {id:"penilaian_tahap1",label:"Penilaian Tahap 1"},
-      {id:"temuan",label:"Temuan"},
-      {id:"laporan_tahap1",label:"Kirim Laporan Tahap 1"}
-    ];
-  }
-
-  if(role === "DINAS"){
-    const menu = [
-      {id:"dashboard",label:"Beranda"},
-      {id:"laporan_tahap1_masuk",label:"Laporan Tahap 1 Masuk"}
-    ];
-
-    if(String(workflow.status_tahap2 || "").toUpperCase()==="OPEN"){
-      menu.push(
-        {id:"penilaian_tahap2",label:"Penilaian Tahap 2"},
-        {id:"finalisasi",label:"Finalisasi"}
-      );
-    }
-
-    menu.push({id:"pengesahan",label:"Pengesahan"});
-    return menu;
-  }
-
-  return [];
-}
-
-function workflowCanOpen(view, role, workflow){
-  role = String(role || "").toUpperCase();
-  workflow = workflow || {};
-
-  if(view==="finalisasi" && role!=="DINAS") return false;
-  if(view==="penilaian_tahap2" &&
-     String(workflow.status_tahap2||"").toUpperCase()!=="OPEN") return false;
-
-  return true;
-}
-
-async function loadWorkflowState(){
-  if(typeof apiCall==="function"){
-    const result = await apiCall({action:"getWorkflowSPJ"});
-    window.SPJ_WORKFLOW_STATE = result || {};
-    return result;
-  }
-  return {};
-}
-
-async function kirimLaporanTahap1(data){
-  return apiCall({action:"kirimLaporanTahap1",data:data||{}});
-}
-
-async function terimaLaporanTahap1(data){
-  return apiCall({action:"terimaLaporanTahap1",data:data||{}});
-}
-
-async function revisiLaporanTahap1(data){
-  return apiCall({action:"revisiLaporanTahap1",data:data||{}});
-}
-</script>
-
-<!-- =====================================================
- SIMPEL SPJ WORKFLOW FINAL V2
- ACTIVE RENDER OVERRIDE
- ===================================================== -->
-<script>
-/*
- V2 FIX:
- Tidak membuat engine baru.
- Mengambil index_WORKFLOW_FINAL sebagai baseline,
- lalu mengganti titik render aktif:
- - ROLE_MENUS
- - renderShell menu resolver
- - home workflow renderer
-*/
-
-window.ROLE_MENUS_WORKFLOW_V2 = true;
-
-function getActiveWorkflowMenusV2(role, workflow){
-  role=String(role||"").toUpperCase();
-  workflow=workflow||{};
-
-  if(role==="DINAS"){
-    return [
-      {id:"home",label:"Beranda"},
-      {group:"PELAKSANAAN SPJ",items:[
-        {id:"laporanTahap1",label:"Laporan Tahap 1 Masuk"},
-        {id:"penilaianTahap2",label:"Penilaian Tahap 2"},
-        {id:"kesepakatan",label:"Finalisasi"},
-        {id:"arsipPenilaianV5",label:"Pengesahan"}
-      ]}
-    ];
-  }
-
-  if(role==="PENGAWAS"){
-    return [
-      {id:"home",label:"Beranda"},
-      {group:"ALUR PEMERIKSAAN",items:[
-        {id:"sekolahBinaan",label:"Sekolah Binaan"},
-        {id:"pemeriksaan",label:"Pemeriksaan Tahap 1"},
-        {id:"temuan",label:"Temuan"},
-        {id:"laporanTahap1",label:"Kirim Laporan Tahap 1"}
-      ]}
-    ];
-  }
-
-  return ROLE_MENUS[String(role).toUpperCase()]||[];
-}
-
-
-/*
- Patch resolver global.
- renderShell asli tetap dipakai,
- tetapi sumber menu diarahkan ke workflow.
-*/
-const _renderShellOriginalV2 = window.renderShell;
-
-window.renderShell = function(){
-  const r=String(role()||"SEKOLAH").toUpperCase();
-  const wf=window.SPJ_WORKFLOW_STATE||{};
-  if(window.ROLE_MENUS){
-    const old=window.ROLE_MENUS[r];
-    window.ROLE_MENUS[r]=getActiveWorkflowMenusV2(r,wf);
-    _renderShellOriginalV2();
-    window.ROLE_MENUS[r]=old;
-  }else{
-    _renderShellOriginalV2();
-  }
-};
-
-
-/*
- Home workflow renderer aktif
-*/
-window.renderWorkflowHomeV2=function(){
-  const host=document.querySelector("#mainContent");
-  if(!host) return;
-
-  const r=String(role()||"").toUpperCase();
-  const wf=window.SPJ_WORKFLOW_STATE||{};
-
-  let title=r==="DINAS"
-    ? "Kelola SPJ Tahap Dinas"
-    : "Pemeriksaan SPJ Tahap Pengawas";
-
-  host.innerHTML=`
-  <section class="hero">
-    <h1>${title}</h1>
-    <p>
-      Status workflow:
-      <b>${wf.status_workflow||"Menunggu proses"}</b>
-    </p>
-  </section>
-
-  <section class="workflow-card">
-    <h2>Alur Workflow SPJ</h2>
-    <div>
-      Tahap aktif:
-      <b>${wf.tahap_aktif||"-"}</b>
-    </div>
-    <div>
-      Laporan Tahap 1:
-      <b>${wf.laporan_tahap1_status||"-"}</b>
-    </div>
-    <div>
-      Tahap 2:
-      <b>${wf.status_tahap2||"-"}</b>
-    </div>
-  </section>`;
-};
-</script>
-
-<!-- =====================================================
- SIMPEL SPJ FINAL INTEGRATION FIX
- Router + Dashboard + Role Workflow
- ===================================================== -->
-<script>
-/*
- FINAL FIX:
- 1. Alias menu workflow ke modul existing
- 2. Dashboard workflow untuk DINAS/PENGAWAS
- 3. Tidak membuat modul palsu
-*/
-
-/* Router alias: nama menu baru -> view existing */
-window.WORKFLOW_VIEW_ALIAS = {
-  laporanTahap1: "temuan",
-  penilaianTahap2: "asesmen",
-  finalisasi: "kesepakatan",
-  sekolahBinaan: "sekolah",
-  pemeriksaan: "crosscheck",
-  penilaianTahap1: "asesmen",
-  laporanPengawas: "temuan"
-};
-
-
-/* Override loadView agar menu workflow membuka modul nyata */
-const _loadViewWorkflowOriginal = window.loadView;
-
-window.loadView = function(view){
-  const mapped = window.WORKFLOW_VIEW_ALIAS[view] || view;
-  return _loadViewWorkflowOriginal(mapped);
-};
-
-
-/* Dashboard workflow */
-window.renderWorkflowDashboardFinal = function(){
-
-  const host = document.querySelector("#mainContent");
-  if(!host) return;
-
-  const r = String(role() || "").toUpperCase();
-  const wf = window.SPJ_WORKFLOW_STATE || {};
-
-  if(r === "DINAS"){
-    host.innerHTML = `
-    <div class="v225-home">
-      <section class="v225-home-hero">
-        <div class="v225-home-copy">
-          <small>ALUR PENGELOLAAN DINAS</small>
-          <h1>Kelola SPJ berbasis workflow</h1>
-          <p>
-          Tahap aktif:
-          <b>${wf.tahap_aktif || "-"}</b>
-          </p>
-        </div>
-      </section>
-
-      <section class="v225-workflow">
-        <h3>Status Pemeriksaan</h3>
-        <p>Laporan Tahap 1:
-        <b>${wf.laporan_tahap1_status || "-"}</b></p>
-        <p>Tahap 2:
-        <b>${wf.status_tahap2 || "-"}</b></p>
-        <p>Status akhir:
-        <b>${wf.status_final || "-"}</b></p>
-      </section>
-    </div>`;
-    return;
-  }
-
-
-  if(r === "PENGAWAS"){
-    host.innerHTML = `
-    <div class="v225-home">
-      <section class="v225-home-hero">
-        <div class="v225-home-copy">
-          <small>ALUR PEMERIKSAAN PENGAWAS</small>
-          <h1>Satu sekolah, satu alur pemeriksaan</h1>
-          <p>
-          Tahap aktif:
-          <b>${wf.tahap_aktif || "-"}</b>
-          </p>
-        </div>
-      </section>
-
-      <section class="v225-workflow">
-        <h3>Status Pemeriksaan</h3>
-        <p>Sekolah binaan:
-        <b>${state.selectedNpsn || "-"}</b></p>
-        <p>Status laporan:
-        <b>${wf.laporan_tahap1_status || "-"}</b></p>
-      </section>
-    </div>`;
-  }
-};
-
-
-/* Jalankan dashboard baru setelah state workflow tersedia */
-window.afterWorkflowLoginFix = async function(){
-  if(typeof loadWorkflowState === "function"){
-    await loadWorkflowState();
-  }
-};
-
-</script>
-
-<!-- =====================================================
- SIMPEL SPJ CLEAN INTEGRATION V1
- Preserve existing menus + inject workflow only
- ===================================================== -->
-<script>
-(function(){
-
-/*
- Prinsip:
- - SEKOLAH tetap memakai menu asli
- - DINAS/PENGAWAS menambah workflow
- - tidak overwrite seluruh ROLE_MENUS
-*/
-
-window.SPJ_ORIGINAL_ROLE_MENUS = window.SPJ_ORIGINAL_ROLE_MENUS || 
-  window.ROLE_MENUS || {};
-
-
-function mergeWorkflowMenu(role){
-
-  role = String(role || "").toUpperCase();
-
-  const original =
-    JSON.parse(JSON.stringify(
-      window.SPJ_ORIGINAL_ROLE_MENUS[role] || []
-    ));
-
-  if(role === "SEKOLAH"){
-    return original;
-  }
-
-
-  if(role === "PENGAWAS"){
-
-    original.push({
-      group:"ALUR PEMERIKSAAN SPJ",
-      items:[
-        {
-          id:"sekolahBinaanWorkflow",
-          label:"Sekolah Binaan"
-        },
-        {
-          id:"pemeriksaanWorkflow",
-          label:"Pemeriksaan Tahap 1"
-        },
-        {
-          id:"temuanWorkflow",
-          label:"Temuan & Tindak Lanjut"
-        },
-        {
-          id:"penilaianWorkflow",
-          label:"Penilaian Tahap 1"
-        },
-        {
-          id:"laporanWorkflow",
-          label:"Kirim Laporan Tahap 1"
-        }
-      ]
-    });
-
-    return original;
-  }
-
-
-  if(role === "DINAS"){
-
-    original.push({
-      group:"WORKFLOW PENILAIAN SPJ",
-      items:[
-        {
-          id:"laporanMasukWorkflow",
-          label:"Laporan Tahap 1 Masuk"
-        },
-        {
-          id:"reviewWorkflow",
-          label:"Review Pengawas"
-        },
-        {
-          id:"tahap2Workflow",
-          label:"Penilaian Tahap 2"
-        },
-        {
-          id:"finalWorkflow",
-          label:"Finalisasi"
-        },
-        {
-          id:"pengesahanWorkflow",
-          label:"Pengesahan"
-        }
-      ]
-    });
-
-    return original;
-  }
-
-  return original;
-}
-
-
-/*
- Router alias aman:
- hanya menerjemahkan menu workflow baru.
- Modul lama tetap.
-*/
-
-window.SPJ_WORKFLOW_ROUTE = {
-
- sekolahBinaanWorkflow:"sekolah",
- pemeriksaanWorkflow:"crosscheck",
- temuanWorkflow:"temuan",
- penilaianWorkflow:"asesmen",
- laporanWorkflow:"temuan",
-
- laporanMasukWorkflow:"temuan",
- reviewWorkflow:"temuan",
- tahap2Workflow:"asesmen",
- finalWorkflow:"kesepakatan",
- pengesahanWorkflow:"arsipPenilaianV5"
-
-};
-
-
-window.resolveSPJWorkflowRoute=function(id){
- return window.SPJ_WORKFLOW_ROUTE[id] || id;
-};
-
-
-})();
-</script>
-
-<!-- =====================================================
- SIMPEL SPJ CLEAN MERGE FINAL
- Existing Menu + Workflow Layer
- ===================================================== -->
-<script>
-(function(){
-
-window.SPJ_FINAL_CONFIG = {
-  preserveSekolah: true,
-  workflowLayer: true,
-  version: "clean-merge-final"
-};
-
-
-/*
- Gabungkan workflow dengan menu existing.
- Tidak mengganti ROLE_MENUS asli.
-*/
-
-window.mergeSPJWorkflowMenu = function(role, existing){
-
-  role = String(role || "").toUpperCase();
-
-  let menu = existing || [];
-
-  if(role === "SEKOLAH"){
-    return menu;
-  }
-
-  if(role === "PENGAWAS"){
-
-    menu.push({
-      group:"WORKFLOW PEMERIKSAAN SPJ",
-      items:[
-        {
-          id:"workflow_sekolah_binaan",
-          label:"Sekolah Binaan"
-        },
-        {
-          id:"workflow_pemeriksaan",
-          label:"Pemeriksaan Tahap 1"
-        },
-        {
-          id:"workflow_temuan",
-          label:"Temuan & Tindak Lanjut"
-        },
-        {
-          id:"workflow_penilaian",
-          label:"Penilaian Tahap 1"
-        },
-        {
-          id:"workflow_kirim",
-          label:"Kirim Laporan Tahap 1"
-        }
-      ]
-    });
-
-  }
-
-
-  if(role === "DINAS"){
-
-    menu.push({
-      group:"WORKFLOW PENILAIAN SPJ",
-      items:[
-        {
-          id:"workflow_laporan",
-          label:"Laporan Tahap 1 Masuk"
-        },
-        {
-          id:"workflow_review",
-          label:"Review Pengawas"
-        },
-        {
-          id:"workflow_tahap2",
-          label:"Penilaian Tahap 2"
-        },
-        {
-          id:"workflow_final",
-          label:"Finalisasi"
-        },
-        {
-          id:"workflow_pengesahan",
-          label:"Pengesahan"
-        }
-      ]
-    });
-
-  }
-
-  return menu;
-};
-
-
-/*
- Mapping workflow ke modul existing
-*/
-
-window.SPJ_FINAL_ROUTE = {
-
- workflow_sekolah_binaan:"sekolah",
- workflow_pemeriksaan:"crosscheck",
- workflow_temuan:"temuan",
- workflow_penilaian:"asesmen",
- workflow_kirim:"temuan",
-
- workflow_laporan:"temuan",
- workflow_review:"temuan",
- workflow_tahap2:"asesmen",
- workflow_final:"kesepakatan",
- workflow_pengesahan:"arsipPenilaianV5"
-
-};
-
-})();
-</script>
-
-<!-- =====================================================
- SIMPEL SPJ EXECUTION PATCH
- Fix:
- 1. Sidebar merge aktif
- 2. Home renderer hook
- 3. Workflow route resolver
- ===================================================== -->
-<script>
-(function(){
-
-/* ===============================
- 1. SIDEBAR MERGE FIX
- =============================== */
-
-window.applySPJWorkflowSidebar = function(){
-
-  const currentRole =
-    String(typeof role === "function" ? role() : "SEKOLAH")
-    .toUpperCase();
-
-  const original =
-    window.SPJ_ORIGINAL_ROLE_MENUS?.[currentRole]
-    || window.ROLE_MENUS?.[currentRole]
-    || [];
-
-  if(typeof mergeSPJWorkflowMenu === "function"){
-    window.ROLE_MENUS[currentRole] =
-      mergeSPJWorkflowMenu(currentRole, original);
-  }
-};
-
-
-/* ===============================
- 2. ROUTE FIX
- =============================== */
-
-window.SPJ_FINAL_ROUTE = Object.assign(
-  window.SPJ_FINAL_ROUTE || {},
-  {
-    workflow_sekolah_binaan:"sekolah",
-    workflow_pemeriksaan:"crosscheck",
-    workflow_temuan:"temuan",
-    workflow_penilaian:"asesmen",
-
-    workflow_kirim:"laporanTahap1",
-
-    workflow_laporan:"laporanTahap1",
-    workflow_review:"reviewLaporan",
-    workflow_tahap2:"asesmenTahap2",
-    workflow_final:"kesepakatan",
-    workflow_pengesahan:"arsipPenilaianV5"
-  }
-);
-
-
-const oldLoadView =
-  window.loadView;
-
-window.loadView = function(view){
-
-  const mapped =
-    window.SPJ_FINAL_ROUTE?.[view]
-    || view;
-
-  return oldLoadView.apply(this,[mapped]);
-};
-
-
-/* ===============================
- 3. HOME RENDER HOOK
- =============================== */
-
-window.renderSPJWorkflowHome = function(){
-
- const host=document.querySelector("#mainContent");
- if(!host) return;
-
- const currentRole =
- String(typeof role==="function"?role():"SEKOLAH")
- .toUpperCase();
-
- if(currentRole==="SEKOLAH"){
-   return;
- }
-
- const wf=window.SPJ_WORKFLOW_STATE||{};
-
- host.innerHTML = `
- <section class="workflow-dashboard">
-   <h1>
-   ${currentRole==="DINAS"
-     ? "Dashboard Pengelolaan SPJ Dinas"
-     : "Dashboard Pemeriksaan SPJ Pengawas"}
-   </h1>
-
-   <div>
-    Tahap Aktif:
-    <b>${wf.tahap_aktif||"-"}</b>
-   </div>
-
-   <div>
-    Status Laporan:
-    <b>${wf.laporan_tahap1_status||"-"}</b>
-   </div>
-
-   <div>
-    Status Tahap 2:
-    <b>${wf.status_tahap2||"-"}</b>
-   </div>
-
-   <div>
-    Status Akhir:
-    <b>${wf.status_final||"-"}</b>
-   </div>
- </section>`;
-};
-
-
-window.executeSPJFinalIntegration = function(){
-  applySPJWorkflowSidebar();
-
-  if(typeof renderSPJWorkflowHome==="function"){
-     // dipanggil oleh home controller jika tersedia
-  }
-};
-
-
-})();
-</script>
