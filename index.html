@@ -1948,7 +1948,7 @@ const SUBMENU_TUTORIALS = {
   rkasReview: {title:'Referensi RKAS',text:'Gunakan RKAS sebagai acuan kesesuaian penggunaan dana sebelum mencocokkan transaksi dan bukti SPJ.',flow:['RKAS','Transaksi','Bukti','Temuan'],current:0},
   transaksi: {title:'Tetapkan Excel BKU',text:'Excel BKU ARKAS adalah sumber transaksi resmi untuk penilaian. Pilih periode, unggah Excel BKU, validasi, lalu tetapkan snapshot aktif.',flow:['Periode','Excel BKU','Bukti SPJ','Penilaian'],current:1},
   dokumenBulanan: {title:'Lengkapi Bukti SPJ',text:'Setelah Excel BKU ditetapkan, unggah dokumen bukti yang diperlukan. Bukti dipakai untuk verifikasi transaksi, bukan sebagai sumber transaksi utama.',flow:['Excel BKU','Bukti SPJ','Pemeriksaan','Hasil'],current:1},
-  statusSpj: {title:'Status & Hasil',text:'Gunakan halaman ini untuk melihat posisi SPJ dalam satu alur: dari upload, pemeriksaan, temuan, sampai hasil penilaian.',flow:['Upload','Diperiksa','Temuan','Hasil'],current:1},
+  statusSpj: {title:'Status Proses & Hasil',text:'Gunakan halaman ini untuk memantau SPJ setelah dikirim: Pemeriksaan Pengawas Tahap 1, tindak lanjut, laporan ke DINAS, Penilaian SPJ Tahap 2, pengesahan, dan hasil final.',flow:['SPJ Siap','Pengawas Tahap 1','Laporan ke DINAS','DINAS Tahap 2','Pengesahan','Hasil Final'],current:1},
   statusSekolah: {title:'Status Sekolah',text:'Ringkasan ini menyatukan identitas sekolah, penugasan, RKAS, kelengkapan SPJ, temuan, dan hasil penilaian pada satu periode.',flow:['Identitas','RKAS & SPJ','Pemeriksaan','Hasil'],current:1},
   monitoringGlobal: {title:'Monitoring SPJ',text:'Dinas melihat kondisi pelaksanaan dan pemeriksaan secara agregat untuk menentukan sekolah atau periode yang perlu ditindaklanjuti.',flow:['Status','Temuan','Tindak lanjut','Rekap'],current:0},
   pdfInteraktif: {title:'Workbench BKU & Bukti',text:'Pilih sekolah dan periode. Sistem memakai Excel BKU sebagai ledger resmi, mencocokkannya dengan RKAS, membentuk buku pembantu, lalu menampilkan exception dan bukti untuk diperiksa.',flow:['Sekolah','Excel BKU','Exception & Bukti','Penilaian'],current:1},
@@ -2123,6 +2123,14 @@ window.togglePageTutorial=function(){
 };
 function tutorialHtml(){
   let info=SUBMENU_TUTORIALS[state.view];
+  if(isSchool() && state.view==='jadwalTahapan'){
+    info={
+      title:'Jadwal & Tahapan',
+      text:'DINAS menetapkan periode kerja. Sekolah menyiapkan SPJ, lalu memantau proses pemeriksaan dan penilaian sampai hasil final.',
+      flow:['Siapkan SPJ','Pengawas Tahap 1','Laporan ke DINAS','DINAS Tahap 2','Pengesahan','Hasil Final'],
+      current:-1
+    };
+  }
   if(isPengawas() && state.view==='jadwalTahapan'){
     info={
       title:'Jadwal & Tahapan',
@@ -4000,7 +4008,7 @@ window.openStatusSekolahPdf=function(){
 
 async function statusSpjView(){
   const periods=await periodeSelect('periodeSelect',true,'bulan');
-  $('#mainContent').innerHTML=head('Status & Hasil','Satu alur untuk mengetahui posisi SPJ, pemeriksaan Pengawas, temuan, dan hasil penilaian.')+
+  $('#mainContent').innerHTML=head('Status Proses & Hasil','Pantau SPJ dari pemeriksaan Pengawas Tahap 1, laporan ke DINAS, Penilaian SPJ Tahap 2, pengesahan, sampai hasil final.')+
     `<div class="panel school-status-shell"><div class="form-grid"><div class="field"><label>Periode SPJ</label>${periods}</div></div><div id="statusArea" style="margin-top:18px">${msg('Pilih periode untuk melihat status.','ok')}</div></div>`;
   $('#periodeSelect').value=state.selectedPeriode;
   $('#periodeSelect').onchange=()=>{state.selectedPeriode=$('#periodeSelect').value;renderStatus();};
@@ -4017,9 +4025,14 @@ async function renderStatus(){
   const p=$('#periodeSelect')?.value,area=$('#statusArea');if(!p||!area)return;
   area.innerHTML=loading('Menyusun status SPJ...');
   try{
-    const [s,r]=await Promise.all([api('getStatusSPJ',{idPeriode:p}),safeApi('getRingkasanSPJ',{idPeriode:p},{})]);
+    const [s,r,wfRaw]=await Promise.all([
+      api('getStatusSPJ',{idPeriode:p}),
+      safeApi('getRingkasanSPJ',{idPeriode:p},{}),
+      safeApi('getWorkflowSPJ',{idPeriode:p,npsn:ownNpsn()}, {})
+    ]);
     const items=Array.isArray(s.data)?s.data:[];
     const ring=r?.ringkasan||{};
+    const workflow=wfRaw?.data||wfRaw?.workflow||wfRaw||{};
     const total=items.length;
     const na=items.filter(x=>upper(x.status)==='N/A').length;
     const required=Math.max(0,total-na);
@@ -4028,16 +4041,49 @@ async function renderStatus(){
     const checking=items.filter(x=>upper(x.status)==='DALAM_PEMERIKSAAN').length;
     const progress=required?Math.round(complete/required*100):0;
     const statusUmum=String(r?.status_umum||'BELUM_DIMULAI');
+
+    const tahap1=upper(workflow.status_tahap1||'');
+    const laporan1=upper(workflow.laporan_tahap1_status||'');
+    const tahap2=upper(workflow.status_tahap2||'');
+    const finalSt=upper(workflow.status_final||'');
+
+    const tahap1Done=['SELESAI','DONE','DIKIRIM','DITERIMA'].includes(tahap1);
+    const laporanSent=['DIKIRIM','DITERIMA','REVIEW','SELESAI','DONE'].includes(laporan1);
+    const tahap2Running=['OPEN','AKTIF','PROSES','BERJALAN','SELESAI','DONE'].includes(tahap2);
+    const finalDone=['SELESAI','FINAL','DISAHKAN','DONE'].includes(finalSt);
+
     let next='Lengkapi dokumen SPJ yang belum tersedia.';
     let nextView='dokumenBulanan';
-    if(repair){next=`Ada ${repair} komponen yang perlu diperbaiki setelah pemeriksaan Pengawas.`;nextView='dokumenBulanan';}
-    else if(required && complete>=required){next=checking?`SPJ sudah lengkap dan ${checking} komponen sedang diperiksa Pengawas.`:'SPJ sudah lengkap. Lihat hasil pemeriksaan dan penilaian bila sudah tersedia.';nextView='statusSpj';}
+
+    if(repair){
+      next=`Ada ${repair} komponen yang perlu diperbaiki setelah pemeriksaan Pengawas.`;
+      nextView='dokumenBulanan';
+    }else if(required && complete>=required && !tahap1Done){
+      next=checking
+        ? `SPJ sudah lengkap dan ${checking} komponen sedang diperiksa Pengawas Tahap 1.`
+        : 'SPJ sudah lengkap. Menunggu Pemeriksaan Pengawas Tahap 1.';
+      nextView='statusSpj';
+    }else if(tahap1Done && !laporanSent){
+      next='Pemeriksaan Pengawas Tahap 1 selesai. Menunggu laporan Tahap 1 diteruskan ke DINAS.';
+      nextView='statusSpj';
+    }else if(laporanSent && !tahap2Running){
+      next='Laporan Tahap 1 sudah diteruskan. Menunggu Penilaian SPJ Tahap 2 oleh DINAS.';
+      nextView='statusSpj';
+    }else if(tahap2Running && !finalDone){
+      next='Penilaian SPJ Tahap 2 sedang/selesai diproses DINAS. Menunggu pengesahan akhir.';
+      nextView='statusSpj';
+    }else if(finalDone){
+      next='Proses penilaian selesai. Hasil final telah tersedia.';
+      nextView='statusSpj';
+    }
+
+    const labelOr=(v,fallback)=>v?String(v).replaceAll('_',' '):fallback;
     const steps=[
-      ['RKAS','Acuan anggaran','Referensi RKAS',true],
       ['SPJ','Dokumen & bukti',`${complete}/${required||total} selesai`,complete>=required],
-      ['PEMERIKSAAN','Pengawas',checking?'Sedang diperiksa':complete>=required?'Menunggu Pengawas':'Belum siap',checking>0 || statusUmum==='DALAM_PEMERIKSAAN'],
-      ['PENILAIAN','Hasil asesmen','Lihat hasil setelah finalisasi',items.some(x=>upper(x.status)==='SELESAI_DINILAI')],
-      ['SELESAI','Persetujuan & pengesahan','Lihat pada hasil penilaian',statusUmum==='LENGKAP']
+      ['TAHAP 1','Pemeriksaan Pengawas',labelOr(tahap1,checking?'SEDANG DIPERIKSA':complete>=required?'MENUNGGU PENGAWAS':'BELUM SIAP'),tahap1Done],
+      ['LAPORAN','Tahap 1 ke DINAS',labelOr(laporan1,'MENUNGGU PENGAWAS'),laporanSent],
+      ['TAHAP 2','Penilaian DINAS',labelOr(tahap2,'BELUM DIBUKA'),['SELESAI','DONE'].includes(tahap2)],
+      ['FINAL','Pengesahan & hasil',labelOr(finalSt,'MENUNGGU'),finalDone]
     ];
     const rows=items.map(x=>{const [label,type]=schoolStatusLabel(x.status);return `<div class="school-status-row"><div><strong>${esc(x.nama_spj||x.id_spj||'-')}</strong><small>${esc(label)}</small></div><span class="badge badge-${type}">${esc(label)}</span></div>`;}).join('');
     area.innerHTML=`
@@ -11148,9 +11194,11 @@ body.theme-sekolah .v221-book-summary{background:#F7F8FE}
     SEKOLAH:[
       {view:'jadwalTahapan',title:'Jadwal & Tahapan',desc:'Lihat rentang kerja, batas utama, toleransi, dan perpanjangan yang ditetapkan DINAS.'},
       {view:'transaksi',title:'Tetapkan Excel BKU',desc:'Tetapkan snapshot Excel BKU sebagai sumber transaksi periode penilaian.'},
-      {view:'dokumenBulanan',title:'Lengkapi Bukti & Cross-check',desc:'Upload PDF dan sandingkan dengan nilai yang diturunkan dari Excel BKU.'},
-      {view:'statusSpj',title:'Status & Hasil Penilaian',desc:'Lihat hasil pemeriksaan, perbaikan, temuan, dan nilai final Pengawas.'},
-      {view:'kesepakatan',title:'Persetujuan / Keberatan',desc:'Tinjau nilai final, pilih setuju atau ajukan keberatan sebelum pengesahan.'}
+      {view:'dokumenBulanan',title:'Lengkapi Bukti SPJ',desc:'Lengkapi dokumen dan bukti SPJ sampai siap diperiksa Pengawas.'},
+      {view:'statusSpj',title:'Pemeriksaan Pengawas Tahap 1',desc:'Pantau pemeriksaan Pengawas, temuan, dan tindak lanjut yang perlu diselesaikan Sekolah.'},
+      {view:'statusSpj',title:'Laporan Tahap 1 ke DINAS',desc:'Pantau apakah hasil pemeriksaan Tahap 1 sudah diteruskan Pengawas kepada DINAS.'},
+      {view:'statusSpj',title:'Penilaian SPJ Tahap 2 oleh DINAS',desc:'Pantau proses penilaian Tahap 2. Tahap ini bersifat informasi bagi Sekolah.'},
+      {view:'statusSpj',title:'Pengesahan & Hasil Final',desc:'Lihat status pengesahan akhir DINAS dan hasil penilaian final secara read-only.'}
     ],
     PENGAWAS:[
       {view:'jadwalTahapan',title:'Jadwal & Tahapan',desc:'Lihat periode kerja, masa toleransi, dan perpanjangan yang berlaku untuk Anda.'},
@@ -11205,8 +11253,8 @@ body.theme-sekolah .v221-book-summary{background:#F7F8FE}
     const r=roleV225();
     if(r==='SEKOLAH')return {
       kicker:'ALUR SPJ SEKOLAH',
-      title:'Kerjakan SPJ secara berurutan',
-      desc:'Lihat jadwal kerja Anda, lalu lanjutkan dari Excel BKU ke bukti, hasil penilaian, dan persetujuan atau keberatan.'
+      title:'Kerjakan SPJ, lalu pantau proses penilaian',
+      desc:'Lengkapi Excel BKU dan bukti SPJ. Setelah dikirim, pantau Pemeriksaan Pengawas Tahap 1, laporan ke DINAS, Penilaian SPJ Tahap 2, pengesahan, dan hasil final.'
     };
     if(r==='PENGAWAS')return {
       kicker:'ALUR PEMERIKSAAN PENGAWAS',
