@@ -2770,13 +2770,15 @@ async function restoreSession(){
     }
     await startApp();
     startSessionHeartbeat();
-  }catch(e){state.token=''; state.user=null; sessionStorage.removeItem('simpel_token'); authView();}
+  }catch(e){if(typeof clearSecureViewerClientState_==='function') clearSecureViewerClientState_(); state.token=''; state.user=null; sessionStorage.removeItem('simpel_token'); authView();}
 }
 
 async function logout(){
   stopSessionHeartbeat();
+  try{if(state.token && typeof revokeSecureViewerServerSessions_==='function') await revokeSecureViewerServerSessions_();}catch(e){}
   try{if(state.token) await api('logout');}catch(e){}
   invalidateRkasFrontendCaches();
+  if(typeof clearSecureViewerClientState_==='function') clearSecureViewerClientState_();
   state.token=''; state.user=null; sessionStorage.removeItem('simpel_token'); authView(msg('Anda telah keluar dari aplikasi.','ok'));
 }
 
@@ -7087,7 +7089,110 @@ function base64ToUint8Array_(base64){
   return out;
 }
 
+
+
+/* SECURE DOCUMENT VIEWER V2 — PENGAWAS/DINAS menerima halaman ter-render,
+ * bukan byte PDF. SEKOLAH tetap menggunakan PDF.js untuk dokumen miliknya. */
+window.__secureViewerSessions = window.__secureViewerSessions || new Map();
+window.__secureViewerPageCache = window.__secureViewerPageCache || new Map();
+function _secureViewerDocKey_(doc){ return String(doc?.id_dokumen||''); }
+function _secureViewerContext_(){
+  return {
+    period:String(window.__pdfInteractiveContext?.p||state.selectedPeriode||''),
+    npsn:String(window.__pdfInteractiveContext?.n||state.selectedNpsn||ownNpsn()||'')
+  };
+}
+function _secureViewerCacheKey_(docId,page,width){ return [docId,Number(page)||1,Math.round((Number(width)||1200)/100)*100].join('|'); }
+function _secureViewerCachePut_(key,value){
+  const cache=window.__secureViewerPageCache;
+  if(cache.has(key)){
+    const old=cache.get(key); if(old?.url && old.url!==value?.url) try{URL.revokeObjectURL(old.url);}catch(_){}
+    cache.delete(key);
+  }
+  cache.set(key,value);
+  while(cache.size>8){
+    const first=cache.keys().next().value,old=cache.get(first); cache.delete(first);
+    if(old?.url) try{URL.revokeObjectURL(old.url);}catch(_){}
+  }
+}
+async function revokeSecureViewerServerSessions_(){
+  if(!state.token || (!isPengawas() && !isDinas())) return;
+  try{ await api('closeAllSecureDocumentViewSessions'); }catch(_){}
+}
+function clearSecureViewerClientState_(){
+  try{
+    (window.__secureViewerPageCache||new Map()).forEach(v=>{if(v?.url)try{URL.revokeObjectURL(v.url);}catch(_){}});
+    window.__secureViewerPageCache=new Map();
+    window.__secureViewerSessions=new Map();
+  }catch(_){}
+}
+async function _getSecureViewerSession_(doc,force=false){
+  const docId=_secureViewerDocKey_(doc); if(!docId) throw new Error('Dokumen tidak memiliki id_dokumen aman.');
+  const cached=window.__secureViewerSessions.get(docId);
+  if(!force && cached && Number(cached.expMs||0)>Date.now()+30000) return cached;
+  const ctx=_secureViewerContext_();
+  const r=await api('createSecureDocumentViewSession',{idDokumen:docId,idPeriode:ctx.period,npsn:ctx.npsn});
+  const session={token:String(r.viewer_token||''),rendererUrl:String(r.renderer_url||'').replace(/\/+$/,''),expMs:Date.parse(r.expires_at||'')||Date.now()+300000};
+  if(!session.token||!session.rendererUrl) throw new Error('Server Secure Viewer belum siap.');
+  window.__secureViewerSessions.set(docId,session); return session;
+}
+async function _fetchSecureViewerPage_(doc,page,width,retry=true){
+  const docId=_secureViewerDocKey_(doc),key=_secureViewerCacheKey_(docId,page,width),cache=window.__secureViewerPageCache;
+  if(cache.has(key)) return cache.get(key);
+  const sess=await _getSecureViewerSession_(doc,false);
+  const url=new URL(sess.rendererUrl+'/v1/page');
+  url.searchParams.set('page',String(Math.max(1,Number(page)||1)));
+  url.searchParams.set('width',String(Math.max(700,Math.min(1800,Math.round(Number(width)||1200)))));
+  let res;
+  try{
+    res=await fetch(url.toString(),{method:'GET',headers:{Authorization:'Bearer '+sess.token},cache:'no-store',credentials:'omit',referrerPolicy:'no-referrer'});
+  }catch(e){ throw new Error('Secure Viewer tidak dapat dijangkau. Periksa deployment Cloud Run.'); }
+  if((res.status===401||res.status===403) && retry){
+    window.__secureViewerSessions.delete(docId);
+    await _getSecureViewerSession_(doc,true);
+    return _fetchSecureViewerPage_(doc,page,width,false);
+  }
+  if(!res.ok){
+    let detail=''; try{detail=await res.text();}catch(_){}
+    throw new Error('Secure Viewer HTTP '+res.status+(detail?' — '+detail.slice(0,160):''));
+  }
+  const contentType=String(res.headers.get('Content-Type')||'');
+  if(!/^image\/webp(?:;|$)/i.test(contentType)) throw new Error('Renderer tidak mengembalikan WebP halaman aman.');
+  const blob=await res.blob();
+  if(blob.size<=0 || blob.size>12*1024*1024) throw new Error('Ukuran halaman Secure Viewer tidak wajar.');
+  const value={url:URL.createObjectURL(blob),totalPages:Number(res.headers.get('X-Document-Pages')||0),page:Number(res.headers.get('X-Document-Page')||page),sessionId:String(res.headers.get('X-Viewer-Session')||'')};
+  _secureViewerCachePut_(key,value); return value;
+}
+async function _prefetchSecureViewerNeighbor_(doc,page,width,total){
+  const next=Number(page)+1; if(!total||next>Number(total))return;
+  try{ await _fetchSecureViewerPage_(doc,next,width,false); }catch(_){}
+}
+async function _renderSecureInteractivePdfPage_(doc,requested,wrap,ui){
+  ui.zoom=Math.max(.7,Math.min(2,Number(ui.zoom)||1));
+  const baseCssWidth=Math.max(320,Math.min((wrap.clientWidth||1000)-28,1100));
+  const pixelRatio=Math.max(1,Math.min(1.5,Number(window.devicePixelRatio)||1));
+  const targetWidth=Math.max(800,Math.min(1800,Math.round(baseCssWidth*ui.zoom*pixelRatio)));
+  const data=await _fetchSecureViewerPage_(doc,requested,targetWidth,true);
+  const total=Math.max(1,Number(data.totalPages)||Number(ui.totalPages)||1);
+  const safePage=Math.max(1,Math.min(total,Number(data.page)||Number(requested)||1));
+  ui.totalPages=total;ui.page=safePage;ui.docId=String(doc.id_dokumen||'');
+  const input=$('#interactivePage');if(input){input.value=safePage;input.max=total;}
+  const img=document.createElement('img');
+  img.src=data.url;img.alt=`Halaman ${safePage} dokumen ${doc.nama_file||''}`;img.className='secure-rendered-pdf-page';
+  img.draggable=false;img.style.display='block';img.style.width=Math.round(baseCssWidth*ui.zoom)+'px';img.style.maxWidth='none';img.style.height='auto';img.style.margin='0 auto';img.style.background='#fff';img.style.boxShadow='0 8px 25px rgba(16,42,67,.14)';img.style.userSelect='none';
+  wrap.innerHTML='';wrap.appendChild(img);wrap.dataset.page=String(safePage);wrap.dataset.documentId=ui.docId;wrap.style.overflow='auto';
+  const info=$('#interactivePageInfo');if(info)info.textContent=`/ ${total}`;
+  const zi=$('#interactiveZoomInfo');if(zi)zi.textContent=`${Math.round(ui.zoom*100)}%`;
+  const first=$('#interactiveFirstBtn');if(first)first.disabled=safePage<=1;
+  const prev=$('#interactivePrevBtn');if(prev)prev.disabled=safePage<=1;
+  const next=$('#interactiveNextBtn');if(next)next.disabled=safePage>=total;
+  const last=$('#interactiveLastBtn');if(last)last.disabled=safePage>=total;
+  renderInteractiveEvidenceSummary_();
+  setTimeout(()=>_prefetchSecureViewerNeighbor_(doc,safePage,targetWidth,total),0);
+}
+
 async function getProtectedPdfDocument_(doc){
+  if(!isSchool()) throw new Error('PENGAWAS/DINAS menggunakan Secure Viewer dan tidak menerima PDF asli.');
   const fileId=String(doc?.file_id||'');
   const period=String(window.__pdfInteractiveContext?.p||state.selectedPeriode||'');
   const npsn=String(window.__pdfInteractiveContext?.n||state.selectedNpsn||ownNpsn()||'');
@@ -7375,9 +7480,9 @@ function renderV20BkuWorkbenchHtml_(wb, docs){
   window.__v217Workbench=wb;
   const pdfBtn=(type,obj)=>{
     if(type==='PAJAK' && Number(obj.count||0)===0) return '<span class="badge badge-info">Tidak ada pajak</span>';
-    if(!obj.document?.file_id) return '<span class="badge badge-warning">PDF belum upload</span>';
+    if(!obj.document?.id_dokumen) return '<span class="badge badge-warning">PDF belum upload</span>';
     if(!isPengawas()) return '<span class="badge badge-success">PDF tersedia</span>';
-    return `<button class="btn btn-light btn-sm" onclick="runDerivedPdfCrossCheck('${type}','${esc(obj.document.file_id)}')">Cross-check PDF</button>`;
+    return `<button class="btn btn-light btn-sm" onclick="runDerivedPdfCrossCheck('${type}','${esc(obj.document.id_dokumen)}')">Cross-check PDF</button>`;
   };
   const bankRows=derived.bank?.rows||[], cashRows=derived.cash?.rows||[], taxRows=derived.tax?.rows||[];
   const statusIcon=v=>v?'✓':'⚠'; const statusClass=v=>v?'badge-success':'badge-danger';
@@ -7430,13 +7535,13 @@ function _v217PdfCompareHtml_(r){
   return `<div class="message ${type}" style="margin-bottom:8px"><b>${esc(r.status)}</b> — ${esc(r.message||'')}</div><div class="table-wrap"><table class="friendly-table"><thead><tr><th>Komponen</th><th>Excel BKU</th><th>PDF</th><th>Selisih</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 
-window.runDerivedPdfCrossCheck=async function(bookType,fileId){
+window.runDerivedPdfCrossCheck=async function(bookType,idDokumen){
   const wb=window.__v217Workbench||{},c=window.__pdfInteractiveContext||{};
   const p=wb.id_periode||c.p||state.selectedPeriode||'',n=wb.npsn||c.n||state.selectedNpsn||state.user?.npsn||'';
   const type=String(bookType||'').toUpperCase(),host=document.getElementById('v217PdfCmp'+type);
   if(host)host.innerHTML=loading('Membaca total pada PDF...');
   try{
-    const r=await api('crossCheckDerivedBookPdf',{data:{bookType:type,fileId:fileId,idPeriode:p,npsn:n}});
+    const r=await api('crossCheckDerivedBookPdf',{data:{bookType:type,idDokumen:idDokumen,idPeriode:p,npsn:n}});
     if(host)host.innerHTML=_v217PdfCompareHtml_(r);
     if(r.status==='COCOK')toast('Cross-check PDF '+type+' cocok dengan Excel BKU.','ok',4500);
     else if(r.status==='SELISIH')toast('Ada selisih pada PDF '+type+'.','warning',5500);
@@ -7515,9 +7620,9 @@ function renderPdfInteractive(x){
             <button class="v224-icon-btn" onclick="interactivePdfZoom(.1)" title="Perbesar (+)" aria-label="Perbesar">+</button>
           </div>
 
-          ${isPengawas()?`<button class="v224-ocr-btn" onclick="ocrCurrentInteractivePdf()" title="OCR hanya membaca bukti PDF; bukan sumber transaksi BKU">OCR halaman</button>`:''}
+          ${(isPengawas()||isDinas())?`<span class="badge badge-success" title="PDF asli tidak dikirim ke browser">🔒 Secure Viewer</span>`:''}
         </div>
-        <div id="interactivePdfFrame" tabindex="0" class="v224-pdf-frame"><div class="muted" style="padding:40px;text-align:center">Memuat PDF secara aman...</div></div>
+        <div id="interactivePdfFrame" tabindex="0" class="v224-pdf-frame"><div class="muted" style="padding:40px;text-align:center">${isSchool()?'Memuat PDF...':'Menyiapkan halaman dokumen aman...'}</div></div>
         <div class="v224-keyboard-hint">
           <b>Keyboard:</b>
           <span>← / → halaman</span>
@@ -7568,6 +7673,11 @@ window.renderInteractivePdfPage=async function(pageNo){
   const requested=Math.max(1,Number(pageNo)||1);
   wrap.innerHTML=loading(`Memuat halaman ${requested}...`);
   try{
+    if(!isSchool()){
+      await _renderSecureInteractivePdfPage_(doc,requested,wrap,ui);
+      if(document.activeElement===document.body || !document.activeElement) wrap.focus({preventScroll:true});
+      return;
+    }
     const pdf=await getProtectedPdfDocument_(doc);
     ui.totalPages=pdf.numPages;
     const safePage=Math.min(requested,pdf.numPages);
