@@ -3,6 +3,7 @@
 
 <html lang="id">
 <head>
+<!-- SIMPEL SPJ SECURE VIEWER V3 BUGFIX AUDITED -->
 <meta charset="utf-8"/>
 <meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"/>
 <title>SIMPEL SPJ — Kabupaten Rembang</title>
@@ -3930,7 +3931,7 @@ async function renderStatusSekolah(){
     const detailRows=details.map(x=>`<tr><td>${esc(x.tahap_penilaian||'-')}</td><td>${esc(x.id_indikator||'-')}</td><td><b>${esc(x.skor??'-')}</b></td><td>${esc(x.status_berlaku||'-')}</td><td>${esc(x.catatan_pengawas||'-')}</td></tr>`).join('');
     const findingRows=findings.slice(0,100).map(x=>`<tr><td>${esc(x.kode_temuan||'-')}</td><td>${esc(x.uraian_temuan||x.temuan||'-')}</td><td>${badge(x.hasil_verifikasi||'BELUM',upper(x.hasil_verifikasi||'')==='TERBUKTI'?'success':'warning')}</td><td>${esc(x.catatan_verifikasi||x.catatan_pengawas||'-')}</td></tr>`).join('');
     area.innerHTML=`<div class="school-summary-grid"><div class="school-summary-card"><small>Nama Sekolah</small><strong style="font-size:1rem">${esc(sekolah.nama_sekolah||npsn)}</strong></div><div class="school-summary-card"><small>NPSN</small><strong>${esc(npsn)}</strong></div><div class="school-summary-card"><small>Pengawas</small><strong style="font-size:1rem">${esc(pengawas.nama_pengawas||pengawas.id_pengawas||'Belum ditugaskan')}</strong></div><div class="school-summary-card"><small>Status Final</small><strong style="font-size:1rem">${esc(String(wf.status_final||'BELUM_FINAL').replaceAll('_',' '))}</strong></div></div>
-      <div class="school-summary-grid" style="margin-top:14px"><div class="school-summary-card"><small>SPJ Diinput</small><strong>${fmtNum(uploaded)}/${fmtNum(spj.length)}</strong></div><div class="school-summary-card"><small>Tahap 1 Pengawas</small><strong>${esc(String(wf.status_tahap1||'BELUM_DIMULAI').replaceAll('_',' '))}</strong><span class="muted">Nilai ${esc(a1.nilai_akhir??'—')}</span></div><div class="school-summary-card"><small>Laporan Tahap 1</small><strong>${esc(String(wf.laporan_tahap1_status||'BELUM_DIKIRIM').replaceAll('_',' '))}</strong></div><div class="school-summary-card"><small>Tahap 2 DINAS</small><strong>${esc(String(wf.status_tahap2||'TERKUNCI').replaceAll('_',' '))}</strong><span class="muted">Nilai ${esc(a2.nilai_kualitas??'—')}</span></div></div>
+      <div class="school-summary-grid" style="margin-top:14px"><div class="school-summary-card"><small>SPJ Diinput</small><strong>${fmtNum(uploaded)}/${fmtNum(spj.length)}</strong></div><div class="school-summary-card"><small>Tahap 1 Pengawas</small><strong>${esc(String(wf.status_tahap1||'BELUM_DIMULAI').replaceAll('_',' '))}</strong><span class="muted">Nilai ${esc(a1.nilai_akhir??'—')}</span></div><div class="school-summary-card"><small>Laporan Tahap 1</small><strong>${esc(String(wf.laporan_tahap1_status||'BELUM_DIKIRIM').replaceAll('_',' '))}</strong></div><div class="school-summary-card"><small>Tahap 2 DINAS</small><strong>${esc(String(wf.status_tahap2||'TERKUNCI').replaceAll('_',' '))}</strong><span class="muted">${upper(wf.status_final)==='DISAHKAN'?`Nilai final ${esc(wf.nilai_akhir??'—')}`:'Nilai ditampilkan setelah pengesahan'}</span></div></div>
       <div class="panel" style="margin-top:14px"><h3>Alur Penilaian</h3><div class="school-timeline">${[
         ['TAHAP 1','Pemeriksaan & Penilaian Pengawas',wf.status_tahap1,upper(wf.status_tahap1)==='SELESAI'],
         ['LAPORAN','Review Laporan Tahap 1 oleh DINAS',wf.laporan_tahap1_status,upper(wf.laporan_tahap1_status)==='DITERIMA'],
@@ -7002,7 +7003,7 @@ window.loadLaporanTahap1Dinas=async function(){
       let action='—';
       if(st==='DIKIRIM') action=`<button class="btn btn-primary btn-sm" onclick="terimaLaporanTahap1Ui('${esc(x.id_workflow)}')">Terima</button> <button class="btn btn-light btn-sm" onclick="revisiLaporanTahap1Ui('${esc(x.id_workflow)}')">Minta Revisi</button>`;
       else if(st==='DITERIMA') action=`<button class="btn btn-light btn-sm" onclick="bukaTahap2DariLaporan('${esc(x.npsn)}')">Buka Tahap 2</button>`;
-      return `<tr><td><b>${esc(x.nama_sekolah||'-')}</b><br><small>${esc(x.npsn||'')}</small></td><td>${esc(x.pengawas_id||'-')}</td><td>${x.nilai_tahap1!==''?esc(x.nilai_tahap1):'—'}</td><td><span class="badge badge-${st==='DITERIMA'?'success':st==='PERLU_REVISI'?'warning':'info'}">${esc(st.replaceAll('_',' '))}</span></td><td>${esc(String(x.status_tahap2||'TERKUNCI').replaceAll('_',' '))}</td><td>${action}</td></tr>`;
+      return `<tr><td><b>${esc(x.nama_sekolah||'-')}</b><br><small>${esc(x.npsn||'')}</small></td><td>${esc(x.pengawas_id||'-')}</td><td>${x.nilai_tahap1!==''?esc(x.nilai_tahap1):'—'}</td><td><span class="badge badge-${st==='DITERIMA'?'success':st==='PERLU_REVISI'?'warning':'info'}">${esc(st.replaceAll('_',' '))}</span>${x.alasan_revisi_tahap1&&st==='PERLU_REVISI'?`<div class="muted" style="margin-top:4px">${esc(x.alasan_revisi_tahap1)}</div>`:''}</td><td>${esc(String(x.status_tahap2||'TERKUNCI').replaceAll('_',' '))}</td><td>${action}</td></tr>`;
     }).join('')}</tbody></table></div>`;
   }catch(e){area.innerHTML=msg(errorText(e),'error');}
 };
@@ -7449,23 +7450,23 @@ window.openPdfInteractive=async function(options={}){
     // Asesmen harus tersedia terlebih dahulu. Sebelumnya dibuat paralel dengan
     // evidence feed sehingga feed kadang membaca asesmen lama / belum tersedia.
     let a={};
-    if(isPengawas()){
+    if(isPengawas()||isDinas()){
       const assessRes=await api('buatAtauAmbilAsesmen',{idPeriode:p,npsn:n});
       a=assessRes.data||assessRes.asesmen||assessRes||{};
-      if(!a.id_asesmen) throw new Error('Asesmen Pengawas tidak dapat disiapkan.');
+      if(!a.id_asesmen) throw new Error(isDinas()?'Penilaian SPJ Tahap 2 tidak dapat disiapkan.':'Asesmen Pengawas tidak dapat disiapkan.');
     }
     const [docRes,trxRes,findRes,packetRes,workbenchRes]=await Promise.all([
       api('getDokumenSPJ',{idPeriode:p,npsn:n}),
       safeApi('getTransaksiSPJ',{idPeriode:p,npsn:n},{data:[]}),
       safeApi('getTemuanSPJ',{idPeriode:p,npsn:n},{data:[]}),
       safeApi('getPdfEvidenceFeed',{idPeriode:p,npsn:n,idAsesmen:a.id_asesmen||''},{data:{}}),
-      safeApi('getBkuLedgerWorkbench',{idPeriode:p,npsn:n},{summary:{},books:{},transactions:[],exceptions:[]})
+      isDinas()?Promise.resolve({}):safeApi('getBkuLedgerWorkbench',{idPeriode:p,npsn:n},{summary:{},books:{},transactions:[],exceptions:[]})
     ]);
     const docs=docRes.data||[];
     const tx=trxRes.data||[];
     const findings=findRes.data||[];
     const packet=packetRes.data||{};
-    if(!isPengawas()) a=packet.asesmen||{};
+    if(isSchool()) a=packet.asesmen||{};
     const detail=packet.detail_asesmen||[];
     renderPdfInteractive({p,n,docs,tx,findings,assessment:a,details:detail,workbench:workbenchRes||{}});
   }catch(e){area.innerHTML=msg(errorText(e),'error');}
@@ -7594,10 +7595,12 @@ function renderPdfInteractive(x){
     return `<tr><td>${esc(t.tanggal_transaksi||'-')}</td><td><b>${esc(t.nomor_bukti||'-')}</b></td><td>${esc(t.kode_rekening||'-')}</td><td>${esc(t.uraian_transaksi||'-')}</td><td>${Number(t.nilai_transaksi||0).toLocaleString('id-ID')}</td><td>${fs.length?fs.map(f=>`<span class="badge badge-warning" style="display:inline-block;margin:2px">${esc(f.kode_temuan||'TEMUAN')} • ${esc(f.hasil_verifikasi||'BELUM')}</span>`).join(''):'<span class="badge badge-success">OK</span>'}</td><td>${action}</td></tr>`;
   }).join('');
 
-  area.innerHTML=renderV20BkuWorkbenchHtml_(x.workbench||{},docs)+`<div class="panel" style="padding:0;overflow:hidden;margin-top:16px">
+  const workbenchHtml=isDinas()?'':renderV20BkuWorkbenchHtml_(x.workbench||{},docs);
+  const canAssessPdf=isPengawas()||isDinas();
+  area.innerHTML=workbenchHtml+`<div class="panel" style="padding:0;overflow:hidden;margin-top:16px">
     <div style="padding:14px 16px;border-bottom:1px solid #e5e7eb;display:flex;gap:12px;justify-content:space-between;align-items:center;flex-wrap:wrap">
-      <div><b>${isPengawas()?'Bukti PDF & Penilaian Pengawas':isSchool()?'Bukti PDF Sekolah':'Bukti PDF & Monitoring'}</b><div class="muted">Transaksi berasal dari Excel BKU; PDF hanya bukti/cross-check • ${esc(x.n)} • ${esc(x.p)}</div></div>
-      <div class="v242-pdf-context"><span class="v242-mode-pill ${isPengawas()?'assess':'view'}">${isPengawas()?'MODE PENILAIAN':isSchool()?'MODE LIHAT SEKOLAH':'MODE LIHAT'}</span><select id="interactiveDocSelect" style="min-width:min(360px,100%)" onchange="changeInteractivePdf()">${docOptions}</select></div>
+      <div><b>${isPengawas()?'Bukti PDF & Penilaian Tahap 1':isDinas()?'Bukti PDF & Penilaian Tahap 2':'Bukti PDF Sekolah'}</b><div class="muted">Transaksi berasal dari Excel BKU; PDF hanya bukti/cross-check • ${esc(x.n)} • ${esc(x.p)}</div></div>
+      <div class="v242-pdf-context"><span class="v242-mode-pill ${canAssessPdf?'assess':'view'}">${isPengawas()?'MODE PENILAIAN TAHAP 1':isDinas()?'MODE PENILAIAN TAHAP 2':'MODE LIHAT SEKOLAH'}</span><select id="interactiveDocSelect" style="min-width:min(360px,100%)" onchange="changeInteractivePdf()">${docOptions}</select></div>
     </div>
     <div class="pdf-interactive-grid" style="display:grid;grid-template-columns:minmax(0,1.55fr) minmax(340px,.95fr);min-height:72vh">
       <section style="background:#eef1f3;min-width:0;padding:10px">
@@ -7633,11 +7636,11 @@ function renderPdfInteractive(x){
         </div>
       </section>
       <aside style="padding:16px;overflow:auto;max-height:78vh">
-        <div class="cards" style="grid-template-columns:1fr 1fr"><div class="stat"><small>Status</small><strong>${esc(a.status_asesmen||'DRAFT')}</strong></div><div class="stat"><small>Nilai akhir</small><strong>${esc(a.nilai_akhir??'-')}</strong></div></div>
-        ${isPengawas()?`<div class="message ok" style="margin-top:12px"><b>Mode penilaian Pengawas.</b> Halaman aktif dipertahankan saat skor, temuan, atau bukti disimpan.</div>`:`<div class="message info v242-view-note" style="margin-top:12px"><b>Mode lihat.</b> ${isSchool()?'Sekolah dapat membaca bukti dan hasil pemeriksaan, tetapi tidak dapat mengubah skor atau temuan Pengawas.':'Viewer ini tidak mengubah penilaian.'}</div>`}
+        <div class="cards" style="grid-template-columns:1fr 1fr"><div class="stat"><small>Status</small><strong>${esc(a.status_asesmen||'DRAFT')}</strong></div><div class="stat"><small>Nilai tahap</small><strong>${esc(a.nilai_kualitas??a.nilai_akhir??'-')}</strong></div></div>
+        ${canAssessPdf?`<div class="message ok" style="margin-top:12px"><b>${isDinas()?'Mode Penilaian SPJ Tahap 2 DINAS.':'Mode Penilaian SPJ Tahap 1 Pengawas.'}</b> Halaman aktif dipertahankan saat skor atau bukti disimpan.</div>`:`<div class="message info v242-view-note" style="margin-top:12px"><b>Mode lihat.</b> Sekolah dapat membaca bukti dan status proses, tetapi tidak dapat mengubah skor atau temuan.</div>`}
         <div class="panel" style="margin-top:10px;background:#f7faf9"><b>Bukti pada halaman ini</b><div id="pageEvidenceSummary" class="muted" style="margin-top:7px">Memuat keterkaitan bukti...</div></div>
         <div class="panel" style="margin-top:14px;background:#fafafa"><b>Temuan periode</b><div style="margin-top:8px;max-height:220px;overflow:auto">${findings.length?findings.map(f=>`<div style="padding:9px;border-bottom:1px solid #eee"><b>${esc(f.kode_temuan||'-')}</b> ${badge(f.level_temuan||'INFO','warning')}<div class="muted">${esc(f.catatan_sistem||'-')}</div><div style="margin-top:4px">Verifikasi: <b>${esc(f.hasil_verifikasi||'BELUM')}</b></div>${isPengawas()?`<div class="toolbar" style="margin-top:6px"><button class="btn btn-sm btn-primary" onclick="verifyFindingDirect('${esc(f.id_temuan)}','TERBUKTI')">✓ TERBUKTI</button><button class="btn btn-sm btn-light" onclick="verifyFindingDirect('${esc(f.id_temuan)}','TIDAK_TERBUKTI')">Tidak Terbukti</button><button class="btn btn-sm btn-light" onclick="markFindingEvidenceV10('${esc(f.id_temuan)}')">📌 Tandai Halaman</button></div>`:''}</div>`).join(''):'<div class="muted">Belum ada temuan.</div>'}</div></div>
-        ${isPengawas()?`<div class="panel" style="margin-top:14px"><b>Penilaian indikator</b><div class="muted" style="margin-top:4px">Skor otomatis tetap menjadi dasar; koreksi manual wajib disertai alasan.</div><div id="interactiveIndicators" style="margin-top:10px">Memuat indikator...</div></div>`:''}
+        ${canAssessPdf?`<div class="panel" style="margin-top:14px"><b>${isDinas()?'Penilaian SPJ Tahap 2 (SPJ 05–10)':'Penilaian SPJ Tahap 1 (SPJ 01–04)'}</b><div class="muted" style="margin-top:4px">Skor otomatis tetap menjadi dasar; koreksi manual wajib disertai alasan.</div><div id="interactiveIndicators" style="margin-top:10px">Memuat indikator...</div></div>`:''}
         <div class="panel" style="margin-top:14px"><b>Transaksi & status pemeriksaan</b><div class="table-wrap" style="margin-top:8px"><table class="friendly-table"><thead><tr><th>Tanggal</th><th>Bukti</th><th>Kode</th><th>Uraian</th><th>Nilai</th><th>Status</th><th>Bukti PDF</th></tr></thead><tbody>${txRows||emptyRow(7)}</tbody></table></div></div>
       </aside>
     </div>
@@ -7812,30 +7815,40 @@ window.verifyFindingDirect=async function(id,hasil){
   catch(e){toast(errorText(e),'error',4500);}
 };
 window.loadInteractiveIndicators=async function(){
-  const c=window.__pdfInteractiveContext; if(!c||!isPengawas())return;
+  const c=window.__pdfInteractiveContext; if(!c||(!isPengawas()&&!isDinas()))return;
   const box=$('#interactiveIndicators'); if(!box)return;
   try{
-    const r=await api('getPengawasBkuAnalysis',{idPeriode:c.p,npsn:c.n,idAsesmen:c.assessment.id_asesmen});
-    const data=r||{}; window.__bkuAutoAnalysis=data;
-    window.__pdfInteractiveIndicators = Array.isArray(data.indicators) ? data.indicators : [];
+    let indicators=[],summary={};
+    if(isPengawas()){
+      const r=await api('getPengawasBkuAnalysis',{idPeriode:c.p,npsn:c.n,idAsesmen:c.assessment.id_asesmen});
+      const data=r||{}; window.__bkuAutoAnalysis=data;
+      indicators=Array.isArray(data.indicators)?data.indicators:[];
+      summary=data.summary||{};
+    }else{
+      const r=await api('hitungIndikatorDariTemuan',{idPeriode:c.p,npsn:c.n,idAsesmen:c.assessment.id_asesmen});
+      indicators=Array.isArray(r.data)?r.data:[];
+      summary={total_dokumen_unik:indicators.filter(x=>x.id_dokumen).length,pending_value_verifications:Number(r.pending_value_verifications||0),pending_findings:Number(r.pending_findings||0)};
+    }
+    window.__pdfInteractiveIndicators=indicators;
     renderInteractiveEvidenceSummary_();
-    const s=data.summary||{};
-    const cards=(data.indicators||[]).map(function(d,i){
+    const penilai=isDinas()?'DINAS':'Pengawas';
+    const cards=indicators.map(function(d,i){
       const locked=String(c.assessment.status_asesmen||'').toUpperCase()==='SELESAI';
       let form='';
-      if(locked){ form='<div class="v11-locked-note">🔒 Penilaian sudah difinalisasi.</div>'; }
+      if(locked){ form='<div class="v11-locked-note">🔒 Penilaian tahap ini sudah difinalisasi.</div>'; }
       else {
         const opts=[0,1,2,3,4].map(function(v){return '<option value="'+v+'" '+(String(d.skor)===String(v)?'selected':'')+'>'+v+'</option>';}).join('');
-        form='<div class="v11-assessment-form"><div><label>Nilai final</label><select id="bkuScore_'+esc(d.id_indikator)+'"><option value="">Gunakan otomatis ('+Number(d.skor_otomatis||0).toFixed(2)+')</option>'+opts+'</select></div><div><label>Halaman bukti</label><input id="bkuPage_'+esc(d.id_indikator)+'" type="number" min="1" value="'+esc(d.halaman_bukti||$('#interactivePage')?.value||1)+'"></div></div>'+
-        '<div style="margin-top:8px"><label>Catatan Pengawas</label><textarea id="bkuNote_'+esc(d.id_indikator)+'" rows="2" placeholder="Wajib jika mengubah nilai otomatis.">'+esc(d.catatan_pengawas||'')+'</textarea></div>'+
-        '<div class="v11-assessment-actions"><button class="btn btn-sm btn-primary" onclick="saveBkuAutoAssessment(\''+esc(c.assessment.id_asesmen)+'\',\''+esc(d.id_indikator)+'\',\''+esc(d.skor_otomatis)+'\')">✓ Simpan</button><button class="btn btn-sm btn-light" onclick="focusPdfIndicatorPage(\''+esc(d.id_indikator)+'\')">📄 Bukti</button></div>';
+        form='<div class="v11-assessment-form"><div><label>Nilai tahap</label><select id="bkuScore_'+esc(d.id_indikator)+'"><option value="">Gunakan otomatis ('+(d.skor_otomatis==null?'—':Number(d.skor_otomatis).toFixed(2))+')</option>'+opts+'</select></div><div><label>Halaman bukti</label><input id="bkuPage_'+esc(d.id_indikator)+'" type="number" min="1" value="'+esc(d.halaman_bukti||$('#interactivePage')?.value||1)+'"></div></div>'+ 
+        '<div style="margin-top:8px"><label>Catatan '+penilai+'</label><textarea id="bkuNote_'+esc(d.id_indikator)+'" rows="2" placeholder="Wajib jika mengubah nilai otomatis.">'+esc(d.catatan_pengawas||'')+'</textarea></div>'+ 
+        '<div class="v11-assessment-actions"><button class="btn btn-sm btn-primary" onclick="saveBkuAutoAssessment(\''+esc(c.assessment.id_asesmen)+'\',\''+esc(d.id_indikator)+'\',\''+esc(d.skor_otomatis??'')+'\')">✓ Simpan</button><button class="btn btn-sm btn-light" onclick="focusPdfIndicatorPage(\''+esc(d.id_indikator)+'\')">📄 Bukti</button></div>';
       }
-      return '<div class="v11-assessment-card"><div class="v11-assessment-head"><div><span class="v11-indicator-index">'+String(i+1).padStart(2,'0')+'</span><div><b>'+esc(d.kode_indikator)+'</b><div class="v11-assessment-name">'+esc(d.nama_indikator)+'</div></div></div><div class="v11-score-chip">'+Number(d.skor||0).toFixed(2)+'<small>/4</small></div></div><div class="v11-assessment-meta"><span>Otomatis <b>'+Number(d.skor_otomatis||0).toFixed(2)+'</b></span><span>Status <b>'+esc(d.sumber_penilaian)+'</b></span></div><div class="muted" style="margin:8px 0"><b>Dasar:</b> '+esc(d.basis)+'</div>'+form+'</div>';
+      return '<div class="v11-assessment-card"><div class="v11-assessment-head"><div><span class="v11-indicator-index">'+String(i+1).padStart(2,'0')+'</span><div><b>'+esc(d.kode_indikator||d.id_indikator)+'</b><div class="v11-assessment-name">'+esc(d.nama_indikator||'Instrumen')+'</div></div></div><div class="v11-score-chip">'+(d.skor==null?'—':Number(d.skor).toFixed(2))+'<small>/4</small></div></div><div class="v11-assessment-meta"><span>Otomatis <b>'+(d.skor_otomatis==null?'—':Number(d.skor_otomatis).toFixed(2))+'</b></span><span>Status <b>'+esc(d.sumber_penilaian||d.status_verifikasi||'-')+'</b></span></div><div class="muted" style="margin:8px 0"><b>Dokumen:</b> '+esc(d.nama_file||d.nama_indikator||'-')+'</div>'+form+'</div>';
     }).join('');
-    box.innerHTML='<div class="message ok"><b>Analisis otomatis BKU</b><br><span class="muted">Sumber utama: BKU terstruktur. PDF digunakan untuk verifikasi bukti.</span></div>'+
-      '<div class="cards" style="grid-template-columns:repeat(4,1fr);margin:10px 0"><div class="stat"><small>Transaksi</small><strong>'+(s.total_transaksi||0)+'</strong></div><div class="stat"><small>Dokumen unik</small><strong>'+(s.total_dokumen_unik||0)+'</strong></div><div class="stat"><small>Cocok RKAS</small><strong>'+(s.rkas_cocok||0)+'/'+(s.total_transaksi||0)+'</strong></div><div class="stat"><small>Duplikasi bukti</small><strong>'+(s.duplikasi_bukti||0)+'</strong></div></div>'+(cards||'<div class="muted">Belum ada hasil analisis BKU.</div>');
+    const summaryHtml=isPengawas()?'<div class="cards" style="grid-template-columns:repeat(4,1fr);margin:10px 0"><div class="stat"><small>Transaksi</small><strong>'+(summary.total_transaksi||0)+'</strong></div><div class="stat"><small>Dokumen unik</small><strong>'+(summary.total_dokumen_unik||0)+'</strong></div><div class="stat"><small>Cocok RKAS</small><strong>'+(summary.rkas_cocok||0)+'/'+(summary.total_transaksi||0)+'</strong></div><div class="stat"><small>Duplikasi bukti</small><strong>'+(summary.duplikasi_bukti||0)+'</strong></div></div>':'<div class="cards" style="grid-template-columns:repeat(3,1fr);margin:10px 0"><div class="stat"><small>Instrumen Tahap 2</small><strong>'+indicators.length+'/6</strong></div><div class="stat"><small>Perlu verifikasi nilai</small><strong>'+(summary.pending_value_verifications||0)+'</strong></div><div class="stat"><small>Temuan belum selesai</small><strong>'+(summary.pending_findings||0)+'</strong></div></div>';
+    box.innerHTML='<div class="message ok"><b>'+esc(isDinas()?'Penilaian SPJ Tahap 2 DINAS':'Analisis otomatis Tahap 1 Pengawas')+'</b><br><span class="muted">PDF digunakan sebagai bukti/cross-check; ruang lingkup instrumen dikunci oleh backend sesuai tahap penilaian.</span></div>'+summaryHtml+(cards||'<div class="muted">Belum ada instrumen pada tahap ini.</div>');
   }catch(e){box.innerHTML=msg(errorText(e));}
 };
+
 window.saveBkuAutoAssessment=async function(idAsesmen,idIndikator,auto){
   const scoreEl=$('#bkuScore_'+idIndikator), noteEl=$('#bkuNote_'+idIndikator), pageEl=$('#bkuPage_'+idIndikator);
   const selected=scoreEl?.value||'', note=noteEl?.value?.trim()||'', score=selected===''?'':Number(selected);
@@ -7909,7 +7922,7 @@ window.loadPengawasLaporanTahap1=async function(){
     const r=await api('getWorkflowSPJ',{idPeriode:p,npsn:n}),w=r.data||{};
     const st1=upper(w.status_tahap1||'BELUM_DIMULAI'),lap=upper(w.laporan_tahap1_status||'BELUM_DIKIRIM');
     const canSend=st1==='SELESAI'&&['BELUM_DIKIRIM',''].includes(lap);
-    area.innerHTML=`<div class="cards"><div class="stat"><small>Penilaian Tahap 1</small><strong>${esc(st1.replaceAll('_',' '))}</strong></div><div class="stat"><small>Nilai Tahap 1</small><strong>${w.nilai_tahap1!==''?esc(w.nilai_tahap1):'—'}</strong></div><div class="stat"><small>Status Laporan</small><strong>${esc(lap.replaceAll('_',' '))}</strong></div><div class="stat"><small>Tahap 2 DINAS</small><strong>${esc(String(w.status_tahap2||'TERKUNCI').replaceAll('_',' '))}</strong></div></div>${lap==='PERLU_REVISI'?msg('DINAS meminta revisi. Buka Penilaian SPJ Tahap 1, perbaiki/finalisasi ulang, lalu kirim kembali.','warning'):''}${canSend?`<div class="toolbar" style="margin-top:14px"><button class="btn btn-primary" onclick="kirimLaporanTahap1Ui()">Kirim Laporan Tahap 1 ke DINAS</button></div>`:''}${lap==='DIKIRIM'?msg('Laporan sudah dikirim dan sedang menunggu review DINAS.','info'):''}${lap==='DITERIMA'?msg('Laporan Tahap 1 sudah diterima DINAS. Tahap 2 menjadi kewenangan DINAS.','ok'):''}`;
+    area.innerHTML=`<div class="cards"><div class="stat"><small>Penilaian Tahap 1</small><strong>${esc(st1.replaceAll('_',' '))}</strong></div><div class="stat"><small>Nilai Tahap 1</small><strong>${w.nilai_tahap1!==''?esc(w.nilai_tahap1):'—'}</strong></div><div class="stat"><small>Status Laporan</small><strong>${esc(lap.replaceAll('_',' '))}</strong></div><div class="stat"><small>Tahap 2 DINAS</small><strong>${esc(String(w.status_tahap2||'TERKUNCI').replaceAll('_',' '))}</strong></div></div>${w.alasan_revisi_tahap1&&lap!=='DITERIMA'?msg(`Revisi DINAS: ${esc(w.alasan_revisi_tahap1)}. Buka Penilaian SPJ Tahap 1, perbaiki/finalisasi ulang, lalu kirim kembali.`,'warning'):lap==='PERLU_REVISI'?msg('DINAS meminta revisi. Buka Penilaian SPJ Tahap 1, perbaiki/finalisasi ulang, lalu kirim kembali.','warning'):''}${canSend?`<div class="toolbar" style="margin-top:14px"><button class="btn btn-primary" onclick="kirimLaporanTahap1Ui()">Kirim Laporan Tahap 1 ke DINAS</button></div>`:''}${lap==='DIKIRIM'?msg('Laporan sudah dikirim dan sedang menunggu review DINAS.','info'):''}${lap==='DITERIMA'?msg('Laporan Tahap 1 sudah diterima DINAS. Tahap 2 menjadi kewenangan DINAS.','ok'):''}`;
   }catch(e){area.innerHTML=msg(errorText(e),'error');}
 };
 window.kirimLaporanTahap1Ui=async function(){
