@@ -1899,7 +1899,7 @@ window.ROLE_MENUS = {
     ]},
     { group:'PROSES & PENILAIAN', items:[
       { id:'monitoringGlobal', label:'6. Monitoring SPJ' },
-      { id:'penilaianFase1', label:'7. Penilaian Fase 1' },
+      { id:'penilaianFase1', label:'7. Persetujuan Fase 1 Pengawas' },
       { id:'rekonsiliasi', label:'8. Rekonsiliasi' },
       { id:'penilaianFase2', label:'9. Penilaian Fase 2' },
       { id:'finalisasiSpj', label:'10. Finalisasi DINAS' },
@@ -1920,7 +1920,8 @@ window.ROLE_MENUS = {
       { id:'pdfInteraktif', label:'2. Pemeriksaan BKU & Dokumen' },
       { id:'temuan', label:'3. Temuan & Rekomendasi' },
       { id:'verifikasiUlang', label:'4. Verifikasi Ulang / Review' },
-      { id:'arsipPenilaianV5', label:'5. Hasil / Arsip' }
+      { id:'penilaianFase1', label:'5. Penilaian Fase 1 & Kirim ke DINAS' },
+      { id:'arsipPenilaianV5', label:'6. Hasil / Arsip' }
     ]},
     { group:'PENDUKUNG', items:[
       { id:'pesan', label:'Pesan & Koordinasi' },
@@ -1955,11 +1956,11 @@ const SUBMENU_TUTORIALS = {
   transaksi:{title:'BKU Data',text:'Sekolah memilih tepat satu sumber BKU Data: Excel BKU atau PDF BKU Digital non-scan. Keduanya dinormalisasi menjadi transaksi kanonik.',flow:['Stage INPUT SPJ','BKU Data','Validasi','Snapshot Aktif'],current:1},
   dokumenBulanan:{title:'Dokumen SPJ & BKU Resmi',text:'BKU Resmi berupa scan PDF bertanda tangan diunggah terpisah dari BKU Data. Bukti SPJ dan BKU Resmi menjadi evidence pemeriksaan.',flow:['BKU Data','BKU Resmi & Bukti','Pemeriksaan','Tindak Lanjut'],current:1},
   pdfInteraktif:{title:'Pemeriksaan BKU & Dokumen',text:'Pengawas memeriksa transaksi kanonik, BKU Resmi, dan bukti SPJ. Workbench ini tidak membuat atau memfinalisasi Penilaian Fase 1/Fase 2.',flow:['Sekolah Tugas','BKU & Bukti','Pemeriksaan','Temuan'],current:2},
-  temuan:{title:'Temuan & Rekomendasi',text:'Pengawas mencatat temuan berbasis bukti dan rekomendasi. Hasil pemeriksaan menjadi input bagi penilaian DINAS.',flow:['Bukti','Temuan','Rekomendasi','Perbaikan'],current:1},
-  verifikasiUlang:{title:'Verifikasi Ulang / Review',text:'Pengawas memeriksa tindak lanjut Sekolah pada tahap PERBAIKAN dan menyerahkan hasil review sebagai input DINAS.',flow:['Perbaikan Sekolah','Verifikasi','Review','Input DINAS'],current:1},
+  temuan:{title:'Temuan & Rekomendasi',text:'Pengawas mencatat temuan berbasis bukti dan rekomendasi. Setelah tindak lanjut diverifikasi, hasil pemeriksaan menjadi dasar Penilaian Fase 1 Pengawas.',flow:['Bukti','Temuan','Rekomendasi','Perbaikan','Fase 1 Pengawas'],current:1},
+  verifikasiUlang:{title:'Verifikasi Ulang / Review',text:'Pengawas memeriksa tindak lanjut Sekolah pada tahap PERBAIKAN. Setelah verifikasi selesai, sekolah dapat masuk Penilaian Fase 1 Pengawas saat stage dibuka DINAS.',flow:['Perbaikan Sekolah','Verifikasi','Fase 1 Pengawas','Kirim DINAS'],current:1},
   perbaikanSpj:{title:'Perbaikan / Tindak Lanjut',text:'Sekolah memperbaiki BKU atau dokumen hanya ketika stage PERBAIKAN dibuka DINAS.',flow:['Temuan','Perbaikan','Verifikasi Ulang','Fase 1'],current:1},
   monitoringGlobal:{title:'Monitoring SPJ',text:'DINAS memantau kesiapan BKU Data, dokumen, pemeriksaan, dan tindak lanjut sebelum masuk rangkaian penilaian.',flow:['Input SPJ','Pemeriksaan','Perbaikan','Penilaian'],current:0},
-  penilaianFase1:{title:'Penilaian Fase 1',text:'DINAS menetapkan penilaian awal berdasarkan transaksi kanonik, dokumen, serta hasil pemeriksaan Pengawas.',flow:['Pemeriksaan','Perbaikan','Fase 1','Rekonsiliasi'],current:2},
+  penilaianFase1:{title:'Penilaian Fase 1',text:'PENGAWAS menilai 10 komponen dokumen terhadap BKU Data lalu mengirim Fase 1 ke DINAS. DINAS mereview dan menyetujui sebelum Rekonsiliasi.',flow:['Pemeriksaan','Perbaikan','Fase 1 Pengawas','Persetujuan DINAS','Rekonsiliasi'],current:2},
   rekonsiliasi:{title:'Rekonsiliasi',text:'DINAS mencocokkan hasil Fase 1 dengan BKU Data, dokumen, temuan, dan tindak lanjut sebelum Fase 2.',flow:['Fase 1','Rekonsiliasi','Fase 2','Finalisasi'],current:1},
   penilaianFase2:{title:'Penilaian Fase 2',text:'DINAS menetapkan nilai akhir setelah Rekonsiliasi dinyatakan selesai.',flow:['Fase 1','Rekonsiliasi','Fase 2','Finalisasi'],current:2},
   finalisasiSpj:{title:'Finalisasi DINAS',text:'DINAS mengesahkan hasil setelah Fase 2 selesai dan menutup rangkaian penilaian SPJ.',flow:['Fase 1','Rekonsiliasi','Fase 2','Finalisasi'],current:3},
@@ -2874,6 +2875,7 @@ function renderShell(){
             ).join('')}
           </div>
           <div class="sidebar-footer">
+            <button type="button" class="mobile-sidebar-logout" data-action="logout">Keluar dari aplikasi</button>
             <div class="sidebar-footer-item"><img src="logorembang.png" alt="Rembang"><div><span>DINDIKPORA REMBANG</span><small>Kab. Rembang</small></div></div>
             <div class="sidebar-footer-item"><img src="logopendidikan.png" alt="Kemdikdasmen"><div><span>KEMENDIKDASMEN RI</span><small>Direktorat SD</small></div></div>
           </div>
@@ -2897,7 +2899,7 @@ function renderShell(){
     loadView(b.dataset.view);
     $('#sidebar')?.classList.remove('open');
   });
-  $('#logoutBtn').onclick = logout; 
+  $('#logoutBtn').onclick = logout; $$('[data-action="logout"]').forEach(x=>x.onclick=logout); 
   $('#menuBtn').onclick = () => $('#sidebar')?.classList.toggle('open');
   initGlobalSearch();
 }
@@ -4029,7 +4031,7 @@ async function renderStatusSekolah(){
       <div class="school-summary-grid" style="margin-top:14px">
         <div class="school-summary-card"><small>RKAS APPROVED</small><strong>${fmtNum(rkas.length)}</strong><span class="muted">${fmtRupiah(rkasTotal)}</span></div>
         <div class="school-summary-card"><small>SPJ Diinput</small><strong>${fmtNum(uploaded)}</strong><span class="muted">dari ${fmtNum(spj.length)} komponen</span></div>
-        <div class="school-summary-card"><small>Fase 1 DINAS</small><strong>${pipeline.phase1_done?'SELESAI':'BELUM'}</strong><span class="muted">${pipeline.phase1_score==null?'Belum ada nilai':esc(pipeline.phase1_score)}</span></div>
+        <div class="school-summary-card"><small>Fase 1 Pengawas</small><strong>${pipeline.phase1_done?'SELESAI':'BELUM'}</strong><span class="muted">${pipeline.phase1_score==null?'Belum ada nilai':esc(pipeline.phase1_score)}</span></div>
         <div class="school-summary-card"><small>Nilai Fase 2</small><strong>${esc(nilai??'-')}</strong><span class="muted">${pipeline.final_done?'FINAL DINAS':pipeline.phase2_done?'Menunggu Finalisasi':'Belum Fase 2'}</span></div>
       </div>
       <div class="panel" style="margin-top:14px"><h3>👤 Pengawas & Penugasan</h3><div class="muted">${esc(pengawas.nama_pengawas||pengawas.id_pengawas||'Belum ada pengawas')} · ${esc(pengawas.tanggal_mulai||'-')} s.d. ${esc(pengawas.tanggal_selesai||'-')}</div></div>
@@ -4093,7 +4095,7 @@ async function renderStatus(){
       ['INPUT SPJ','BKU Data & bukti',`${complete}/${required||total} bukti selesai`,complete>=required],
       ['PEMERIKSAAN','Pengawas',checking?'Sedang diperiksa':complete>=required?'Siap / menunggu pemeriksaan':'Belum siap',['PEMERIKSAAN','PERBAIKAN','PENILAIAN_1','REKONSILIASI','PENILAIAN_2','FINALISASI'].includes(activeStage)],
       ['PERBAIKAN','Tindak lanjut',repair?`${repair} komponen perlu diperbaiki`:'Tidak ada perbaikan aktif',['PENILAIAN_1','REKONSILIASI','PENILAIAN_2','FINALISASI'].includes(activeStage)],
-      ['FASE 1','DINAS',pipeline?.phase1_done?'Selesai':'Belum',!!pipeline?.phase1_done],
+      ['FASE 1','PENGAWAS',pipeline?.phase1_approved?'Disetujui DINAS':pipeline?.phase1_submitted?'Dikirim ke DINAS':'Belum',!!pipeline?.phase1_done],
       ['REKONSILIASI','DINAS',pipeline?.reconciliation_done?'Selesai':'Belum',!!pipeline?.reconciliation_done],
       ['FASE 2 / FINAL','DINAS',pipeline?.final_done?'FINAL':pipeline?.phase2_done?'Fase 2 selesai':'Belum',!!pipeline?.final_done]
     ];
@@ -5999,7 +6001,7 @@ const WORKFLOW_STAGE_UI = [
   ['INPUT_SPJ','Input SPJ / BKU','Sekolah mengimpor BKU Data dan melengkapi BKU Resmi serta bukti SPJ.'],
   ['PEMERIKSAAN','Pemeriksaan','Pengawas memeriksa transaksi, dokumen, temuan, dan rekomendasi.'],
   ['PERBAIKAN','Perbaikan','Sekolah menindaklanjuti temuan; Pengawas melakukan verifikasi ulang.'],
-  ['PENILAIAN_1','Penilaian Fase 1','DINAS menetapkan hasil penilaian fase pertama berdasarkan data dan hasil pemeriksaan.'],
+  ['PENILAIAN_1','Penilaian Fase 1','PENGAWAS menilai 10 komponen dokumen berbasis BKU Data lalu mengirim hasilnya kepada DINAS untuk persetujuan.'],
   ['REKONSILIASI','Rekonsiliasi','DINAS merekonsiliasi BKU Data, dokumen, temuan, dan hasil Fase 1.'],
   ['PENILAIAN_2','Penilaian Fase 2','DINAS menetapkan hasil akhir setelah rekonsiliasi.'],
   ['FINALISASI','Finalisasi','DINAS mengesahkan hasil akhir dan menutup rangkaian SPJ periode berjalan.']
@@ -6291,6 +6293,7 @@ function readinessMeta_(status){
   return map[String(status||'BELUM_SIAP').toUpperCase()]||map.BELUM_SIAP;
 }
 
+
 window.loadPengawasReadiness=async function(){
   const area=$('#binaanArea'),summary=$('#readinessSummary');
   const p=$('#readinessPeriod')?.value||state.selectedPeriode||'';
@@ -6301,11 +6304,17 @@ window.loadPengawasReadiness=async function(){
   }
   state.selectedPeriode=p;
   if(summary)summary.innerHTML=loading('Menghitung kesiapan sekolah binaan...');
-  if(area)area.innerHTML=loading('Memeriksa BKU Data, bukti SPJ, perbaikan, dan stage DINAS...');
+  if(area)area.innerHTML=loading('Memeriksa BKU Data, 10 dokumen scan, pemeriksaan, dan kesiapan Fase 1...');
   try{
-    const r=await api('getKesiapanSekolahBinaan',{idPeriode:p});
-    window._pengawasReadinessRows=Array.isArray(r.data)?r.data:[];
-    window._pengawasReadinessSummary=r.summary||{};
+    const [legacy,phase]=await Promise.all([
+      api('getKesiapanSekolahBinaan',{idPeriode:p}),
+      api('getAssessmentReadinessMatrix',{idPeriode:p})
+    ]);
+    const phaseMap={};
+    (phase.data||[]).forEach(x=>phaseMap[String(x.npsn||'')]=x);
+    window._pengawasReadinessRows=(Array.isArray(legacy.data)?legacy.data:[]).map(x=>Object.assign({},x,phaseMap[String(x.npsn||'')]||{}));
+    window._pengawasReadinessSummary=legacy.summary||{};
+    window._pengawasPhase1Summary=phase.summary||{};
     renderPengawasReadinessSummary();
     renderPengawasReadinessCards();
   }catch(e){
@@ -6314,18 +6323,18 @@ window.loadPengawasReadiness=async function(){
   }
 };
 
+
 window.renderPengawasReadinessSummary=function(){
   const host=$('#readinessSummary');if(!host)return;
-  const s=window._pengawasReadinessSummary||{};
+  const s=window._pengawasPhase1Summary||{};
   const cards=[
-    ['SIAP DIPERIKSA',s.SIAP_DIPERIKSA||0,'ready','BKU dan bukti siap diperiksa','SIAP_DIPERIKSA'],
-    ['BELUM SIAP',s.BELUM_SIAP||0,'waiting','BKU/bukti belum lengkap','BELUM_SIAP'],
-    ['SEDANG DIPERIKSA',s.SEDANG_DIPERIKSA||0,'checking','Pemeriksaan sedang berjalan','SEDANG_DIPERIKSA'],
-    ['PERLU PERBAIKAN',s.PERLU_PERBAIKAN||0,'repair','Menunggu tindak lanjut Sekolah','PERLU_PERBAIKAN'],
-    ['SIAP VERIFIKASI',s.SIAP_VERIFIKASI||0,'checking','Perbaikan siap diverifikasi','SIAP_VERIFIKASI'],
-    ['SELESAI DIPERIKSA',s.SELESAI_DIPERIKSA||0,'done','Hasil diteruskan ke DINAS','SELESAI_DIPERIKSA']
+    ['SEKOLAH TUGAS',s.total||0,'checking','Sekolah dalam penugasan aktif'],
+    ['DOKUMEN 10/10',s.documents_complete||0,'ready','BKU & 10 dokumen siap'],
+    ['SIAP FASE 1',s.phase1_ready||0,'ready','Dapat dinilai saat stage Fase 1 ACTIVE'],
+    ['DIKIRIM KE DINAS',s.phase1_submitted||0,'checking','Menunggu keputusan DINAS'],
+    ['DISETUJUI DINAS',s.phase1_approved||0,'done','Laporan Fase 1 resmi tersedia']
   ];
-  host.innerHTML=cards.map(x=>`<button class="v234-summary-card ${x[2]}" onclick="setPengawasReadinessFilter('${x[4]}')"><small>${x[0]}</small><strong>${fmtNum(x[1])}</strong><span>${x[3]}</span></button>`).join('');
+  host.innerHTML=cards.map(x=>`<div class="v234-summary-card ${x[2]}"><small>${x[0]}</small><strong>${fmtNum(x[1])}</strong><span>${x[3]}</span></div>`).join('');
 };
 
 window.setPengawasReadinessFilter=function(filter){
@@ -6333,6 +6342,7 @@ window.setPengawasReadinessFilter=function(filter){
   document.querySelectorAll('#readinessFilterTabs .v234-filter').forEach(x=>x.classList.toggle('active',x.dataset.filter===window._pengawasReadinessFilter));
   renderPengawasReadinessCards();
 };
+
 
 window.renderPengawasReadinessCards=function(){
   const area=$('#binaanArea');if(!area)return;
@@ -6345,34 +6355,44 @@ window.renderPengawasReadinessCards=function(){
   });
 
   if(!rows.length){
-    area.innerHTML=msg(filter==='SIAP_DIPERIKSA'?'Belum ada sekolah binaan yang memenuhi syarat SIAP DIPERIKSA pada periode ini.':'Tidak ada sekolah yang sesuai filter.','warning');
+    area.innerHTML=msg('Tidak ada sekolah yang sesuai filter.','warning');
     return;
   }
 
   area.innerHTML=rows.map(x=>{
     const m=readinessMeta_(x.readiness);
-    const reasons=(x.alasan_belum_siap||[]).slice(0,3);
+    const reasons=(x.blockers||x.alasan_belum_siap||[]).slice(0,4);
+    const f1=String(x.phase1_state||'BELUM_SIAP').toUpperCase();
     let actionLabel='Lihat Pemeriksaan →',target='pdfInteraktif';
-    if(x.readiness==='SIAP_DIPERIKSA'){actionLabel='Mulai Pemeriksaan →';}
-    else if(x.readiness==='SEDANG_DIPERIKSA'){actionLabel='Lanjutkan Pemeriksaan →';}
-    else if(x.readiness==='SIAP_VERIFIKASI'){actionLabel='Verifikasi Ulang →';target='verifikasiUlang';}
-    else if(x.readiness==='SELESAI_DIPERIKSA'){actionLabel='Lihat Hasil / Arsip →';target='arsipPenilaianV5';}
-    else if(x.readiness==='PERLU_PERBAIKAN'){actionLabel='Lihat Tindak Lanjut →';target='verifikasiUlang';}
-    else {actionLabel='Lihat Kekurangan →';}
+
+    if(['SIAP_DINILAI','SEDANG_DINILAI','PERLU_REVISI'].includes(f1) && String(x.active_stage||'').toUpperCase()==='PENILAIAN_1'){
+      actionLabel=f1==='PERLU_REVISI'?'Revisi Fase 1 →':f1==='SEDANG_DINILAI'?'Lanjut Fase 1 →':'Nilai Fase 1 →';
+      target='penilaianFase1';
+    }else if(f1==='DIAJUKAN_KE_DINAS'){
+      actionLabel='Menunggu DINAS →';target='arsipPenilaianV5';
+    }else if(f1==='DISETUJUI_DINAS'){
+      actionLabel='Lihat Laporan Fase 1 →';target='arsipPenilaianV5';
+    }else if(x.readiness==='SIAP_VERIFIKASI'||x.readiness==='PERLU_PERBAIKAN'){
+      actionLabel='Verifikasi Ulang →';target='verifikasiUlang';
+    }else if(x.readiness==='SIAP_DIPERIKSA'){
+      actionLabel='Mulai Pemeriksaan →';target='pdfInteraktif';
+    }
+
+    const docs=`${fmtNum(x.documents_complete_count||0)}/10`;
+    const f1Kind=x.phase1_approved?'ok':x.phase1_submitted?'info':x.phase1_ready?'ok':'warn';
 
     return `<article class="v234-school-card ${m.cls}">
       <div class="v234-school-status"><span>${m.icon}</span>${m.label}</div>
       <div class="v234-school-head">
         <div><h3>${esc(x.nama_sekolah||'Sekolah Binaan')}</h3><p>NPSN <b>${esc(x.npsn||'-')}</b> · ${esc(x.kecamatan||'-')}</p></div>
-
       </div>
       <div class="v234-school-metrics">
-        <div><small>BKU Data</small><b class="${x.bku_ready?'ok':'no'}">${x.bku_ready?'AKTIF ✓':'BELUM'}</b><span>${x.bku_ready?fmtNum(x.total_transaksi||0)+' transaksi':'Belum ada snapshot aktif'}</span></div>
-        <div><small>Bukti SPJ</small><b>${fmtNum(x.spj_lengkap||0)}/${fmtNum(x.spj_wajib||0)}</b><span>${x.spj_na?fmtNum(x.spj_na)+' N/A':''}</span></div>
-        <div><small>Perbaikan</small><b class="${Number(x.perlu_perbaikan||0)?'warn':'ok'}">${fmtNum(x.perlu_perbaikan||0)}</b><span>${Number(x.perlu_perbaikan||0)?'perlu ditindaklanjuti':'tidak ada'}</span></div>
-        <div><small>Stage DINAS</small><b>${esc(x.active_stage||'-')}</b><span>${esc(x.readiness_label||'Status pemeriksaan')}</span></div>
+        <div><small>BKU Data</small><b class="${x.bku_ready?'ok':'no'}">${x.bku_ready?'VALID ✓':'BELUM'}</b><span>${x.bku_ready?fmtNum(x.bku_total_transaksi||x.total_transaksi||0)+' transaksi':'Belum ada snapshot valid'}</span></div>
+        <div><small>10 Dokumen Scan</small><b class="${x.documents_complete?'ok':'warn'}">${docs}</b><span>${x.documents_complete?'Lengkap':'Masih kurang / perbaikan'}</span></div>
+        <div><small>Fase 1 Pengawas</small><b>${readinessStatusChipV2(String(f1).replaceAll('_',' '),f1Kind)}</b><span>${esc(x.next_label||'')}</span></div>
+        <div><small>Stage DINAS</small><b>${esc(x.active_stage||'-')}</b><span>${x.phase1_actionable?'Fase 1 dapat diproses':'Mengikuti stage aktif'}</span></div>
       </div>
-      ${reasons.length&&x.readiness==='BELUM_SIAP'?`<div class="v234-reasons"><b>Belum siap karena:</b>${reasons.map(r=>`<span>• ${esc(r)}</span>`).join('')}${(x.alasan_belum_siap||[]).length>3?`<small>+${(x.alasan_belum_siap||[]).length-3} lainnya</small>`:''}</div>`:''}
+      ${reasons.length?`<div class="v234-reasons"><b>Catatan posisi:</b>${reasons.map(r=>`<span>• ${esc(r)}</span>`).join('')}</div>`:''}
       <div class="v234-school-actions">
         <button class="btn btn-primary" onclick="openPengawasReadinessSchool('${esc(x.npsn)}','${target}')">${actionLabel}</button>
       </div>
@@ -6754,7 +6774,7 @@ window.openPeringatanModal = function(targetId, targetName) {
   };
 };
 
-window.quickActionAsesmen = function(npsn) { state.selectedNpsn = npsn; loadView('asesmen'); };
+window.quickActionAsesmen = function(npsn) { state.selectedNpsn = npsn; loadView('penilaianFase1'); };
 window.quickActionTemuan = function(npsn) { state.selectedNpsn = npsn; loadView('temuan'); };
 
 let _pesanBox='INBOX';
@@ -7487,7 +7507,7 @@ async function pdfInteraktifView(){
   const pdfDesc=isPengawas()
     ? 'Periksa BKU sebagai ledger utama, cocokkan bukti PDF, verifikasi temuan, dan susun rekomendasi pemeriksaan dalam satu workbench.'
     : isSchool()
-      ? 'Lihat BKU, dokumen PDF, temuan, dan hasil pemeriksaan sekolah Anda dalam mode baca. Penilaian Fase 1 dan Fase 2 ditetapkan DINAS.'
+      ? 'Lihat BKU, dokumen PDF, temuan, dan hasil pemeriksaan sekolah Anda dalam mode baca. Fase 1 dikerjakan Pengawas dan disetujui DINAS; Fase 2 ditetapkan DINAS.'
       : 'Lihat hubungan RKAS, BKU, dokumen PDF, dan hasil pemeriksaan dalam mode monitoring.';
   const openLabel=isPengawas()?'Buka Workbench Pemeriksaan':isSchool()?'Buka Viewer Bukti PDF':'Buka Viewer PDF';
   $('#mainContent').innerHTML=head(pdfTitle,pdfDesc)+
@@ -7952,31 +7972,89 @@ async function tutorialV5View(){
   try{await initV11TutorialFeed();}catch(e){const w=$('#v11PdfCanvasWrap');if(w)w.innerHTML=msg('Panduan PDF eksternal belum dapat dimuat: '+errorText(e),'warning');}
 }
 
+
 async function arsipPenilaianV5View(){
   const c=$('#mainContent'); if(!c)return;
   let selector='';
   if(isDinas()) selector=await rc2DinasSelectors_('rc2arc');
+  else if(isPengawas()) selector=await rc2Phase1Selectors_('rc2arc');
   else {
     const periods=await periodeSelect('rc2arcPeriode',true,'bulan');
-    const n=isSchool()?ownNpsn():(state.selectedNpsn||'');
-    selector=`<div class="form-grid"><div class="field"><label>Sekolah</label><input id="rc2arcNpsn" value="${esc(n)}" readonly></div><div class="field"><label>Periode DINAS</label>${periods}</div></div>`;
+    selector=`<div class="form-grid"><div class="field"><label>Sekolah</label><input id="rc2arcNpsn" value="${esc(ownNpsn())}" readonly></div><div class="field"><label>Periode DINAS</label>${periods}</div></div>`;
   }
-  c.innerHTML=head(isDinas()?'Hasil & Laporan':'Hasil / Arsip','Arsip pipeline kanonik: Fase 1, Rekonsiliasi, Fase 2, dan Finalisasi DINAS.')+`<div class="panel">${selector}<div class="toolbar"><button class="btn btn-primary" onclick="loadArsipRc2()">Muat Arsip</button><button class="btn btn-light" onclick="window.print()">Cetak Halaman</button></div><div id="rc2ArchiveArea" style="margin-top:14px"></div></div>`;
-  if(state.selectedPeriode && (isSchool()||state.selectedNpsn)) setTimeout(()=>loadArsipRc2(),0);
+  const title=isDinas()?'Hasil & Laporan':isPengawas()?'Laporan Fase 1 Disetujui DINAS':'Laporan Hasil Sekolah';
+  const desc=isPengawas()
+    ?'Pengawas memperoleh laporan Fase 1 setelah hasilnya disetujui DINAS.'
+    :'Laporan mengikuti satu pipeline: BKU Data + 10 dokumen → Fase 1 Pengawas → persetujuan DINAS → Rekonsiliasi → Fase 2 → Final.';
+  c.innerHTML=head(title,desc)+`<div class="panel">${selector}<div class="toolbar"><button class="btn btn-primary" onclick="loadArsipRc2()">Muat Laporan</button><button class="btn btn-light" onclick="window.print()">Cetak Tampilan</button></div><div id="rc2ArchiveArea" style="margin-top:14px"></div></div>`;
+  if(state.selectedPeriode&&(isSchool()||state.selectedNpsn))setTimeout(()=>loadArsipRc2(),0);
 }
+
+
 window.loadArsipRc2=async function(){
   const area=$('#rc2ArchiveArea'); if(!area)return;
   let npsn='',idPeriode='';
-  if(isDinas()){const x=rc2Context_('rc2arc');npsn=x.npsn;idPeriode=x.idPeriode;}
-  else {npsn=isSchool()?ownNpsn():(state.selectedNpsn||$('#rc2arcNpsn')?.value||'');idPeriode=$('#rc2arcPeriode')?.value||state.selectedPeriode||'';if(npsn)state.selectedNpsn=npsn;if(idPeriode)state.selectedPeriode=idPeriode;}
-  if(!npsn||!idPeriode){area.innerHTML=msg(isPengawas()?'Pilih sekolah tugas terlebih dahulu dan tentukan periode.':'Pilih sekolah dan periode.','warning');return;}
-  area.innerHTML=loading('Memuat pipeline hasil...');
+  if(isDinas()||isPengawas()){
+    const x=rc2Context_('rc2arc');npsn=x.npsn;idPeriode=x.idPeriode;
+  }else{
+    npsn=ownNpsn();idPeriode=$('#rc2arcPeriode')?.value||state.selectedPeriode||'';
+    if(idPeriode)state.selectedPeriode=idPeriode;
+  }
+  if(!npsn||!idPeriode){area.innerHTML=msg('Pilih sekolah dan periode.','warning');return;}
+  area.innerHTML=loading('Menyusun laporan sesuai hak akses...');
   try{
-    const p=await api('getPipelinePenilaianSPJ',{npsn,idPeriode});
-    const rec=p.reconciliation||{},fin=p.finalization||{};
-    area.innerHTML=`${rc2PipelineCards_(p)}<div class="panel" style="margin-top:14px"><h3>Ringkasan Arsip</h3><div class="table-wrap"><table class="friendly-table"><tbody><tr><th>NPSN</th><td>${esc(p.npsn||npsn)}</td></tr><tr><th>Periode</th><td>${esc(p.id_periode||idPeriode)}</td></tr><tr><th>Status</th><td>${esc(p.status_asesmen||'BELUM_DINILAI')}</td></tr><tr><th>Catatan Rekonsiliasi</th><td>${esc(rec.catatan||'-')}</td></tr><tr><th>Finalisasi DINAS</th><td>${p.final_done?`FINAL • ${esc(fin.finalized_at||'-')}`:'Belum Final'}</td></tr></tbody></table></div></div>`;
+    const res=await api('getRoleAssessmentReport',{npsn,idPeriode});
+    const d=res.data||{},r=d.readiness||{},f1=d.phase1||{};
+    const componentRows=(r.components||[]).map(x=>`<tr><td>${fmtNum(x.no)}</td><td>${esc(x.nama||x.id_spj)}</td><td>${esc(x.status||'BELUM')}</td><td>${x.fulfilled?'Lengkap':'Belum / Perbaikan'}</td></tr>`).join('');
+    const detailRows=(f1.details||[]).map(x=>`<tr><td>${esc(x.id_indikator||'-')}</td><td>${esc(x.skor??x.hasil_otomatis??'-')}</td><td>${esc(x.catatan_pengawas||'-')}</td></tr>`).join('');
+    const limited=isPengawas();
+    const availability=d.available
+      ?'<div class="message ok"><b>Laporan resmi tersedia sesuai peran Anda.</b></div>'
+      :`<div class="message warning"><b>Laporan resmi belum tersedia.</b> ${isPengawas()?'Fase 1 harus disetujui DINAS terlebih dahulu.':isSchool()?'Laporan lengkap sekolah tersedia setelah Finalisasi DINAS.':'Proses belum lengkap.'}</div>`;
+
+    let distribution='';
+    if(isDinas()){
+      distribution=`<div class="toolbar" style="margin-top:14px;justify-content:flex-end;flex-wrap:wrap">
+        <button class="btn btn-light" onclick="publishAssessmentReportRc2('PENGAWAS')" ${r.phase1_approved?'':'disabled'}>Kirim Laporan Fase 1 ke Pengawas</button>
+        <button class="btn btn-primary" onclick="publishAssessmentReportRc2('SEKOLAH')" ${r.final_done?'':'disabled'}>Kirim Laporan Lengkap ke Sekolah</button>
+      </div>
+      <div class="muted" style="text-align:right;margin-top:6px">Pengawas menerima laporan Fase 1 setelah disetujui DINAS; Sekolah menerima laporan lengkap setelah FINAL.</div>`;
+    }
+
+    area.innerHTML=`${availability}
+      <div class="panel" style="margin-top:14px"><h3>${esc(d.sekolah?.nama_sekolah||npsn)}</h3><div class="muted">NPSN ${esc(npsn)} • Periode ${esc(idPeriode)} • ${esc(d.scope||'-')}</div></div>
+      <div class="pipeline-kpis">
+        <div class="pipeline-kpi"><small>BKU Data</small><strong>${r.bku_ready?'VALID':'BELUM'}</strong></div>
+        <div class="pipeline-kpi"><small>10 Dokumen</small><strong>${fmtNum(r.documents_complete_count||0)}/10</strong></div>
+        <div class="pipeline-kpi"><small>Fase 1 Pengawas</small><strong>${r.phase1_score==null?'—':Number(r.phase1_score).toFixed(2)}</strong></div>
+        ${limited?'':`<div class="pipeline-kpi"><small>Fase 2 DINAS</small><strong>${r.phase2_score==null?'—':Number(r.phase2_score).toFixed(2)}</strong></div><div class="pipeline-kpi"><small>Final</small><strong>${r.final_done?'FINAL':'PROSES'}</strong></div>`}
+      </div>
+      <div class="panel" style="margin-top:14px"><h3>Kelengkapan 10 Komponen Dokumen Scan</h3><div class="table-wrap"><table class="friendly-table"><thead><tr><th>No</th><th>Komponen</th><th>Status</th><th>Kelengkapan</th></tr></thead><tbody>${componentRows||emptyRow(4)}</tbody></table></div></div>
+      <div class="panel" style="margin-top:14px"><h3>Penilaian Fase 1 Pengawas</h3>
+        <div class="message ${r.phase1_approved?'ok':'warning'}"><b>Status:</b> ${esc(String(r.phase1_state||'-').replaceAll('_',' '))}${r.phase1_approved_at?` • disetujui DINAS ${esc(r.phase1_approved_at)}`:''}</div>
+        <div class="table-wrap"><table class="friendly-table"><thead><tr><th>Instrumen</th><th>Skor</th><th>Catatan Pengawas</th></tr></thead><tbody>${detailRows||emptyRow(3,'Belum ada detail Fase 1.')}</tbody></table></div>
+      </div>
+      ${limited?'':`<div class="panel" style="margin-top:14px"><h3>Rekonsiliasi & Fase 2 DINAS</h3><div class="table-wrap"><table class="friendly-table"><tbody><tr><th>Rekonsiliasi</th><td>${r.reconciliation_done?'SELESAI':'BELUM'}</td></tr><tr><th>Nilai Fase 2</th><td>${r.phase2_score==null?'-':esc(r.phase2_score)}</td></tr><tr><th>Finalisasi</th><td>${r.final_done?'FINAL':'BELUM FINAL'}</td></tr></tbody></table></div></div>`}
+      ${distribution}
+      ${d.available?'<div class="toolbar" style="justify-content:flex-end"><button class="btn btn-primary" onclick="window.print()">Cetak / Simpan PDF</button></div>':''}`;
   }catch(e){area.innerHTML=msg(errorText(e));}
 };
+
+
+
+window.publishAssessmentReportRc2=async function(targetRole){
+  const {npsn,idPeriode}=rc2Context_('rc2arc');
+  if(!npsn||!idPeriode){toast('Pilih sekolah dan periode.','warning');return;}
+  const roleLabel=String(targetRole||'').toUpperCase()==='PENGAWAS'?'Pengawas':'Sekolah';
+  if(!confirm(`Kirim laporan yang sesuai kepada ${roleLabel} melalui SIMPEL SPJ?`))return;
+  try{
+    const r=await api('publishAssessmentReportDinas',{npsn,idPeriode,targetRole});
+    toast(r.message||'Laporan berhasil dikirim.','ok',5000);
+  }catch(e){toast(errorText(e),'error',6000);}
+};
+
+/* ========================================================================== 
+   RC2 — MODUL WORKFLOW KANONIK
 
 /* ========================================================================== 
    RC2 — MODUL WORKFLOW KANONIK
@@ -7999,37 +8077,186 @@ function rc2Context_(prefix){
   if(npsn)state.selectedNpsn=npsn;if(idPeriode)state.selectedPeriode=idPeriode;
   return {npsn,idPeriode};
 }
+
 function rc2PipelineCards_(p){
   p=p||{};
-  const yes=x=>x?'<span class="badge badge-success">SELESAI</span>':'<span class="badge badge-warning">BELUM</span>';
-  return `<div class="cards"><div class="stat"><small>Fase 1</small><strong>${p.phase1_score==null?'—':Number(p.phase1_score).toFixed(2)}</strong><div>${yes(p.phase1_done)}</div></div><div class="stat"><small>Rekonsiliasi</small><strong style="font-size:1rem">${p.reconciliation_done?'SELESAI':'BELUM'}</strong></div><div class="stat"><small>Fase 2</small><strong>${p.phase2_score==null?'—':Number(p.phase2_score).toFixed(2)}</strong><div>${yes(p.phase2_done)}</div></div><div class="stat"><small>Finalisasi</small><strong style="font-size:1rem">${p.final_done?'FINAL':'BELUM'}</strong></div></div>`;
+  const f1State=String(p.phase1_state||p.status_asesmen||'BELUM').toUpperCase();
+  const f1Label=p.phase1_approved?'DISETUJUI DINAS':p.phase1_submitted?'DIKIRIM PENGAWAS':(f1State==='FASE_1_REVISI'||f1State==='PERLU_REVISI'?'PERLU REVISI':f1State==='FASE_1_DRAFT'||f1State==='SEDANG_DINILAI'?'SEDANG DINILAI':'BELUM');
+  const f1Class=p.phase1_approved?'success':p.phase1_submitted?'info':'warning';
+  return `<div class="cards">
+    <div class="stat"><small>Fase 1 Pengawas</small><strong>${p.phase1_score==null?'—':Number(p.phase1_score).toFixed(2)}</strong><div><span class="badge badge-${f1Class}">${esc(f1Label)}</span></div></div>
+    <div class="stat"><small>Rekonsiliasi DINAS</small><strong style="font-size:1rem">${p.reconciliation_done?'SELESAI':'BELUM'}</strong></div>
+    <div class="stat"><small>Fase 2 DINAS</small><strong>${p.phase2_score==null?'—':Number(p.phase2_score).toFixed(2)}</strong><div>${p.phase2_done?'<span class="badge badge-success">SELESAI</span>':'<span class="badge badge-warning">BELUM</span>'}</div></div>
+    <div class="stat"><small>Finalisasi</small><strong style="font-size:1rem">${p.final_done?'FINAL':'BELUM'}</strong></div>
+  </div>`;
+}
+
+function rc2ReadinessBanner_(p){
+  p=p||{};
+  const next=String(p.next_stage||'PENILAIAN_1').toUpperCase();
+  const label=p.next_label||'Lanjutkan proses';
+  const message=p.readiness_message||'Periksa status pipeline penilaian.';
+  const viewMap={
+    PENILAIAN_1:'penilaianFase1',
+    REKONSILIASI:'rekonsiliasi',
+    PENILAIAN_2:'penilaianFase2',
+    FINALISASI:'finalisasiSpj'
+  };
+  const view=viewMap[next]||'arsipPenilaianV5';
+  const cls=next==='PENILAIAN_1'?'warning':'ok';
+  const action=next==='FINAL'
+    ? `<button class="btn btn-light" onclick="loadView('arsipPenilaianV5')">Buka Hasil & Laporan</button>`
+    : `<button class="btn btn-primary" onclick="loadView('${view}')">${esc(label)} →</button>`;
+  return `<div class="message ${cls}" style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin:14px 0">
+    <div><b>Status kesiapan pipeline</b><br>${esc(message)}</div>
+    ${action}
+  </div>`;
+}
+
+
+async function rc2Phase1Selectors_(prefix){
+  if(isDinas()) return rc2DinasSelectors_(prefix);
+  if(!isPengawas()) return '';
+  const [assignRes,periods]=await Promise.all([safeApi('getPenugasanPengawas',{}, {data:[]}),ensurePeriodeMaster()]);
+  const schools=(assignRes?.data||[]).filter(x=>upper(x.status||'AKTIF')==='AKTIF');
+  const npsn=state.selectedNpsn||'';
+  const per=state.selectedPeriode||periods?.[0]?.id_periode||'';
+  const schoolOptions=schools.map(x=>`<option value="${esc(x.npsn)}" ${String(x.npsn)===String(npsn)?'selected':''}>${esc(x.npsn)} — ${esc(x.nama_sekolah||'-')}</option>`).join('');
+  const periodOptions=(periods||[]).map(x=>`<option value="${esc(x.id_periode)}" ${String(x.id_periode)===String(per)?'selected':''}>${esc(x.nama_periode||x.id_periode)}${x.tahun?` • ${esc(x.tahun)}`:''}</option>`).join('');
+  return `<div class="form-grid"><div class="field"><label>Sekolah tugas</label><select id="${prefix}Npsn"><option value="">-- Pilih sekolah --</option>${schoolOptions}</select></div><div class="field"><label>Periode DINAS</label><select id="${prefix}Periode"><option value="">-- Pilih periode --</option>${periodOptions}</select></div></div>`;
 }
 
 async function penilaianFase1View(){
-  if(!isDinas()){ $('#mainContent').innerHTML=msg('Penilaian Fase 1 merupakan kewenangan DINAS.','warning'); return; }
-  const selectors=await rc2DinasSelectors_('rc2f1');
-  $('#mainContent').innerHTML=head('Penilaian Fase 1','DINAS menetapkan nilai awal berdasarkan BKU Data, dokumen, serta hasil pemeriksaan dan verifikasi Pengawas. Ini bukan laporan Pengawas mentah.')+`<div class="panel"><div class="message info"><b>Posisi modul:</b> hasil kerja Pengawas menjadi <b>input</b> Fase 1. DINAS tetap menjadi pihak yang memverifikasi dan menetapkan nilai Fase 1.</div>${selectors}<div class="toolbar"><button class="btn btn-primary" onclick="loadPenilaianFase1Rc2()">Muat Penilaian</button></div><div id="rc2F1Area" style="margin-top:14px"></div></div>`;
+  if(!isDinas()&&!isPengawas()){
+    $('#mainContent').innerHTML=msg('Fase 1 dikerjakan Pengawas dan direview DINAS.','warning'); return;
+  }
+  const selectors=await rc2Phase1Selectors_('rc2f1');
+  const title=isPengawas()?'Penilaian Fase 1':'Persetujuan Penilaian Fase 1';
+  const desc=isPengawas()
+    ?'Nilai 10 komponen dokumen scan terhadap BKU Data, lalu kirim hasil Fase 1 kepada DINAS.'
+    :'Review hasil Fase 1 yang dikirim Pengawas. DINAS menyetujui atau mengembalikan untuk revisi.';
+  const rule=isPengawas()
+    ?'<b>Pengawas adalah pemilik Fase 1.</b> BKU Data menjadi basis angka; 10 dokumen scan menjadi evidence penilaian.'
+    :'<b>DINAS tidak membuat nilai Fase 1 dari awal.</b> DINAS mereview hasil Pengawas dan memberi persetujuan sebelum Rekonsiliasi.';
+  $('#mainContent').innerHTML=head(title,desc)+`<div class="panel"><div class="message info">${rule}</div>${selectors}<div class="toolbar"><button class="btn btn-primary" onclick="loadPenilaianFase1Rc2()">Muat Fase 1</button></div><div id="rc2F1Area" style="margin-top:14px"></div></div>`;
+  if(state.selectedPeriode&&state.selectedNpsn)setTimeout(()=>loadPenilaianFase1Rc2(),0);
 }
+
 window.loadPenilaianFase1Rc2=async function(){
-  const {npsn,idPeriode}=rc2Context_('rc2f1'),area=$('#rc2F1Area'); if(!npsn||!idPeriode){area.innerHTML=msg('Pilih sekolah dan periode.','warning');return;} area.innerHTML=loading('Memuat Penilaian Fase 1...');
+  const {npsn,idPeriode}=rc2Context_('rc2f1'),area=$('#rc2F1Area');
+  if(!npsn||!idPeriode){area.innerHTML=msg('Pilih sekolah dan periode.','warning');return;}
+  area.innerHTML=loading('Memuat Penilaian Fase 1...');
   try{
-    const r=await api('getPenilaianFase1',{npsn,idPeriode}); const a=r.asesmen||{},rows=r.indikator||[];
-    const body=rows.map(x=>{const pengawas=`${esc(x.status_verifikasi||'-')} · temuan ${fmtNum(x.jumlah_temuan||0)}${x.catatan_pengawas?`<br><small>${esc(x.catatan_pengawas)}</small>`:''}`;return `<tr><td><b>${x.no_instrumen}. ${esc(x.nama_indikator)}</b><br><small class="muted">${esc(x.nama_file||'Belum ada dokumen')}</small></td><td>${fmtRupiah(x.nilai_acuan_bku||0)}</td><td>${pengawas}</td><td>${x.skor_otomatis==null?'—':Number(x.skor_otomatis).toFixed(2)}</td><td>${x.skor==null?'—':Number(x.skor).toFixed(2)}</td><td>${String(a.status_asesmen||'').includes('SELESAI')||r.read_only?'-':`<button class="btn btn-light btn-sm" onclick="editFase1ScoreRc2('${esc(a.id_asesmen)}','${esc(x.id_indikator)}','${x.skor??''}','${x.skor_otomatis??''}')">Verifikasi DINAS</button>`}</td></tr>`;}).join('');
-    area.innerHTML=`<div class="message info"><b>Alur Fase 1:</b> PENGAWAS menghasilkan pemeriksaan, temuan, rekomendasi, dan verifikasi nilai dokumen → SISTEM menghitung rekomendasi skor terhadap BKU Data → DINAS memverifikasi dan menetapkan Penilaian Fase 1.</div><div class="cards"><div class="stat"><small>Temuan belum diverifikasi</small><strong>${fmtNum(r.pending_findings||0)}</strong></div><div class="stat"><small>Nilai dokumen belum diverifikasi</small><strong>${fmtNum(r.pending_value_verifications||0)}</strong></div><div class="stat"><small>BKU Data</small><strong style="font-size:1rem">${r.bku_ready?'SIAP':'BELUM SIAP'}</strong></div></div>${r.read_only?'<div class="message warning"><b>Mode baca.</b> Stage PENILAIAN_1 tidak sedang ACTIVE; perubahan skor dikunci backend.</div>':''}<div class="table-wrap"><table class="friendly-table"><thead><tr><th>Instrumen</th><th>Acuan BKU</th><th>Hasil Pemeriksaan Pengawas</th><th>Rekomendasi Sistem</th><th>Skor Fase 1</th><th>Aksi DINAS</th></tr></thead><tbody>${body||emptyRow(6)}</tbody></table></div>${String(a.status_asesmen||'')==='FASE_1_SELESAI'?`<div class="message ok">Fase 1 sudah dikunci. Nilai: <b>${esc(a.nilai_kualitas??'-')}</b></div>`:r.read_only?'<div class="message warning">Fase 1 belum dikunci. Aktifkan PENILAIAN_1 setelah pemeriksaan/perbaikan selesai.</div>':`<div class="toolbar" style="margin-top:14px"><button class="btn btn-primary" onclick="finalisasiFase1Rc2('${esc(a.id_asesmen)}')" ${(Number(r.pending_findings||0)>0||Number(r.pending_value_verifications||0)>0||!r.bku_ready)?'disabled':''}>Kunci Penilaian Fase 1</button></div>`}`;
+    const [r,p]=await Promise.all([
+      api('getPenilaianFase1',{npsn,idPeriode}),
+      api('getPipelinePenilaianSPJ',{npsn,idPeriode})
+    ]);
+    const ready=r.readiness||{},a=r.asesmen||null,rows=r.indikator||[];
+    if(!a){
+      area.innerHTML=`${rc2PipelineCards_(p)}
+        <div class="message ${ready.phase1_ready?'ok':'warning'}" style="margin-top:14px">
+          <b>${ready.phase1_ready?'Sekolah siap Fase 1.':'Fase 1 belum dapat dimulai.'}</b><br>
+          BKU Data: ${ready.bku_ready?'VALID':'BELUM'} • Dokumen: ${fmtNum(ready.documents_complete_count||0)}/10.
+          ${(ready.blockers||[]).length?`<br>${esc((ready.blockers||[]).join(' • '))}`:''}
+        </div>`;
+      return;
+    }
+
+    const editable=isPengawas()&&!r.read_only;
+    const body=rows.map(x=>{
+      const evidence=`${esc(x.status_verifikasi||'-')} · temuan ${fmtNum(x.jumlah_temuan||0)}${x.catatan_pengawas?`<br><small>${esc(x.catatan_pengawas)}</small>`:''}`;
+      const action=editable
+        ? `<button class="btn btn-light btn-sm" onclick="editFase1ScoreRc2('${esc(a.id_asesmen)}','${esc(x.id_indikator)}','${x.skor??''}','${x.skor_otomatis??''}')">Verifikasi Pengawas</button>`
+        : '-';
+      return `<tr><td><b>${x.no_instrumen}. ${esc(x.nama_indikator)}</b><br><small class="muted">${esc(x.nama_file||'Belum ada dokumen')}</small></td><td>${fmtRupiah(x.nilai_acuan_bku||0)}</td><td>${evidence}</td><td>${x.skor_otomatis==null?'—':Number(x.skor_otomatis).toFixed(2)}</td><td>${x.skor==null?'—':Number(x.skor).toFixed(2)}</td><td>${action}</td></tr>`;
+    }).join('');
+
+    let footer='';
+    const status=String(a.status_asesmen||'').toUpperCase();
+    if(isPengawas()){
+      if(status==='FASE_1_DIAJUKAN') footer='<div class="message ok"><b>Fase 1 sudah dikirim ke DINAS.</b> Tunggu persetujuan DINAS.</div>';
+      else if(status==='FASE_1_SELESAI'||status==='FASE_2_SELESAI'||status==='FINAL') footer='<div class="message ok"><b>Fase 1 sudah disetujui DINAS.</b> Laporan Fase 1 resmi tersedia pada Hasil / Arsip.</div>';
+      else if(status==='FASE_1_REVISI') footer=`<div class="message warning"><b>DINAS meminta revisi.</b><br>${esc(ready.phase1_revision_note||'Periksa kembali hasil Fase 1.')}</div><div class="toolbar"><button class="btn btn-primary" onclick="submitFase1PengawasRc2('${esc(a.id_asesmen)}')" ${r.can_submit?'':'disabled'}>Kirim Ulang ke DINAS</button></div>`;
+      else footer=`<div class="toolbar" style="margin-top:14px"><button class="btn btn-primary" onclick="submitFase1PengawasRc2('${esc(a.id_asesmen)}')" ${r.can_submit?'':'disabled'}>Kirim Fase 1 ke DINAS</button></div>`;
+    }else{
+      if(status==='FASE_1_DIAJUKAN'){
+        footer=`<div class="message warning"><b>Menunggu keputusan DINAS.</b> Nilai Fase 1 Pengawas: <b>${esc(a.nilai_kualitas??'-')}</b></div>
+        <div class="field"><label>Catatan persetujuan / pengembalian</label><textarea id="rc2F1DinasNote" rows="3" placeholder="Catatan DINAS..."></textarea></div>
+        <div class="toolbar"><button class="btn btn-primary" onclick="approveFase1DinasRc2('${esc(a.id_asesmen)}')">Setujui Fase 1</button><button class="btn btn-light" onclick="returnFase1DinasRc2('${esc(a.id_asesmen)}')">Kembalikan ke Pengawas</button></div>`;
+      }else if(['FASE_1_SELESAI','FASE_2_SELESAI','FINAL'].includes(status)){
+        footer=`<div class="message ok"><b>Fase 1 disetujui DINAS.</b> Nilai: <b>${esc(a.nilai_kualitas??'-')}</b>${ready.phase1_approved_at?` • ${esc(ready.phase1_approved_at)}`:''}</div>${rc2ReadinessBanner_(p)}`;
+      }else{
+        footer='<div class="message warning">Pengawas belum mengirim Fase 1 kepada DINAS.</div>';
+      }
+    }
+
+    area.innerHTML=`${rc2PipelineCards_(p)}
+      <div class="cards" style="margin-top:14px">
+        <div class="stat"><small>BKU Data</small><strong style="font-size:1rem">${r.bku_ready?'VALID':'BELUM'}</strong></div>
+        <div class="stat"><small>Dokumen</small><strong>${fmtNum(ready.documents_complete_count||0)}/10</strong></div>
+        <div class="stat"><small>Temuan pending</small><strong>${fmtNum(r.pending_findings||0)}</strong></div>
+        <div class="stat"><small>Verifikasi nilai pending</small><strong>${fmtNum(r.pending_value_verifications||0)}</strong></div>
+      </div>
+      <div class="table-wrap"><table class="friendly-table"><thead><tr><th>10 Komponen Dokumen</th><th>Acuan BKU</th><th>Hasil Pemeriksaan</th><th>Rekomendasi Sistem</th><th>Skor Fase 1</th><th>${isPengawas()?'Aksi Pengawas':'Status'}</th></tr></thead><tbody>${body||emptyRow(6)}</tbody></table></div>
+      ${footer}`;
   }catch(e){area.innerHTML=msg(errorText(e));}
 };
+
 window.editFase1ScoreRc2=async function(idAsesmen,idIndikator,current,automatic){
-  const raw=prompt(`Skor DINAS 0–4. Rekomendasi sistem: ${automatic}`,current);if(raw===null)return;const score=raw.trim()===''?'':Number(raw);if(score!==''&&(!Number.isFinite(score)||score<0||score>4)){toast('Skor harus 0–4.','warning');return;}let note='';if(score!==''&&Math.abs(Number(score)-Number(automatic))>.001){note=prompt('Alasan verifikasi/koreksi DINAS:','')||'';if(!note.trim()){toast('Alasan wajib diisi bila skor berbeda dari rekomendasi sistem.','warning');return;}}
-  try{await api('simpanDetailAsesmen',{data:{id_asesmen:idAsesmen,id_indikator:idIndikator,skor:score,catatan_dinas:note,status_berlaku:'BERLAKU'}});toast('Verifikasi Fase 1 tersimpan.','ok');await loadPenilaianFase1Rc2();}catch(e){toast(errorText(e),'error',5000);}
+  if(!isPengawas()){toast('Koreksi skor Fase 1 hanya dilakukan Pengawas.','warning');return;}
+  const raw=prompt(`Skor Pengawas 0–4. Rekomendasi sistem: ${automatic}`,current);
+  if(raw===null)return;
+  const score=raw.trim()===''?'':Number(raw);
+  if(score!==''&&(!Number.isFinite(score)||score<0||score>4)){toast('Skor harus 0–4.','warning');return;}
+  let note='';
+  if(score!==''&&Math.abs(Number(score)-Number(automatic))>.001){
+    note=prompt('Alasan koreksi/verifikasi Pengawas:','')||'';
+    if(!note.trim()){toast('Alasan wajib diisi bila skor berbeda dari rekomendasi sistem.','warning');return;}
+  }
+  try{
+    await api('simpanDetailAsesmen',{data:{id_asesmen:idAsesmen,id_indikator:idIndikator,skor:score,catatan_pengawas:note,status_berlaku:'BERLAKU'}});
+    toast('Penilaian Fase 1 Pengawas tersimpan.','ok');
+    await loadPenilaianFase1Rc2();
+  }catch(e){toast(errorText(e),'error',5000);}
 };
-window.finalisasiFase1Rc2=async function(idAsesmen){if(!confirm('Kunci Penilaian Fase 1? Setelah dikunci, lanjutkan ke Rekonsiliasi.'))return;try{const r=await api('finalisasiPenilaianFase1',{idAsesmen});toast(`Fase 1 selesai: ${r.nilai_kualitas}`,'ok');await loadPenilaianFase1Rc2();}catch(e){toast(errorText(e),'error',5000);}};
+
+window.submitFase1PengawasRc2=async function(idAsesmen){
+  if(!confirm('Kirim Penilaian Fase 1 kepada DINAS? Setelah dikirim, Pengawas menunggu keputusan DINAS.'))return;
+  try{
+    const r=await api('submitPenilaianFase1Pengawas',{idAsesmen});
+    toast(`Fase 1 dikirim ke DINAS. Nilai: ${r.nilai_kualitas}`,'ok',5000);
+    await loadPenilaianFase1Rc2();
+  }catch(e){toast(errorText(e),'error',6000);}
+};
+
+window.approveFase1DinasRc2=async function(idAsesmen){
+  const catatan=$('#rc2F1DinasNote')?.value.trim()||'Disetujui DINAS';
+  if(!confirm('Setujui hasil Penilaian Fase 1 Pengawas?'))return;
+  try{
+    await api('approvePenilaianFase1Dinas',{data:{id_asesmen:idAsesmen,catatan}});
+    toast('Fase 1 disetujui DINAS. Sekolah siap masuk Rekonsiliasi.','ok',5000);
+    await loadPenilaianFase1Rc2();
+    window.renderRoleReadinessPanel?.();
+  }catch(e){toast(errorText(e),'error',6000);}
+};
+
+window.returnFase1DinasRc2=async function(idAsesmen){
+  const catatan=$('#rc2F1DinasNote')?.value.trim()||'';
+  if(catatan.length<5){toast('Isi catatan koreksi DINAS minimal 5 karakter.','warning');return;}
+  if(!confirm('Kembalikan Fase 1 kepada Pengawas untuk direvisi?'))return;
+  try{
+    await api('returnPenilaianFase1Dinas',{data:{id_asesmen:idAsesmen,catatan}});
+    toast('Fase 1 dikembalikan kepada Pengawas.','ok',5000);
+    await loadPenilaianFase1Rc2();
+  }catch(e){toast(errorText(e),'error',6000);}
+};
 
 async function rekonsiliasiView(){
   if(!isDinas()){ $('#mainContent').innerHTML=msg('Rekonsiliasi merupakan kewenangan DINAS.','warning'); return; }
   const selectors=await rc2DinasSelectors_('rc2rek');
   $('#mainContent').innerHTML=head('Rekonsiliasi','Cocokkan Fase 1 dengan BKU Data, dokumen, temuan, dan hasil tindak lanjut.')+`<div class="panel">${selectors}<div class="toolbar"><button class="btn btn-primary" onclick="loadRekonsiliasiRc2()">Muat Rekonsiliasi</button></div><div id="rc2RekArea" style="margin-top:14px"></div></div>`;
 }
-window.loadRekonsiliasiRc2=async function(){const {npsn,idPeriode}=rc2Context_('rc2rek'),area=$('#rc2RekArea');if(!npsn||!idPeriode){area.innerHTML=msg('Pilih sekolah dan periode.','warning');return;}area.innerHTML=loading();try{const p=await api('getPipelinePenilaianSPJ',{npsn,idPeriode});area.innerHTML=rc2PipelineCards_(p)+`<div class="field" style="margin-top:14px"><label>Catatan hasil rekonsiliasi</label><textarea id="rc2RekNote" rows="5" placeholder="Ringkas selisih, klarifikasi, dan keputusan rekonsiliasi...">${esc(p.reconciliation?.catatan||'')}</textarea></div><div class="toolbar"><button class="btn btn-primary" onclick="saveRekonsiliasiRc2()" ${p.phase1_done?'':'disabled'}>Simpan Rekonsiliasi Selesai</button></div>`;}catch(e){area.innerHTML=msg(errorText(e));}};
+window.loadRekonsiliasiRc2=async function(){const {npsn,idPeriode}=rc2Context_('rc2rek'),area=$('#rc2RekArea');if(!npsn||!idPeriode){area.innerHTML=msg('Pilih sekolah dan periode.','warning');return;}area.innerHTML=loading();try{const p=await api('getPipelinePenilaianSPJ',{npsn,idPeriode});area.innerHTML=rc2PipelineCards_(p)+rc2ReadinessBanner_(p)+`<div class="field" style="margin-top:14px"><label>Catatan hasil rekonsiliasi</label><textarea id="rc2RekNote" rows="5" placeholder="Ringkas selisih, klarifikasi, dan keputusan rekonsiliasi...">${esc(p.reconciliation?.catatan||'')}</textarea></div><div class="toolbar"><button class="btn btn-primary" onclick="saveRekonsiliasiRc2()" ${p.phase1_done?'':'disabled'}>Simpan Rekonsiliasi Selesai</button></div>`;}catch(e){area.innerHTML=msg(errorText(e));}};
 window.saveRekonsiliasiRc2=async function(){const {npsn,idPeriode}=rc2Context_('rc2rek'),catatan=$('#rc2RekNote')?.value.trim()||'';if(!catatan){toast('Catatan rekonsiliasi wajib diisi.','warning');return;}try{await api('simpanRekonsiliasiSPJ',{data:{npsn,id_periode:idPeriode,catatan}});toast('Rekonsiliasi selesai dicatat.','ok');await loadRekonsiliasiRc2();}catch(e){toast(errorText(e),'error',5000);}};
 
 async function penilaianFase2View(){
@@ -8037,7 +8264,7 @@ async function penilaianFase2View(){
   const selectors=await rc2DinasSelectors_('rc2f2');
   $('#mainContent').innerHTML=head('Penilaian Fase 2','DINAS menetapkan hasil akhir setelah rekonsiliasi.')+`<div class="panel">${selectors}<div class="toolbar"><button class="btn btn-primary" onclick="loadFase2Rc2()">Muat Fase 2</button></div><div id="rc2F2Area" style="margin-top:14px"></div></div>`;
 }
-window.loadFase2Rc2=async function(){const {npsn,idPeriode}=rc2Context_('rc2f2'),area=$('#rc2F2Area');if(!npsn||!idPeriode){area.innerHTML=msg('Pilih sekolah dan periode.','warning');return;}area.innerHTML=loading();try{const p=await api('getPipelinePenilaianSPJ',{npsn,idPeriode});area.innerHTML=rc2PipelineCards_(p)+`<div class="form-grid" style="margin-top:14px"><div class="field"><label>Nilai Fase 2 / Nilai Akhir</label><input id="rc2F2Score" type="number" min="0" max="100" step="0.01" value="${esc(p.phase2_score??p.phase1_score??'')}"></div><div class="field"><label>Catatan Fase 2</label><textarea id="rc2F2Note" rows="3"></textarea></div></div><div class="toolbar"><button class="btn btn-primary" onclick="saveFase2Rc2()" ${p.reconciliation_done?'':'disabled'}>Tetapkan Fase 2</button></div>`;}catch(e){area.innerHTML=msg(errorText(e));}};
+window.loadFase2Rc2=async function(){const {npsn,idPeriode}=rc2Context_('rc2f2'),area=$('#rc2F2Area');if(!npsn||!idPeriode){area.innerHTML=msg('Pilih sekolah dan periode.','warning');return;}area.innerHTML=loading();try{const p=await api('getPipelinePenilaianSPJ',{npsn,idPeriode});area.innerHTML=rc2PipelineCards_(p)+rc2ReadinessBanner_(p)+`<div class="form-grid" style="margin-top:14px"><div class="field"><label>Nilai Fase 2 / Nilai Akhir</label><input id="rc2F2Score" type="number" min="0" max="100" step="0.01" value="${esc(p.phase2_score??p.phase1_score??'')}"></div><div class="field"><label>Catatan Fase 2</label><textarea id="rc2F2Note" rows="3"></textarea></div></div><div class="toolbar"><button class="btn btn-primary" onclick="saveFase2Rc2()" ${p.reconciliation_done?'':'disabled'}>Tetapkan Fase 2</button></div>`;}catch(e){area.innerHTML=msg(errorText(e));}};
 window.saveFase2Rc2=async function(){const {npsn,idPeriode}=rc2Context_('rc2f2'),nilai=Number($('#rc2F2Score')?.value),catatan=$('#rc2F2Note')?.value.trim()||'';if(!Number.isFinite(nilai)||nilai<0||nilai>100){toast('Nilai harus 0–100.','warning');return;}try{await api('finalisasiPenilaianFase2',{data:{npsn,id_periode:idPeriode,nilai_akhir:nilai,catatan}});toast('Penilaian Fase 2 ditetapkan.','ok');await loadFase2Rc2();}catch(e){toast(errorText(e),'error',5000);}};
 
 async function finalisasiSpjView(){
@@ -8045,14 +8272,14 @@ async function finalisasiSpjView(){
   const selectors=await rc2DinasSelectors_('rc2fin');
   $('#mainContent').innerHTML=head('Finalisasi DINAS','Pengesahan akhir hanya dapat dilakukan setelah Fase 2 selesai.')+`<div class="panel">${selectors}<div class="toolbar"><button class="btn btn-primary" onclick="loadFinalisasiRc2()">Muat Status</button></div><div id="rc2FinArea" style="margin-top:14px"></div></div>`;
 }
-window.loadFinalisasiRc2=async function(){const {npsn,idPeriode}=rc2Context_('rc2fin'),area=$('#rc2FinArea');if(!npsn||!idPeriode){area.innerHTML=msg('Pilih sekolah dan periode.','warning');return;}area.innerHTML=loading();try{const p=await api('getPipelinePenilaianSPJ',{npsn,idPeriode});area.innerHTML=rc2PipelineCards_(p)+`${p.final_done?'<div class="message ok" style="margin-top:14px"><b>SPJ sudah FINAL.</b> Finalisasi DINAS telah tercatat.</div>':`<div class="field" style="margin-top:14px"><label>Catatan finalisasi</label><textarea id="rc2FinNote" rows="3" placeholder="Catatan pengesahan akhir..."></textarea></div><div class="toolbar"><button class="btn btn-primary" onclick="saveFinalisasiRc2()" ${p.phase2_done?'':'disabled'}>Finalisasi SPJ</button></div>`}`;}catch(e){area.innerHTML=msg(errorText(e));}};
+window.loadFinalisasiRc2=async function(){const {npsn,idPeriode}=rc2Context_('rc2fin'),area=$('#rc2FinArea');if(!npsn||!idPeriode){area.innerHTML=msg('Pilih sekolah dan periode.','warning');return;}area.innerHTML=loading();try{const p=await api('getPipelinePenilaianSPJ',{npsn,idPeriode});area.innerHTML=rc2PipelineCards_(p)+rc2ReadinessBanner_(p)+`${p.final_done?'<div class="message ok" style="margin-top:14px"><b>SPJ sudah FINAL.</b> Finalisasi DINAS telah tercatat.</div>':`<div class="field" style="margin-top:14px"><label>Catatan finalisasi</label><textarea id="rc2FinNote" rows="3" placeholder="Catatan pengesahan akhir..."></textarea></div><div class="toolbar"><button class="btn btn-primary" onclick="saveFinalisasiRc2()" ${p.phase2_done?'':'disabled'}>Finalisasi SPJ</button></div>`}`;}catch(e){area.innerHTML=msg(errorText(e));}};
 window.saveFinalisasiRc2=async function(){const {npsn,idPeriode}=rc2Context_('rc2fin'),catatan=$('#rc2FinNote')?.value.trim()||'';if(!confirm('Finalisasi SPJ ini? Tindakan ini menutup rangkaian penilaian.'))return;try{await api('finalisasiSPJDinas',{data:{npsn,id_periode:idPeriode,catatan}});toast('SPJ berhasil difinalisasi DINAS.','ok');await loadFinalisasiRc2();}catch(e){toast(errorText(e),'error',5000);}};
 
 async function verifikasiUlangView(){
   if(!isPengawas()){ $('#mainContent').innerHTML=msg('Verifikasi ulang merupakan ruang kerja Pengawas.','warning'); return; }
   const npsn=state.selectedNpsn||'';
   const periods=await periodeSelect('rc2VerPeriode',true,'bulan');
-  $('#mainContent').innerHTML=head('Verifikasi Ulang / Review','Pengawas memastikan tindak lanjut telah diperiksa; Pengawas tidak memfinalisasi nilai DINAS.')+`<div class="panel"><div class="message info"><b>Sekolah:</b> ${esc(npsn||'Belum dipilih')}. Jika belum ada sekolah, kembali ke menu Sekolah Tugas.</div><div class="field"><label>Periode</label>${periods}</div><div class="toolbar"><button class="btn btn-primary" onclick="loadView('temuan')">Buka Temuan</button><button class="btn btn-light" onclick="loadView('pdfInteraktif')">Buka Workbench Pemeriksaan</button></div><div id="rc2VerArea"></div></div>`;
+  $('#mainContent').innerHTML=head('Verifikasi Ulang / Review','Pengawas memastikan tindak lanjut telah diperiksa sebelum Penilaian Fase 1; Fase 2 dan Finalisasi tetap kewenangan DINAS.')+`<div class="panel"><div class="message info"><b>Sekolah:</b> ${esc(npsn||'Belum dipilih')}. Jika belum ada sekolah, kembali ke menu Sekolah Tugas.</div><div class="field"><label>Periode</label>${periods}</div><div class="toolbar"><button class="btn btn-primary" onclick="loadView('temuan')">Buka Temuan</button><button class="btn btn-light" onclick="loadView('pdfInteraktif')">Buka Workbench Pemeriksaan</button></div><div id="rc2VerArea"></div></div>`;
   if(npsn&&state.selectedPeriode){try{const p=await api('getPipelinePenilaianSPJ',{npsn,idPeriode:state.selectedPeriode});$('#rc2VerArea').innerHTML=rc2PipelineCards_(p);}catch(_){}}
 }
 
@@ -8068,7 +8295,33 @@ async function hasilPenilaianView(){
   $('#mainContent').innerHTML=head('Hasil Penilaian','Pantau hasil Fase 1, Rekonsiliasi, Fase 2, dan Finalisasi DINAS.')+`<div class="panel"><div class="field"><label>Periode DINAS</label>${periods}</div><div class="toolbar"><button class="btn btn-primary" onclick="loadHasilRc2()">Muat Hasil</button></div><div id="rc2HasilArea" style="margin-top:14px"></div></div>`;
   if(state.selectedPeriode)setTimeout(()=>loadHasilRc2(),0);
 }
-window.loadHasilRc2=async function(){const idPeriode=$('#rc2HasilPeriode')?.value||state.selectedPeriode||'',area=$('#rc2HasilArea');if(!idPeriode){area.innerHTML=msg('Pilih periode.','warning');return;}state.selectedPeriode=idPeriode;area.innerHTML=loading();try{const p=await api('getPipelinePenilaianSPJ',{idPeriode,npsn:ownNpsn()});area.innerHTML=rc2PipelineCards_(p)+(p.final_done?'<div class="message ok" style="margin-top:14px"><b>Hasil sudah FINAL oleh DINAS.</b></div>':'<div class="message info" style="margin-top:14px">Hasil masih berada dalam proses workflow DINAS.</div>');}catch(e){area.innerHTML=msg(errorText(e));}};
+
+window.loadHasilRc2=async function(){
+  const idPeriode=$('#rc2HasilPeriode')?.value||state.selectedPeriode||'',area=$('#rc2HasilArea');
+  if(!idPeriode){area.innerHTML=msg('Pilih periode.','warning');return;}
+  state.selectedPeriode=idPeriode;
+  area.innerHTML=loading('Memuat posisi SPJ sekolah...');
+  try{
+    const [p,rep]=await Promise.all([
+      api('getPipelinePenilaianSPJ',{idPeriode,npsn:ownNpsn()}),
+      api('getRoleAssessmentReport',{idPeriode,npsn:ownNpsn()})
+    ]);
+    const r=rep.data?.readiness||{};
+    const missing=(r.missing_documents||[]).map(x=>`<li>${esc(x)}</li>`).join('');
+    const repair=(r.repair_documents||[]).map(x=>`<li>${esc(x)}</li>`).join('');
+    area.innerHTML=`${rc2PipelineCards_(p)}
+      <div class="pipeline-kpis" style="margin-top:14px">
+        <div class="pipeline-kpi"><small>BKU Data</small><strong>${r.bku_ready?'VALID':'BELUM'}</strong></div>
+        <div class="pipeline-kpi"><small>Dokumen Scan</small><strong>${fmtNum(r.documents_complete_count||0)}/10</strong></div>
+        <div class="pipeline-kpi"><small>Fase 1 Pengawas</small><strong style="font-size:.85rem">${esc(String(r.phase1_state||'BELUM').replaceAll('_',' '))}</strong></div>
+        <div class="pipeline-kpi"><small>Fase 2 DINAS</small><strong style="font-size:.85rem">${r.phase2_done?'SELESAI':'BELUM'}</strong></div>
+        <div class="pipeline-kpi"><small>Status Akhir</small><strong style="font-size:.85rem">${r.final_done?'FINAL':'PROSES'}</strong></div>
+      </div>
+      ${missing||repair?`<div class="message warning"><b>Kelengkapan yang perlu diperhatikan:</b><ul style="margin:6px 0 0">${missing}${repair}</ul></div>`:'<div class="message ok"><b>BKU Data dan 10 komponen dokumen sudah lengkap.</b></div>'}
+      <div class="message info"><b>Posisi sekarang:</b> ${esc(r.next_label||p.readiness_message||'-')}</div>
+      ${p.final_done?'<div class="toolbar"><button class="btn btn-primary" onclick="loadView(\'arsipPenilaianV5\')">Buka Laporan Lengkap →</button></div>':''}`;
+  }catch(e){area.innerHTML=msg(errorText(e));}
+};
 
 async function kesepakatanView(){
   const isS=isSchool();
@@ -8809,7 +9062,6 @@ window.exportGlobalMonExcel = async function(){
 };
 
 </script>
-</script>
 
 
 
@@ -9063,11 +9315,9 @@ window.exportGlobalMonExcel = async function(){
 <!-- V46 DATA TRANSACTION ENGINE -->
 
 
-</body></html>`);
-  w.document.close();
-}
-window.loadV5Archive=loadV5Archive;
-</script>
+
+<!-- RC2 STABILIZED READINESS: DINAS canonical next-stage awareness -->
+
 <script>
 /* ============================================================================
  * UI PENGESAHAN ELEKTRONIK — V3
@@ -10171,6 +10421,112 @@ body.theme-sekolah .v221-book-summary{background:#F7F8FE}
   .v224-keyboard-hint{display:none}
 }
 </style>
+
+<style id="rc2PipelineIntegratedStyles">
+.pipeline-readiness-shell{padding:18px;border:1px solid var(--role-border,var(--border));border-radius:18px;background:#fff}
+.pipeline-readiness-head{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.pipeline-readiness-head h3{margin:0}.pipeline-readiness-head p{margin:4px 0 0;color:var(--muted);font-size:.8rem}
+.pipeline-kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:9px;margin:12px 0}
+.pipeline-kpi{padding:13px;border:1px solid var(--border);border-radius:14px;background:#fafbfc}
+.pipeline-kpi small{display:block;color:var(--muted);font-size:.65rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em}
+.pipeline-kpi strong{display:block;font-size:1.35rem;margin-top:4px}
+.pipeline-status-chip{display:inline-flex;padding:4px 8px;border-radius:999px;font-size:.66rem;font-weight:800;background:#f2f4f7}
+.pipeline-status-chip.ok{background:#eaf7ef;color:#176b4d}.pipeline-status-chip.warn{background:#fff4dc;color:#875900}.pipeline-status-chip.info{background:#eaf3ff;color:#235ea7}
+.mobile-sidebar-logout{display:none;width:100%;margin:0 0 12px;padding:11px;border:1px solid #d5dde4;border-radius:11px;background:#fff;color:#8f2f2f;font-weight:800;cursor:pointer}
+@media(max-width:900px){.pipeline-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:760px){
+  #logoutBtn{display:inline-flex!important;visibility:visible!important;opacity:1!important;min-width:auto!important;padding:8px 10px!important;font-size:.76rem!important}
+  .mobile-sidebar-logout{display:block}
+  body[data-role] .top-actions{display:flex!important}
+}
+@media(max-width:430px){
+  .top-actions .btn-light#logoutBtn{display:inline-flex!important}
+  body[data-role] .topbar .brand-gold-title{font-size:.9rem!important}
+}
+</style>
+<script id="rc2PipelineIntegratedClient">
+async function resolveReadinessPeriodV2(){
+  if(state.selectedPeriode)return state.selectedPeriode;
+  try{
+    const periods=await ensurePeriodeMaster();
+    const active=(periods||[]).find(x=>upper(x.status||'AKTIF')==='AKTIF')||(periods||[])[0];
+    if(active?.id_periode)state.selectedPeriode=active.id_periode;
+  }catch(e){}
+  return state.selectedPeriode||'';
+}
+function readinessStatusChipV2(textValue,kind){
+  return `<span class="pipeline-status-chip ${kind||''}">${esc(textValue||'-')}</span>`;
+}
+window.openReadinessActionV2=function(npsn,view){
+  if(npsn)state.selectedNpsn=npsn;
+  loadView(view);
+};
+window.renderRoleReadinessPanel=async function(){
+  const host=$('#roleReadinessPanel'); if(!host)return;
+  const p=await resolveReadinessPeriodV2();
+  if(!p){host.innerHTML=msg('Belum ada periode DINAS yang dapat ditampilkan.','warning');return;}
+  host.innerHTML=loading('Memuat posisi kelengkapan dan penilaian...');
+  try{
+    const r=await api('getAssessmentReadinessMatrix',{idPeriode:p});
+    const rows=r.data||[],s=r.summary||{};
+    const roleNow=String(role()||'').toUpperCase();
+    if(roleNow==='SEKOLAH'){
+      const x=rows[0]||{};
+      const blockers=(x.blockers||[]).map(v=>`<li>${esc(v)}</li>`).join('');
+      host.innerHTML=`<div class="pipeline-readiness-head"><div><h3>Posisi SPJ Sekolah</h3><p>Periode ${esc(p)} • status berasal dari BKU Data, 10 dokumen scan, Fase 1 Pengawas, dan Fase 2 DINAS.</p></div>${readinessStatusChipV2(x.next_label||'-',x.final_done?'ok':x.phase1_submitted?'info':'warn')}</div>
+        <div class="pipeline-kpis">
+          <div class="pipeline-kpi"><small>BKU Data</small><strong>${x.bku_ready?'VALID':'BELUM'}</strong></div>
+          <div class="pipeline-kpi"><small>Dokumen Scan</small><strong>${fmtNum(x.documents_complete_count||0)}/10</strong></div>
+          <div class="pipeline-kpi"><small>Fase 1 Pengawas</small><strong style="font-size:.88rem">${esc((x.phase1_state||'BELUM').replaceAll('_',' '))}</strong></div>
+          <div class="pipeline-kpi"><small>Fase 2 DINAS</small><strong style="font-size:.88rem">${x.phase2_done?'SELESAI':'BELUM'}</strong></div>
+          <div class="pipeline-kpi"><small>Status Akhir</small><strong style="font-size:.88rem">${x.final_done?'FINAL':'PROSES'}</strong></div>
+        </div>
+        ${blockers?`<div class="message warning"><b>Yang masih kurang:</b><ul style="margin:6px 0 0">${blockers}</ul></div>`:'<div class="message ok"><b>BKU dan 10 komponen dokumen sudah lengkap.</b> Pantau proses pemeriksaan/penilaian berikutnya.</div>'}
+        <div class="toolbar"><button class="btn btn-light" onclick="loadView('dokumenBulanan')">Lihat 10 Dokumen</button><button class="btn btn-primary" onclick="loadView('hasilPenilaian')">Lihat Status Penilaian</button></div>`;
+      return;
+    }
+
+    const title=roleNow==='PENGAWAS'?'Kesiapan Sekolah Tugas':'Control Tower Kesiapan Sekolah';
+    const subtitle=roleNow==='PENGAWAS'
+      ?'Pengawas langsung melihat sekolah yang lengkap dan siap dinilai Fase 1.'
+      :'DINAS melihat sekolah lengkap, Fase 1 yang masuk, persetujuan, kesiapan Fase 2, dan finalisasi.';
+    const kpis=roleNow==='PENGAWAS'
+      ?[
+        ['Sekolah Tugas',s.total||0],['Dokumen Lengkap',s.documents_complete||0],['Siap Fase 1',s.phase1_ready||0],['Dikirim ke DINAS',s.phase1_submitted||0],['Disetujui DINAS',s.phase1_approved||0]
+      ]
+      :[
+        ['Total Sekolah',s.total||0],['Dokumen Lengkap',s.documents_complete||0],['Fase 1 Masuk',s.phase1_submitted||0],['Fase 1 Disetujui',s.phase1_approved||0],['Siap Fase 2',s.ready_for_phase2||0]
+      ];
+    const kpiHtml=kpis.map(k=>`<div class="pipeline-kpi"><small>${esc(k[0])}</small><strong>${fmtNum(k[1])}</strong></div>`).join('');
+    const body=rows.map(x=>{
+      let actionView='statusSekolah',actionLabel='Detail';
+      if(roleNow==='PENGAWAS'){
+        if(['SIAP_DINILAI','SEDANG_DINILAI','PERLU_REVISI'].includes(x.phase1_state)){actionView='penilaianFase1';actionLabel='Buka Fase 1';}
+        else if(!x.documents_complete){actionView='pdfInteraktif';actionLabel='Periksa Dokumen';}
+        else actionView='arsipPenilaianV5';
+      }else{
+        if(x.phase1_state==='DIAJUKAN_KE_DINAS'){actionView='penilaianFase1';actionLabel='Review Fase 1';}
+        else if(x.phase1_approved&&!x.reconciliation_done){actionView='rekonsiliasi';actionLabel='Rekonsiliasi';}
+        else if(x.ready_for_phase2&&!x.phase2_done){actionView='penilaianFase2';actionLabel='Nilai Fase 2';}
+        else if(x.phase2_done&&!x.final_done){actionView='finalisasiSpj';actionLabel='Finalisasi';}
+      }
+      const docs=`${fmtNum(x.documents_complete_count||0)}/10`;
+      return `<tr>
+        <td><b>${esc(x.nama_sekolah||x.npsn)}</b><small class="v241-table-sub">${esc(x.npsn)} • ${esc(x.kecamatan||'-')}</small></td>
+        <td>${x.bku_ready?readinessStatusChipV2('VALID','ok'):readinessStatusChipV2('BELUM','warn')}</td>
+        <td>${x.documents_complete?readinessStatusChipV2(docs,'ok'):readinessStatusChipV2(docs,'warn')}</td>
+        <td>${readinessStatusChipV2(String(x.phase1_state||'BELUM').replaceAll('_',' '),x.phase1_approved?'ok':x.phase1_submitted?'info':'warn')}</td>
+        <td>${x.ready_for_phase2?readinessStatusChipV2('SIAP FASE 2','ok'):(x.phase2_done?readinessStatusChipV2('FASE 2 SELESAI','ok'):readinessStatusChipV2(x.next_label||'-',''))}</td>
+        <td><button class="btn btn-light btn-sm" onclick="openReadinessActionV2('${esc(x.npsn)}','${actionView}')">${esc(actionLabel)}</button></td>
+      </tr>`;
+    }).join('');
+    host.innerHTML=`<div class="pipeline-readiness-head"><div><h3>${esc(title)}</h3><p>${esc(subtitle)} • Periode ${esc(p)}</p></div><button class="btn btn-light btn-sm" onclick="renderRoleReadinessPanel()">Muat Ulang</button></div>
+      <div class="pipeline-kpis">${kpiHtml}</div>
+      <div class="table-wrap"><table class="friendly-table"><thead><tr><th>Sekolah</th><th>BKU</th><th>10 Dokumen</th><th>Fase 1</th><th>Posisi Berikutnya</th><th>Aksi</th></tr></thead><tbody>${body||emptyRow(6,'Belum ada sekolah pada periode ini.')}</tbody></table></div>`;
+  }catch(e){host.innerHTML=msg(errorText(e),'error');}
+};
+</script>
+
 <style id="v225LinearRoleFlow">
 /* Old context bar created a second navigation system; hide it permanently. */
 .ux-context,.v16-breadcrumb{display:none!important}
@@ -10375,15 +10731,16 @@ body.theme-sekolah .v221-book-summary{background:#F7F8FE}
       {view:'penugasan',title:'Sekolah Tugas',desc:'Pilih sekolah binaan sesuai penugasan aktif.'},
       {view:'pdfInteraktif',title:'Pemeriksaan BKU & Dokumen',desc:'Periksa transaksi kanonik, BKU resmi, dan bukti SPJ tanpa mengambil alih penilaian DINAS.'},
       {view:'temuan',title:'Temuan & Rekomendasi',desc:'Catat temuan berbasis bukti dan rekomendasi tindak lanjut.'},
-      {view:'verifikasiUlang',title:'Verifikasi Ulang / Review',desc:'Verifikasi hasil perbaikan dan serahkan hasil pemeriksaan sebagai input penilaian DINAS.'},
-      {view:'arsipPenilaianV5',title:'Hasil / Arsip',desc:'Lihat hasil yang telah diproses DINAS.'}
+      {view:'verifikasiUlang',title:'Verifikasi Ulang / Review',desc:'Verifikasi hasil perbaikan sebelum Penilaian Fase 1.'},
+      {view:'penilaianFase1',title:'Penilaian Fase 1',desc:'Nilai 10 dokumen berbasis BKU Data lalu kirimkan hasil kepada DINAS.'},
+      {view:'arsipPenilaianV5',title:'Hasil / Arsip',desc:'Lihat laporan Fase 1 yang sudah disetujui DINAS.'}
     ],
     DINAS:[
       {view:'masterSpj',title:'Master Periodisasi & Standar',desc:'Tetapkan periodisasi yang wajib diikuti seluruh sekolah dan Pengawas.'},
       {view:'jadwalTahapan',title:'Workflow Stage Control',desc:'Buka dan tutup stage kerja: Persiapan sampai Finalisasi.'},
       {view:'penugasan',title:'Penugasan Pengawas',desc:'Tetapkan Pengawas untuk sekolah dan kunci penugasan saat siap.'},
       {view:'monitoringGlobal',title:'Monitoring SPJ',desc:'Pantau kesiapan BKU, dokumen, pemeriksaan, dan perbaikan.'},
-      {view:'penilaianFase1',title:'Penilaian Fase 1',desc:'DINAS menetapkan hasil awal berdasarkan transaksi, bukti, dan pemeriksaan Pengawas.'},
+      {view:'penilaianFase1',title:'Persetujuan Fase 1 Pengawas',desc:'Review hasil Fase 1 yang dikirim Pengawas, lalu setujui atau kembalikan untuk revisi.'},
       {view:'rekonsiliasi',title:'Rekonsiliasi',desc:'Cocokkan hasil Fase 1 dengan BKU Data, dokumen, temuan, dan tindak lanjut.'},
       {view:'penilaianFase2',title:'Penilaian Fase 2',desc:'DINAS menetapkan hasil akhir setelah rekonsiliasi selesai.'},
       {view:'finalisasiSpj',title:'Finalisasi',desc:'DINAS mengesahkan hasil akhir dan menutup proses SPJ.'},
@@ -10410,7 +10767,7 @@ body.theme-sekolah .v221-book-summary{background:#F7F8FE}
 
   window.v225Go=function(view){
     const r=roleV225();
-    if(r==='PENGAWAS' && view!=='penugasan' && ['pdfInteraktif','temuan','verifikasiUlang'].includes(view) && !state.selectedNpsn){
+    if(r==='PENGAWAS' && view!=='penugasan' && ['pdfInteraktif','temuan','verifikasiUlang','penilaianFase1'].includes(view) && !state.selectedNpsn){
       toast('Pilih sekolah binaan terlebih dahulu.','warning');
       loadView('penugasan');
       return;
@@ -10427,13 +10784,13 @@ body.theme-sekolah .v221-book-summary{background:#F7F8FE}
     };
     if(r==='PENGAWAS')return {
       kicker:'ALUR PEMERIKSAAN PENGAWAS',
-      title:'Satu sekolah, satu alur pemeriksaan',
-      desc:'Ikuti stage DINAS, periksa BKU dan bukti, selesaikan temuan, lalu verifikasi ulang hasil perbaikan.'
+      title:'Satu sekolah, satu alur sampai Fase 1',
+      desc:'Periksa BKU dan 10 dokumen, selesaikan temuan, nilai Fase 1, lalu kirim hasil kepada DINAS.'
     };
     return {
       kicker:'ALUR PENGELOLAAN DINAS',
-      title:'Kelola SPJ dari persiapan sampai laporan',
-      desc:'Tetapkan periodisasi dan stage aktif, pantau pemeriksaan, lalu jalankan Fase 1, Rekonsiliasi, Fase 2, dan Finalisasi.'
+      title:'Kelola SPJ dari kesiapan sampai laporan',
+      desc:'Pantau kelengkapan sekolah, setujui Fase 1 Pengawas, lakukan Rekonsiliasi, Penilaian Fase 2, Finalisasi, dan laporan.'
     };
   }
 
@@ -10444,6 +10801,7 @@ body.theme-sekolah .v221-book-summary{background:#F7F8FE}
     const cols=Math.min(flow.length,4);
 
     let nextIndex=0;
+    let homeWorkflow=null;
     if(r==='SEKOLAH'){
       // Jadwal adalah langkah pertama; periode yang sudah dipilih mengarahkan
       // user ke pekerjaan operasional berikutnya tanpa mengubah data/status.
@@ -10452,6 +10810,21 @@ body.theme-sekolah .v221-book-summary{background:#F7F8FE}
       // Jadwal tetap terlihat sebagai langkah pertama. Setelah sekolah dipilih,
       // pekerjaan berikutnya adalah Workbench BKU & bukti.
       nextIndex=state.selectedNpsn?2:1;
+    }else if(r==='DINAS'){
+      // DINAS harus melihat pekerjaan berikutnya berdasarkan stage yang benar-benar ACTIVE.
+      homeWorkflow=await safeApi('getWorkflowOverview',{},null);
+      const active=String(homeWorkflow?.active_stage||'PERSIAPAN').toUpperCase();
+      const stageToIndex={
+        PERSIAPAN:0,
+        INPUT_SPJ:3,
+        PEMERIKSAAN:3,
+        PERBAIKAN:3,
+        PENILAIAN_1:4,
+        REKONSILIASI:5,
+        PENILAIAN_2:6,
+        FINALISASI:7
+      };
+      nextIndex=Object.prototype.hasOwnProperty.call(stageToIndex,active)?stageToIndex[active]:0;
     }
     const next=flow[nextIndex]||flow[0];
 
@@ -10476,12 +10849,14 @@ body.theme-sekolah .v221-book-summary{background:#F7F8FE}
 
         <section class="v225-home-next">
           <div>
-            <small>LANGKAH BERIKUTNYA</small>
+            <small>LANGKAH BERIKUTNYA${r==='DINAS'&&homeWorkflow?.active_stage?` • STAGE ACTIVE: ${esc(homeWorkflow.active_stage)}`:''}</small>
             <strong>${nextIndex+1}. ${esc(next.title)}</strong>
             <div class="muted" style="margin-top:4px">${esc(next.desc)}</div>
           </div>
           <button class="btn btn-primary" onclick="v225Go('${next.view}')">Buka langkah ${nextIndex+1} →</button>
         </section>
+
+        <section id="roleReadinessPanel" class="pipeline-readiness-shell">${loading('Memuat posisi kelengkapan dan penilaian...')}</section>
 
         <section class="v225-workflow">
           <div class="v225-workflow-head">
@@ -10495,6 +10870,7 @@ body.theme-sekolah .v221-book-summary{background:#F7F8FE}
 
         <div class="v225-support">${support}</div>
       </div>`;
+    setTimeout(()=>window.renderRoleReadinessPanel?.(),0);
   });
 
   function buildFlowBarV225(view){
@@ -10517,7 +10893,7 @@ body.theme-sekolah .v221-book-summary{background:#F7F8FE}
         <div class="v225-flow-title"><span class="v225-step-pill">${idx+1}</span>${esc(cur.title)}</div>
       </div>
       <div class="v225-flow-actions">
-        ${next?`<button class="v225-flow-btn primary" onclick="v225Go('${next.view}')">Lanjut: ${esc(next.title)} →</button>`:`<button class="v225-flow-btn primary" onclick="loadView('home')">Selesai • Beranda</button>`}
+        ${next?`<button class="v225-flow-btn primary" onclick="v225Go('${next.view}')">Buka: ${esc(next.title)} →</button>`:`<button class="v225-flow-btn primary" onclick="loadView('home')">Selesai • Beranda</button>`}
       </div>`;
     return bar;
   }
@@ -12651,8 +13027,6 @@ body[data-role="SEKOLAH"] .pdf-interactive-grid aside .v11-assessment-form,body[
 <!-- SIMPEL SPJ CORE STABLE RC1
      Baseline: V46. Experimental renderer/router layers removed.
      Native router/sidebar retained. BKU Data supports Excel OR digital PDF; signed scan remains document evidence. -->
-</body>
-</html>
 
 <!-- SIMPEL SPJ V9.4 FRONTEND CONSOLIDATION BASELINE -->
 
@@ -12792,3 +13166,10 @@ Preserve login, welcome, core renderer.
 <!-- V45 AUDIT TRANSACTION ENGINE -->
 
 <!-- V46 DATA TRANSACTION ENGINE -->
+
+<!-- RC2 PIPELINE INTEGRATED CLEAN
+     Canonical candidate: unified readiness, Pengawas Fase 1, DINAS approval,
+     Rekonsiliasi/Fase 2/Finalisasi, role-scoped reports, mobile logout.
+-->
+</body>
+</html>
