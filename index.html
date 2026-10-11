@@ -1870,12 +1870,173 @@ aside.sidebar *,
 .msg-modal-backdrop{position:fixed;inset:0;z-index:999;background:rgba(15,23,32,.42);backdrop-filter:blur(5px);display:flex;align-items:center;justify-content:center;padding:18px}.msg-modal{width:min(100%,560px);max-height:min(88vh,720px);overflow:auto;background:#fff;border:1px solid rgba(255,255,255,.7);border-radius:22px;padding:24px;box-shadow:0 28px 70px rgba(15,23,32,.22)}.msg-modal-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:14px}.msg-modal-head small{font-size:.63rem;letter-spacing:1.1px;color:#087F5B;font-weight:850}.msg-modal-head h3{margin:3px 0 0;font-size:1.16rem}.msg-close{border:0;background:#F3F5F6;width:34px;height:34px;border-radius:10px;font-size:1.2rem;cursor:pointer;color:#52616C}.msg-modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}.pesan-badge{display:inline-flex;align-items:center;justify-content:center;min-width:19px;height:19px;padding:0 5px;border-radius:999px;background:#B42318;color:#fff;font-size:.66rem;font-weight:850;margin-left:auto}
 @media(max-width:700px){.msg-hero{align-items:flex-start;flex-direction:column;padding:18px}.msg-hero .btn{width:100%}.msg-tabs{width:100%;overflow:auto}.msg-tab{white-space:nowrap;flex:0 0 auto}.msg-card{padding:14px}.msg-body,.msg-footer{padding-left:0}.msg-body{padding-top:10px}.msg-footer{align-items:flex-start;flex-direction:column}.msg-actions{width:100%}.msg-actions .btn{flex:1}.msg-kind{display:none}.msg-modal{border-radius:18px;padding:18px}}
 
-.submenu-motivation-overlay{position:fixed;inset:0;z-index:9997;display:flex;align-items:center;justify-content:center;background:rgba(248,250,249,.92);backdrop-filter:blur(5px);pointer-events:none;opacity:1;transition:opacity .28s ease}
-.submenu-motivation-overlay.fade{opacity:0}
-.submenu-motivation-card{text-align:center;padding:20px}
-.submenu-motivation-card img{display:block;width:min(44vw,260px);max-height:280px;object-fit:contain;margin:0 auto 12px}
-.submenu-motivation-card strong{display:block;font-size:clamp(1rem,2.4vw,1.45rem);letter-spacing:.08em;color:var(--primary);font-weight:900}
-.submenu-motivation-card small{display:block;margin-top:7px;color:var(--muted);font-weight:700}
+.submenu-motivation-overlay{
+  --motivation-width:min(390px,32vw);
+  position:fixed;
+  left:0;
+  bottom:0;
+  width:var(--motivation-width);
+  height:min(500px,68vh);
+  z-index:9997;
+  pointer-events:none;
+  overflow:visible;
+  opacity:1;
+  transform:translateY(105%);
+  animation:sidebarMotivationRise .56s cubic-bezier(.18,.88,.32,1.18) forwards;
+}
+.submenu-motivation-overlay.fade{
+  animation:sidebarMotivationExit .36s ease-in forwards;
+}
+.submenu-motivation-card{
+  position:absolute;
+  inset:0;
+  display:flex;
+  align-items:flex-end;
+  justify-content:center;
+  overflow:visible;
+}
+.submenu-motivation-card::before{
+  content:"";
+  position:absolute;
+  left:0;
+  bottom:0;
+  width:100%;
+  height:78%;
+  background:
+    radial-gradient(circle at 42% 78%,rgba(255,210,36,.92) 0 8%,rgba(255,118,0,.78) 23%,rgba(233,49,20,.36) 46%,transparent 68%),
+    radial-gradient(circle at 67% 74%,rgba(255,229,80,.88) 0 5%,rgba(255,91,0,.62) 23%,transparent 58%),
+    radial-gradient(circle at 22% 80%,rgba(255,154,20,.75) 0 8%,rgba(211,33,11,.45) 28%,transparent 64%);
+  filter:blur(7px) saturate(1.28);
+  transform-origin:50% 100%;
+  animation:fireAuraPulse .34s ease-in-out infinite alternate;
+}
+.submenu-fire-core{
+  position:absolute;
+  left:4%;
+  right:0;
+  bottom:6px;
+  height:76%;
+  overflow:visible;
+  filter:drop-shadow(0 0 16px rgba(255,77,0,.7));
+}
+.submenu-flame{
+  position:absolute;
+  bottom:0;
+  width:76px;
+  height:190px;
+  border-radius:55% 45% 54% 46% / 74% 66% 34% 26%;
+  background:linear-gradient(to top,#ff2d00 0 25%,#ff7b00 48%,#ffd43b 74%,rgba(255,246,153,.95) 100%);
+  transform-origin:50% 100%;
+  mix-blend-mode:screen;
+  opacity:.92;
+}
+.submenu-flame.f1{left:3%;height:220px;animation:flameDance1 .33s ease-in-out infinite alternate}
+.submenu-flame.f2{left:22%;height:290px;width:92px;animation:flameDance2 .41s ease-in-out infinite alternate}
+.submenu-flame.f3{left:48%;height:250px;width:86px;animation:flameDance1 .29s ease-in-out infinite alternate-reverse}
+.submenu-flame.f4{left:69%;height:205px;width:72px;animation:flameDance2 .37s ease-in-out infinite alternate-reverse}
+.submenu-embers{position:absolute;inset:0;overflow:visible}
+.submenu-ember{
+  position:absolute;bottom:42px;width:5px;height:5px;border-radius:50%;
+  background:#ffc532;box-shadow:0 0 8px #ff6400,0 0 13px rgba(255,66,0,.8);
+  animation:emberRise 1.15s linear infinite;
+}
+.submenu-ember.e1{left:16%;animation-delay:-.2s}.submenu-ember.e2{left:31%;animation-delay:-.75s;width:4px;height:4px}
+.submenu-ember.e3{left:46%;animation-delay:-.45s}.submenu-ember.e4{left:62%;animation-delay:-1s;width:3px;height:3px}
+.submenu-ember.e5{left:77%;animation-delay:-.56s}.submenu-ember.e6{left:88%;animation-delay:-.92s;width:4px;height:4px}
+.submenu-motivation-card img{
+  position:absolute;
+  left:18px;
+  bottom:60px;
+  z-index:3;
+  display:block;
+  width:min(285px,77%);
+  max-height:370px;
+  object-fit:contain;
+  object-position:left bottom;
+  margin:0;
+  filter:drop-shadow(0 12px 18px rgba(0,0,0,.25));
+  animation:heroPop .64s cubic-bezier(.16,1.18,.4,1) both;
+}
+.submenu-motivation-copy{
+  position:absolute;
+  z-index:5;
+  left:14px;
+  right:8px;
+  bottom:18px;
+  transform:rotate(-2deg);
+  text-align:left;
+}
+.submenu-motivation-card strong{
+  display:block;
+  width:max-content;
+  max-width:100%;
+  padding:4px 10px 6px;
+  font-size:clamp(1rem,2.2vw,1.55rem);
+  line-height:.98;
+  letter-spacing:.035em;
+  color:#fff;
+  font-weight:1000;
+  font-style:italic;
+  text-transform:uppercase;
+  text-shadow:
+    -2px -2px 0 #6b1400,2px -2px 0 #6b1400,
+    -2px 2px 0 #6b1400,2px 2px 0 #6b1400,
+    0 4px 0 #c53600,0 0 14px rgba(255,113,0,.95);
+  background:linear-gradient(180deg,#fffbd2 0%,#ffd233 38%,#ff7a00 72%,#ff3600 100%);
+  -webkit-background-clip:text;
+  background-clip:text;
+  -webkit-text-fill-color:transparent;
+  animation:textImpact .5s .28s cubic-bezier(.17,1.45,.36,1) both;
+}
+.submenu-motivation-card small{
+  display:inline-block;
+  margin:7px 0 0 8px;
+  padding:4px 9px;
+  border-radius:999px;
+  color:#fff;
+  background:rgba(21,29,31,.78);
+  border:1px solid rgba(255,255,255,.18);
+  font-weight:800;
+  font-size:.68rem;
+  letter-spacing:.03em;
+  backdrop-filter:blur(4px);
+  animation:textImpact .45s .38s ease-out both;
+}
+@keyframes sidebarMotivationRise{
+  0%{transform:translateY(105%) scale(.92);opacity:0}
+  60%{transform:translateY(-3%) scale(1.02);opacity:1}
+  100%{transform:translateY(0) scale(1);opacity:1}
+}
+@keyframes sidebarMotivationExit{
+  to{transform:translateY(108%) scale(.94);opacity:0}
+}
+@keyframes heroPop{
+  0%{transform:translateY(70px) scale(.82);opacity:0}
+  70%{transform:translateY(-6px) scale(1.035);opacity:1}
+  100%{transform:translateY(0) scale(1);opacity:1}
+}
+@keyframes textImpact{
+  0%{transform:scale(.55) rotate(-4deg);opacity:0}
+  75%{transform:scale(1.08) rotate(1deg);opacity:1}
+  100%{transform:scale(1) rotate(0);opacity:1}
+}
+@keyframes fireAuraPulse{
+  from{transform:scale(.96,1.01);opacity:.78}
+  to{transform:scale(1.04,1.08);opacity:1}
+}
+@keyframes flameDance1{
+  from{transform:translateY(4px) rotate(-7deg) scale(.92,1)}
+  to{transform:translateY(-10px) rotate(5deg) scale(1.06,1.12)}
+}
+@keyframes flameDance2{
+  from{transform:translateY(-3px) rotate(6deg) scale(1.05,.93)}
+  to{transform:translateY(-16px) rotate(-6deg) scale(.94,1.13)}
+}
+@keyframes emberRise{
+  0%{transform:translate(0,0) scale(.8);opacity:0}
+  14%{opacity:1}
+  100%{transform:translate(22px,-310px) scale(.15);opacity:0}
+}
 .report-center-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
 .report-print-sheet{background:#fff;border:1px solid var(--border);border-radius:16px;padding:22px;margin-top:14px}
 .report-letterhead{text-align:center;border-bottom:2px solid #1f5b50;padding-bottom:12px;margin-bottom:16px}
@@ -1885,7 +2046,17 @@ aside.sidebar *,
 .report-table{width:100%;border-collapse:collapse;font-size:.76rem}
 .report-table th,.report-table td{border:1px solid #d8dee3;padding:7px;vertical-align:top}.report-table th{background:#f4f7f6;text-align:left}
 @media(max-width:850px){.report-center-grid{grid-template-columns:1fr 1fr}.report-meta{grid-template-columns:1fr}.report-print-sheet{padding:14px}}
-@media(max-width:600px){.submenu-motivation-card img{width:min(70vw,230px)}.report-center-grid{grid-template-columns:1fr}}
+@media(max-width:900px){
+  .submenu-motivation-overlay{--motivation-width:min(340px,44vw);height:min(440px,64vh)}
+  .submenu-motivation-card img{width:min(245px,75%);bottom:58px}
+}
+@media(max-width:600px){
+  .submenu-motivation-overlay{--motivation-width:min(300px,82vw);height:min(400px,58vh)}
+  .submenu-motivation-card img{width:min(215px,72%);left:10px;bottom:55px}
+  .submenu-motivation-card strong{font-size:1.08rem}
+  .submenu-motivation-copy{left:8px;bottom:14px}
+  .report-center-grid{grid-template-columns:1fr}
+}
 
 </style>
 </head>
@@ -2875,20 +3046,40 @@ function showSubmenuMotivation(viewLabel){
   document.querySelector('.submenu-motivation-overlay')?.remove();
   const overlay=document.createElement('div');
   overlay.className='submenu-motivation-overlay';
+  overlay.setAttribute('aria-hidden','true');
   overlay.innerHTML=`<div class="submenu-motivation-card">
-    <img src="welcome.gif" alt="Semangat para CEO SD">
-    <strong>SEMANGAT PARA CEO SD!!</strong>
-    ${viewLabel?`<small>${esc(viewLabel)}</small>`:''}
+    <div class="submenu-fire-core">
+      <span class="submenu-flame f1"></span>
+      <span class="submenu-flame f2"></span>
+      <span class="submenu-flame f3"></span>
+      <span class="submenu-flame f4"></span>
+      <div class="submenu-embers">
+        <i class="submenu-ember e1"></i><i class="submenu-ember e2"></i><i class="submenu-ember e3"></i>
+        <i class="submenu-ember e4"></i><i class="submenu-ember e5"></i><i class="submenu-ember e6"></i>
+      </div>
+    </div>
+    <img src="welcome.gif" alt="">
+    <div class="submenu-motivation-copy">
+      <strong>SEMANGAT PARA CEO SD!!</strong>
+      ${viewLabel?`<small>${esc(viewLabel)}</small>`:''}
+    </div>
   </div>`;
   document.body.appendChild(overlay);
-  const started=Date.now();let closed=false;
+
+  const started=Date.now();
+  let closed=false;
   const finish=()=>{
-    if(closed)return;closed=true;
-    const wait=Math.max(0,700-(Date.now()-started));
-    setTimeout(()=>{overlay.classList.add('fade');setTimeout(()=>overlay.remove(),300);},wait);
+    if(closed)return;
+    closed=true;
+    // Biarkan hero + api menyala sebentar agar tetap terasa, tetapi modul memuat paralel.
+    const wait=Math.max(0,1250-(Date.now()-started));
+    setTimeout(()=>{
+      overlay.classList.add('fade');
+      setTimeout(()=>overlay.remove(),390);
+    },wait);
   };
-  // Modul mulai memuat di belakang animasi; animasi tidak menambah timeout navigasi.
-  setTimeout(finish,1500);
+  // Safety dismissal bila request backend lama; tidak pernah menutupi app penuh.
+  setTimeout(finish,2200);
   return {finish};
 }
 function sidebarViewLabel_(view){
@@ -8169,7 +8360,7 @@ window.printAssessmentReportRc2=function(){
   const body=$('#assessmentReportPrintableRc2')?.outerHTML;if(!body){toast('Muat laporan terlebih dahulu.','warning');return;}
   const w=window.open('','_blank');if(!w){toast('Popup diblokir browser. Izinkan popup untuk mencetak laporan.','warning');return;}
   w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Laporan SIMPEL SPJ</title><style>body{font-family:Arial,sans-serif;color:#1f2937;padding:24px}.report-print-sheet{max-width:1050px;margin:auto}.report-letterhead{text-align:center;border-bottom:2px solid #1f5b50;padding-bottom:12px;margin-bottom:16px}.report-letterhead h2{font-size:18px;margin:4px}.report-letterhead p{font-size:12px;color:#667085}.report-meta{display:grid;grid-template-columns:150px 1fr;gap:5px 12px;font-size:12px;margin:12px 0}.report-section-title{font-weight:800;margin:18px 0 8px;border-bottom:1px solid #aaa;padding-bottom:5px}.report-table{width:100%;border-collapse:collapse;font-size:11px}.report-table th,.report-table td{border:1px solid #aaa;padding:6px;vertical-align:top}.report-table th{background:#f1f5f4}.pipeline-kpis,.report-center-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.pipeline-kpi{border:1px solid #bbb;padding:8px}.pipeline-kpi small{display:block;font-size:9px}.pipeline-kpi strong{font-size:16px}.muted{color:#667085;font-size:10px}.toolbar,.btn,.message{display:none!important}@page{size:A4 landscape;margin:12mm}@media print{body{padding:0}}</style></head><body>${body}
-<!-- RC2 REPORT CENTER + SUBMENU MOTIVATION -->
+<!-- RC2 REPORT CENTER + SIDEBAR FIRE MOTIVATION -->
 </body></html>`);
   w.document.close();w.focus();setTimeout(()=>w.print(),250);
 };
