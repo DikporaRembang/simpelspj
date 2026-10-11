@@ -2777,14 +2777,18 @@ async function logout(){
   stopSessionHeartbeat();
   try{if(state.token) await api('logout');}catch(e){}
   invalidateRkasFrontendCaches();
+  resetViewNavigationState();
   state.token=''; state.user=null; sessionStorage.removeItem('simpel_token'); authView(msg('Anda telah keluar dari aplikasi.','ok'));
 }
 
 async function startApp(){
   document.body.style.background='var(--bg)';
+
+  // Setiap login/re-login harus memulai router dari state bersih.
+  // Ini mencegah lock navigasi dari sesi/role sebelumnya.
+  resetViewNavigationState();
   renderShell();
 
-  // FAST START TEST:
   // Beranda tampil lebih dahulu, proses tambahan berjalan di belakang.
   await loadView('home');
 
@@ -3013,28 +3017,45 @@ function loadView(view){
   });
 }
 
+function resetViewNavigationState(){
+  try{
+    if(_viewNavPending && typeof _viewNavPending.resolve === 'function') _viewNavPending.resolve();
+  }catch(e){}
+  _viewNavPending = null;
+  _viewNavRunning = false;
+  window.__SIMPEL_VIEW_TRANSITION_ACTIVE = false;
+}
+
 async function runViewNavigationQueue(){
-
-  // V7.5: cegah klik menu berulang saat perpindahan modul berjalan
-  if(window.__SIMPEL_VIEW_TRANSITION_ACTIVE){
-    return;
-  }
-
-  window.__SIMPEL_VIEW_TRANSITION_ACTIVE = true;
+  // Satu worker saja. Klik berikutnya cukup mengganti _viewNavPending;
+  // jangan gunakan transition flag sebagai early-return global karena flag
+  // tersebut harus selalu dilepas setelah render selesai.
   if(_viewNavRunning) return;
+
   _viewNavRunning = true;
+  window.__SIMPEL_VIEW_TRANSITION_ACTIVE = true;
 
   try{
     while(_viewNavPending){
       const job = _viewNavPending;
       _viewNavPending = null;
-      if(typeof window.applyRoleThemeV213 === 'function') window.applyRoleThemeV213();
-      await renderViewSafely(job.view);
-      if(typeof window.applyRoleThemeV213 === 'function') window.applyRoleThemeV213();
-      job.resolve();
+      try{
+        if(typeof window.applyRoleThemeV213 === 'function') window.applyRoleThemeV213();
+        await renderViewSafely(job.view);
+        if(typeof window.applyRoleThemeV213 === 'function') window.applyRoleThemeV213();
+      }finally{
+        job.resolve();
+      }
     }
   }finally{
     _viewNavRunning = false;
+    window.__SIMPEL_VIEW_TRANSITION_ACTIVE = false;
+
+    // Jika ada permintaan yang tiba tepat di sela pelepasan worker,
+    // jalankan worker baru pada microtask berikutnya.
+    if(_viewNavPending){
+      Promise.resolve().then(runViewNavigationQueue);
+    }
   }
 }
 
