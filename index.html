@@ -8365,6 +8365,8 @@ window.printAssessmentReportRc2=function(){
 <!-- RC2 REPORT CENTER + SIDEBAR FIRE MOTIVATION -->
 
 <!-- RC2 SCHEDULE STRICT: pre-schedule uploads are historical only -->
+
+<!-- RC2 SCHEDULE STRICT STATUS CLEAR -->
 </body></html>`);
   w.document.close();w.focus();setTimeout(()=>w.print(),250);
 };
@@ -10822,6 +10824,9 @@ body.theme-sekolah .v221-book-summary{background:#F7F8FE}
 .bucket-school-row:last-child{border-bottom:0}
 .bucket-school-row .school-name{font-weight:850}
 .bucket-school-row .school-meta{font-size:.75rem;color:var(--muted)}
+.bucket-history-note{display:block;margin-top:4px;font-size:.69rem;font-weight:800;color:#a45b00}
+.bucket-history-note.danger{color:#a33427}
+
 @media(max-width:900px){.bucket-grid-fast{grid-template-columns:repeat(2,minmax(0,1fr))}.bucket-school-row{grid-template-columns:1fr 1fr}.bucket-school-row .bucket-action{grid-column:1/-1}}
 @media(max-width:560px){.bucket-grid-fast{grid-template-columns:1fr 1fr}.bucket-school-row{grid-template-columns:1fr}.bucket-school-row .bucket-action{grid-column:auto}}
 </style>
@@ -10861,24 +10866,25 @@ window.renderRoleReadinessPanel=async function(forceRefresh=false){
       }
       x=x||{};
       const status=bucketMeta?.label||'Belum ada status';
+      const purePreSchedule=String(x.bucket||'')==='PRA_JADWAL_TIDAK_BERLAKU';
       host.innerHTML=`<div class="pipeline-readiness-head">
         <div><h3>Posisi SPJ Sekolah</h3><p>Ringkasan cepat • detail dimuat hanya saat dibuka • Periode ${esc(p)}</p></div>
         <button class="btn btn-light btn-sm" onclick="renderRoleReadinessPanel(true)">Muat Ulang</button>
       </div>
       <div class="bucket-grid-fast">
         <div class="bucket-card-fast"><small>Posisi Saat Ini</small><strong style="font-size:1rem">${esc(status)}</strong></div>
-        <div class="bucket-card-fast"><small>BKU Data</small><strong style="font-size:1rem">${x.bku_ready?'VALID':'BELUM'}</strong></div>
+        <div class="bucket-card-fast"><small>BKU Data</small><strong style="font-size:1rem">${x.bku_ready?'VALID':Number(x.pre_schedule_invalid_bku||0)>0?'PRA-JADWAL':'BELUM'}</strong></div>
         <div class="bucket-card-fast"><small>10 Dokumen Scan</small><strong>${fmtNum(x.documents_complete_count||0)}/10</strong></div>
         <div class="bucket-card-fast"><small>Langkah Berikut</small><strong style="font-size:.9rem">${esc(x.next_label||'-')}</strong></div>
       </div>
-      ${x.pre_schedule_requires_reupload?`<div class="message warning"><b>Data pra-penjadwalan tidak berlaku.</b><br>Ditemukan ${fmtNum(x.pre_schedule_invalid_bku||0)} snapshot BKU dan ${fmtNum(x.pre_schedule_invalid_documents||0)} komponen dokumen yang diunggah sebelum jadwal DINAS sah. Riwayat tidak dihapus, tetapi sekolah perlu mengunggah ulang saat jadwal INPUT SPJ/PERBAIKAN aktif.</div>`:''}
+      ${x.pre_schedule_requires_reupload?`<div class="message warning"><b>${purePreSchedule?'DATA PRA-JADWAL TIDAK BERLAKU':'Sebagian histori pra-jadwal diabaikan.'}</b><br>Ditemukan ${fmtNum(x.pre_schedule_invalid_bku||0)} snapshot BKU dan ${fmtNum(x.pre_schedule_invalid_documents||0)} komponen dokumen yang diunggah sebelum jadwal DINAS sah. Riwayat tidak dihapus, tetapi tidak dihitung. ${purePreSchedule?'Sekolah harus mengunggah ulang saat jadwal INPUT SPJ/PERBAIKAN aktif.':'Lanjutkan hanya dengan data yang diunggah pada jadwal aktif.'}</div>`:''}
       <div class="toolbar"><button class="btn btn-light" onclick="loadView('dokumenBulanan')">Lihat Kelengkapan Dokumen</button><button class="btn btn-primary" onclick="loadView('hasilPenilaian')">Lihat Detail Posisi</button></div>`;
       return;
     }
 
     const wanted=roleNow==='PENGAWAS'
-      ? ['KURANG_LENGKAP','LENGKAP_SIAP_FASE1','FASE1_PROSES','FASE1_MASUK_DINAS','FASE1_DISETUJUI','FINAL']
-      : ['KURANG_LENGKAP','LENGKAP_SIAP_FASE1','FASE1_MASUK_DINAS','FASE1_DISETUJUI','SIAP_FASE2','FASE2_SELESAI','FINAL'];
+      ? ['PRA_JADWAL_TIDAK_BERLAKU','KURANG_LENGKAP','LENGKAP_SIAP_FASE1','FASE1_PROSES','FASE1_MASUK_DINAS','FASE1_DISETUJUI','FINAL']
+      : ['PRA_JADWAL_TIDAK_BERLAKU','KURANG_LENGKAP','LENGKAP_SIAP_FASE1','FASE1_MASUK_DINAS','FASE1_DISETUJUI','SIAP_FASE2','FASE2_SELESAI','FINAL'];
     const labelMap=Object.fromEntries((r.bucket_order||[]).map(x=>[x.id,x.label]));
     const cards=wanted.map(id=>`<button type="button" class="bucket-card-fast" data-bucket="${id}" onclick="showAssessmentBucketFast('${id}')"><small>${esc(labelMap[id]||id.replaceAll('_',' '))}</small><strong>${fmtNum(r.counts?.[id]||0)}</strong></button>`).join('');
 
@@ -10906,20 +10912,28 @@ window.showAssessmentBucketFast=function(bucketId){
       let view='statusSekolah',action='Buka';
       if(roleNow==='PENGAWAS'){
         if(['LENGKAP_SIAP_FASE1','FASE1_PROSES'].includes(bucketId)){view='penilaianFase1';action='Fase 1';}
-        else if(bucketId==='KURANG_LENGKAP'){view='pdfInteraktif';action='Periksa';}
+        else if(['KURANG_LENGKAP','PRA_JADWAL_TIDAK_BERLAKU'].includes(bucketId)){view='pdfInteraktif';action=bucketId==='PRA_JADWAL_TIDAK_BERLAKU'?'Lihat Histori':'Periksa';}
         else {view='arsipPenilaianV5';action='Hasil';}
       }else{
-        if(bucketId==='FASE1_MASUK_DINAS'){view='penilaianFase1';action='Review Fase 1';}
+        if(bucketId==='PRA_JADWAL_TIDAK_BERLAKU'){view='statusSekolah';action='Lihat Status';}
+        else if(bucketId==='FASE1_MASUK_DINAS'){view='penilaianFase1';action='Review Fase 1';}
         else if(bucketId==='FASE1_DISETUJUI'){view='rekonsiliasi';action='Rekonsiliasi';}
         else if(bucketId==='SIAP_FASE2'){view='penilaianFase2';action='Nilai Fase 2';}
         else if(bucketId==='FASE2_SELESAI'){view='finalisasiSpj';action='Finalisasi';}
         else if(bucketId==='FINAL'){view='arsipPenilaianV5';action='Laporan';}
       }
+      const bkuLabel=x.bku_ready?'BKU VALID':Number(x.pre_schedule_invalid_bku||0)>0?'BKU PRA-JADWAL':'BKU BELUM';
+      const bkuKind=x.bku_ready?'ok':Number(x.pre_schedule_invalid_bku||0)>0?'info':'warn';
+      const docActive=`${fmtNum(x.documents_complete_count||0)}/10 aktif`;
+      const historyParts=[];
+      if(Number(x.pre_schedule_invalid_bku||0)>0)historyParts.push(`${fmtNum(x.pre_schedule_invalid_bku)} BKU lama`);
+      if(Number(x.pre_schedule_invalid_documents||0)>0)historyParts.push(`${fmtNum(x.pre_schedule_invalid_documents)} dokumen lama`);
+      const historyNote=historyParts.length?`<span class="bucket-history-note ${bucketId==='PRA_JADWAL_TIDAK_BERLAKU'?'danger':''}">${esc(historyParts.join(' • '))} tidak berlaku</span>`:'';
       return `<div class="bucket-school-row">
-        <div><div class="school-name">${esc(x.nama_sekolah||x.npsn)}</div><div class="school-meta">${esc(x.npsn)} • ${esc(x.kecamatan||'-')}</div></div>
-        <div>${x.bku_ready?readinessStatusChipV2('BKU VALID','ok'):readinessStatusChipV2('BKU BELUM','warn')}</div>
-        <div>${readinessStatusChipV2(`${fmtNum(x.documents_complete_count||0)}/10 dokumen`,x.documents_complete?'ok':'warn')}</div>
-        <div class="school-meta">${esc(x.next_label||'-')}</div>
+        <div><div class="school-name">${esc(x.nama_sekolah||x.npsn)}</div><div class="school-meta">${esc(x.npsn)} • ${esc(x.kecamatan||'-')}</div>${historyNote}</div>
+        <div>${readinessStatusChipV2(bkuLabel,bkuKind)}</div>
+        <div>${readinessStatusChipV2(docActive,x.documents_complete?'ok':'warn')}${Number(x.pre_schedule_invalid_documents||0)>0?`<span class="bucket-history-note">${fmtNum(x.pre_schedule_invalid_documents)} pra-jadwal diabaikan</span>`:''}</div>
+        <div class="school-meta"><b>${bucketId==='PRA_JADWAL_TIDAK_BERLAKU'?'UPLOAD ULANG':'STATUS'}</b><br>${esc(x.next_label||'-')}</div>
         <div class="bucket-action"><button class="btn btn-light btn-sm" onclick="openReadinessActionV2('${esc(x.npsn)}','${view}')">${esc(action)} →</button></div>
       </div>`;
     }).join('')}
