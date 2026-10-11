@@ -2143,8 +2143,8 @@ const SUBMENU_TUTORIALS = {
   masterSpj:{title:'Master Periodisasi & Standar',text:'DINAS menetapkan periodisasi, standar SPJ, dan referensi yang dipakai seluruh role. Sekolah dan Pengawas tidak membuat periodisasi sendiri.',flow:['Periodisasi DINAS','Standar SPJ','Workflow','Pelaksanaan'],current:0},
   sekolah:{title:'Data Sekolah',text:'Identitas sekolah menjadi kunci relasi BKU, dokumen, penugasan, pemeriksaan, dan hasil penilaian.',flow:['Identitas','Penugasan','SPJ','Hasil'],current:0},
   penugasan:{title:'Penugasan Pengawas',text:'DINAS menetapkan sekolah binaan. Pengawas memakai penugasan ini untuk pemeriksaan, temuan, rekomendasi, dan verifikasi ulang—bukan untuk memfinalisasi nilai.',flow:['Sekolah','Pengawas','Pemeriksaan','Verifikasi'],current:1},
-  transaksi:{title:'BKU Data',text:'Sekolah memilih tepat satu sumber BKU Data: Excel BKU atau PDF BKU Digital non-scan. Keduanya dinormalisasi menjadi transaksi kanonik.',flow:['Stage INPUT SPJ','BKU Data','Validasi','Snapshot Aktif'],current:1},
-  dokumenBulanan:{title:'Dokumen SPJ & BKU Resmi',text:'BKU Resmi berupa scan PDF bertanda tangan diunggah terpisah dari BKU Data. Bukti SPJ dan BKU Resmi menjadi evidence pemeriksaan.',flow:['BKU Data','BKU Resmi & Bukti','Pemeriksaan','Tindak Lanjut'],current:1},
+  transaksi:{title:'BKU Data',text:'Sekolah memilih tepat satu sumber BKU Data: Excel BKU atau PDF BKU Digital non-scan. Upload sebelum jadwal DINAS berlaku tetap tersimpan sebagai histori tetapi tidak dihitung.',flow:['Stage INPUT SPJ','BKU Data','Validasi','Snapshot Aktif'],current:1},
+  dokumenBulanan:{title:'Dokumen SPJ & BKU Resmi',text:'BKU Resmi berupa scan PDF bertanda tangan diunggah terpisah dari BKU Data. Dokumen yang diunggah sebelum jadwal DINAS berlaku tidak dihitung sebagai evidence aktif.',flow:['BKU Data','BKU Resmi & Bukti','Pemeriksaan','Tindak Lanjut'],current:1},
   pdfInteraktif:{title:'Pemeriksaan BKU & Dokumen',text:'Pengawas memeriksa transaksi kanonik, BKU Resmi, dan bukti SPJ. Workbench ini tidak membuat atau memfinalisasi Penilaian Fase 1/Fase 2.',flow:['Sekolah Tugas','BKU & Bukti','Pemeriksaan','Temuan'],current:2},
   temuan:{title:'Temuan & Rekomendasi',text:'Pengawas mencatat temuan berbasis bukti dan rekomendasi. Setelah tindak lanjut diverifikasi, hasil pemeriksaan menjadi dasar Penilaian Fase 1 Pengawas.',flow:['Bukti','Temuan','Rekomendasi','Perbaikan','Fase 1 Pengawas'],current:1},
   verifikasiUlang:{title:'Verifikasi Ulang / Review',text:'Pengawas memeriksa tindak lanjut Sekolah pada tahap PERBAIKAN. Setelah verifikasi selesai, sekolah dapat masuk Penilaian Fase 1 Pengawas saat stage dibuka DINAS.',flow:['Perbaikan Sekolah','Verifikasi','Fase 1 Pengawas','Kirim DINAS'],current:1},
@@ -4527,6 +4527,8 @@ async function renderTransaksi(page = 1){
         const importStatus=await safeApi('getBkuImportStatus',{idPeriode:p},{ready:false,data:null});
         if(importStatus?.ready){
           trxNextAction=`<div class="school-next-action danger"><div><span class="school-eyebrow">SNAPSHOT BKU TERDETEKSI</span><strong>BKU Data sudah tercatat untuk periode ini, tetapi belum menghasilkan baris yang dapat ditampilkan.</strong><small style="display:block;margin-top:5px">Snapshot: ${esc(importStatus.data?.source_name||'-')} • ${fmtNum(importStatus.data?.total_valid||0)} baris valid. Backend V21.8 akan membaca langsung detail snapshot sebagai fallback.</small></div><button class="btn btn-primary btn-sm" onclick="renderTransaksi()">↻ Muat Ulang</button></div>`;
+        }else if(Number(importStatus?.ignored_pre_schedule||0)>0){
+          trxNextAction=`<div class="school-next-action danger"><div><span class="school-eyebrow">DATA PRA-JADWAL TIDAK BERLAKU</span><strong>BKU pernah diunggah sebelum jadwal DINAS berlaku, sehingga tidak dipakai untuk penilaian.</strong><small style="display:block;margin-top:5px">Riwayat tetap tersimpan. Silakan unggah ulang BKU Data ketika tahap INPUT SPJ atau PERBAIKAN memiliki jadwal aktif untuk sekolah Anda.</small></div><button class="btn btn-primary btn-sm" onclick="openBkuDataImport()">Unggah Ulang BKU Data</button></div>`;
         }else{
           trxNextAction=`<div class="school-next-action"><div><span class="school-eyebrow">LANGKAH PERTAMA</span><strong>Belum ada BKU Data yang ditetapkan untuk periode ini.</strong><small style="display:block;margin-top:5px">Pilih satu sumber: Excel BKU atau PDF BKU Digital non-scan. Keduanya menghasilkan transaksi kanonik yang sama.</small></div><button class="btn btn-primary btn-sm" onclick="openBkuDataImport()">Tetapkan BKU Data</button></div>`;
         }
@@ -8361,6 +8363,8 @@ window.printAssessmentReportRc2=function(){
   const w=window.open('','_blank');if(!w){toast('Popup diblokir browser. Izinkan popup untuk mencetak laporan.','warning');return;}
   w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Laporan SIMPEL SPJ</title><style>body{font-family:Arial,sans-serif;color:#1f2937;padding:24px}.report-print-sheet{max-width:1050px;margin:auto}.report-letterhead{text-align:center;border-bottom:2px solid #1f5b50;padding-bottom:12px;margin-bottom:16px}.report-letterhead h2{font-size:18px;margin:4px}.report-letterhead p{font-size:12px;color:#667085}.report-meta{display:grid;grid-template-columns:150px 1fr;gap:5px 12px;font-size:12px;margin:12px 0}.report-section-title{font-weight:800;margin:18px 0 8px;border-bottom:1px solid #aaa;padding-bottom:5px}.report-table{width:100%;border-collapse:collapse;font-size:11px}.report-table th,.report-table td{border:1px solid #aaa;padding:6px;vertical-align:top}.report-table th{background:#f1f5f4}.pipeline-kpis,.report-center-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.pipeline-kpi{border:1px solid #bbb;padding:8px}.pipeline-kpi small{display:block;font-size:9px}.pipeline-kpi strong{font-size:16px}.muted{color:#667085;font-size:10px}.toolbar,.btn,.message{display:none!important}@page{size:A4 landscape;margin:12mm}@media print{body{padding:0}}</style></head><body>${body}
 <!-- RC2 REPORT CENTER + SIDEBAR FIRE MOTIVATION -->
+
+<!-- RC2 SCHEDULE STRICT: pre-schedule uploads are historical only -->
 </body></html>`);
   w.document.close();w.focus();setTimeout(()=>w.print(),250);
 };
@@ -10867,6 +10871,7 @@ window.renderRoleReadinessPanel=async function(forceRefresh=false){
         <div class="bucket-card-fast"><small>10 Dokumen Scan</small><strong>${fmtNum(x.documents_complete_count||0)}/10</strong></div>
         <div class="bucket-card-fast"><small>Langkah Berikut</small><strong style="font-size:.9rem">${esc(x.next_label||'-')}</strong></div>
       </div>
+      ${x.pre_schedule_requires_reupload?`<div class="message warning"><b>Data pra-penjadwalan tidak berlaku.</b><br>Ditemukan ${fmtNum(x.pre_schedule_invalid_bku||0)} snapshot BKU dan ${fmtNum(x.pre_schedule_invalid_documents||0)} komponen dokumen yang diunggah sebelum jadwal DINAS sah. Riwayat tidak dihapus, tetapi sekolah perlu mengunggah ulang saat jadwal INPUT SPJ/PERBAIKAN aktif.</div>`:''}
       <div class="toolbar"><button class="btn btn-light" onclick="loadView('dokumenBulanan')">Lihat Kelengkapan Dokumen</button><button class="btn btn-primary" onclick="loadView('hasilPenilaian')">Lihat Detail Posisi</button></div>`;
       return;
     }
