@@ -3123,12 +3123,13 @@ async function renderViewSafely(view){
     if(typeof map[view] !== 'function'){
       throw new Error('Modul belum tersedia: ' + view);
     }
+    const moduleTimeoutMs = 45000;
     await Promise.race([
       map[view](),
       new Promise((_, reject) =>
         setTimeout(
-          () => reject(new Error('Modul terlalu lama dimuat. Silakan coba kembali.')),
-          20000
+          () => reject(new Error('Modul belum selesai dimuat setelah 45 detik. Periksa koneksi/backend lalu coba kembali.')),
+          moduleTimeoutMs
         )
       )
     ]);
@@ -6219,45 +6220,25 @@ async function penugasanView() {
          
          <div class="toolbar" style="margin-top:12px">
            <button class="btn btn-primary" id="btnManualDelegation" onclick="openTambahPenugasanModal()">+ Tambah Penugasan</button>
+           <button class="btn btn-light" type="button" onclick="window._cachedPenugasanGlobal=null;loadDinasPenugasanData_(true)">↻ Muat Ulang</button>
            <input id="searchPenugasanInput" placeholder="🔍 Cari NPSN atau Pengawas..." style="max-width:320px">
          </div>
          
          <div id="penugasanContent">${loading()}</div>
        </div>`;
        
-    try {
-      await refreshDelegationLockState();
-      await refreshDelegationReadinessState();
-      // OPTIMASI: Gunakan cache memori lokal jika sudah ada untuk menghindari request berulang
-      if (!window._cachedPenugasanGlobal) {
-        const res = await api('getPenugasanPengawas');
-        const list = (res.data || []).map(x => {
-          const direct = Number(x.pagu_rkas ?? x.total_pagu ?? 0);
-          return Object.assign({}, x, {
-            pagu_rkas: Number.isFinite(direct) ? direct : 0,
-            total_pagu: Number.isFinite(direct) ? direct : 0
-          });
-        });
-        window._cachedPenugasanGlobal = list;
-        window._paguRkasMeta = res.meta || {};
-      }
-
-      window._cachedPenugasan = window._cachedPenugasanGlobal;
-      window._cachedPaguSekolah = window._cachedPenugasanGlobal;
-      
-      renderPenugasanTable(window._cachedPenugasan);
-      
-      const searchP = $('#searchPenugasanInput');
-      if(searchP) {
-        searchP.oninput = e => {
-          const q = e.target.value.toLowerCase();
-          renderPenugasanTable(window._cachedPenugasan.filter(x => String(x.npsn).toLowerCase().includes(q) || String(x.id_pengawas||'').toLowerCase().includes(q) || String(x.nama_pengawas||'').toLowerCase().includes(q)));
-        };
-      }
-    } catch(e) { 
-      const pContent = $('#penugasanContent');
-      if(pContent) pContent.innerHTML = msg(errorText(e)); 
+    const searchP = $('#searchPenugasanInput');
+    if(searchP) {
+      searchP.oninput = e => {
+        const q = e.target.value.toLowerCase();
+        const rows = Array.isArray(window._cachedPenugasan) ? window._cachedPenugasan : [];
+        renderPenugasanTable(rows.filter(x => String(x.npsn).toLowerCase().includes(q) || String(x.id_pengawas||'').toLowerCase().includes(q) || String(x.nama_pengawas||'').toLowerCase().includes(q)));
+      };
     }
+
+    // Jangan menahan lifecycle router sampai seluruh data Apps Script selesai.
+    // Shell modul tampil segera, sementara data penugasan dimuat melalui satu endpoint bundle.
+    window.loadDinasPenugasanData_(false);
     return;
   }
 
@@ -6555,20 +6536,20 @@ window.diagnoseSelectedPagu = async function(){
 
 window.toggleAssignmentGroup=function(id){const el=document.getElementById(id);if(el)el.classList.toggle('collapsed');};
 
-window.refreshDelegationLockState=async function(){
+window.refreshDelegationLockState=async function(prefetched){
   const box=$('#delegationLockState');
   try{
-    const r=await api('getDelegationLock'); const d=r.data||{}; window._delegationLocked=!!d.locked;
+    const d=prefetched || ((await api('getDelegationLock')).data||{}); window._delegationLocked=!!d.locked;
     if(box)box.innerHTML=`<div><b>${d.locked?'🔒 Pendelegasian terkunci':'🔓 Pendelegasian dapat diubah'}</b><span>${esc(d.reason||'DINAS dapat mengunci hasil pembagian setelah dianggap final.')}</span></div>`;
     ['btnDelegationFair','btnDelegationRandom','btnManualDelegation'].forEach(id=>{const el=$('#'+id);if(el)el.disabled=!!d.locked;});
     const lockBtn=$('#btnDelegationLock');if(lockBtn)lockBtn.textContent=d.locked?'🔓 Buka Kunci':'🔒 Kunci Pendelegasian';
     return d;
   }catch(e){if(box)box.innerHTML=msg(errorText(e),'warning');return{locked:false};}
 };
-window.refreshDelegationReadinessState=async function(){
+window.refreshDelegationReadinessState=async function(prefetched){
   const box=$('#delegationReadinessState');if(!box)return null;
   try{
-    const r=await api('getUserReadiness');const s=r.summary||{},a=s.schools||{},p=s.pengawas||{};
+    const s=prefetched || (await api('getUserReadiness')).summary||{},a=s.schools||{},p=s.pengawas||{};
     const gate=!!s.pengawas_target_configured||!!s.workflow_registration_configured;
     const blocked=gate&&(!s.registration_completed||!s.all_ready);
     box.innerHTML=blocked
@@ -6577,6 +6558,50 @@ window.refreshDelegationReadinessState=async function(){
     if(blocked){['btnDelegationFair','btnDelegationRandom','btnManualDelegation'].forEach(id=>{const el=$('#'+id);if(el)el.disabled=true;});}
     return {blocked};
   }catch(e){box.innerHTML=msg(errorText(e),'warning');return null;}
+};
+
+window.loadDinasPenugasanData_=async function(force=false){
+  const content=$('#penugasanContent');
+  if(!content) return;
+  if(!force && Array.isArray(window._cachedPenugasanGlobal)){
+    window._cachedPenugasan=window._cachedPenugasanGlobal;
+    window._cachedPaguSekolah=window._cachedPenugasanGlobal;
+    renderPenugasanTable(window._cachedPenugasanGlobal);
+    return;
+  }
+  content.innerHTML=loading('Memuat penugasan, status kunci, dan kesiapan akun...');
+  try{
+    const res=await api('getPenugasanDashboardDinas');
+    const payload=res.data||{};
+    await refreshDelegationLockState(payload.lock||{});
+    await refreshDelegationReadinessState(payload.readiness_summary||{});
+    const list=(payload.penugasan||[]).map(x=>{
+      const direct=Number(x.pagu_rkas ?? x.total_pagu ?? 0);
+      return Object.assign({},x,{pagu_rkas:Number.isFinite(direct)?direct:0,total_pagu:Number.isFinite(direct)?direct:0});
+    });
+    window._cachedPenugasanGlobal=list;
+    window._cachedPenugasan=list;
+    window._cachedPaguSekolah=list;
+    window._paguRkasMeta=payload.meta||{};
+    renderPenugasanTable(list);
+  }catch(bundleErr){
+    // Fallback kompatibilitas bila frontend baru sempat dipakai dengan deployment backend lama.
+    try{
+      const [lockRes,readyRes,assignRes]=await Promise.all([
+        api('getDelegationLock'), api('getUserReadiness'), api('getPenugasanPengawas')
+      ]);
+      await refreshDelegationLockState(lockRes.data||{});
+      await refreshDelegationReadinessState(readyRes.summary||{});
+      const list=(assignRes.data||[]).map(x=>{
+        const direct=Number(x.pagu_rkas ?? x.total_pagu ?? 0);
+        return Object.assign({},x,{pagu_rkas:Number.isFinite(direct)?direct:0,total_pagu:Number.isFinite(direct)?direct:0});
+      });
+      window._cachedPenugasanGlobal=list;window._cachedPenugasan=list;window._cachedPaguSekolah=list;window._paguRkasMeta=assignRes.meta||{};
+      renderPenugasanTable(list);
+    }catch(e){
+      content.innerHTML=msg(errorText(e));
+    }
+  }
 };
 window.toggleDelegationLockFromPenugasan=async function(){
   const lockIt=!window._delegationLocked;
@@ -7983,14 +8008,14 @@ function rc2PipelineCards_(p){
 async function penilaianFase1View(){
   if(!isDinas()){ $('#mainContent').innerHTML=msg('Penilaian Fase 1 merupakan kewenangan DINAS.','warning'); return; }
   const selectors=await rc2DinasSelectors_('rc2f1');
-  $('#mainContent').innerHTML=head('Penilaian Fase 1','DINAS menilai hasil pemeriksaan. Pengawas tidak memfinalisasi nilai.')+`<div class="panel">${selectors}<div class="toolbar"><button class="btn btn-primary" onclick="loadPenilaianFase1Rc2()">Muat Penilaian</button></div><div id="rc2F1Area" style="margin-top:14px"></div></div>`;
+  $('#mainContent').innerHTML=head('Penilaian Fase 1','DINAS menetapkan nilai awal berdasarkan BKU Data, dokumen, serta hasil pemeriksaan dan verifikasi Pengawas. Ini bukan laporan Pengawas mentah.')+`<div class="panel"><div class="message info"><b>Posisi modul:</b> hasil kerja Pengawas menjadi <b>input</b> Fase 1. DINAS tetap menjadi pihak yang memverifikasi dan menetapkan nilai Fase 1.</div>${selectors}<div class="toolbar"><button class="btn btn-primary" onclick="loadPenilaianFase1Rc2()">Muat Penilaian</button></div><div id="rc2F1Area" style="margin-top:14px"></div></div>`;
 }
 window.loadPenilaianFase1Rc2=async function(){
   const {npsn,idPeriode}=rc2Context_('rc2f1'),area=$('#rc2F1Area'); if(!npsn||!idPeriode){area.innerHTML=msg('Pilih sekolah dan periode.','warning');return;} area.innerHTML=loading('Memuat Penilaian Fase 1...');
   try{
     const r=await api('getPenilaianFase1',{npsn,idPeriode}); const a=r.asesmen||{},rows=r.indikator||[];
-    const body=rows.map(x=>`<tr><td><b>${x.no_instrumen}. ${esc(x.nama_indikator)}</b><br><small class="muted">${esc(x.status_verifikasi||'-')}</small></td><td>${fmtRupiah(x.nilai_acuan_bku||0)}</td><td>${x.skor==null?'—':Number(x.skor).toFixed(2)}</td><td>${x.skor_otomatis==null?'—':Number(x.skor_otomatis).toFixed(2)}</td><td>${String(a.status_asesmen||'').includes('SELESAI')||r.read_only?'-':`<button class="btn btn-light btn-sm" onclick="editFase1ScoreRc2('${esc(a.id_asesmen)}','${esc(x.id_indikator)}','${x.skor??''}','${x.skor_otomatis??''}')">Verifikasi DINAS</button>`}</td></tr>`).join('');
-    area.innerHTML=`<div class="message info"><b>Sumber penilaian:</b> BKU Data kanonik + dokumen + hasil pemeriksaan/temuan Pengawas.</div>${r.read_only?'<div class="message warning"><b>Mode baca.</b> Stage PENILAIAN_1 tidak sedang ACTIVE; perubahan skor dikunci backend.</div>':''}<div class="table-wrap"><table class="friendly-table"><thead><tr><th>Instrumen</th><th>Acuan BKU</th><th>Skor</th><th>Rekomendasi Sistem</th><th>Aksi</th></tr></thead><tbody>${body||emptyRow(5)}</tbody></table></div>${String(a.status_asesmen||'')==='FASE_1_SELESAI'?`<div class="message ok">Fase 1 sudah dikunci. Nilai: <b>${esc(a.nilai_kualitas??'-')}</b></div>`:r.read_only?'<div class="message warning">Fase 1 belum dikunci. Aktifkan kembali PENILAIAN_1 dengan alasan tercatat bila koreksi diperlukan.</div>':`<div class="toolbar" style="margin-top:14px"><button class="btn btn-primary" onclick="finalisasiFase1Rc2('${esc(a.id_asesmen)}')">Kunci Penilaian Fase 1</button></div>`}`;
+    const body=rows.map(x=>{const pengawas=`${esc(x.status_verifikasi||'-')} · temuan ${fmtNum(x.jumlah_temuan||0)}${x.catatan_pengawas?`<br><small>${esc(x.catatan_pengawas)}</small>`:''}`;return `<tr><td><b>${x.no_instrumen}. ${esc(x.nama_indikator)}</b><br><small class="muted">${esc(x.nama_file||'Belum ada dokumen')}</small></td><td>${fmtRupiah(x.nilai_acuan_bku||0)}</td><td>${pengawas}</td><td>${x.skor_otomatis==null?'—':Number(x.skor_otomatis).toFixed(2)}</td><td>${x.skor==null?'—':Number(x.skor).toFixed(2)}</td><td>${String(a.status_asesmen||'').includes('SELESAI')||r.read_only?'-':`<button class="btn btn-light btn-sm" onclick="editFase1ScoreRc2('${esc(a.id_asesmen)}','${esc(x.id_indikator)}','${x.skor??''}','${x.skor_otomatis??''}')">Verifikasi DINAS</button>`}</td></tr>`;}).join('');
+    area.innerHTML=`<div class="message info"><b>Alur Fase 1:</b> PENGAWAS menghasilkan pemeriksaan, temuan, rekomendasi, dan verifikasi nilai dokumen → SISTEM menghitung rekomendasi skor terhadap BKU Data → DINAS memverifikasi dan menetapkan Penilaian Fase 1.</div><div class="cards"><div class="stat"><small>Temuan belum diverifikasi</small><strong>${fmtNum(r.pending_findings||0)}</strong></div><div class="stat"><small>Nilai dokumen belum diverifikasi</small><strong>${fmtNum(r.pending_value_verifications||0)}</strong></div><div class="stat"><small>BKU Data</small><strong style="font-size:1rem">${r.bku_ready?'SIAP':'BELUM SIAP'}</strong></div></div>${r.read_only?'<div class="message warning"><b>Mode baca.</b> Stage PENILAIAN_1 tidak sedang ACTIVE; perubahan skor dikunci backend.</div>':''}<div class="table-wrap"><table class="friendly-table"><thead><tr><th>Instrumen</th><th>Acuan BKU</th><th>Hasil Pemeriksaan Pengawas</th><th>Rekomendasi Sistem</th><th>Skor Fase 1</th><th>Aksi DINAS</th></tr></thead><tbody>${body||emptyRow(6)}</tbody></table></div>${String(a.status_asesmen||'')==='FASE_1_SELESAI'?`<div class="message ok">Fase 1 sudah dikunci. Nilai: <b>${esc(a.nilai_kualitas??'-')}</b></div>`:r.read_only?'<div class="message warning">Fase 1 belum dikunci. Aktifkan PENILAIAN_1 setelah pemeriksaan/perbaikan selesai.</div>':`<div class="toolbar" style="margin-top:14px"><button class="btn btn-primary" onclick="finalisasiFase1Rc2('${esc(a.id_asesmen)}')" ${(Number(r.pending_findings||0)>0||Number(r.pending_value_verifications||0)>0||!r.bku_ready)?'disabled':''}>Kunci Penilaian Fase 1</button></div>`}`;
   }catch(e){area.innerHTML=msg(errorText(e));}
 };
 window.editFase1ScoreRc2=async function(idAsesmen,idIndikator,current,automatic){
