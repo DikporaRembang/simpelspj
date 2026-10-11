@@ -2165,8 +2165,8 @@ function tutorialPreferenceKey(){
 }
 function tutorialRoleTip(){
   if(isSchool()) return 'Fokus Sekolah: ikuti stage ACTIVE dari DINAS, kelola BKU Data/dokumen, dan selesaikan perbaikan tanpa mengubah periodisasi sendiri.';
-  if(isPengawas()) return 'Fokus Pengawas: periksa sekolah tugas, catat temuan/rekomendasi berbasis bukti, lalu verifikasi ulang. Penilaian final adalah kewenangan DINAS.';
-  if(isDinas()) return 'Fokus DINAS: kendalikan periodisasi dan stage, lalu jalankan Fase 1, Rekonsiliasi, Fase 2, dan Finalisasi secara berurutan.';
+  if(isPengawas()) return 'Fokus Pengawas: periksa sekolah tugas, catat temuan/rekomendasi, verifikasi tindak lanjut, lalu lakukan Penilaian Fase 1 dan kirim hasilnya ke DINAS.';
+  if(isDinas()) return 'Fokus DINAS: kendalikan periodisasi dan stage, review/setujui Fase 1 Pengawas, lalu jalankan Rekonsiliasi, Penilaian Fase 2, dan Finalisasi.';
   return '';
 }
 window.togglePageTutorial=function(){
@@ -11856,6 +11856,8 @@ body.theme-sekolah .content .v11-stat .value{
 
 
 <!-- RC2 FAST BUCKETS + RKAS ACCOUNT SUBTOTALS -->
+
+<!-- RC2 FAST BUCKETS + RKAS — PRE-RELEASE AUDITED -->
 </body>.
    ======================================================================== */
 
