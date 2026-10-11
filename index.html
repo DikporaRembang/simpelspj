@@ -8367,6 +8367,8 @@ window.printAssessmentReportRc2=function(){
 <!-- RC2 SCHEDULE STRICT: pre-schedule uploads are historical only -->
 
 <!-- RC2 SCHEDULE STRICT STATUS CLEAR -->
+
+<!-- RC2 FASE2 BY PENGAWAS: localized DINAS navigation only -->
 </body></html>`);
   w.document.close();w.focus();setTimeout(()=>w.print(),250);
 };
@@ -8628,11 +8630,223 @@ async function rekonsiliasiView(){
 window.loadRekonsiliasiRc2=async function(){const {npsn,idPeriode}=rc2Context_('rc2rek'),area=$('#rc2RekArea');if(!npsn||!idPeriode){area.innerHTML=msg('Pilih sekolah dan periode.','warning');return;}area.innerHTML=loading();try{const p=await api('getPipelinePenilaianSPJ',{npsn,idPeriode});area.innerHTML=rc2PipelineCards_(p)+rc2ReadinessBanner_(p)+`<div class="field" style="margin-top:14px"><label>Catatan hasil rekonsiliasi</label><textarea id="rc2RekNote" rows="5" placeholder="Ringkas selisih, klarifikasi, dan keputusan rekonsiliasi...">${esc(p.reconciliation?.catatan||'')}</textarea></div><div class="toolbar"><button class="btn btn-primary" onclick="saveRekonsiliasiRc2()" ${p.phase1_done?'':'disabled'}>Simpan Rekonsiliasi Selesai</button></div>`;}catch(e){area.innerHTML=msg(errorText(e));}};
 window.saveRekonsiliasiRc2=async function(){const {npsn,idPeriode}=rc2Context_('rc2rek'),catatan=$('#rc2RekNote')?.value.trim()||'';if(!catatan){toast('Catatan rekonsiliasi wajib diisi.','warning');return;}try{await api('simpanRekonsiliasiSPJ',{data:{npsn,id_periode:idPeriode,catatan}});toast('Rekonsiliasi selesai dicatat.','ok');await loadRekonsiliasiRc2();}catch(e){toast(errorText(e),'error',5000);}};
 
+
 async function penilaianFase2View(){
   if(!isDinas()){ $('#mainContent').innerHTML=msg('Penilaian Fase 2 merupakan kewenangan DINAS.','warning'); return; }
-  const selectors=await rc2DinasSelectors_('rc2f2');
-  $('#mainContent').innerHTML=head('Penilaian Fase 2','DINAS menetapkan hasil akhir setelah rekonsiliasi.')+`<div class="panel">${selectors}<div class="toolbar"><button class="btn btn-primary" onclick="loadFase2Rc2()">Muat Fase 2</button></div><div id="rc2F2Area" style="margin-top:14px"></div></div>`;
+
+  const [schoolRes,periods,assignRes]=await Promise.all([
+    safeApi('getSekolah',{}, {data:[]}),
+    ensurePeriodeMaster(),
+    safeApi('getPenugasanPengawas',{}, {data:[]})
+  ]);
+
+  const schools=schoolRes?.data||[];
+  const assignments=(assignRes?.data||[]).filter(x=>!x.status||upper(x.status)==='AKTIF');
+  window._rc2Fase2Assignments=assignments;
+
+  const npsn=state.selectedNpsn||'';
+  const per=state.selectedPeriode||periods?.[0]?.id_periode||'';
+  const schoolOptions=schools.map(x=>`<option value="${esc(x.npsn)}" ${String(x.npsn)===String(npsn)?'selected':''}>${esc(x.npsn)} — ${esc(x.nama_sekolah||'-')}</option>`).join('');
+  const periodOptions=(periods||[]).map(x=>`<option value="${esc(x.id_periode)}" ${String(x.id_periode)===String(per)?'selected':''}>${esc(x.nama_periode||x.id_periode)}${x.tahun?` • ${esc(x.tahun)}`:''}</option>`).join('');
+
+  const pengawasMap=new Map();
+  assignments.forEach(x=>{
+    const id=String(x.id_pengawas||'').trim();
+    if(!id)return;
+    if(!pengawasMap.has(id))pengawasMap.set(id,{
+      id_pengawas:id,
+      nama_pengawas:x.nama_pengawas||id,
+      count:0
+    });
+    pengawasMap.get(id).count++;
+  });
+  const pengawasOptions=Array.from(pengawasMap.values())
+    .sort((a,b)=>String(a.nama_pengawas).localeCompare(String(b.nama_pengawas),'id'))
+    .map(x=>`<option value="${esc(x.id_pengawas)}">${esc(x.nama_pengawas)} • ${fmtNum(x.count)} sekolah</option>`)
+    .join('');
+
+  $('#mainContent').innerHTML=head('Penilaian Fase 2','DINAS menetapkan hasil akhir setelah rekonsiliasi. Pilih cara kerja per sekolah atau kelompok sekolah per Pengawas.')+`
+    <div class="panel">
+      <div class="message info"><b>Opsi pengelompokan hanya mempermudah navigasi Fase 2.</b> Syarat, scoring, rekonsiliasi, finalisasi, dan algoritma backend tidak diubah.</div>
+
+      <div class="form-grid">
+        <div class="field">
+          <label>Mode Penilaian</label>
+          <select id="rc2F2Mode" onchange="switchFase2ModeRc2()">
+            <option value="SEKOLAH">Per Sekolah</option>
+            <option value="PENGAWAS">Kelompok per Pengawas</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Periode DINAS</label>
+          <select id="rc2f2Periode" onchange="onFase2PeriodChangeRc2()">
+            <option value="">-- Pilih periode --</option>${periodOptions}
+          </select>
+        </div>
+      </div>
+
+      <div id="rc2F2SchoolMode">
+        <div class="field">
+          <label>Sekolah</label>
+          <select id="rc2f2Npsn">
+            <option value="">-- Pilih sekolah --</option>${schoolOptions}
+          </select>
+        </div>
+        <div class="toolbar">
+          <button class="btn btn-primary" onclick="loadFase2Rc2()">Muat Fase 2</button>
+        </div>
+      </div>
+
+      <div id="rc2F2PengawasMode" hidden>
+        <div class="form-grid">
+          <div class="field">
+            <label>Pengawas</label>
+            <select id="rc2F2Pengawas" onchange="loadFase2GroupRc2()">
+              <option value="">-- Pilih Pengawas --</option>${pengawasOptions}
+            </select>
+          </div>
+          <div class="field">
+            <label>Filter Sekolah</label>
+            <select id="rc2F2GroupFilter" onchange="renderFase2GroupRc2()">
+              <option value="ALL">Semua Sekolah Binaan</option>
+              <option value="READY">Siap Dinilai Fase 2</option>
+              <option value="DONE">Fase 2 Selesai</option>
+              <option value="NOT_READY">Belum Siap Fase 2</option>
+            </select>
+          </div>
+        </div>
+        <div id="rc2F2GroupArea" style="margin-top:12px">
+          <div class="muted">Pilih Pengawas untuk menampilkan sekolah binaannya.</div>
+        </div>
+      </div>
+
+      <div id="rc2F2Area" style="margin-top:14px"></div>
+    </div>`;
+
+  if(state.selectedPeriode&&state.selectedNpsn)setTimeout(()=>loadFase2Rc2(),0);
 }
+
+window.switchFase2ModeRc2=function(){
+  const mode=$('#rc2F2Mode')?.value||'SEKOLAH';
+  const school=$('#rc2F2SchoolMode'),group=$('#rc2F2PengawasMode'),detail=$('#rc2F2Area');
+  if(school)school.hidden=mode!=='SEKOLAH';
+  if(group)group.hidden=mode!=='PENGAWAS';
+  if(detail)detail.innerHTML='';
+  if(mode==='PENGAWAS'&&$('#rc2F2Pengawas')?.value)loadFase2GroupRc2();
+};
+
+window.onFase2PeriodChangeRc2=function(){
+  const p=$('#rc2f2Periode')?.value||'';
+  if(p)state.selectedPeriode=p;
+  if(($('#rc2F2Mode')?.value||'SEKOLAH')==='PENGAWAS'&&$('#rc2F2Pengawas')?.value){
+    loadFase2GroupRc2();
+  }else{
+    const area=$('#rc2F2Area');if(area)area.innerHTML='';
+  }
+};
+
+window.loadFase2GroupRc2=async function(){
+  const area=$('#rc2F2GroupArea');
+  const idPengawas=$('#rc2F2Pengawas')?.value||'';
+  const idPeriode=$('#rc2f2Periode')?.value||state.selectedPeriode||'';
+  if(!area)return;
+  if(!idPengawas){area.innerHTML='<div class="muted">Pilih Pengawas.</div>';return;}
+  if(!idPeriode){area.innerHTML=msg('Pilih periode DINAS.','warning');return;}
+
+  state.selectedPeriode=idPeriode;
+  area.innerHTML=loading('Mengelompokkan sekolah binaan untuk Fase 2...');
+  try{
+    const bucket=await api('getAssessmentDashboardBuckets',{idPeriode});
+    const assignmentRows=(window._rc2Fase2Assignments||[]).filter(x=>String(x.id_pengawas||'')===String(idPengawas));
+    const schoolSet=new Set(assignmentRows.map(x=>String(x.npsn||'')));
+    const rowMap=new Map();
+    (bucket.bucket_order||[]).forEach(b=>{
+      ((bucket.buckets||{})[b.id]||[]).forEach(x=>{
+        if(schoolSet.has(String(x.npsn||'')))rowMap.set(String(x.npsn),x);
+      });
+    });
+
+    // Tetap tampilkan sekolah binaan yang belum mempunyai snapshot readiness.
+    assignmentRows.forEach(a=>{
+      const n=String(a.npsn||'');
+      if(!rowMap.has(n))rowMap.set(n,{
+        npsn:n,
+        nama_sekolah:a.nama_sekolah||n,
+        kecamatan:a.kecamatan||'-',
+        phase1_approved:false,
+        reconciliation_done:false,
+        ready_for_phase2:false,
+        phase2_done:false,
+        phase2_score:null,
+        next_label:'Belum siap Fase 2'
+      });
+    });
+
+    window._rc2Fase2GroupRows=Array.from(rowMap.values()).sort((a,b)=>String(a.nama_sekolah||'').localeCompare(String(b.nama_sekolah||''),'id'));
+    renderFase2GroupRc2();
+  }catch(e){area.innerHTML=msg(errorText(e),'error');}
+};
+
+window.renderFase2GroupRc2=function(){
+  const area=$('#rc2F2GroupArea');if(!area)return;
+  const filter=$('#rc2F2GroupFilter')?.value||'ALL';
+  let rows=window._rc2Fase2GroupRows||[];
+
+  if(filter==='READY')rows=rows.filter(x=>x.ready_for_phase2&&!x.phase2_done);
+  else if(filter==='DONE')rows=rows.filter(x=>x.phase2_done);
+  else if(filter==='NOT_READY')rows=rows.filter(x=>!x.ready_for_phase2&&!x.phase2_done);
+
+  const all=window._rc2Fase2GroupRows||[];
+  const readyCount=all.filter(x=>x.ready_for_phase2&&!x.phase2_done).length;
+  const doneCount=all.filter(x=>x.phase2_done).length;
+  const pendingCount=all.length-readyCount-doneCount;
+
+  const cards=`<div class="cards" style="margin-bottom:12px">
+    <div class="stat"><small>Sekolah Binaan</small><strong>${fmtNum(all.length)}</strong></div>
+    <div class="stat"><small>Siap Fase 2</small><strong>${fmtNum(readyCount)}</strong></div>
+    <div class="stat"><small>Fase 2 Selesai</small><strong>${fmtNum(doneCount)}</strong></div>
+    <div class="stat"><small>Belum Siap</small><strong>${fmtNum(pendingCount)}</strong></div>
+  </div>`;
+
+  const body=rows.map(x=>{
+    const ready=!!x.ready_for_phase2&&!x.phase2_done;
+    const done=!!x.phase2_done;
+    const status=done
+      ? '<span class="badge badge-success">FASE 2 SELESAI</span>'
+      : ready
+        ? '<span class="badge badge-success">SIAP DINILAI FASE 2</span>'
+        : '<span class="badge badge-warning">BELUM SIAP FASE 2</span>';
+    const f1=x.phase1_score==null?'—':Number(x.phase1_score).toFixed(2);
+    const f2=x.phase2_score==null?'—':Number(x.phase2_score).toFixed(2);
+    const action=done
+      ? `<button class="btn btn-light btn-sm" onclick="openFase2SchoolFromGroupRc2('${esc(x.npsn)}')">Lihat →</button>`
+      : ready
+        ? `<button class="btn btn-primary btn-sm" onclick="openFase2SchoolFromGroupRc2('${esc(x.npsn)}')">Nilai Fase 2 →</button>`
+        : `<button class="btn btn-light btn-sm" onclick="openFase2SchoolFromGroupRc2('${esc(x.npsn)}')">Lihat Status →</button>`;
+    return `<tr>
+      <td><b>${esc(x.nama_sekolah||x.npsn)}</b><br><small class="muted">${esc(x.npsn)} • ${esc(x.kecamatan||'-')}</small></td>
+      <td>${status}</td>
+      <td>${x.phase1_approved?'<span class="badge badge-success">DISETUJUI</span>':'<span class="badge badge-warning">BELUM</span>'}<br><small>Nilai ${f1}</small></td>
+      <td>${x.reconciliation_done?'<span class="badge badge-success">SELESAI</span>':'<span class="badge badge-warning">BELUM</span>'}</td>
+      <td>${done?`<b>${f2}</b>`:'—'}</td>
+      <td>${action}</td>
+    </tr>`;
+  }).join('');
+
+  area.innerHTML=cards+`<div class="table-wrap"><table class="friendly-table">
+    <thead><tr><th>Sekolah</th><th>Status Fase 2</th><th>Fase 1</th><th>Rekonsiliasi</th><th>Nilai Fase 2</th><th>Aksi</th></tr></thead>
+    <tbody>${body||emptyRow(6,'Tidak ada sekolah pada filter ini.')}</tbody>
+  </table></div>`;
+};
+
+window.openFase2SchoolFromGroupRc2=async function(npsn){
+  const sel=$('#rc2f2Npsn');
+  if(sel)sel.value=npsn;
+  state.selectedNpsn=npsn;
+  const detail=$('#rc2F2Area');
+  if(detail)detail.scrollIntoView({behavior:'smooth',block:'start'});
+  await loadFase2Rc2();
+};
 window.loadFase2Rc2=async function(){const {npsn,idPeriode}=rc2Context_('rc2f2'),area=$('#rc2F2Area');if(!npsn||!idPeriode){area.innerHTML=msg('Pilih sekolah dan periode.','warning');return;}area.innerHTML=loading();try{const p=await api('getPipelinePenilaianSPJ',{npsn,idPeriode});area.innerHTML=rc2PipelineCards_(p)+rc2ReadinessBanner_(p)+`<div class="form-grid" style="margin-top:14px"><div class="field"><label>Nilai Fase 2 / Nilai Akhir</label><input id="rc2F2Score" type="number" min="0" max="100" step="0.01" value="${esc(p.phase2_score??p.phase1_score??'')}"></div><div class="field"><label>Catatan Fase 2</label><textarea id="rc2F2Note" rows="3"></textarea></div></div><div class="toolbar"><button class="btn btn-primary" onclick="saveFase2Rc2()" ${p.reconciliation_done?'':'disabled'}>Tetapkan Fase 2</button></div>`;}catch(e){area.innerHTML=msg(errorText(e));}};
 window.saveFase2Rc2=async function(){const {npsn,idPeriode}=rc2Context_('rc2f2'),nilai=Number($('#rc2F2Score')?.value),catatan=$('#rc2F2Note')?.value.trim()||'';if(!Number.isFinite(nilai)||nilai<0||nilai>100){toast('Nilai harus 0–100.','warning');return;}try{await api('finalisasiPenilaianFase2',{data:{npsn,id_periode:idPeriode,nilai_akhir:nilai,catatan}});toast('Penilaian Fase 2 ditetapkan.','ok');await loadFase2Rc2();}catch(e){toast(errorText(e),'error',5000);}};
 
