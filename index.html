@@ -2032,6 +2032,54 @@ function kelompokHeaderHtml(g, amountLabel='Subtotal') {
   return `<tr><td colspan="20" style="padding:12px 14px;background:rgba(23,75,67,.08);border-top:2px solid var(--primary);font-weight:800;color:var(--primary);"><div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;"><span>📁 ${esc(g.kode_kelompok_belanja)} — ${esc(g.nama_kelompok_belanja)}</span><span>${esc(amountLabel)}: <b>${fmtRupiah(g.subtotal)}</b></span></div></td></tr>`;
 }
 
+function groupRkasAccountClient(list, contextFields=[]){
+  const map=new Map();
+  (list||[]).forEach(x=>{
+    const ctx=contextFields.map(k=>String(x[k]??'')).join('|');
+    const code=String(x.kode_rekening||'TANPA_KODE').trim();
+    const key=[ctx,code].join('||');
+    if(!map.has(key))map.set(key,{
+      context:contextFields.reduce((o,k)=>{o[k]=x[k]??'';return o;},{}),
+      kode_rekening:code,
+      items:[],
+      subtotal_pagu:0,
+      subtotal_realisasi:0,
+      subtotal_sisa:0,
+      candidate_names:new Set()
+    });
+    const g=map.get(key);
+    g.items.push(x);
+    g.subtotal_pagu+=Number(x.pagu||0);
+    g.subtotal_realisasi+=Number(x.total_realisasi||0);
+    g.subtotal_sisa+=Number(x.sisa_pagu||0);
+    const nm=String(x.nama_kelompok_belanja||'').trim();
+    if(nm&&nm!==String(x.uraian||'').trim())g.candidate_names.add(nm);
+  });
+  const groups=Array.from(map.values());
+  groups.forEach(g=>{
+    const names=Array.from(g.candidate_names);
+    g.nama_kelompok=names.length===1?names[0]:'Kelompok Belanja';
+    g.items.sort((a,b)=>String(a.uraian||'').localeCompare(String(b.uraian||''),'id'));
+    delete g.candidate_names;
+  });
+  return groups.sort((a,b)=>{
+    const ca=contextFields.map(k=>String(a.context[k]||'')).join('|');
+    const cb=contextFields.map(k=>String(b.context[k]||'')).join('|');
+    return ca.localeCompare(cb)||String(a.kode_rekening).localeCompare(String(b.kode_rekening),undefined,{numeric:true});
+  });
+}
+
+function rkasAccountHeaderHtml(g,{showRealisasi=false}={}){
+  const totals=showRealisasi
+    ? `<span>Pagu <b>${fmtRupiah(g.subtotal_pagu)}</b> · Realisasi <b>${fmtRupiah(g.subtotal_realisasi)}</b> · Sisa <b>${fmtRupiah(g.subtotal_sisa)}</b></span>`
+    : `<span>Subtotal Pagu: <b>${fmtRupiah(g.subtotal_pagu)}</b></span>`;
+  return `<tr class="rkas-group-subtotal"><td colspan="20" style="padding:12px 14px;background:rgba(23,75,67,.08);border-top:2px solid var(--primary);font-weight:800;color:var(--primary);">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+      <span>📁 ${esc(g.kode_rekening)} — ${esc(g.nama_kelompok)}</span>${totals}
+    </div>
+  </td></tr>`;
+}
+
 function normalizeNpsnClient(v){
   const s = String(v ?? '').trim();
   if(!s) return '';
@@ -5258,12 +5306,12 @@ window.openPengawasRkasDetail=async function(npsn, page=1){
   try{
     const r = await api('getRealisasiRKASPaged', {npsn, page, limit:50, idPeriode:state.selectedPeriode||''});
     const rows = r.data || [];
-    const groups = groupBelanjaClient(rows, 'pagu');
+    const groups = groupRkasAccountClient(rows);
     let no = (r.page - 1) * r.limit;
     
     // OPTIMASI: Rendering detail kelompok belanja menggunakan .map().join('') yang bersih
     const detail = groups.flatMap(g => [
-      kelompokHeaderHtml(g, 'Subtotal Pagu'),
+      rkasAccountHeaderHtml(g,{showRealisasi:true}),
       ...g.items.map(x => `
         <tr>
           <td>${++no}</td>
@@ -5377,12 +5425,12 @@ async function renderSchoolRkasAndRealisasi(){
       const totalPaguKeseluruhan = mergedList.reduce((sum,x)=>sum+Number(x.pagu||0),0);
       const totalRealisasiKeseluruhan = mergedList.reduce((sum,x)=>sum+Number(x.total_realisasi||0),0);
 
-      const groups = groupBelanjaClient(mergedList, 'pagu');
+      const groups = groupRkasAccountClient(mergedList);
       let nomor = 0;
 
       // OPTIMASI: Menggunakan .map().join('') agar baris tabel dirangkai di memori sekali jalan
       const rows = groups.flatMap(g => [
-        kelompokHeaderHtml(g, 'Subtotal Pagu'),
+        rkasAccountHeaderHtml(g,{showRealisasi:true}),
         ...g.items.map(x => `
           <tr>
             <td style="text-align:center;color:var(--muted);font-weight:600">${++nomor}</td>
@@ -5506,11 +5554,11 @@ async function renderSchoolRkasAndRealisasi(){
   const mergedList = Array.isArray(real.data) ? real.data : [];
   const totalPaguKeseluruhan = mergedList.reduce((sum,x)=>sum+Number(x.pagu||0),0);
   const totalRealisasiKeseluruhan = mergedList.reduce((sum,x)=>sum+Number(x.total_realisasi||0),0);
-  const groups = groupBelanjaClient(mergedList, 'pagu');
+  const groups = groupRkasAccountClient(mergedList,['npsn']);
   let numero = 0;
   
   const rows = groups.flatMap(g => [
-    kelompokHeaderHtml(g, 'Subtotal Pagu'),
+    rkasAccountHeaderHtml(g,{showRealisasi:true}),
     ...g.items.map(x => `
       <tr>
         <td style="text-align:center">${++numero}</td>
@@ -5810,12 +5858,12 @@ window.renderDinasRkasPackageDetail = async function(){
         </div>`;
     }
     
-    const groups = groupBelanjaClient(rows, 'pagu'); 
+    const groups = groupRkasAccountClient(rows); 
     let no = 0;
     
     // OPTIMASI: Rendering detail kelompok belanja menggunakan .map().join('') yang bersih
     const detail = groups.flatMap(g => [
-      kelompokHeaderHtml(g, 'Subtotal Pagu'),
+      rkasAccountHeaderHtml(g),
       ...g.items.map(x => `
         <tr>
           <td>${++no}</td>
@@ -10443,6 +10491,20 @@ body.theme-sekolah .v221-book-summary{background:#F7F8FE}
   .top-actions .btn-light#logoutBtn{display:inline-flex!important}
   body[data-role] .topbar .brand-gold-title{font-size:.9rem!important}
 }
+
+.bucket-grid-fast{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:12px 0}
+.bucket-card-fast{border:1px solid var(--border);border-radius:16px;background:#fff;padding:14px;text-align:left;cursor:pointer;transition:.15s ease}
+.bucket-card-fast:hover{transform:translateY(-1px);box-shadow:0 6px 18px rgba(0,0,0,.07)}
+.bucket-card-fast small{display:block;color:var(--muted);font-weight:800;font-size:.67rem;text-transform:uppercase}
+.bucket-card-fast strong{display:block;font-size:1.55rem;margin-top:4px;color:var(--primary)}
+.bucket-card-fast.active{outline:2px solid var(--primary);outline-offset:1px}
+.bucket-list-fast{margin-top:12px}
+.bucket-school-row{display:grid;grid-template-columns:minmax(220px,1.8fr) .8fr .8fr 1.1fr auto;gap:10px;align-items:center;padding:11px 0;border-bottom:1px solid var(--border)}
+.bucket-school-row:last-child{border-bottom:0}
+.bucket-school-row .school-name{font-weight:850}
+.bucket-school-row .school-meta{font-size:.75rem;color:var(--muted)}
+@media(max-width:900px){.bucket-grid-fast{grid-template-columns:repeat(2,minmax(0,1fr))}.bucket-school-row{grid-template-columns:1fr 1fr}.bucket-school-row .bucket-action{grid-column:1/-1}}
+@media(max-width:560px){.bucket-grid-fast{grid-template-columns:1fr 1fr}.bucket-school-row{grid-template-columns:1fr}.bucket-school-row .bucket-action{grid-column:auto}}
 </style>
 <script id="rc2PipelineIntegratedClient">
 async function resolveReadinessPeriodV2(){
@@ -10461,69 +10523,87 @@ window.openReadinessActionV2=function(npsn,view){
   if(npsn)state.selectedNpsn=npsn;
   loadView(view);
 };
-window.renderRoleReadinessPanel=async function(){
+
+window.renderRoleReadinessPanel=async function(forceRefresh=false){
   const host=$('#roleReadinessPanel'); if(!host)return;
   const p=await resolveReadinessPeriodV2();
   if(!p){host.innerHTML=msg('Belum ada periode DINAS yang dapat ditampilkan.','warning');return;}
-  host.innerHTML=loading('Memuat posisi kelengkapan dan penilaian...');
+  host.innerHTML=loading('Memuat ringkasan posisi sekolah...');
   try{
-    const r=await api('getAssessmentReadinessMatrix',{idPeriode:p});
-    const rows=r.data||[],s=r.summary||{};
+    const r=await api('getAssessmentDashboardBuckets',{idPeriode:p,forceRefresh:!!forceRefresh});
+    window._assessmentDashboardBuckets=r;
     const roleNow=String(role()||'').toUpperCase();
+
     if(roleNow==='SEKOLAH'){
-      const x=rows[0]||{};
-      const blockers=(x.blockers||[]).map(v=>`<li>${esc(v)}</li>`).join('');
-      host.innerHTML=`<div class="pipeline-readiness-head"><div><h3>Posisi SPJ Sekolah</h3><p>Periode ${esc(p)} • status berasal dari BKU Data, 10 dokumen scan, Fase 1 Pengawas, dan Fase 2 DINAS.</p></div>${readinessStatusChipV2(x.next_label||'-',x.final_done?'ok':x.phase1_submitted?'info':'warn')}</div>
-        <div class="pipeline-kpis">
-          <div class="pipeline-kpi"><small>BKU Data</small><strong>${x.bku_ready?'VALID':'BELUM'}</strong></div>
-          <div class="pipeline-kpi"><small>Dokumen Scan</small><strong>${fmtNum(x.documents_complete_count||0)}/10</strong></div>
-          <div class="pipeline-kpi"><small>Fase 1 Pengawas</small><strong style="font-size:.88rem">${esc((x.phase1_state||'BELUM').replaceAll('_',' '))}</strong></div>
-          <div class="pipeline-kpi"><small>Fase 2 DINAS</small><strong style="font-size:.88rem">${x.phase2_done?'SELESAI':'BELUM'}</strong></div>
-          <div class="pipeline-kpi"><small>Status Akhir</small><strong style="font-size:.88rem">${x.final_done?'FINAL':'PROSES'}</strong></div>
-        </div>
-        ${blockers?`<div class="message warning"><b>Yang masih kurang:</b><ul style="margin:6px 0 0">${blockers}</ul></div>`:'<div class="message ok"><b>BKU dan 10 komponen dokumen sudah lengkap.</b> Pantau proses pemeriksaan/penilaian berikutnya.</div>'}
-        <div class="toolbar"><button class="btn btn-light" onclick="loadView('dokumenBulanan')">Lihat 10 Dokumen</button><button class="btn btn-primary" onclick="loadView('hasilPenilaian')">Lihat Status Penilaian</button></div>`;
+      const order=r.bucket_order||[], buckets=r.buckets||{};
+      let x=null,bucketMeta=null;
+      for(const b of order){
+        if((buckets[b.id]||[]).length){x=buckets[b.id][0];bucketMeta=b;break;}
+      }
+      x=x||{};
+      const status=bucketMeta?.label||'Belum ada status';
+      host.innerHTML=`<div class="pipeline-readiness-head">
+        <div><h3>Posisi SPJ Sekolah</h3><p>Ringkasan cepat • detail dimuat hanya saat dibuka • Periode ${esc(p)}</p></div>
+        <button class="btn btn-light btn-sm" onclick="renderRoleReadinessPanel(true)">Muat Ulang</button>
+      </div>
+      <div class="bucket-grid-fast">
+        <div class="bucket-card-fast"><small>Posisi Saat Ini</small><strong style="font-size:1rem">${esc(status)}</strong></div>
+        <div class="bucket-card-fast"><small>BKU Data</small><strong style="font-size:1rem">${x.bku_ready?'VALID':'BELUM'}</strong></div>
+        <div class="bucket-card-fast"><small>10 Dokumen Scan</small><strong>${fmtNum(x.documents_complete_count||0)}/10</strong></div>
+        <div class="bucket-card-fast"><small>Langkah Berikut</small><strong style="font-size:.9rem">${esc(x.next_label||'-')}</strong></div>
+      </div>
+      <div class="toolbar"><button class="btn btn-light" onclick="loadView('dokumenBulanan')">Lihat Kelengkapan Dokumen</button><button class="btn btn-primary" onclick="loadView('hasilPenilaian')">Lihat Detail Posisi</button></div>`;
       return;
     }
 
-    const title=roleNow==='PENGAWAS'?'Kesiapan Sekolah Tugas':'Control Tower Kesiapan Sekolah';
-    const subtitle=roleNow==='PENGAWAS'
-      ?'Pengawas langsung melihat sekolah yang lengkap dan siap dinilai Fase 1.'
-      :'DINAS melihat sekolah lengkap, Fase 1 yang masuk, persetujuan, kesiapan Fase 2, dan finalisasi.';
-    const kpis=roleNow==='PENGAWAS'
-      ?[
-        ['Sekolah Tugas',s.total||0],['Dokumen Lengkap',s.documents_complete||0],['Siap Fase 1',s.phase1_ready||0],['Dikirim ke DINAS',s.phase1_submitted||0],['Disetujui DINAS',s.phase1_approved||0]
-      ]
-      :[
-        ['Total Sekolah',s.total||0],['Dokumen Lengkap',s.documents_complete||0],['Fase 1 Masuk',s.phase1_submitted||0],['Fase 1 Disetujui',s.phase1_approved||0],['Siap Fase 2',s.ready_for_phase2||0]
-      ];
-    const kpiHtml=kpis.map(k=>`<div class="pipeline-kpi"><small>${esc(k[0])}</small><strong>${fmtNum(k[1])}</strong></div>`).join('');
-    const body=rows.map(x=>{
-      let actionView='statusSekolah',actionLabel='Detail';
-      if(roleNow==='PENGAWAS'){
-        if(['SIAP_DINILAI','SEDANG_DINILAI','PERLU_REVISI'].includes(x.phase1_state)){actionView='penilaianFase1';actionLabel='Buka Fase 1';}
-        else if(!x.documents_complete){actionView='pdfInteraktif';actionLabel='Periksa Dokumen';}
-        else actionView='arsipPenilaianV5';
-      }else{
-        if(x.phase1_state==='DIAJUKAN_KE_DINAS'){actionView='penilaianFase1';actionLabel='Review Fase 1';}
-        else if(x.phase1_approved&&!x.reconciliation_done){actionView='rekonsiliasi';actionLabel='Rekonsiliasi';}
-        else if(x.ready_for_phase2&&!x.phase2_done){actionView='penilaianFase2';actionLabel='Nilai Fase 2';}
-        else if(x.phase2_done&&!x.final_done){actionView='finalisasiSpj';actionLabel='Finalisasi';}
-      }
-      const docs=`${fmtNum(x.documents_complete_count||0)}/10`;
-      return `<tr>
-        <td><b>${esc(x.nama_sekolah||x.npsn)}</b><small class="v241-table-sub">${esc(x.npsn)} • ${esc(x.kecamatan||'-')}</small></td>
-        <td>${x.bku_ready?readinessStatusChipV2('VALID','ok'):readinessStatusChipV2('BELUM','warn')}</td>
-        <td>${x.documents_complete?readinessStatusChipV2(docs,'ok'):readinessStatusChipV2(docs,'warn')}</td>
-        <td>${readinessStatusChipV2(String(x.phase1_state||'BELUM').replaceAll('_',' '),x.phase1_approved?'ok':x.phase1_submitted?'info':'warn')}</td>
-        <td>${x.ready_for_phase2?readinessStatusChipV2('SIAP FASE 2','ok'):(x.phase2_done?readinessStatusChipV2('FASE 2 SELESAI','ok'):readinessStatusChipV2(x.next_label||'-',''))}</td>
-        <td><button class="btn btn-light btn-sm" onclick="openReadinessActionV2('${esc(x.npsn)}','${actionView}')">${esc(actionLabel)}</button></td>
-      </tr>`;
-    }).join('');
-    host.innerHTML=`<div class="pipeline-readiness-head"><div><h3>${esc(title)}</h3><p>${esc(subtitle)} • Periode ${esc(p)}</p></div><button class="btn btn-light btn-sm" onclick="renderRoleReadinessPanel()">Muat Ulang</button></div>
-      <div class="pipeline-kpis">${kpiHtml}</div>
-      <div class="table-wrap"><table class="friendly-table"><thead><tr><th>Sekolah</th><th>BKU</th><th>10 Dokumen</th><th>Fase 1</th><th>Posisi Berikutnya</th><th>Aksi</th></tr></thead><tbody>${body||emptyRow(6,'Belum ada sekolah pada periode ini.')}</tbody></table></div>`;
+    const wanted=roleNow==='PENGAWAS'
+      ? ['KURANG_LENGKAP','LENGKAP_SIAP_FASE1','FASE1_PROSES','FASE1_MASUK_DINAS','FASE1_DISETUJUI','FINAL']
+      : ['KURANG_LENGKAP','LENGKAP_SIAP_FASE1','FASE1_MASUK_DINAS','FASE1_DISETUJUI','SIAP_FASE2','FASE2_SELESAI','FINAL'];
+    const labelMap=Object.fromEntries((r.bucket_order||[]).map(x=>[x.id,x.label]));
+    const cards=wanted.map(id=>`<button type="button" class="bucket-card-fast" data-bucket="${id}" onclick="showAssessmentBucketFast('${id}')"><small>${esc(labelMap[id]||id.replaceAll('_',' '))}</small><strong>${fmtNum(r.counts?.[id]||0)}</strong></button>`).join('');
+
+    const title=roleNow==='PENGAWAS'?'Kelompok Posisi Sekolah Tugas':'Kelompok Posisi Seluruh Sekolah';
+    const sub=roleNow==='PENGAWAS'
+      ?'Mulai dari kelompok yang siap Fase 1; sekolah kurang lengkap tetap terlihat tanpa memuat detail berat.'
+      :'DINAS langsung melihat sekolah yang kurang, lengkap, Fase 1 masuk, dan yang benar-benar siap Fase 2.';
+    host.innerHTML=`<div class="pipeline-readiness-head"><div><h3>${esc(title)}</h3><p>${esc(sub)} • Periode ${esc(p)} • Stage ${esc(r.active_stage||'-')}</p></div><button class="btn btn-light btn-sm" onclick="renderRoleReadinessPanel(true)">Muat Ulang</button></div>
+      <div class="bucket-grid-fast">${cards}</div>
+      <div id="assessmentBucketListFast" class="bucket-list-fast"><div class="muted">Klik salah satu kelompok untuk melihat daftar sekolah. Detail tidak dimuat sebelum dibutuhkan.</div></div>`;
   }catch(e){host.innerHTML=msg(errorText(e),'error');}
+};
+
+window.showAssessmentBucketFast=function(bucketId){
+  const data=window._assessmentDashboardBuckets||{},host=$('#assessmentBucketListFast');
+  if(!host)return;
+  document.querySelectorAll('.bucket-card-fast[data-bucket]').forEach(x=>x.classList.toggle('active',x.dataset.bucket===bucketId));
+  const rows=(data.buckets||{})[bucketId]||[];
+  const label=(data.bucket_order||[]).find(x=>x.id===bucketId)?.label||bucketId.replaceAll('_',' ');
+  if(!rows.length){host.innerHTML=msg(`Tidak ada sekolah pada kelompok ${label}.`,'warning');return;}
+
+  const roleNow=String(role()||'').toUpperCase();
+  host.innerHTML=`<div class="panel" style="margin:0"><div class="section-head"><div><b>${esc(label)}</b><div class="muted">${fmtNum(rows.length)} sekolah</div></div></div>
+    ${rows.map(x=>{
+      let view='statusSekolah',action='Buka';
+      if(roleNow==='PENGAWAS'){
+        if(['LENGKAP_SIAP_FASE1','FASE1_PROSES'].includes(bucketId)){view='penilaianFase1';action='Fase 1';}
+        else if(bucketId==='KURANG_LENGKAP'){view='pdfInteraktif';action='Periksa';}
+        else {view='arsipPenilaianV5';action='Hasil';}
+      }else{
+        if(bucketId==='FASE1_MASUK_DINAS'){view='penilaianFase1';action='Review Fase 1';}
+        else if(bucketId==='FASE1_DISETUJUI'){view='rekonsiliasi';action='Rekonsiliasi';}
+        else if(bucketId==='SIAP_FASE2'){view='penilaianFase2';action='Nilai Fase 2';}
+        else if(bucketId==='FASE2_SELESAI'){view='finalisasiSpj';action='Finalisasi';}
+        else if(bucketId==='FINAL'){view='arsipPenilaianV5';action='Laporan';}
+      }
+      return `<div class="bucket-school-row">
+        <div><div class="school-name">${esc(x.nama_sekolah||x.npsn)}</div><div class="school-meta">${esc(x.npsn)} • ${esc(x.kecamatan||'-')}</div></div>
+        <div>${x.bku_ready?readinessStatusChipV2('BKU VALID','ok'):readinessStatusChipV2('BKU BELUM','warn')}</div>
+        <div>${readinessStatusChipV2(`${fmtNum(x.documents_complete_count||0)}/10 dokumen`,x.documents_complete?'ok':'warn')}</div>
+        <div class="school-meta">${esc(x.next_label||'-')}</div>
+        <div class="bucket-action"><button class="btn btn-light btn-sm" onclick="openReadinessActionV2('${esc(x.npsn)}','${view}')">${esc(action)} →</button></div>
+      </div>`;
+    }).join('')}
+  </div>`;
 };
 </script>
 
@@ -11774,6 +11854,8 @@ body.theme-sekolah .content .v11-stat .value{
 <!-- V46 DATA TRANSACTION ENGINE -->
 
 
+
+<!-- RC2 FAST BUCKETS + RKAS ACCOUNT SUBTOTALS -->
 </body>.
    ======================================================================== */
 
