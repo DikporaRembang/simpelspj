@@ -7335,7 +7335,8 @@ async function masterSpjView(){
   const spj = await ensureMasters() || [];
   const inds = indRes.data || [], pers = perRes.data || [];
   const freq = String(cfg.frekuensi || perRes.frekuensi || '').toUpperCase();
-  const year = Number(cfg.tahun || perRes.tahun || new Date().getFullYear());
+  const rawYear = Number(cfg.tahun || perRes.tahun || new Date().getFullYear());
+  const year = rawYear>=2000&&rawYear<=2100 ? Math.floor(rawYear) : new Date().getFullYear();
   const freqLabel = freq === 'BULANAN' ? 'Bulanan' : freq === 'TRIWULANAN' ? 'Triwulanan' : freq === 'SEMESTERAN' ? 'Semesteran' : 'Belum dipilih';
   const activePeriods = pers.filter(x => Number(x.tahun) === year && String(x.frekuensi || '').toUpperCase() === freq);
 
@@ -7360,7 +7361,7 @@ async function masterSpjView(){
   const perRows = activePeriods.map(x => `
     <tr>
       <td>${esc(x.nama_periode)}</td>
-      <td>${esc(x.tahun)}</td>
+      <td>${esc(rc2SafePeriodYear_(x)||year)}</td>
       <td>${esc(x.frekuensi || freqLabel)}</td>
       <td>${esc(String(x.tanggal_mulai || '-').replace(/T00:00:00\.000Z$/, ''))}</td>
       <td>${esc(String(x.tanggal_selesai || '-').replace(/T00:00:00\.000Z$/, ''))}</td>
@@ -8368,7 +8369,7 @@ window.printAssessmentReportRc2=function(){
 
 <!-- RC2 SCHEDULE STRICT STATUS CLEAR -->
 
-<!-- RC2 FASE1 + FASE2 BY PENGAWAS: localized DINAS navigation only -->
+<!-- RC2 FASE1 + REKONSILIASI + FASE2 BY PENGAWAS; PERIOD YEAR 1899 FIX -->
 </body></html>`);
   w.document.close();w.focus();setTimeout(()=>w.print(),250);
 };
@@ -8433,13 +8434,25 @@ window.publishAssessmentReportRc2=async function(targetRole){
    PENGAWAS: Pemeriksaan → Temuan → Verifikasi ulang
    SEKOLAH: Input → Perbaikan → Hasil
    ========================================================================== */
+
+function rc2SafePeriodYear_(p){
+  const raw=Number(p?.tahun);
+  if(Number.isFinite(raw)&&raw>=2000&&raw<=2100)return Math.floor(raw);
+  const probe=[p?.id_periode,p?.nama_periode,p?.tanggal_mulai,p?.tanggal_selesai].map(v=>String(v||'')).join(' ');
+  const m=probe.match(/\b(20\d{2}|2100)\b/);
+  return m?Number(m[1]):'';
+}
+
 async function rc2DinasSelectors_(prefix){
   const [schoolRes,periods]=await Promise.all([safeApi('getSekolah',{}, {data:[]}),ensurePeriodeMaster()]);
   const schools=schoolRes?.data||[];
   const npsn=state.selectedNpsn||'';
   const per=state.selectedPeriode||periods?.[0]?.id_periode||'';
   const schoolOptions=schools.map(x=>`<option value="${esc(x.npsn)}" ${String(x.npsn)===String(npsn)?'selected':''}>${esc(x.npsn)} — ${esc(x.nama_sekolah||'-')}</option>`).join('');
-  const periodOptions=(periods||[]).map(x=>`<option value="${esc(x.id_periode)}" ${String(x.id_periode)===String(per)?'selected':''}>${esc(x.nama_periode||x.id_periode)}${x.tahun?` • ${esc(x.tahun)}`:''}</option>`).join('');
+  const periodOptions=(periods||[]).map(x=>{
+    const y=rc2SafePeriodYear_(x);
+    return `<option value="${esc(x.id_periode)}" ${String(x.id_periode)===String(per)?'selected':''}>${esc(x.nama_periode||x.id_periode)}${y?` • ${esc(y)}`:''}</option>`;
+  }).join('');
   return `<div class="form-grid"><div class="field"><label>Sekolah</label><select id="${prefix}Npsn"><option value="">-- Pilih sekolah --</option>${schoolOptions}</select></div><div class="field"><label>Periode DINAS</label><select id="${prefix}Periode"><option value="">-- Pilih periode --</option>${periodOptions}</select></div></div>`;
 }
 function rc2Context_(prefix){
@@ -8493,7 +8506,10 @@ async function rc2Phase1Selectors_(prefix){
   const npsn=state.selectedNpsn||'';
   const per=state.selectedPeriode||periods?.[0]?.id_periode||'';
   const schoolOptions=schools.map(x=>`<option value="${esc(x.npsn)}" ${String(x.npsn)===String(npsn)?'selected':''}>${esc(x.npsn)} — ${esc(x.nama_sekolah||'-')}</option>`).join('');
-  const periodOptions=(periods||[]).map(x=>`<option value="${esc(x.id_periode)}" ${String(x.id_periode)===String(per)?'selected':''}>${esc(x.nama_periode||x.id_periode)}${x.tahun?` • ${esc(x.tahun)}`:''}</option>`).join('');
+  const periodOptions=(periods||[]).map(x=>{
+    const y=rc2SafePeriodYear_(x);
+    return `<option value="${esc(x.id_periode)}" ${String(x.id_periode)===String(per)?'selected':''}>${esc(x.nama_periode||x.id_periode)}${y?` • ${esc(y)}`:''}</option>`;
+  }).join('');
   return `<div class="form-grid"><div class="field"><label>Sekolah tugas</label><select id="${prefix}Npsn"><option value="">-- Pilih sekolah --</option>${schoolOptions}</select></div><div class="field"><label>Periode DINAS</label><select id="${prefix}Periode"><option value="">-- Pilih periode --</option>${periodOptions}</select></div></div>`;
 }
 
@@ -8528,7 +8544,10 @@ async function penilaianFase1View(){
   const npsn=state.selectedNpsn||'';
   const per=state.selectedPeriode||periods?.[0]?.id_periode||'';
   const schoolOptions=schools.map(x=>`<option value="${esc(x.npsn)}" ${String(x.npsn)===String(npsn)?'selected':''}>${esc(x.npsn)} — ${esc(x.nama_sekolah||'-')}</option>`).join('');
-  const periodOptions=(periods||[]).map(x=>`<option value="${esc(x.id_periode)}" ${String(x.id_periode)===String(per)?'selected':''}>${esc(x.nama_periode||x.id_periode)}${x.tahun?` • ${esc(x.tahun)}`:''}</option>`).join('');
+  const periodOptions=(periods||[]).map(x=>{
+    const y=rc2SafePeriodYear_(x);
+    return `<option value="${esc(x.id_periode)}" ${String(x.id_periode)===String(per)?'selected':''}>${esc(x.nama_periode||x.id_periode)}${y?` • ${esc(y)}`:''}</option>`;
+  }).join('');
 
   const pengawasMap=new Map();
   assignments.forEach(x=>{
@@ -8858,11 +8877,230 @@ window.returnFase1DinasRc2=async function(idAsesmen){
   }catch(e){toast(errorText(e),'error',6000);}
 };
 
+
 async function rekonsiliasiView(){
   if(!isDinas()){ $('#mainContent').innerHTML=msg('Rekonsiliasi merupakan kewenangan DINAS.','warning'); return; }
-  const selectors=await rc2DinasSelectors_('rc2rek');
-  $('#mainContent').innerHTML=head('Rekonsiliasi','Cocokkan Fase 1 dengan BKU Data, dokumen, temuan, dan hasil tindak lanjut.')+`<div class="panel">${selectors}<div class="toolbar"><button class="btn btn-primary" onclick="loadRekonsiliasiRc2()">Muat Rekonsiliasi</button></div><div id="rc2RekArea" style="margin-top:14px"></div></div>`;
+
+  const [schoolRes,periods,assignRes]=await Promise.all([
+    safeApi('getSekolah',{}, {data:[]}),
+    ensurePeriodeMaster(),
+    safeApi('getPenugasanPengawas',{}, {data:[]})
+  ]);
+
+  const schools=schoolRes?.data||[];
+  const assignments=(assignRes?.data||[]).filter(x=>!x.status||upper(x.status)==='AKTIF');
+  window._rc2RekonAssignments=assignments;
+
+  const npsn=state.selectedNpsn||'';
+  const per=state.selectedPeriode||periods?.[0]?.id_periode||'';
+  const schoolOptions=schools.map(x=>`<option value="${esc(x.npsn)}" ${String(x.npsn)===String(npsn)?'selected':''}>${esc(x.npsn)} — ${esc(x.nama_sekolah||'-')}</option>`).join('');
+  const periodOptions=(periods||[]).map(x=>{
+    const y=rc2SafePeriodYear_(x);
+    return `<option value="${esc(x.id_periode)}" ${String(x.id_periode)===String(per)?'selected':''}>${esc(x.nama_periode||x.id_periode)}${y?` • ${esc(y)}`:''}</option>`;
+  }).join('');
+
+  const pengawasMap=new Map();
+  assignments.forEach(x=>{
+    const id=String(x.id_pengawas||'').trim();
+    if(!id)return;
+    if(!pengawasMap.has(id))pengawasMap.set(id,{
+      id_pengawas:id,
+      nama_pengawas:x.nama_pengawas||id,
+      count:0
+    });
+    pengawasMap.get(id).count++;
+  });
+  const pengawasOptions=Array.from(pengawasMap.values())
+    .sort((a,b)=>String(a.nama_pengawas).localeCompare(String(b.nama_pengawas),'id'))
+    .map(x=>`<option value="${esc(x.id_pengawas)}">${esc(x.nama_pengawas)} • ${fmtNum(x.count)} sekolah</option>`)
+    .join('');
+
+  $('#mainContent').innerHTML=head(
+    'Rekonsiliasi',
+    'Cocokkan Fase 1 dengan BKU Data, dokumen, temuan, dan hasil tindak lanjut. DINAS dapat bekerja per sekolah atau dikelompokkan per Pengawas.'
+  )+`<div class="panel">
+    <div class="message info"><b>Pengelompokan per Pengawas hanya mempercepat navigasi Rekonsiliasi.</b> Syarat Fase 1, proses simpan Rekonsiliasi, kesiapan Fase 2, dan algoritma backend tetap sama.</div>
+
+    <div class="form-grid">
+      <div class="field">
+        <label>Mode Rekonsiliasi</label>
+        <select id="rc2RekonMode" onchange="switchRekonModeRc2()">
+          <option value="SEKOLAH">Per Sekolah</option>
+          <option value="PENGAWAS">Kelompok per Pengawas</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Periode DINAS</label>
+        <select id="rc2rekPeriode" onchange="onRekonPeriodChangeRc2()">
+          <option value="">-- Pilih periode --</option>${periodOptions}
+        </select>
+      </div>
+    </div>
+
+    <div id="rc2RekonSchoolMode">
+      <div class="field">
+        <label>Sekolah</label>
+        <select id="rc2rekNpsn">
+          <option value="">-- Pilih sekolah --</option>${schoolOptions}
+        </select>
+      </div>
+      <div class="toolbar">
+        <button class="btn btn-primary" onclick="loadRekonsiliasiRc2()">Muat Rekonsiliasi</button>
+      </div>
+    </div>
+
+    <div id="rc2RekonPengawasMode" hidden>
+      <div class="form-grid">
+        <div class="field">
+          <label>Pengawas</label>
+          <select id="rc2RekonPengawas" onchange="loadRekonGroupRc2()">
+            <option value="">-- Pilih Pengawas --</option>${pengawasOptions}
+          </select>
+        </div>
+        <div class="field">
+          <label>Filter Sekolah</label>
+          <select id="rc2RekonGroupFilter" onchange="renderRekonGroupRc2()">
+            <option value="ALL">Semua Sekolah Binaan</option>
+            <option value="READY">Siap Rekonsiliasi</option>
+            <option value="DONE">Rekonsiliasi Selesai</option>
+            <option value="NOT_READY">Belum Siap Rekonsiliasi</option>
+          </select>
+        </div>
+      </div>
+      <div id="rc2RekonGroupArea" style="margin-top:12px">
+        <div class="muted">Pilih Pengawas untuk menampilkan sekolah binaannya.</div>
+      </div>
+    </div>
+
+    <div id="rc2RekArea" style="margin-top:14px"></div>
+  </div>`;
 }
+
+window.switchRekonModeRc2=function(){
+  const mode=$('#rc2RekonMode')?.value||'SEKOLAH';
+  const school=$('#rc2RekonSchoolMode'),group=$('#rc2RekonPengawasMode'),detail=$('#rc2RekArea');
+  if(school)school.hidden=mode!=='SEKOLAH';
+  if(group)group.hidden=mode!=='PENGAWAS';
+  if(detail)detail.innerHTML='';
+  if(mode==='PENGAWAS'&&$('#rc2RekonPengawas')?.value)loadRekonGroupRc2();
+};
+
+window.onRekonPeriodChangeRc2=function(){
+  const p=$('#rc2rekPeriode')?.value||'';
+  if(p)state.selectedPeriode=p;
+  if(($('#rc2RekonMode')?.value||'SEKOLAH')==='PENGAWAS'&&$('#rc2RekonPengawas')?.value){
+    loadRekonGroupRc2();
+  }else{
+    const area=$('#rc2RekArea');if(area)area.innerHTML='';
+  }
+};
+
+window.loadRekonGroupRc2=async function(){
+  const area=$('#rc2RekonGroupArea');
+  const idPengawas=$('#rc2RekonPengawas')?.value||'';
+  const idPeriode=$('#rc2rekPeriode')?.value||state.selectedPeriode||'';
+  if(!area)return;
+  if(!idPengawas){area.innerHTML='<div class="muted">Pilih Pengawas.</div>';return;}
+  if(!idPeriode){area.innerHTML=msg('Pilih periode DINAS.','warning');return;}
+
+  state.selectedPeriode=idPeriode;
+  area.innerHTML=loading('Mengelompokkan Rekonsiliasi per Pengawas...');
+  try{
+    const bucket=await api('getAssessmentDashboardBuckets',{idPeriode});
+    const assignmentRows=(window._rc2RekonAssignments||[]).filter(x=>String(x.id_pengawas||'')===String(idPengawas));
+    const schoolSet=new Set(assignmentRows.map(x=>String(x.npsn||'')));
+    const rowMap=new Map();
+
+    (bucket.bucket_order||[]).forEach(b=>{
+      ((bucket.buckets||{})[b.id]||[]).forEach(x=>{
+        if(schoolSet.has(String(x.npsn||'')))rowMap.set(String(x.npsn),x);
+      });
+    });
+
+    assignmentRows.forEach(a=>{
+      const n=String(a.npsn||'');
+      if(!rowMap.has(n))rowMap.set(n,{
+        npsn:n,
+        nama_sekolah:a.nama_sekolah||n,
+        kecamatan:a.kecamatan||'-',
+        phase1_approved:false,
+        phase1_score:null,
+        reconciliation_done:false,
+        ready_for_phase2:false,
+        phase2_done:false,
+        next_label:'Fase 1 belum disetujui DINAS'
+      });
+    });
+
+    window._rc2RekonGroupRows=Array.from(rowMap.values())
+      .sort((a,b)=>String(a.nama_sekolah||'').localeCompare(String(b.nama_sekolah||''),'id'));
+    renderRekonGroupRc2();
+  }catch(e){area.innerHTML=msg(errorText(e),'error');}
+};
+
+window.renderRekonGroupRc2=function(){
+  const area=$('#rc2RekonGroupArea');if(!area)return;
+  const filter=$('#rc2RekonGroupFilter')?.value||'ALL';
+  let rows=window._rc2RekonGroupRows||[];
+
+  const ready=x=>!!x.phase1_approved&&!x.reconciliation_done;
+  const done=x=>!!x.reconciliation_done;
+  const notReady=x=>!x.phase1_approved&&!x.reconciliation_done;
+
+  if(filter==='READY')rows=rows.filter(ready);
+  else if(filter==='DONE')rows=rows.filter(done);
+  else if(filter==='NOT_READY')rows=rows.filter(notReady);
+
+  const all=window._rc2RekonGroupRows||[];
+  const readyCount=all.filter(ready).length;
+  const doneCount=all.filter(done).length;
+  const pendingCount=all.filter(notReady).length;
+
+  const cards=`<div class="cards" style="margin-bottom:12px">
+    <div class="stat"><small>Sekolah Binaan</small><strong>${fmtNum(all.length)}</strong></div>
+    <div class="stat"><small>Siap Rekonsiliasi</small><strong>${fmtNum(readyCount)}</strong></div>
+    <div class="stat"><small>Rekonsiliasi Selesai</small><strong>${fmtNum(doneCount)}</strong></div>
+    <div class="stat"><small>Belum Siap</small><strong>${fmtNum(pendingCount)}</strong></div>
+  </div>`;
+
+  const body=rows.map(x=>{
+    const isReady=ready(x),isDone=done(x);
+    const f1=x.phase1_score==null?'—':Number(x.phase1_score).toFixed(2);
+    let status='<span class="badge badge-warning">BELUM SIAP</span>';
+    if(isDone)status='<span class="badge badge-success">REKONSILIASI SELESAI</span>';
+    else if(isReady)status='<span class="badge badge-success">SIAP REKONSILIASI</span>';
+
+    const next=isDone
+      ? (x.phase2_done?'Fase 2 selesai':'Siap menuju Fase 2 sesuai stage DINAS')
+      : (x.next_label||'Fase 1 belum disetujui DINAS');
+
+    const action=isReady
+      ? `<button class="btn btn-primary btn-sm" onclick="openRekonSchoolFromGroupRc2('${esc(x.npsn)}')">Rekonsiliasi →</button>`
+      : `<button class="btn btn-light btn-sm" onclick="openRekonSchoolFromGroupRc2('${esc(x.npsn)}')">${isDone?'Lihat':'Lihat Status'} →</button>`;
+
+    return `<tr>
+      <td><b>${esc(x.nama_sekolah||x.npsn)}</b><br><small class="muted">${esc(x.npsn)} • ${esc(x.kecamatan||'-')}</small></td>
+      <td>${x.phase1_approved?'<span class="badge badge-success">DISETUJUI DINAS</span>':'<span class="badge badge-warning">BELUM</span>'}<br><small>Nilai ${f1}</small></td>
+      <td>${status}</td>
+      <td><small>${esc(next)}</small></td>
+      <td>${action}</td>
+    </tr>`;
+  }).join('');
+
+  area.innerHTML=cards+`<div class="table-wrap"><table class="friendly-table">
+    <thead><tr><th>Sekolah</th><th>Fase 1</th><th>Rekonsiliasi</th><th>Langkah Berikut</th><th>Aksi</th></tr></thead>
+    <tbody>${body||emptyRow(5,'Tidak ada sekolah pada filter ini.')}</tbody>
+  </table></div>`;
+};
+
+window.openRekonSchoolFromGroupRc2=async function(npsn){
+  const sel=$('#rc2rekNpsn');
+  if(sel)sel.value=npsn;
+  state.selectedNpsn=npsn;
+  const detail=$('#rc2RekArea');
+  if(detail)detail.scrollIntoView({behavior:'smooth',block:'start'});
+  await loadRekonsiliasiRc2();
+};
 window.loadRekonsiliasiRc2=async function(){const {npsn,idPeriode}=rc2Context_('rc2rek'),area=$('#rc2RekArea');if(!npsn||!idPeriode){area.innerHTML=msg('Pilih sekolah dan periode.','warning');return;}area.innerHTML=loading();try{const p=await api('getPipelinePenilaianSPJ',{npsn,idPeriode});area.innerHTML=rc2PipelineCards_(p)+rc2ReadinessBanner_(p)+`<div class="field" style="margin-top:14px"><label>Catatan hasil rekonsiliasi</label><textarea id="rc2RekNote" rows="5" placeholder="Ringkas selisih, klarifikasi, dan keputusan rekonsiliasi...">${esc(p.reconciliation?.catatan||'')}</textarea></div><div class="toolbar"><button class="btn btn-primary" onclick="saveRekonsiliasiRc2()" ${p.phase1_done?'':'disabled'}>Simpan Rekonsiliasi Selesai</button></div>`;}catch(e){area.innerHTML=msg(errorText(e));}};
 window.saveRekonsiliasiRc2=async function(){const {npsn,idPeriode}=rc2Context_('rc2rek'),catatan=$('#rc2RekNote')?.value.trim()||'';if(!catatan){toast('Catatan rekonsiliasi wajib diisi.','warning');return;}try{await api('simpanRekonsiliasiSPJ',{data:{npsn,id_periode:idPeriode,catatan}});toast('Rekonsiliasi selesai dicatat.','ok');await loadRekonsiliasiRc2();}catch(e){toast(errorText(e),'error',5000);}};
 
