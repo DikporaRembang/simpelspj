@@ -2072,6 +2072,24 @@ aside.sidebar *,
 }
 
 </style>
+<style id="rc2Fase2EvidenceCockpitStyle">
+.f2-cockpit{margin-top:14px}.f2-summary{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:9px;margin:12px 0}
+.f2-summary .stat{min-width:0}.f2-component-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:14px}
+.f2-component-card{border:1px solid var(--border);border-radius:16px;background:#fff;padding:14px;box-shadow:0 4px 16px rgba(16,42,67,.04)}
+.f2-component-card h4{margin:6px 0 4px}.f2-component-card p{margin:0;color:var(--muted);font-size:.76rem;line-height:1.45;min-height:34px}
+.f2-component-card .f2-score{font-size:1.5rem;font-weight:900;margin-top:9px}.f2-component-top{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
+.f2-workbench{display:grid;grid-template-columns:minmax(380px,1.08fr) minmax(420px,.92fr);gap:12px;margin-top:14px}
+.f2-pdf-pane,.f2-review-pane{border:1px solid var(--border);border-radius:16px;background:#fff;overflow:hidden}.f2-pane-head{padding:12px 14px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap}
+.f2-pdf-frame{min-height:520px;max-height:72vh;overflow:auto;background:#eef2f4;padding:14px;display:flex;justify-content:center;align-items:flex-start}.f2-pdf-frame canvas{max-width:100%;height:auto;background:#fff;box-shadow:0 8px 24px rgba(0,0,0,.12)}
+.f2-review-pane{max-height:78vh;overflow:auto}.f2-review-content{padding:12px}.f2-match-row{border:1px solid var(--border);border-radius:12px;padding:10px;margin-bottom:8px;background:#fff}
+.f2-match-row.high{border-left:4px solid #2e7d32}.f2-match-row.medium{border-left:4px solid #c47f00}.f2-match-row.low{border-left:4px solid #b42318}
+.f2-match-main{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px}.f2-match-main b{font-size:.82rem}.f2-match-meta{font-size:.7rem;color:var(--muted);margin-top:4px}.f2-decision{display:flex;gap:5px;flex-wrap:wrap;margin-top:8px}
+.f2-decision .btn.active{outline:2px solid currentColor;outline-offset:1px}.f2-progressbar{height:8px;border-radius:999px;background:#e8ecef;overflow:hidden}.f2-progressbar>i{display:block;height:100%;background:currentColor}
+.f2-score-box{border:1px solid var(--border);border-radius:14px;padding:12px;background:#f8faf9;margin-top:12px}.f2-score-box .form-grid{grid-template-columns:150px 1fr}.f2-filter-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+@media(max-width:1050px){.f2-component-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.f2-workbench{grid-template-columns:1fr}.f2-review-pane{max-height:none}}
+@media(max-width:700px){.f2-summary,.f2-component-grid{grid-template-columns:1fr 1fr}.f2-pdf-frame{min-height:420px}.f2-score-box .form-grid{grid-template-columns:1fr}}
+</style>
+
 </head>
 <body>
 
@@ -8355,7 +8373,7 @@ function renderAssessmentSchoolRc2(matrix,detail){
   const instr=(f1.instruments||[]).map(x=>`<tr><td>${fmtNum(x.no)}</td><td>${esc(x.nama)}</td><td>${esc(x.status_dokumen||'-')}</td><td>${x.skor==null?'-':Number(x.skor).toFixed(2)}</td><td>${esc(x.catatan_pengawas||'-')}</td></tr>`).join('');
   return `<div id="assessmentReportPrintableRc2" class="report-print-sheet">${assessmentReportLetterheadRc2(matrix,title,school)}
     <div class="report-meta"><b>NPSN</b><span>${esc(school.npsn||matrix.npsn||'-')}</span><b>Nama Sekolah</b><span>${esc(school.nama_sekolah||'-')}</span><b>Kecamatan</b><span>${esc(school.kecamatan||'-')}</span><b>Kelengkapan</b><span>BKU ${r.bku_ready?'VALID':'BELUM'} • Dokumen ${fmtNum(r.documents_complete_count||0)}/10</span></div>
-    ${showF1?`<div class="report-section-title">Penilaian Fase 1 oleh Pengawas</div><div class="report-meta"><b>Status</b><span>${r.phase1_approved?'DISETUJUI DINAS':esc(String(r.phase1_state||'-').replaceAll('_',' '))}</span><b>Nilai Fase 1</b><span>${r.phase1_score==null?'-':Number(r.phase1_score).toFixed(2)}</span><b>Persetujuan DINAS</b><span>${esc(r.phase1_approved_at||'-')}</span></div><div class="table-wrap"><table class="report-table"><thead><tr><th>No</th><th>10 Instrumen Dokumen Scan</th><th>Status Dokumen</th><th>Skor</th><th>Catatan Pengawas</th></tr></thead><tbody>${instr||emptyRow(5)}</tbody></table></div>`:''}
+    ${showF1?`<div class="report-section-title">Penilaian Fase 1 oleh Pengawas</div><div class="report-meta"><b>Status</b><span>${r.phase1_approved?'DISETUJUI DINAS':esc(String(r.phase1_state||'-').replaceAll('_',' '))}</span><b>Nilai Fase 1</b><span>${r.phase1_score==null?'-':Number(r.phase1_score).toFixed(2)}</span><b>Persetujuan DINAS</b><span>${esc(r.phase1_approved_at||'-')}</span></div><div class="table-wrap"><table class="report-table"><thead><tr><th>No</th><th>4 Komponen Fase 1 (SPJ 01–04)</th><th>Status Dokumen</th><th>Skor</th><th>Catatan Pengawas</th></tr></thead><tbody>${instr||emptyRow(5)}</tbody></table></div>`:''}
     ${showF2?`<div class="report-section-title">Penilaian Fase 2 oleh DINAS</div><div class="report-meta"><b>Rekonsiliasi</b><span>${r.reconciliation_done?'SELESAI':'BELUM'}</span><b>Status Fase 2</b><span>${r.phase2_done?'SELESAI':'BELUM'}</span><b>Nilai Fase 2</b><span>${r.phase2_score==null?'-':Number(r.phase2_score).toFixed(2)}</span><b>Finalisasi</b><span>${r.final_done?'FINAL':'BELUM FINAL'}</span></div>`:''}
     ${isDinas()?'<div class="muted" style="margin-top:12px">DINAS dapat membuat PDF per sekolah yang dilanjutkan dengan 10 lampiran dokumen scan PDF.</div>':''}</div>`;
 }
@@ -8674,8 +8692,8 @@ async function penilaianFase1View(){
   if(isPengawas()){
     const selectors=await rc2Phase1Selectors_('rc2f1');
     const title='Penilaian Fase 1';
-    const desc='Nilai 10 komponen dokumen scan terhadap BKU Data, lalu kirim hasil Fase 1 kepada DINAS.';
-    const rule='<b>Pengawas adalah pemilik Fase 1.</b> BKU Data menjadi basis angka; 10 dokumen scan menjadi evidence penilaian.';
+    const desc='Periksa 4 komponen SPJ 01–04 dengan pola BKU ↔ PDF, tetapkan skor komponen 0–4, lalu kirim nilai Fase 1 kepada DINAS.';
+    const rule='<b>Pengawas adalah pemilik Fase 1.</b> Fase 1 menilai SPJ 01–04. BKU Data menjadi sumber transaksi; PDF scan menjadi evidence. SPJ 05–10 tetap kewenangan DINAS pada Fase 2.';
     $('#mainContent').innerHTML=head(title,desc)+`<div class="panel"><div class="message info">${rule}</div>${selectors}<div class="toolbar"><button class="btn btn-primary" onclick="loadPenilaianFase1Rc2()">Muat Fase 1</button></div><div id="rc2F1Area" style="margin-top:14px"></div></div>`;
     if(state.selectedPeriode&&state.selectedNpsn)setTimeout(()=>loadPenilaianFase1Rc2(),0);
     return;
@@ -8919,64 +8937,142 @@ window.openFase1DinasSchoolFromGroupRc2=async function(npsn){
   await loadPenilaianFase1Rc2();
 };
 
+
+window.__phase1ReviewState=window.__phase1ReviewState||{workbench:null,componentNo:0,pdf:null,page:1,zoom:1,pages:[],matches:[],decisions:{},filter:'ALL',listPage:1,pageSize:100};
+window.__phase1OcrCache=window.__phase1OcrCache||{};
+
+function f1StatusBadgeRc2_(status){
+  const s=String(status||'BELUM').toUpperCase();
+  if(s==='SELESAI')return '<span class="badge badge-success">SELESAI</span>';
+  if(s==='N/A')return '<span class="badge badge-info">N/A</span>';
+  if(s==='PROSES')return '<span class="badge badge-warning">PROSES</span>';
+  return '<span class="badge badge-warning">BELUM</span>';
+}
+function f1TransactionMapRc2_(wb){const m={};(wb?.transactions||[]).forEach(x=>m[String(x.id_transaksi||'')]=x);return m;}
+function f1DecodeReviewDecisionMapRc2_(review){
+  const out={};
+  if(review?.decision_map&&typeof review.decision_map==='object')return review.decision_map;
+  (review?.items||[]).forEach(a=>{if(!Array.isArray(a)||!a[0])return;const code=String(a[1]||'').toUpperCase();const st=code==='S'?'SESUAI':code==='X'?'TIDAK_SESUAI':code==='M'?'BUKTI_TIDAK_DITEMUKAN':code==='C'?'PERLU_CEK':'';if(st)out[String(a[0])]={status:st,page_no:Number(a[2]||0),confidence:Number(a[3]||0)};});
+  return out;
+}
+function f1ComponentMetricsClientRc2_(component,decisions,txMap){
+  const ids=component?.transaction_ids||[];let total=0,sesuai=0,mismatch=0,pending=0,missing=0,perlu=0,totalValue=0,sesuaiValue=0;
+  ids.forEach(id=>{const tx=txMap[id]||{},v=Math.max(0,Number(tx.nilai_transaksi)||0),st=String(decisions[id]?.status||'').toUpperCase();total++;totalValue+=v;if(st==='SESUAI'){sesuai++;sesuaiValue+=v;}else if(st==='TIDAK_SESUAI'){mismatch++;}else if(st==='BUKTI_TIDAK_DITEMUKAN'){mismatch++;missing++;}else{pending++;if(st==='PERLU_CEK')perlu++;}});
+  const ratio=total?((totalValue>0?sesuaiValue/totalValue:sesuai/total)):null;
+  return {total_count:total,total_value:totalValue,sesuai_count:sesuai,tidak_sesuai_count:mismatch,pending_count:pending,perlu_cek_count:perlu,bukti_tidak_ditemukan_count:missing,coverage_percent:total?((total-pending)/total*100):100,recommended_score:ratio==null?null:Math.round(4*ratio*100)/100,value_match_percent:ratio==null?null:ratio*100};
+}
+function renderPhase1CockpitRc2_(p,wb){
+  const s=wb.summary||{},status=String(wb.phase1_status||p.status_asesmen||'').toUpperCase(),readonly=!!wb.read_only||isDinas();
+  const cards=(wb.components||[]).map(c=>{
+    const r=c.review||{},score=r.skor_komponen==null?'—':Number(r.skor_komponen).toFixed(2),doc=c.document?.file_id?'<span class="badge badge-success">PDF ADA</span>':'<span class="badge badge-danger">PDF BELUM</span>';
+    return `<article class="f2-component-card"><div class="f2-component-top"><div><small>KOMPONEN ${String(c.no).padStart(2,'0')} • BOBOT ${fmtNum(c.bobot)}</small><h4>${esc(c.nama)}</h4></div>${f1StatusBadgeRc2_(r.status)}</div><p>${esc(c.subtitle||'')}</p><div style="margin-top:8px">${doc} <span class="badge badge-info">${fmtNum(c.transaction_count||0)} baris acuan</span></div><div class="f2-score">${score}<small style="font-size:.72rem;font-weight:700"> / 4</small></div><div class="toolbar" style="margin-top:9px"><button class="btn ${String(r.status||'')==='SELESAI'?'btn-light':'btn-primary'} btn-sm" onclick="openPhase1ComponentRc2(${c.no})">${readonly||String(r.status||'')==='SELESAI'?'Review':'Periksa'} →</button></div></article>`;
+  }).join('');
+
+  let footer='';
+  if(isPengawas()){
+    if(status==='FASE_1_DIAJUKAN')footer='<div class="message ok"><b>Fase 1 sudah dikirim ke DINAS.</b> Empat komponen SPJ 01–04 dikunci sampai keputusan DINAS.</div>';
+    else if(['FASE_1_SELESAI','FASE_2_SELESAI','FINAL'].includes(status))footer='<div class="message ok"><b>Fase 1 sudah disetujui DINAS.</b> Laporan Fase 1 resmi tersedia.</div>';
+    else if(status==='FASE_1_REVISI')footer=`<div class="message warning"><b>DINAS meminta revisi.</b><br>${esc(wb.readiness?.phase1_revision_note||'Periksa kembali hasil Fase 1.')}</div><div class="toolbar"><button class="btn btn-primary" onclick="submitFase1PengawasRc2('${esc(wb.id_asesmen)}')" ${wb.can_submit?'':'disabled'}>Kirim Ulang Fase 1 ke DINAS</button></div>`;
+    else footer=`<div class="toolbar" style="margin-top:14px"><button class="btn btn-primary" onclick="submitFase1PengawasRc2('${esc(wb.id_asesmen)}')" ${wb.can_submit?'':'disabled'}>✓ Kirim Fase 1 ke DINAS</button></div><div class="muted">Pengiriman dibuka setelah 4 komponen selesai dan seluruh temuan telah diverifikasi.</div>`;
+  }else{
+    if(status==='FASE_1_DIAJUKAN')footer=`<div class="message warning"><b>Hasil Fase 1 Pengawas siap direview DINAS.</b> Nilai Fase 1: <b>${wb.phase1_score==null?(s.nilai_fase1==null?'—':Number(s.nilai_fase1).toFixed(2)):Number(wb.phase1_score).toFixed(2)}</b> / 100.</div><div class="field"><label>Catatan persetujuan / pengembalian</label><textarea id="rc2F1DinasNote" rows="3" placeholder="Catatan DINAS..."></textarea></div><div class="toolbar"><button class="btn btn-primary" onclick="approveFase1DinasRc2('${esc(wb.id_asesmen)}')">Setujui Fase 1</button><button class="btn btn-light" onclick="returnFase1DinasRc2('${esc(wb.id_asesmen)}')">Kembalikan ke Pengawas</button></div>`;
+    else if(['FASE_1_SELESAI','FASE_2_SELESAI','FINAL'].includes(status))footer=`<div class="message ok"><b>Fase 1 disetujui DINAS.</b> Nilai: <b>${wb.phase1_score==null?'—':Number(wb.phase1_score).toFixed(2)}</b> / 100.</div>${rc2ReadinessBanner_(p)}`;
+    else footer='<div class="message warning">Pengawas belum mengirim Fase 1 kepada DINAS.</div>';
+  }
+
+  return `${rc2PipelineCards_(p)}<section class="f2-cockpit"><div class="message info"><b>Fase 1 = SPJ 01–04.</b> Sistem menyandingkan transaksi BKU dengan halaman PDF; Pengawas memverifikasi. SPJ 05–10 tidak dinilai di sini dan tetap menjadi Fase 2 DINAS.</div><div class="f2-summary"><div class="stat"><small>Komponen selesai</small><strong>${fmtNum(s.components_complete||0)}/4</strong></div><div class="stat"><small>Nilai Fase 1</small><strong>${s.nilai_fase1==null?(wb.phase1_score==null?'—':Number(wb.phase1_score).toFixed(2)):Number(s.nilai_fase1).toFixed(2)}</strong></div><div class="stat"><small>Temuan pending</small><strong>${fmtNum(wb.pending_findings||0)}</strong></div><div class="stat"><small>Status Fase 1</small><strong style="font-size:.78rem">${esc(status.replaceAll('_',' ')||'BELUM')}</strong></div><div class="stat"><small>Metode</small><strong style="font-size:.82rem">BKU ↔ PDF</strong></div></div><div class="f2-component-grid">${cards}</div><div id="rc2F1WorkbenchDetail"></div>${footer}</section>`;
+}
+function f1CurrentComponentRc2_(){const st=window.__phase1ReviewState||{},wb=st.workbench||{};return (wb.components||[]).find(x=>Number(x.no)===Number(st.componentNo));}
+function f1CurrentTransactionsRc2_(){const st=window.__phase1ReviewState||{},c=f1CurrentComponentRc2_(),map=f1TransactionMapRc2_(st.workbench);return (c?.transaction_ids||[]).map(id=>map[id]).filter(Boolean);}
+
+window.openPhase1ComponentRc2=async function(no){
+  const st=window.__phase1ReviewState||{},wb=st.workbench||{},c=(wb.components||[]).find(x=>Number(x.no)===Number(no)),host=$('#rc2F1WorkbenchDetail');if(!c||!host)return;
+  st.componentNo=Number(no);st.page=1;st.zoom=1;st.pdf=null;st.pages=[];st.matches=[];st.filter='ALL';st.listPage=1;st.pageSize=Number(st.pageSize)||100;st.decisions=f1DecodeReviewDecisionMapRc2_(c.review);
+  const readonly=!!wb.read_only||isDinas();
+  host.innerHTML=`<div class="f2-workbench"><section class="f2-pdf-pane"><div class="f2-pane-head"><div><b>PDF ${String(c.no).padStart(2,'0')} — ${esc(c.nama)}</b><div class="muted">${esc(c.document?.nama_file||'PDF belum tersedia')}</div></div><div class="toolbar"><button class="btn btn-light btn-sm" onclick="phase1PdfPrevRc2()">←</button><span id="f1PdfPageInfo" class="badge badge-info">1 / ?</span><button class="btn btn-light btn-sm" onclick="phase1PdfNextRc2()">→</button><button class="btn btn-light btn-sm" onclick="phase1PdfZoomRc2(-.1)">−</button><button class="btn btn-light btn-sm" onclick="phase1PdfZoomRc2(.1)">+</button></div></div><div id="f1PdfFrame" class="f2-pdf-frame">${c.document?.file_id?loading('Memuat PDF...'):msg('PDF komponen ini belum tersedia.','warning')}</div></section><aside class="f2-review-pane"><div class="f2-pane-head"><div><b>${readonly?'Hasil Pencocokan Pengawas':'Pencocokan BKU ↔ Bukti'}</b><div class="muted">${esc(c.subtitle||'')}</div></div><button class="btn btn-primary btn-sm" onclick="runPhase1ComponentAnalysisRc2()" ${c.document?.file_id?'':'disabled'}>⚡ Analisis PDF</button></div><div id="f1ReviewContent" class="f2-review-content"></div></aside></div>`;
+  renderPhase1ReviewListRc2_();if(c.document?.file_id)await renderPhase1PdfPageRc2(1);
+};
+async function getPhase1PdfDocumentRc2_(component){
+  if(!component?.document?.file_id)throw new Error('PDF tidak tersedia.');
+  const st=window.__phase1ReviewState||{};if(st.pdf)return st.pdf;
+  const lib=await ensurePdfJs(),wb=st.workbench||{},r=await api('getDokumenPdfBase64',{fileId:component.document.file_id,idPeriode:wb.id_periode,npsn:wb.npsn});
+  st.pdf=await lib.getDocument({data:base64ToUint8Array_(r.base64)}).promise;return st.pdf;
+}
+window.renderPhase1PdfPageRc2=async function(pageNo){
+  const st=window.__phase1ReviewState||{},c=f1CurrentComponentRc2_(),frame=$('#f1PdfFrame');if(!c||!frame||!c.document?.file_id)return;
+  try{const pdf=await getPhase1PdfDocumentRc2_(c),safe=Math.max(1,Math.min(pdf.numPages,Number(pageNo)||1));st.page=safe;const p=await pdf.getPage(safe),base=p.getViewport({scale:1}),fit=Math.min(Math.max(320,frame.clientWidth-28)/base.width,1.6),vp=p.getViewport({scale:fit*Math.max(.7,Math.min(2,Number(st.zoom)||1))}),canvas=document.createElement('canvas');canvas.width=Math.ceil(vp.width);canvas.height=Math.ceil(vp.height);frame.innerHTML='';frame.appendChild(canvas);await p.render({canvasContext:canvas.getContext('2d'),viewport:vp}).promise;const inf=$('#f1PdfPageInfo');if(inf)inf.textContent=`${safe} / ${pdf.numPages}`;}catch(e){frame.innerHTML=msg(errorText(e),'error');}
+};
+window.phase1PdfPrevRc2=()=>renderPhase1PdfPageRc2(Math.max(1,(window.__phase1ReviewState?.page||1)-1));
+window.phase1PdfNextRc2=async()=>{const st=window.__phase1ReviewState||{},pdf=st.pdf||await getPhase1PdfDocumentRc2_(f1CurrentComponentRc2_());return renderPhase1PdfPageRc2(Math.min(pdf.numPages,(st.page||1)+1));};
+window.phase1PdfZoomRc2=async d=>{const st=window.__phase1ReviewState||{};st.zoom=Math.max(.7,Math.min(2,(Number(st.zoom)||1)+Number(d||0)));await renderPhase1PdfPageRc2(st.page||1);};
+
+window.runPhase1ComponentAnalysisRc2=async function(){
+  const st=window.__phase1ReviewState||{},c=f1CurrentComponentRc2_();if(!c?.document?.file_id)return;
+  const key=String(c.document.file_id),cached=window.__phase1OcrCache[key];
+  if(cached?.pages?.length){st.pages=cached.pages;st.matches=_matchTransactionsToOcrPages_(f1CurrentTransactionsRc2_(),st.pages);renderPhase1ReviewListRc2_();toast('Hasil analisis sesi ini digunakan kembali.','ok');return;}
+  const host=$('#f1ReviewContent');if(host)host.innerHTML=loading('Membaca halaman PDF dan menyandingkan dengan BKU...');
+  try{
+    const pdf=await getPhase1PdfDocumentRc2_(c),pages=[],scanned=[];
+    for(let no=1;no<=pdf.numPages;no++){
+      const pg=await pdf.getPage(no);let extracted='';try{const tc=await pg.getTextContent({normalizeWhitespace:true,disableCombineTextItems:false});extracted=(tc.items||[]).map(i=>String(i.str||'')).join(' ').replace(/\s+/g,' ').trim();}catch(_){}
+      if(extracted.length>=70)pages.push({page:no,text:extracted,characters:extracted.length,source:'PDF_TEXT'});else scanned.push(no);
+      if(host)host.innerHTML=loading(`Membaca text-layer ${no}/${pdf.numPages} • ${scanned.length} halaman scan`);if(no%4===0)await new Promise(r=>setTimeout(r,0));
+    }
+    let cap={available:false};if(scanned.length)cap=await safeApi('getOcrCapability',{}, {available:false});
+    let done=0;if(cap.available){for(const no of scanned){const pg=await pdf.getPage(no),base=pg.getViewport({scale:1}),target=Math.min(1450,Math.max(1050,base.width*1.5)),vp=pg.getViewport({scale:target/base.width}),canvas=document.createElement('canvas');canvas.width=Math.ceil(vp.width);canvas.height=Math.ceil(vp.height);const ctx=canvas.getContext('2d',{alpha:false});ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);await pg.render({canvasContext:ctx,viewport:vp}).promise;const imageBase64=await _canvasToBase64Jpeg_(canvas,.78),wb=st.workbench||{},r=await api('ocrPdfPageImage',{data:{fileId:c.document.file_id,idPeriode:wb.id_periode,npsn:wb.npsn,pageNo:no,imageBase64,mimeType:'image/jpeg'}});pages.push({page:no,text:String(r.text||''),characters:Number(r.characters||0),source:'OCR'});done++;canvas.width=1;canvas.height=1;if(host)host.innerHTML=loading(`OCR halaman scan ${done}/${scanned.length}`);await new Promise(r=>setTimeout(r,0));}}
+    pages.sort((a,b)=>a.page-b.page);st.pages=pages;st.matches=_matchTransactionsToOcrPages_(f1CurrentTransactionsRc2_(),pages);window.__phase1OcrCache[key]={pages:pages,createdAt:Date.now()};renderPhase1ReviewListRc2_();
+    if(scanned.length&&!cap.available)toast(`${scanned.length} halaman scan belum dapat OCR karena Drive API tidak aktif. Text-layer tetap dianalisis.`,'warning',8000);else toast('Analisis Fase 1 selesai. Pengawas cukup fokus pada kandidat sedang/rendah.','ok',5000);
+  }catch(e){if(host)host.innerHTML=msg(errorText(e),'error');}
+};
+function f1MatchMapRc2_(){const m={};(window.__phase1ReviewState?.matches||[]).forEach(x=>m[String(x.id_transaksi||'')]=x);return m;}
+window.setPhase1DecisionRc2=function(id,status){const st=window.__phase1ReviewState||{},match=f1MatchMapRc2_()[String(id)]||{};st.decisions[String(id)]={status:String(status),page_no:Number(match.page||st.decisions[String(id)]?.page_no||0),confidence:Number(match.confidence||st.decisions[String(id)]?.confidence||0)};renderPhase1ReviewListRc2_();};
+window.acceptHighPhase1MatchesRc2=function(){const st=window.__phase1ReviewState||{},m=f1MatchMapRc2_();let n=0;f1CurrentTransactionsRc2_().forEach(tx=>{const x=m[String(tx.id_transaksi||'')];if(x&&Number(x.confidence)>=75&&!st.decisions[String(tx.id_transaksi||'')]){st.decisions[String(tx.id_transaksi)]={status:'SESUAI',page_no:Number(x.page||0),confidence:Number(x.confidence||0)};n++;}});renderPhase1ReviewListRc2_();toast(`${n} kandidat confidence tinggi diterima untuk review Pengawas.`,n?'ok':'info');};
+window.filterPhase1ReviewRc2=function(v){const st=window.__phase1ReviewState||{};st.filter=String(v||'ALL');st.listPage=1;renderPhase1ReviewListRc2_();};
+window.changePhase1ReviewPageRc2=function(delta){const st=window.__phase1ReviewState||{};st.listPage=Math.max(1,(Number(st.listPage)||1)+Number(delta||0));renderPhase1ReviewListRc2_();};
+window.setPhase1ReviewPageSizeRc2=function(v){const st=window.__phase1ReviewState||{},n=Number(v);st.pageSize=[50,100,200].includes(n)?n:100;st.listPage=1;renderPhase1ReviewListRc2_();};
+
+function renderPhase1ReviewListRc2_(){
+  const host=$('#f1ReviewContent'),st=window.__phase1ReviewState||{},c=f1CurrentComponentRc2_(),wb=st.workbench||{};
+  if(!host||!c)return;
+  const readonly=!!wb.read_only||isDinas(),tx=f1CurrentTransactionsRc2_(),txMap=f1TransactionMapRc2_(wb),matches=f1MatchMapRc2_(),metrics=f1ComponentMetricsClientRc2_(c,st.decisions,txMap),filter=st.filter||'ALL';
+  const filtered=tx.filter(t=>{const id=String(t.id_transaksi||''),d=st.decisions[id],m=matches[id]||{};if(filter==='EXCEPTION')return !d||d.status!=='SESUAI'||Number(m.confidence||0)<75;if(filter==='PENDING')return !d||d.status==='PERLU_CEK';if(filter==='MISMATCH')return d&&['TIDAK_SESUAI','BUKTI_TIDAK_DITEMUKAN'].includes(d.status);return true;});
+  const pageSize=[50,100,200].includes(Number(st.pageSize))?Number(st.pageSize):100,totalPages=Math.max(1,Math.ceil(filtered.length/pageSize));st.listPage=Math.min(totalPages,Math.max(1,Number(st.listPage)||1));const start=(st.listPage-1)*pageSize,end=Math.min(filtered.length,start+pageSize);
+  const rows=filtered.slice(start,end).map(t=>{
+    const id=String(t.id_transaksi||''),m=matches[id]||{},d=st.decisions[id]||{},conf=Number(m.confidence||d.confidence||0),level=conf>=75?'high':conf>=50?'medium':'low',page=Number(m.page||d.page_no||0),reason=(m.reasons||[]).join(', ')||'belum dianalisis';
+    const actions=readonly
+      ? `<span class="badge ${d.status==='SESUAI'?'badge-success':d.status==='TIDAK_SESUAI'||d.status==='BUKTI_TIDAK_DITEMUKAN'?'badge-danger':'badge-warning'}">${esc(String(d.status||'BELUM DIPUTUSKAN').replaceAll('_',' '))}</span>`
+      : ['SESUAI','PERLU_CEK','TIDAK_SESUAI','BUKTI_TIDAK_DITEMUKAN'].map(s=>{const l=s==='SESUAI'?'✓ Sesuai':s==='PERLU_CEK'?'⚠ Perlu cek':s==='TIDAK_SESUAI'?'✕ Tidak sesuai':'○ Bukti tidak ditemukan';return `<button class="btn btn-sm ${d.status===s?'btn-primary active':'btn-light'}" onclick="setPhase1DecisionRc2('${esc(id)}','${s}')">${l}</button>`;}).join('');
+    return `<div class="f2-match-row ${level}"><div class="f2-match-main"><div><b>${esc(t.tanggal_transaksi||'-')} • ${esc(t.nomor_bukti||'Tanpa nomor bukti')}</b><div>${esc(t.uraian_transaksi||'-')}</div><div class="f2-match-meta">${esc(t.kode_rekening||'-')} • ${fmtRupiah(t.nilai_transaksi||0)} • kandidat ${conf?conf+'%':'belum ada'} • ${esc(reason)}</div></div><div>${page?`<button class="btn btn-light btn-sm" onclick="renderPhase1PdfPageRc2(${page})">PDF h.${page}</button>`:''}</div></div><div class="f2-decision">${actions}</div></div>`;
+  }).join('');
+  const pager=filtered.length?`<div class="toolbar" style="justify-content:space-between;align-items:center;margin:10px 0;gap:8px;flex-wrap:wrap"><div class="muted">Menampilkan ${fmtNum(start+1)}–${fmtNum(end)} dari ${fmtNum(filtered.length)} baris • Halaman ${fmtNum(st.listPage)}/${fmtNum(totalPages)}</div><div class="toolbar"><select onchange="setPhase1ReviewPageSizeRc2(this.value)" style="min-width:92px"><option value="50" ${pageSize===50?'selected':''}>50/baris</option><option value="100" ${pageSize===100?'selected':''}>100/baris</option><option value="200" ${pageSize===200?'selected':''}>200/baris</option></select><button class="btn btn-light btn-sm" onclick="changePhase1ReviewPageRc2(-1)" ${st.listPage<=1?'disabled':''}>← Sebelumnya</button><button class="btn btn-light btn-sm" onclick="changePhase1ReviewPageRc2(1)" ${st.listPage>=totalPages?'disabled':''}>Berikutnya →</button></div></div>`:'';
+  const rec=metrics.recommended_score==null?'—':Number(metrics.recommended_score).toFixed(2),saved=c.review||{},scoreVal=saved.skor_komponen==null?(metrics.pending_count===0&&metrics.recommended_score!=null?metrics.recommended_score:''):saved.skor_komponen;
+  const tools=readonly?'':`<div class="f2-filter-row"><button class="btn btn-light btn-sm" onclick="acceptHighPhase1MatchesRc2()">✓ Terima Kandidat Tinggi</button><select onchange="filterPhase1ReviewRc2(this.value)"><option value="ALL" ${filter==='ALL'?'selected':''}>Semua</option><option value="EXCEPTION" ${filter==='EXCEPTION'?'selected':''}>Prioritas / Exception</option><option value="PENDING" ${filter==='PENDING'?'selected':''}>Belum diputuskan</option><option value="MISMATCH" ${filter==='MISMATCH'?'selected':''}>Tidak sesuai</option></select></div>`;
+  const scoreBox=readonly
+    ? `<div class="f2-score-box"><div class="report-meta"><b>Skor Pengawas</b><span>${saved.skor_komponen==null?'—':Number(saved.skor_komponen).toFixed(2)} / 4</span><b>Rekomendasi</b><span>${saved.skor_rekomendasi==null?'—':Number(saved.skor_rekomendasi).toFixed(2)} / 4</span><b>Catatan</b><span>${esc(saved.catatan||'-')}</span></div></div>`
+    : `<div class="f2-score-box"><div class="form-grid"><div class="field"><label>Skor Komponen 0–4</label><input id="f1ComponentScore" type="number" min="0" max="4" step="0.01" value="${esc(scoreVal)}"></div><div class="field"><label>Catatan Pengawas</label><textarea id="f1ComponentNote" rows="3" placeholder="Wajib bila skor menyimpang dari rekomendasi.">${esc(saved.catatan||'')}</textarea></div></div><div class="toolbar"><button class="btn btn-light" onclick="savePhase1ComponentRc2('PROSES')">Simpan Progres</button>${c.target?.allow_na&&c.transaction_count===0?`<button class="btn btn-light" onclick="savePhase1ComponentRc2('N/A')">Tandai N/A</button>`:''}<button class="btn btn-primary" onclick="savePhase1ComponentRc2('SELESAI')">✓ Selesaikan Komponen</button></div><div class="muted">Semua baris acuan harus diputuskan sebelum komponen selesai.</div></div>`;
+  host.innerHTML=`${tools}<div class="cards" style="grid-template-columns:repeat(4,1fr);margin-bottom:10px"><div class="stat"><small>Acuan BKU</small><strong>${fmtNum(metrics.total_count)}</strong></div><div class="stat"><small>Sesuai</small><strong>${fmtNum(metrics.sesuai_count)}</strong></div><div class="stat"><small>Exception</small><strong>${fmtNum(metrics.tidak_sesuai_count)}</strong></div><div class="stat"><small>Pending</small><strong>${fmtNum(metrics.pending_count)}</strong></div></div><div class="f2-progressbar" style="color:var(--primary)"><i style="width:${Math.max(0,Math.min(100,metrics.coverage_percent))}%"></i></div><div class="muted" style="margin:5px 0 10px">Coverage keputusan Pengawas ${Number(metrics.coverage_percent||0).toFixed(1)}% • skor rekomendasi terverifikasi ${rec}/4</div>${pager}${rows||msg(c.transaction_count?'Belum ada baris pada filter ini.':'Tidak ada transaksi acuan untuk komponen ini.','info')}${pager}${scoreBox}`;
+}
+window.savePhase1ComponentRc2=async function(status){
+  const st=window.__phase1ReviewState||{},wb=st.workbench||{},c=f1CurrentComponentRc2_();if(!c||wb.read_only||isDinas())return;
+  const scoreRaw=$('#f1ComponentScore')?.value,score=scoreRaw===''?null:Number(scoreRaw),note=$('#f1ComponentNote')?.value.trim()||'',items=Object.entries(st.decisions||{}).map(([id,d])=>[id,d.status,Number(d.page_no||0),Number(d.confidence||0)]);
+  if(status==='SELESAI'&&(!Number.isFinite(score)||score<0||score>4)){toast('Skor komponen harus 0–4.','warning');return;}
+  try{await api('savePhase1ComponentReview',{data:{npsn:wb.npsn,id_periode:wb.id_periode,no_komponen:c.no,status,skor_komponen:score,catatan:note,items}});toast(status==='SELESAI'?'Komponen Fase 1 selesai.':'Progres review tersimpan.','ok');await loadPenilaianFase1Rc2();if(status!=='SELESAI')setTimeout(()=>openPhase1ComponentRc2(c.no),0);}catch(e){toast(errorText(e),'error',7000);}
+};
+
+
 window.loadPenilaianFase1Rc2=async function(){
   const {npsn,idPeriode}=rc2Context_('rc2f1'),area=$('#rc2F1Area');
   if(!npsn||!idPeriode){area.innerHTML=msg('Pilih sekolah dan periode.','warning');return;}
-  area.innerHTML=loading('Memuat Penilaian Fase 1...');
+  state.selectedNpsn=npsn;state.selectedPeriode=idPeriode;
+  area.innerHTML=loading('Menyiapkan Cockpit Pemeriksaan Fase 1...');
   try{
-    const [r,p]=await Promise.all([
-      api('getPenilaianFase1',{npsn,idPeriode}),
-      api('getPipelinePenilaianSPJ',{npsn,idPeriode})
+    const [p,wb]=await Promise.all([
+      api('getPipelinePenilaianSPJ',{npsn,idPeriode}),
+      api('getPhase1ReviewWorkbench',{npsn,idPeriode})
     ]);
-    const ready=r.readiness||{},a=r.asesmen||null,rows=r.indikator||[];
-    if(!a){
-      area.innerHTML=`${rc2PipelineCards_(p)}
-        <div class="message ${ready.phase1_ready?'ok':'warning'}" style="margin-top:14px">
-          <b>${ready.phase1_ready?'Sekolah siap Fase 1.':'Fase 1 belum dapat dimulai.'}</b><br>
-          BKU Data: ${ready.bku_ready?'VALID':'BELUM'} • Dokumen: ${fmtNum(ready.documents_complete_count||0)}/10.
-          ${(ready.blockers||[]).length?`<br>${esc((ready.blockers||[]).join(' • '))}`:''}
-        </div>`;
-      return;
-    }
-
-    const editable=isPengawas()&&!r.read_only;
-    const body=rows.map(x=>{
-      const evidence=`${esc(x.status_verifikasi||'-')} · temuan ${fmtNum(x.jumlah_temuan||0)}${x.catatan_pengawas?`<br><small>${esc(x.catatan_pengawas)}</small>`:''}`;
-      const action=editable
-        ? `<button class="btn btn-light btn-sm" onclick="editFase1ScoreRc2('${esc(a.id_asesmen)}','${esc(x.id_indikator)}','${x.skor??''}','${x.skor_otomatis??''}')">Verifikasi Pengawas</button>`
-        : '-';
-      return `<tr><td><b>${x.no_instrumen}. ${esc(x.nama_indikator)}</b><br><small class="muted">${esc(x.nama_file||'Belum ada dokumen')}</small></td><td>${fmtRupiah(x.nilai_acuan_bku||0)}</td><td>${evidence}</td><td>${x.skor_otomatis==null?'—':Number(x.skor_otomatis).toFixed(2)}</td><td>${x.skor==null?'—':Number(x.skor).toFixed(2)}</td><td>${action}</td></tr>`;
-    }).join('');
-
-    let footer='';
-    const status=String(a.status_asesmen||'').toUpperCase();
-    if(isPengawas()){
-      if(status==='FASE_1_DIAJUKAN') footer='<div class="message ok"><b>Fase 1 sudah dikirim ke DINAS.</b> Tunggu persetujuan DINAS.</div>';
-      else if(status==='FASE_1_SELESAI'||status==='FASE_2_SELESAI'||status==='FINAL') footer='<div class="message ok"><b>Fase 1 sudah disetujui DINAS.</b> Laporan Fase 1 resmi tersedia pada Hasil / Arsip.</div>';
-      else if(status==='FASE_1_REVISI') footer=`<div class="message warning"><b>DINAS meminta revisi.</b><br>${esc(ready.phase1_revision_note||'Periksa kembali hasil Fase 1.')}</div><div class="toolbar"><button class="btn btn-primary" onclick="submitFase1PengawasRc2('${esc(a.id_asesmen)}')" ${r.can_submit?'':'disabled'}>Kirim Ulang ke DINAS</button></div>`;
-      else footer=`<div class="toolbar" style="margin-top:14px"><button class="btn btn-primary" onclick="submitFase1PengawasRc2('${esc(a.id_asesmen)}')" ${r.can_submit?'':'disabled'}>Kirim Fase 1 ke DINAS</button></div>`;
-    }else{
-      if(status==='FASE_1_DIAJUKAN'){
-        footer=`<div class="message warning"><b>Menunggu keputusan DINAS.</b> Nilai Fase 1 Pengawas: <b>${esc(a.nilai_kualitas??'-')}</b></div>
-        <div class="field"><label>Catatan persetujuan / pengembalian</label><textarea id="rc2F1DinasNote" rows="3" placeholder="Catatan DINAS..."></textarea></div>
-        <div class="toolbar"><button class="btn btn-primary" onclick="approveFase1DinasRc2('${esc(a.id_asesmen)}')">Setujui Fase 1</button><button class="btn btn-light" onclick="returnFase1DinasRc2('${esc(a.id_asesmen)}')">Kembalikan ke Pengawas</button></div>`;
-      }else if(['FASE_1_SELESAI','FASE_2_SELESAI','FINAL'].includes(status)){
-        footer=`<div class="message ok"><b>Fase 1 disetujui DINAS.</b> Nilai: <b>${esc(a.nilai_kualitas??'-')}</b>${ready.phase1_approved_at?` • ${esc(ready.phase1_approved_at)}`:''}</div>${rc2ReadinessBanner_(p)}`;
-      }else{
-        footer='<div class="message warning">Pengawas belum mengirim Fase 1 kepada DINAS.</div>';
-      }
-    }
-
-    area.innerHTML=`${rc2PipelineCards_(p)}
-      <div class="cards" style="margin-top:14px">
-        <div class="stat"><small>BKU Data</small><strong style="font-size:1rem">${r.bku_ready?'VALID':'BELUM'}</strong></div>
-        <div class="stat"><small>Dokumen</small><strong>${fmtNum(ready.documents_complete_count||0)}/10</strong></div>
-        <div class="stat"><small>Temuan pending</small><strong>${fmtNum(r.pending_findings||0)}</strong></div>
-        <div class="stat"><small>Verifikasi nilai pending</small><strong>${fmtNum(r.pending_value_verifications||0)}</strong></div>
-      </div>
-      <div class="table-wrap"><table class="friendly-table"><thead><tr><th>10 Komponen Dokumen</th><th>Acuan BKU</th><th>Hasil Pemeriksaan</th><th>Rekomendasi Sistem</th><th>Skor Fase 1</th><th>${isPengawas()?'Aksi Pengawas':'Status'}</th></tr></thead><tbody>${body||emptyRow(6)}</tbody></table></div>
-      ${footer}`;
-  }catch(e){area.innerHTML=msg(errorText(e));}
+    window.__phase1ReviewState={workbench:wb,componentNo:0,pdf:null,page:1,zoom:1,pages:[],matches:[],decisions:{},filter:'ALL',listPage:1,pageSize:100};
+    area.innerHTML=renderPhase1CockpitRc2_(p,wb);
+  }catch(e){area.innerHTML=msg(errorText(e),'error');}
 };
 
 window.editFase1ScoreRc2=async function(idAsesmen,idIndikator,current,automatic){
@@ -9290,9 +9386,9 @@ async function penilaianFase2View(){
     .map(x=>`<option value="${esc(x.id_pengawas)}">${esc(x.nama_pengawas)} • ${fmtNum(x.count)} sekolah</option>`)
     .join('');
 
-  $('#mainContent').innerHTML=head('Penilaian Fase 2','DINAS menetapkan hasil akhir setelah rekonsiliasi. Pilih cara kerja per sekolah atau kelompok sekolah per Pengawas.')+`
+  $('#mainContent').innerHTML=head('Penilaian Fase 2','DINAS memeriksa 6 komponen PDF SPJ 05–10 melalui pencocokan BKU ↔ bukti, lalu menetapkan skor komponen 0–4 dan nilai Fase 2 0–100.')+`
     <div class="panel">
-      <div class="message info"><b>Opsi pengelompokan hanya mempermudah navigasi Fase 2.</b> Syarat, scoring, rekonsiliasi, finalisasi, dan algoritma backend tidak diubah.</div>
+      <div class="message info"><b>Mode kerja Fase 2 berbasis evidence.</b> Sistem mencari kandidat halaman PDF yang sesuai dengan transaksi BKU; DINAS tetap memverifikasi dan menetapkan skor resmi.</div>
 
       <div class="form-grid">
         <div class="field">
@@ -9472,8 +9568,125 @@ window.openFase2SchoolFromGroupRc2=async function(npsn){
   if(detail)detail.scrollIntoView({behavior:'smooth',block:'start'});
   await loadFase2Rc2();
 };
-window.loadFase2Rc2=async function(){const {npsn,idPeriode}=rc2Context_('rc2f2'),area=$('#rc2F2Area');if(!npsn||!idPeriode){area.innerHTML=msg('Pilih sekolah dan periode.','warning');return;}area.innerHTML=loading();try{const p=await api('getPipelinePenilaianSPJ',{npsn,idPeriode});area.innerHTML=rc2PipelineCards_(p)+rc2ReadinessBanner_(p)+`<div class="form-grid" style="margin-top:14px"><div class="field"><label>Nilai Fase 2 / Nilai Akhir</label><input id="rc2F2Score" type="number" min="0" max="100" step="0.01" value="${esc(p.phase2_score??p.phase1_score??'')}"></div><div class="field"><label>Catatan Fase 2</label><textarea id="rc2F2Note" rows="3"></textarea></div></div><div class="toolbar"><button class="btn btn-primary" onclick="saveFase2Rc2()" ${p.reconciliation_done?'':'disabled'}>Tetapkan Fase 2</button></div>`;}catch(e){area.innerHTML=msg(errorText(e));}};
-window.saveFase2Rc2=async function(){const {npsn,idPeriode}=rc2Context_('rc2f2'),nilai=Number($('#rc2F2Score')?.value),catatan=$('#rc2F2Note')?.value.trim()||'';if(!Number.isFinite(nilai)||nilai<0||nilai>100){toast('Nilai harus 0–100.','warning');return;}try{await api('finalisasiPenilaianFase2',{data:{npsn,id_periode:idPeriode,nilai_akhir:nilai,catatan}});toast('Penilaian Fase 2 ditetapkan.','ok');await loadFase2Rc2();}catch(e){toast(errorText(e),'error',5000);}};
+window.__phase2ReviewState=window.__phase2ReviewState||{workbench:null,componentNo:0,pdf:null,page:1,zoom:1,pages:[],matches:[],decisions:{},filter:'ALL',listPage:1,pageSize:100};
+window.__phase2OcrCache=window.__phase2OcrCache||{};
+function f2StatusBadgeRc2_(status){
+  const s=String(status||'BELUM').toUpperCase();
+  if(s==='SELESAI')return '<span class="badge badge-success">SELESAI</span>';
+  if(s==='N/A')return '<span class="badge badge-info">N/A</span>';
+  if(s==='PROSES')return '<span class="badge badge-warning">PROSES</span>';
+  return '<span class="badge badge-warning">BELUM</span>';
+}
+function f2TransactionMapRc2_(wb){const m={};(wb?.transactions||[]).forEach(x=>m[String(x.id_transaksi||'')]=x);return m;}
+function f2DecodeReviewDecisionMapRc2_(review){
+  const out={};
+  if(review?.decision_map&&typeof review.decision_map==='object')return review.decision_map;
+  (review?.items||[]).forEach(a=>{if(!Array.isArray(a)||!a[0])return;const code=String(a[1]||'').toUpperCase();const st=code==='S'?'SESUAI':code==='X'?'TIDAK_SESUAI':code==='M'?'BUKTI_TIDAK_DITEMUKAN':code==='C'?'PERLU_CEK':'';if(st)out[String(a[0])]={status:st,page_no:Number(a[2]||0),confidence:Number(a[3]||0)};});
+  return out;
+}
+function f2ComponentMetricsClientRc2_(component,decisions,txMap){
+  const ids=component?.transaction_ids||[];let total=0,sesuai=0,mismatch=0,pending=0,missing=0,perlu=0,totalValue=0,sesuaiValue=0;
+  ids.forEach(id=>{const tx=txMap[id]||{},v=Math.max(0,Number(tx.nilai_transaksi)||0),st=String(decisions[id]?.status||'').toUpperCase();total++;totalValue+=v;if(st==='SESUAI'){sesuai++;sesuaiValue+=v;}else if(st==='TIDAK_SESUAI'){mismatch++;}else if(st==='BUKTI_TIDAK_DITEMUKAN'){mismatch++;missing++;}else{pending++;if(st==='PERLU_CEK')perlu++;}});
+  const ratio=total?((totalValue>0?sesuaiValue/totalValue:sesuai/total)):null;
+  return {total_count:total,total_value:totalValue,sesuai_count:sesuai,tidak_sesuai_count:mismatch,pending_count:pending,perlu_cek_count:perlu,bukti_tidak_ditemukan_count:missing,coverage_percent:total?((total-pending)/total*100):100,recommended_score:ratio==null?null:Math.round(4*ratio*100)/100,value_match_percent:ratio==null?null:ratio*100};
+}
+function renderPhase2CockpitRc2_(p,wb){
+  const s=wb.summary||{},cards=(wb.components||[]).map(c=>{
+    const r=c.review||{},score=r.skor_komponen==null?'—':Number(r.skor_komponen).toFixed(2),doc=c.document?.file_id?'<span class="badge badge-success">PDF ADA</span>':'<span class="badge badge-danger">PDF BELUM</span>';
+    return `<article class="f2-component-card"><div class="f2-component-top"><div><small>KOMPONEN ${String(c.no).padStart(2,'0')} • BOBOT ${fmtNum(c.bobot)}</small><h4>${esc(c.nama)}</h4></div>${f2StatusBadgeRc2_(r.status)}</div><p>${esc(c.subtitle||'')}</p><div style="margin-top:8px">${doc} <span class="badge badge-info">${fmtNum(c.transaction_count||0)} acuan BKU</span></div><div class="f2-score">${score}<small style="font-size:.72rem;font-weight:700"> / 4</small></div><div class="toolbar" style="margin-top:9px"><button class="btn ${String(r.status||'')==='SELESAI'?'btn-light':'btn-primary'} btn-sm" onclick="openPhase2ComponentRc2(${c.no})">${String(r.status||'')==='SELESAI'?'Review':'Periksa'} →</button></div></article>`;
+  }).join('');
+  const finalBtn=s.all_complete&&!p.phase2_done?`<button class="btn btn-primary" onclick="finalizePhase2FromComponentsRc2()">✓ Tetapkan Nilai Fase 2 ${s.nilai_fase2==null?'':Number(s.nilai_fase2).toFixed(2)}</button>`:'';
+  return `${rc2PipelineCards_(p)}${rc2ReadinessBanner_(p)}<section class="f2-cockpit"><div class="message info"><b>Prinsip:</b> sistem mencari dan menyandingkan bukti; keputusan resmi tetap DINAS. Skor tiap komponen 0–4 dan nilai Fase 2 dihitung otomatis menjadi 0–100.</div><div class="f2-summary"><div class="stat"><small>Komponen selesai</small><strong>${fmtNum(s.components_complete||0)}/6</strong></div><div class="stat"><small>Nilai Fase 2</small><strong>${s.nilai_fase2==null?'—':Number(s.nilai_fase2).toFixed(2)}</strong></div><div class="stat"><small>Status Rekonsiliasi</small><strong>${p.reconciliation_done?'SELESAI':'BELUM'}</strong></div><div class="stat"><small>Status Fase 2</small><strong>${p.phase2_done?'SELESAI':'PROSES'}</strong></div><div class="stat"><small>Metode</small><strong style="font-size:.82rem">BKU ↔ PDF</strong></div></div><div class="f2-component-grid">${cards}</div><div class="toolbar" style="margin-top:14px">${finalBtn}${p.phase2_done?`<span class="badge badge-success">NILAI FASE 2 ${Number(p.phase2_score||0).toFixed(2)} / 100</span>`:''}</div><div id="rc2F2WorkbenchDetail"></div></section>`;
+}
+window.loadFase2Rc2=async function(){
+  const {npsn,idPeriode}=rc2Context_('rc2f2'),area=$('#rc2F2Area');if(!npsn||!idPeriode){area.innerHTML=msg('Pilih sekolah dan periode.','warning');return;}
+  state.selectedNpsn=npsn;state.selectedPeriode=idPeriode;area.innerHTML=loading('Menyiapkan Cockpit Pemeriksaan Fase 2...');
+  try{
+    const [p,wb]=await Promise.all([api('getPipelinePenilaianSPJ',{npsn,idPeriode}),api('getPhase2ReviewWorkbench',{npsn,idPeriode})]);
+    window.__phase2ReviewState={workbench:wb,componentNo:0,pdf:null,page:1,zoom:1,pages:[],matches:[],decisions:{},filter:'ALL',listPage:1,pageSize:100};
+    area.innerHTML=renderPhase2CockpitRc2_(p,wb);
+    if(!p.reconciliation_done) $('#rc2F2WorkbenchDetail').innerHTML=msg('Rekonsiliasi belum selesai. Cockpit dapat dilihat, tetapi review Fase 2 belum dapat disimpan.','warning');
+  }catch(e){area.innerHTML=msg(errorText(e),'error');}
+};
+function f2CurrentComponentRc2_(){const st=window.__phase2ReviewState||{},wb=st.workbench||{};return (wb.components||[]).find(x=>Number(x.no)===Number(st.componentNo));}
+function f2CurrentTransactionsRc2_(){const st=window.__phase2ReviewState||{},c=f2CurrentComponentRc2_(),map=f2TransactionMapRc2_(st.workbench);return (c?.transaction_ids||[]).map(id=>map[id]).filter(Boolean);}
+window.openPhase2ComponentRc2=async function(no){
+  const st=window.__phase2ReviewState||{},wb=st.workbench||{},c=(wb.components||[]).find(x=>Number(x.no)===Number(no)),host=$('#rc2F2WorkbenchDetail');if(!c||!host)return;
+  st.componentNo=Number(no);st.page=1;st.zoom=1;st.pdf=null;st.pages=[];st.matches=[];st.filter='ALL';st.listPage=1;st.pageSize=Number(st.pageSize)||100;st.decisions=f2DecodeReviewDecisionMapRc2_(c.review);
+  host.innerHTML=`<div class="f2-workbench"><section class="f2-pdf-pane"><div class="f2-pane-head"><div><b>PDF ${String(c.no).padStart(2,'0')} — ${esc(c.nama)}</b><div class="muted">${esc(c.document?.nama_file||'PDF belum tersedia')}</div></div><div class="toolbar"><button class="btn btn-light btn-sm" onclick="phase2PdfPrevRc2()">←</button><span id="f2PdfPageInfo" class="badge badge-info">1 / ?</span><button class="btn btn-light btn-sm" onclick="phase2PdfNextRc2()">→</button><button class="btn btn-light btn-sm" onclick="phase2PdfZoomRc2(-.1)">−</button><button class="btn btn-light btn-sm" onclick="phase2PdfZoomRc2(.1)">+</button></div></div><div id="f2PdfFrame" class="f2-pdf-frame">${c.document?.file_id?loading('Memuat PDF...'):msg('PDF komponen ini belum tersedia.','warning')}</div></section><aside class="f2-review-pane"><div class="f2-pane-head"><div><b>Pencocokan BKU ↔ Bukti</b><div class="muted">${esc(c.subtitle||'')}</div></div><button class="btn btn-primary btn-sm" onclick="runPhase2ComponentAnalysisRc2()" ${c.document?.file_id?'':'disabled'}>⚡ Analisis PDF</button></div><div id="f2ReviewContent" class="f2-review-content"></div></aside></div>`;
+  renderPhase2ReviewListRc2_();if(c.document?.file_id)await renderPhase2PdfPageRc2(1);
+};
+async function getPhase2PdfDocumentRc2_(component){
+  if(!component?.document?.file_id)throw new Error('PDF tidak tersedia.');
+  const st=window.__phase2ReviewState||{};if(st.pdf)return st.pdf;
+  const lib=await ensurePdfJs(),wb=st.workbench||{},r=await api('getDokumenPdfBase64',{fileId:component.document.file_id,idPeriode:wb.id_periode,npsn:wb.npsn});
+  st.pdf=await lib.getDocument({data:base64ToUint8Array_(r.base64)}).promise;return st.pdf;
+}
+window.renderPhase2PdfPageRc2=async function(pageNo){
+  const st=window.__phase2ReviewState||{},c=f2CurrentComponentRc2_(),frame=$('#f2PdfFrame');if(!c||!frame||!c.document?.file_id)return;
+  try{const pdf=await getPhase2PdfDocumentRc2_(c),safe=Math.max(1,Math.min(pdf.numPages,Number(pageNo)||1));st.page=safe;const p=await pdf.getPage(safe),base=p.getViewport({scale:1}),fit=Math.min(Math.max(320,frame.clientWidth-28)/base.width,1.6),vp=p.getViewport({scale:fit*Math.max(.7,Math.min(2,Number(st.zoom)||1))}),canvas=document.createElement('canvas');canvas.width=Math.ceil(vp.width);canvas.height=Math.ceil(vp.height);frame.innerHTML='';frame.appendChild(canvas);await p.render({canvasContext:canvas.getContext('2d'),viewport:vp}).promise;const inf=$('#f2PdfPageInfo');if(inf)inf.textContent=`${safe} / ${pdf.numPages}`;}catch(e){frame.innerHTML=msg(errorText(e),'error');}
+};
+window.phase2PdfPrevRc2=()=>renderPhase2PdfPageRc2(Math.max(1,(window.__phase2ReviewState?.page||1)-1));
+window.phase2PdfNextRc2=async()=>{const st=window.__phase2ReviewState||{},pdf=st.pdf||await getPhase2PdfDocumentRc2_(f2CurrentComponentRc2_());return renderPhase2PdfPageRc2(Math.min(pdf.numPages,(st.page||1)+1));};
+window.phase2PdfZoomRc2=async d=>{const st=window.__phase2ReviewState||{};st.zoom=Math.max(.7,Math.min(2,(Number(st.zoom)||1)+Number(d||0)));await renderPhase2PdfPageRc2(st.page||1);};
+window.runPhase2ComponentAnalysisRc2=async function(){
+  const st=window.__phase2ReviewState||{},c=f2CurrentComponentRc2_();if(!c?.document?.file_id)return;
+  const key=String(c.document.file_id),cached=window.__phase2OcrCache[key];
+  if(cached?.pages?.length){st.pages=cached.pages;st.matches=_matchTransactionsToOcrPages_(f2CurrentTransactionsRc2_(),st.pages);renderPhase2ReviewListRc2_();toast('Hasil analisis sesi ini digunakan kembali.','ok');return;}
+  const host=$('#f2ReviewContent');if(host)host.innerHTML=loading('Membaca halaman PDF dan mencari pasangan BKU...');
+  try{
+    const pdf=await getPhase2PdfDocumentRc2_(c),pages=[],scanned=[];
+    for(let no=1;no<=pdf.numPages;no++){
+      const pg=await pdf.getPage(no);let extracted='';try{const tc=await pg.getTextContent({normalizeWhitespace:true,disableCombineTextItems:false});extracted=(tc.items||[]).map(i=>String(i.str||'')).join(' ').replace(/\s+/g,' ').trim();}catch(_){}
+      if(extracted.length>=70)pages.push({page:no,text:extracted,characters:extracted.length,source:'PDF_TEXT'});else scanned.push(no);
+      if(host)host.innerHTML=loading(`Membaca text-layer ${no}/${pdf.numPages} • ${scanned.length} halaman scan`);if(no%4===0)await new Promise(r=>setTimeout(r,0));
+    }
+    let cap={available:false};if(scanned.length)cap=await safeApi('getOcrCapability',{}, {available:false});
+    let done=0;if(cap.available){for(const no of scanned){const pg=await pdf.getPage(no),base=pg.getViewport({scale:1}),target=Math.min(1450,Math.max(1050,base.width*1.5)),vp=pg.getViewport({scale:target/base.width}),canvas=document.createElement('canvas');canvas.width=Math.ceil(vp.width);canvas.height=Math.ceil(vp.height);const ctx=canvas.getContext('2d',{alpha:false});ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);await pg.render({canvasContext:ctx,viewport:vp}).promise;const imageBase64=await _canvasToBase64Jpeg_(canvas,.78),wb=st.workbench||{},r=await api('ocrPdfPageImage',{data:{fileId:c.document.file_id,idPeriode:wb.id_periode,npsn:wb.npsn,pageNo:no,imageBase64,mimeType:'image/jpeg'}});pages.push({page:no,text:String(r.text||''),characters:Number(r.characters||0),source:'OCR'});done++;canvas.width=1;canvas.height=1;if(host)host.innerHTML=loading(`OCR halaman scan ${done}/${scanned.length}`);await new Promise(r=>setTimeout(r,0));}}
+    pages.sort((a,b)=>a.page-b.page);st.pages=pages;st.matches=_matchTransactionsToOcrPages_(f2CurrentTransactionsRc2_(),pages);window.__phase2OcrCache[key]={pages:pages,createdAt:Date.now()};renderPhase2ReviewListRc2_();
+    if(scanned.length&&!cap.available)toast(`${scanned.length} halaman scan belum dapat OCR karena Drive API tidak aktif. Text-layer tetap dianalisis.`,'warning',8000);else toast('Analisis PDF selesai. Fokuskan review pada kandidat sedang/rendah.','ok',5000);
+  }catch(e){if(host)host.innerHTML=msg(errorText(e),'error');}
+};
+function f2MatchMapRc2_(){const m={};(window.__phase2ReviewState?.matches||[]).forEach(x=>m[String(x.id_transaksi||'')]=x);return m;}
+window.setPhase2DecisionRc2=function(id,status){const st=window.__phase2ReviewState||{},match=f2MatchMapRc2_()[String(id)]||{};st.decisions[String(id)]={status:String(status),page_no:Number(match.page||st.decisions[String(id)]?.page_no||0),confidence:Number(match.confidence||st.decisions[String(id)]?.confidence||0)};renderPhase2ReviewListRc2_();};
+window.acceptHighPhase2MatchesRc2=function(){const st=window.__phase2ReviewState||{},m=f2MatchMapRc2_();let n=0;f2CurrentTransactionsRc2_().forEach(tx=>{const x=m[String(tx.id_transaksi||'')];if(x&&Number(x.confidence)>=75&&!st.decisions[String(tx.id_transaksi||'')]){st.decisions[String(tx.id_transaksi)]={status:'SESUAI',page_no:Number(x.page||0),confidence:Number(x.confidence||0)};n++;}});renderPhase2ReviewListRc2_();toast(`${n} kandidat confidence tinggi diterima untuk review DINAS.`,n?'ok':'info');};
+window.filterPhase2ReviewRc2=function(v){const st=window.__phase2ReviewState||{};st.filter=String(v||'ALL');st.listPage=1;renderPhase2ReviewListRc2_();};
+window.changePhase2ReviewPageRc2=function(delta){const st=window.__phase2ReviewState||{};st.listPage=Math.max(1,(Number(st.listPage)||1)+Number(delta||0));renderPhase2ReviewListRc2_();};
+window.setPhase2ReviewPageSizeRc2=function(v){const st=window.__phase2ReviewState||{},n=Number(v);st.pageSize=[50,100,200].includes(n)?n:100;st.listPage=1;renderPhase2ReviewListRc2_();};
+function renderPhase2ReviewListRc2_(){
+  const host=$('#f2ReviewContent'),st=window.__phase2ReviewState||{},c=f2CurrentComponentRc2_();
+  if(!host||!c)return;
+  const tx=f2CurrentTransactionsRc2_(),txMap=f2TransactionMapRc2_(st.workbench),matches=f2MatchMapRc2_(),metrics=f2ComponentMetricsClientRc2_(c,st.decisions,txMap),filter=st.filter||'ALL';
+  const filtered=tx.filter(t=>{
+    const id=String(t.id_transaksi||''),d=st.decisions[id],m=matches[id]||{};
+    if(filter==='EXCEPTION')return !d||d.status!=='SESUAI'||Number(m.confidence||0)<75;
+    if(filter==='PENDING')return !d||d.status==='PERLU_CEK';
+    if(filter==='MISMATCH')return d&&['TIDAK_SESUAI','BUKTI_TIDAK_DITEMUKAN'].includes(d.status);
+    return true;
+  });
+  const pageSize=[50,100,200].includes(Number(st.pageSize))?Number(st.pageSize):100,totalPages=Math.max(1,Math.ceil(filtered.length/pageSize));
+  st.listPage=Math.min(totalPages,Math.max(1,Number(st.listPage)||1));
+  const start=(st.listPage-1)*pageSize,end=Math.min(filtered.length,start+pageSize);
+  const rows=filtered.slice(start,end).map(t=>{
+    const id=String(t.id_transaksi||''),m=matches[id]||{},d=st.decisions[id]||{},conf=Number(m.confidence||d.confidence||0),level=conf>=75?'high':conf>=50?'medium':'low',page=Number(m.page||d.page_no||0),reason=(m.reasons||[]).join(', ')||'belum dianalisis';
+    const btn=(s,l)=>`<button class="btn btn-sm ${d.status===s?'btn-primary active':'btn-light'}" onclick="setPhase2DecisionRc2('${esc(id)}','${s}')">${l}</button>`;
+    return `<div class="f2-match-row ${level}"><div class="f2-match-main"><div><b>${esc(t.tanggal_transaksi||'-')} • ${esc(t.nomor_bukti||'Tanpa nomor bukti')}</b><div>${esc(t.uraian_transaksi||'-')}</div><div class="f2-match-meta">${esc(t.kode_rekening||'-')} • ${fmtRupiah(t.nilai_transaksi||0)} • kandidat ${conf?conf+'%':'belum ada'} • ${esc(reason)}</div></div><div>${page?`<button class="btn btn-light btn-sm" onclick="renderPhase2PdfPageRc2(${page})">PDF h.${page}</button>`:''}</div></div><div class="f2-decision">${btn('SESUAI','✓ Sesuai')}${btn('PERLU_CEK','⚠ Perlu cek')}${btn('TIDAK_SESUAI','✕ Tidak sesuai')}${btn('BUKTI_TIDAK_DITEMUKAN','○ Bukti tidak ditemukan')}</div></div>`;
+  }).join('');
+  const pager=filtered.length?`<div class="toolbar" style="justify-content:space-between;align-items:center;margin:10px 0;gap:8px;flex-wrap:wrap"><div class="muted">Menampilkan ${fmtNum(start+1)}–${fmtNum(end)} dari ${fmtNum(filtered.length)} baris • Halaman ${fmtNum(st.listPage)}/${fmtNum(totalPages)}</div><div class="toolbar"><select onchange="setPhase2ReviewPageSizeRc2(this.value)" style="min-width:92px"><option value="50" ${pageSize===50?'selected':''}>50/baris</option><option value="100" ${pageSize===100?'selected':''}>100/baris</option><option value="200" ${pageSize===200?'selected':''}>200/baris</option></select><button class="btn btn-light btn-sm" onclick="changePhase2ReviewPageRc2(-1)" ${st.listPage<=1?'disabled':''}>← Sebelumnya</button><button class="btn btn-light btn-sm" onclick="changePhase2ReviewPageRc2(1)" ${st.listPage>=totalPages?'disabled':''}>Berikutnya →</button></div></div>`:'';
+  const rec=metrics.recommended_score==null?'—':Number(metrics.recommended_score).toFixed(2),saved=c.review||{},scoreVal=saved.skor_komponen==null?(metrics.pending_count===0&&metrics.recommended_score!=null?metrics.recommended_score:''):saved.skor_komponen;
+  host.innerHTML=`<div class="f2-filter-row"><button class="btn btn-light btn-sm" onclick="acceptHighPhase2MatchesRc2()">✓ Terima Kandidat Tinggi</button><select onchange="filterPhase2ReviewRc2(this.value)"><option value="ALL" ${filter==='ALL'?'selected':''}>Semua</option><option value="EXCEPTION" ${filter==='EXCEPTION'?'selected':''}>Prioritas / Exception</option><option value="PENDING" ${filter==='PENDING'?'selected':''}>Belum diputuskan</option><option value="MISMATCH" ${filter==='MISMATCH'?'selected':''}>Tidak sesuai</option></select></div><div class="cards" style="grid-template-columns:repeat(4,1fr);margin-bottom:10px"><div class="stat"><small>Acuan BKU</small><strong>${fmtNum(metrics.total_count)}</strong></div><div class="stat"><small>Sesuai</small><strong>${fmtNum(metrics.sesuai_count)}</strong></div><div class="stat"><small>Exception</small><strong>${fmtNum(metrics.tidak_sesuai_count)}</strong></div><div class="stat"><small>Pending</small><strong>${fmtNum(metrics.pending_count)}</strong></div></div><div class="f2-progressbar" style="color:var(--primary)"><i style="width:${Math.max(0,Math.min(100,metrics.coverage_percent))}%"></i></div><div class="muted" style="margin:5px 0 10px">Coverage keputusan DINAS ${Number(metrics.coverage_percent||0).toFixed(1)}% • skor rekomendasi terverifikasi ${rec}/4</div>${pager}${rows||msg(c.transaction_count?'Belum ada baris pada filter ini.':'Tidak ada transaksi acuan untuk komponen ini.','info')}${pager}<div class="f2-score-box"><div class="form-grid"><div class="field"><label>Skor Komponen 0–4</label><input id="f2ComponentScore" type="number" min="0" max="4" step="0.01" value="${esc(scoreVal)}"></div><div class="field"><label>Catatan DINAS</label><textarea id="f2ComponentNote" rows="3" placeholder="Wajib bila skor menyimpang dari rekomendasi atau ada item belum diputuskan.">${esc(saved.catatan||'')}</textarea></div></div><div class="toolbar"><button class="btn btn-light" onclick="savePhase2ComponentRc2('PROSES')">Simpan Progres</button>${c.target?.allow_na&&c.transaction_count===0?`<button class="btn btn-light" onclick="savePhase2ComponentRc2('N/A')">Tandai N/A</button>`:''}<button class="btn btn-primary" onclick="savePhase2ComponentRc2('SELESAI')">✓ Selesaikan Komponen</button></div><div class="muted">${c.requires_full_review?'Komponen ini mensyaratkan semua transaksi acuan diputuskan sebelum selesai.':'Komponen pendukung dapat diselesaikan dengan judgement DINAS; catatan wajib jika masih ada item pending.'}</div></div>`;
+}
+window.savePhase2ComponentRc2=async function(status){
+  const st=window.__phase2ReviewState||{},wb=st.workbench||{},c=f2CurrentComponentRc2_();if(!c)return;const scoreRaw=$('#f2ComponentScore')?.value,score=scoreRaw===''?null:Number(scoreRaw),note=$('#f2ComponentNote')?.value.trim()||'',items=Object.entries(st.decisions||{}).map(([id,d])=>[id,d.status,Number(d.page_no||0),Number(d.confidence||0)]);
+  if(status==='SELESAI'&&(!Number.isFinite(score)||score<0||score>4)){toast('Skor komponen harus 0–4.','warning');return;}
+  try{await api('savePhase2ComponentReview',{data:{npsn:wb.npsn,id_periode:wb.id_periode,no_komponen:c.no,status,skor_komponen:score,catatan:note,items}});toast(status==='SELESAI'?'Komponen Fase 2 selesai.':'Progres review tersimpan.','ok');await loadFase2Rc2();if(status!=='SELESAI')setTimeout(()=>openPhase2ComponentRc2(c.no),0);}catch(e){toast(errorText(e),'error',7000);}
+};
+window.finalizePhase2FromComponentsRc2=async function(){
+  const st=window.__phase2ReviewState||{},wb=st.workbench||{};if(!wb.npsn||!wb.id_periode)return;if(!confirm('Tetapkan nilai Fase 2 dari 6 komponen yang sudah diselesaikan?'))return;
+  try{const r=await api('finalisasiPenilaianFase2',{data:{npsn:wb.npsn,id_periode:wb.id_periode,catatan:'Nilai dihitung dari 6 komponen Fase 2 berbasis evidence.'}});toast(`Fase 2 selesai. Nilai ${Number(r.nilai_fase_2??r.nilai_akhir).toFixed(2)} / 100.`,'ok',6000);await loadFase2Rc2();}catch(e){toast(errorText(e),'error',7000);}
+};
+// Alias lama dipertahankan agar referensi UI lama tidak memutus runtime.
+window.saveFase2Rc2=window.finalizePhase2FromComponentsRc2;
 
 async function finalisasiSpjView(){
   if(!isDinas()){ $('#mainContent').innerHTML=msg('Finalisasi merupakan kewenangan DINAS.','warning'); return; }
