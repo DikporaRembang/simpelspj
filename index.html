@@ -2039,13 +2039,26 @@ aside.sidebar *,
 }
 .report-center-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
 .report-print-sheet{background:#fff;border:1px solid var(--border);border-radius:16px;padding:22px;margin-top:14px}
-.report-letterhead{text-align:center;border-bottom:2px solid #1f5b50;padding-bottom:12px;margin-bottom:16px}
-.report-letterhead h2{margin:2px 0;font-size:1.15rem}.report-letterhead p{margin:2px 0;color:#667085;font-size:.78rem}
+.report-official-letterhead{background:#fff;margin:0 0 12px}
+.report-official-letterhead .official-letterhead{display:grid;grid-template-columns:96px minmax(0,1fr) 96px;align-items:center;min-height:112px}
+.report-official-letterhead .letterhead-logo{display:flex;align-items:center;justify-content:center}
+.report-official-letterhead .letterhead-logo img{width:78px;height:94px;object-fit:contain}
+.report-official-letterhead .letterhead-text{text-align:center;color:#050505;padding:0 8px}
+.report-official-letterhead .letterhead-line{font-weight:900;line-height:1.1;letter-spacing:-.15px;text-transform:uppercase}
+.report-official-letterhead .line-government{font-size:1.18rem}
+.report-official-letterhead .line-agency{font-size:1.26rem;margin-top:2px}
+.report-official-letterhead .letterhead-school{font-size:1.05rem;font-weight:900;text-transform:uppercase;margin-top:5px;line-height:1.12}
+.report-official-letterhead .letterhead-address{font-size:.82rem;line-height:1.25;margin-top:5px}
+.report-official-letterhead .letterhead-contact{font-size:.76rem;line-height:1.22;margin-top:3px}
+.report-official-letterhead .letterhead-rule{height:7px;border-top:4px solid #111;border-bottom:1px solid #111;margin:4px 0 13px}
+.report-document-title{text-align:center;margin-bottom:14px}
+.report-document-title h2{margin:2px 0;font-size:1.15rem;text-transform:uppercase}
+.report-document-title p{margin:3px 0;color:#667085;font-size:.76rem}
 .report-meta{display:grid;grid-template-columns:150px 1fr;gap:5px 12px;font-size:.82rem;margin:12px 0}
 .report-section-title{margin:18px 0 8px;font-size:.95rem;color:var(--primary);border-bottom:1px solid var(--border);padding-bottom:6px}
 .report-table{width:100%;border-collapse:collapse;font-size:.76rem}
 .report-table th,.report-table td{border:1px solid #d8dee3;padding:7px;vertical-align:top}.report-table th{background:#f4f7f6;text-align:left}
-@media(max-width:850px){.report-center-grid{grid-template-columns:1fr 1fr}.report-meta{grid-template-columns:1fr}.report-print-sheet{padding:14px}}
+@media(max-width:850px){.report-center-grid{grid-template-columns:1fr 1fr}.report-meta{grid-template-columns:1fr}.report-print-sheet{padding:14px}.report-official-letterhead .official-letterhead{grid-template-columns:64px minmax(0,1fr) 0;min-height:92px}.report-official-letterhead .letterhead-logo img{width:54px;height:68px}.report-official-letterhead .line-government{font-size:.82rem}.report-official-letterhead .line-agency{font-size:.86rem}.report-official-letterhead .letterhead-school{font-size:.78rem}.report-official-letterhead .letterhead-address{font-size:.68rem}.report-official-letterhead .letterhead-contact{font-size:.64rem}}
 @media(max-width:900px){
   .submenu-motivation-overlay{--motivation-width:min(340px,44vw);height:min(440px,64vh)}
   .submenu-motivation-card img{width:min(245px,75%);bottom:58px}
@@ -8276,8 +8289,44 @@ function reportStatusTextRc2(row,phase){
   if(phase==='FASE2')return row.phase2_done?'FASE 2 SELESAI':row.ready_for_phase2?'SIAP FASE 2':'BELUM SIAP FASE 2';
   return row.final_done?'FINAL':row.phase2_done?'FASE 2 SELESAI':row.phase1_approved?'FASE 1 DISETUJUI':'PROSES';
 }
-function assessmentReportLetterheadRc2(matrix,title){
-  return `<div class="report-letterhead"><div style="font-size:.72rem;font-weight:800;letter-spacing:.08em">DINAS PENDIDIKAN, PEMUDA DAN OLAHRAGA KABUPATEN REMBANG</div><h2>${esc(title)}</h2><p>SIMPEL SPJ • Sistem Informasi Penilaian dan Evaluasi SPJ</p></div>
+function reportRoleRc2(){
+  return String(state?.user?.role||'SEKOLAH').trim().toUpperCase();
+}
+function reportLogoSrcRc2(){
+  const img=document.querySelector('img[src*="logorembang"], img[alt="Kabupaten Rembang"], img[alt="Rembang"]');
+  if(img?.src)return img.src;
+  try{return new URL('logorembang.png',window.location.href).href;}catch(_){return 'logorembang.png';}
+}
+function reportOfficialLetterheadHtmlRc2(school){
+  const roleNow=reportRoleRc2(),isSchoolRole=roleNow==='SEKOLAH',s=school||{};
+  const namaSekolah=s.nama_sekolah||s.nama||s.npsn||'NAMA SEKOLAH';
+  const alamat=s.alamat_lengkap||s.alamat||'Alamat sekolah belum tersedia';
+  const kecamatan=s.kecamatan||s.nama_kecamatan||'Kecamatan belum tersedia';
+  const thirdLine=isSchoolRole?`<div class="letterhead-school">${esc(namaSekolah)}</div>`:'';
+  const addressLine=isSchoolRole
+    ? `<div class="letterhead-address">${esc(alamat)}</div>`
+    : `<div class="letterhead-address"><i>Jl. Pemuda Km. 2 Telp. (0295) 691326, Fax (0295) 691326 Rembang 59218</i></div>`;
+  const contactLine=isSchoolRole
+    ? `<div class="letterhead-contact">Kecamatan ${esc(kecamatan)}</div>`
+    : `<div class="letterhead-contact">Surel : dindikpora@rembangkab.go.id; Laman : http://dindikpora.rembangkab.go.id</div>`;
+  return `<div class="report-official-letterhead" data-report-role="${esc(roleNow)}">
+    <div class="official-letterhead">
+      <div class="letterhead-logo"><img src="${esc(reportLogoSrcRc2())}" alt="Lambang Kabupaten Rembang"></div>
+      <div class="letterhead-text">
+        <div class="letterhead-line line-government">PEMERINTAH KABUPATEN REMBANG</div>
+        <div class="letterhead-line line-agency">DINAS PENDIDIKAN, PEMUDA DAN OLAHRAGA</div>
+        ${thirdLine}
+        ${addressLine}
+        ${contactLine}
+      </div>
+      <div aria-hidden="true"></div>
+    </div>
+    <div class="letterhead-rule"></div>
+  </div>`;
+}
+function assessmentReportLetterheadRc2(matrix,title,school){
+  return `${reportOfficialLetterheadHtmlRc2(school)}
+  <div class="report-document-title"><h2>${esc(title)}</h2><p>SIMPEL SPJ • Sistem Informasi Penilaian dan Evaluasi SPJ</p></div>
   <div class="report-meta"><b>Periode</b><span>${esc(matrix.id_periode||'-')}</span><b>Cakupan</b><span>${esc(matrix.scope_label||reportScopeLabelRc2(matrix.scope))}</span><b>Stage aktif</b><span>${esc(matrix.active_stage||'-')}</span><b>Dibuat</b><span>${esc(reportDateRc2(matrix.generated_at))}</span></div>`;
 }
 function renderAssessmentAggregateRc2(matrix){
@@ -8304,7 +8353,7 @@ function renderAssessmentSchoolRc2(matrix,detail){
   const title=`LAPORAN PENILAIAN ${reportPhaseLabelRc2(phase)} — ${school.nama_sekolah||school.npsn||'SEKOLAH'}`;
   const showF1=phase==='FASE1'||phase==='GABUNGAN',showF2=phase==='FASE2'||phase==='GABUNGAN';
   const instr=(f1.instruments||[]).map(x=>`<tr><td>${fmtNum(x.no)}</td><td>${esc(x.nama)}</td><td>${esc(x.status_dokumen||'-')}</td><td>${x.skor==null?'-':Number(x.skor).toFixed(2)}</td><td>${esc(x.catatan_pengawas||'-')}</td></tr>`).join('');
-  return `<div id="assessmentReportPrintableRc2" class="report-print-sheet">${assessmentReportLetterheadRc2(matrix,title)}
+  return `<div id="assessmentReportPrintableRc2" class="report-print-sheet">${assessmentReportLetterheadRc2(matrix,title,school)}
     <div class="report-meta"><b>NPSN</b><span>${esc(school.npsn||matrix.npsn||'-')}</span><b>Nama Sekolah</b><span>${esc(school.nama_sekolah||'-')}</span><b>Kecamatan</b><span>${esc(school.kecamatan||'-')}</span><b>Kelengkapan</b><span>BKU ${r.bku_ready?'VALID':'BELUM'} • Dokumen ${fmtNum(r.documents_complete_count||0)}/10</span></div>
     ${showF1?`<div class="report-section-title">Penilaian Fase 1 oleh Pengawas</div><div class="report-meta"><b>Status</b><span>${r.phase1_approved?'DISETUJUI DINAS':esc(String(r.phase1_state||'-').replaceAll('_',' '))}</span><b>Nilai Fase 1</b><span>${r.phase1_score==null?'-':Number(r.phase1_score).toFixed(2)}</span><b>Persetujuan DINAS</b><span>${esc(r.phase1_approved_at||'-')}</span></div><div class="table-wrap"><table class="report-table"><thead><tr><th>No</th><th>10 Instrumen Dokumen Scan</th><th>Status Dokumen</th><th>Skor</th><th>Catatan Pengawas</th></tr></thead><tbody>${instr||emptyRow(5)}</tbody></table></div>`:''}
     ${showF2?`<div class="report-section-title">Penilaian Fase 2 oleh DINAS</div><div class="report-meta"><b>Rekonsiliasi</b><span>${r.reconciliation_done?'SELESAI':'BELUM'}</span><b>Status Fase 2</b><span>${r.phase2_done?'SELESAI':'BELUM'}</span><b>Nilai Fase 2</b><span>${r.phase2_score==null?'-':Number(r.phase2_score).toFixed(2)}</span><b>Finalisasi</b><span>${r.final_done?'FINAL':'BELUM FINAL'}</span></div>`:''}
@@ -8362,16 +8411,39 @@ window.loadArsipRc2=window.loadAssessmentReportRc2;
 window.printAssessmentReportRc2=function(){
   const body=$('#assessmentReportPrintableRc2')?.outerHTML;if(!body){toast('Muat laporan terlebih dahulu.','warning');return;}
   const w=window.open('','_blank');if(!w){toast('Popup diblokir browser. Izinkan popup untuk mencetak laporan.','warning');return;}
-  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Laporan SIMPEL SPJ</title><style>body{font-family:Arial,sans-serif;color:#1f2937;padding:24px}.report-print-sheet{max-width:1050px;margin:auto}.report-letterhead{text-align:center;border-bottom:2px solid #1f5b50;padding-bottom:12px;margin-bottom:16px}.report-letterhead h2{font-size:18px;margin:4px}.report-letterhead p{font-size:12px;color:#667085}.report-meta{display:grid;grid-template-columns:150px 1fr;gap:5px 12px;font-size:12px;margin:12px 0}.report-section-title{font-weight:800;margin:18px 0 8px;border-bottom:1px solid #aaa;padding-bottom:5px}.report-table{width:100%;border-collapse:collapse;font-size:11px}.report-table th,.report-table td{border:1px solid #aaa;padding:6px;vertical-align:top}.report-table th{background:#f1f5f4}.pipeline-kpis,.report-center-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.pipeline-kpi{border:1px solid #bbb;padding:8px}.pipeline-kpi small{display:block;font-size:9px}.pipeline-kpi strong{font-size:16px}.muted{color:#667085;font-size:10px}.toolbar,.btn,.message{display:none!important}@page{size:A4 landscape;margin:12mm}@media print{body{padding:0}}</style></head><body>${body}
-<!-- RC2 REPORT CENTER + SIDEBAR FIRE MOTIVATION -->
-
-<!-- RC2 SCHEDULE STRICT: pre-schedule uploads are historical only -->
-
-<!-- RC2 SCHEDULE STRICT STATUS CLEAR -->
-
-<!-- RC2 FASE1 + REKONSILIASI + FASE2 BY PENGAWAS; PERIOD YEAR 1899 FIX -->
-</body></html>`);
-  w.document.close();w.focus();setTimeout(()=>w.print(),250);
+  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Laporan SIMPEL SPJ</title><style>
+  body{font-family:Arial,sans-serif;color:#111;padding:20px;background:#fff}
+  .report-print-sheet{max-width:1050px;margin:auto;background:#fff}
+  .report-official-letterhead{background:#fff;margin:0 0 10px}
+  .report-official-letterhead .official-letterhead{display:grid;grid-template-columns:90px minmax(0,1fr) 90px;align-items:center;min-height:104px}
+  .report-official-letterhead .letterhead-logo{display:flex;align-items:center;justify-content:center}
+  .report-official-letterhead .letterhead-logo img{width:70px;height:86px;object-fit:contain}
+  .report-official-letterhead .letterhead-text{text-align:center;color:#000;padding:0 6px}
+  .report-official-letterhead .letterhead-line{font-weight:900;line-height:1.08;text-transform:uppercase}
+  .report-official-letterhead .line-government{font-size:17px}
+  .report-official-letterhead .line-agency{font-size:18px;margin-top:2px}
+  .report-official-letterhead .letterhead-school{font-size:15px;font-weight:900;text-transform:uppercase;margin-top:4px}
+  .report-official-letterhead .letterhead-address{font-size:11px;line-height:1.22;margin-top:4px}
+  .report-official-letterhead .letterhead-contact{font-size:10px;line-height:1.2;margin-top:2px}
+  .report-official-letterhead .letterhead-rule{height:6px;border-top:4px solid #000;border-bottom:1px solid #000;margin:3px 0 12px}
+  .report-document-title{text-align:center;margin:0 0 13px}
+  .report-document-title h2{font-size:16px;margin:2px 0;text-transform:uppercase}
+  .report-document-title p{font-size:10px;color:#555;margin:2px 0}
+  .report-meta{display:grid;grid-template-columns:150px 1fr;gap:5px 12px;font-size:11px;margin:12px 0}
+  .report-section-title{font-weight:800;margin:18px 0 8px;border-bottom:1px solid #999;padding-bottom:5px}
+  .report-table{width:100%;border-collapse:collapse;font-size:10px}
+  .report-table th,.report-table td{border:1px solid #999;padding:6px;vertical-align:top}
+  .report-table th{background:#f1f5f4}
+  .pipeline-kpis,.report-center-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+  .pipeline-kpi{border:1px solid #aaa;padding:8px}
+  .pipeline-kpi small{display:block;font-size:9px}.pipeline-kpi strong{font-size:16px}
+  .muted{color:#555;font-size:9px}.toolbar,.btn,.message{display:none!important}
+  @page{size:A4 landscape;margin:12mm}@media print{body{padding:0}}
+  </style></head><body>${body}</body></html>`);
+  w.document.close();w.focus();
+  const images=Array.from(w.document.images||[]);
+  Promise.all(images.map(img=>img.complete?Promise.resolve():new Promise(resolve=>{img.onload=resolve;img.onerror=resolve;})))
+    .finally(()=>setTimeout(()=>w.print(),120));
 };
 async function ensurePdfLibRc2(){
   if(window.PDFLib)return window.PDFLib;
@@ -8387,6 +8459,41 @@ function pdfWrapLinesRc2(text,font,size,maxWidth){
 function addPdfTextBlockRc2(page,text,x,y,font,size,maxWidth,lineHeight=14){
   const lines=pdfWrapLinesRc2(text,font,size,maxWidth);lines.forEach((ln,i)=>page.drawText(ln,{x,y:y-i*lineHeight,size,font}));return y-lines.length*lineHeight;
 }
+async function loadReportLogoForPdfRc2(pdf){
+  try{
+    const src=reportLogoSrcRc2(),res=await fetch(src,{cache:'force-cache'});
+    if(!res.ok)throw new Error('Logo tidak dapat dimuat.');
+    const bytes=new Uint8Array(await res.arrayBuffer());
+    const type=String(res.headers.get('content-type')||'').toLowerCase();
+    if(type.includes('jpeg')||type.includes('jpg')||/\.jpe?g(?:$|\?)/i.test(src))return await pdf.embedJpg(bytes);
+    return await pdf.embedPng(bytes);
+  }catch(_){return null;}
+}
+function drawPdfCenteredRc2(page,text,y,font,size,maxWidth=440,lineHeight=14){
+  const lines=pdfWrapLinesRc2(text,font,size,maxWidth);
+  lines.forEach((ln,i)=>{
+    const width=font.widthOfTextAtSize(ln,size);
+    page.drawText(ln,{x:(page.getWidth()-width)/2,y:y-i*lineHeight,size,font});
+  });
+  return y-lines.length*lineHeight;
+}
+function drawDinasLetterheadPdfRc2(page,logo,regular,bold,rgb,title){
+  const pageW=page.getWidth();
+  if(logo){
+    const s=logo.scaleToFit(52,64);
+    page.drawImage(logo,{x:45,y:758,width:s.width,height:s.height});
+  }
+  let y=806;
+  y=drawPdfCenteredRc2(page,'PEMERINTAH KABUPATEN REMBANG',y,bold,12.5,410,14);
+  y=drawPdfCenteredRc2(page,'DINAS PENDIDIKAN, PEMUDA DAN OLAHRAGA',y-1,bold,13.5,410,15);
+  y=drawPdfCenteredRc2(page,'Jl. Pemuda Km. 2 Telp. (0295) 691326, Fax (0295) 691326 Rembang 59218',y-2,regular,7.8,430,10);
+  y=drawPdfCenteredRc2(page,'Surel: dindikpora@rembangkab.go.id | Laman: http://dindikpora.rembangkab.go.id',y,regular,7.5,430,10);
+  page.drawLine({start:{x:42,y:y-3},end:{x:pageW-42,y:y-3},thickness:3,color:rgb(0,0,0)});
+  page.drawLine({start:{x:42,y:y-7},end:{x:pageW-42,y:y-7},thickness:.8,color:rgb(0,0,0)});
+  y-=29;
+  y=drawPdfCenteredRc2(page,title,y,bold,11.5,500,14);
+  return y-12;
+}
 window.buildDinasSchoolReportWithAttachmentsRc2=async function(){
   if(!isDinas()){toast('Lampiran gabungan hanya tersedia untuk DINAS.','warning');return;}
   const cur=window._assessmentReportCurrent||{};if(cur.scope!=='SEKOLAH'||!cur.detail){toast('Pilih laporan per sekolah terlebih dahulu.','warning');return;}
@@ -8396,26 +8503,70 @@ window.buildDinasSchoolReportWithAttachmentsRc2=async function(){
   const area=$('#rc2ArchiveArea'),progress=document.createElement('div');progress.className='message info';progress.id='pdfAttachmentProgressRc2';progress.innerHTML='<b>Menyiapkan PDF laporan + lampiran...</b>';area?.prepend(progress);
   try{
     const {PDFDocument,StandardFonts,rgb}=await ensurePdfLibRc2(),pdf=await PDFDocument.create(),regular=await pdf.embedFont(StandardFonts.Helvetica),bold=await pdf.embedFont(StandardFonts.HelveticaBold),A4=[595.28,841.89];
-    const school=d.sekolah||{},f1=d.phase1||{},instr=f1.instruments||[];let page=pdf.addPage(A4),y=790;
-    page.drawText('SIMPEL SPJ - LAPORAN PENILAIAN '+pdfSafeTextRc2(reportPhaseLabelRc2(phase)),{x:45,y,size:14,font:bold,color:rgb(0.08,0.28,0.24)});y-=28;
-    y=addPdfTextBlockRc2(page,'Dinas Pendidikan, Pemuda dan Olahraga Kabupaten Rembang',45,y,bold,10,500,13)-8;
-    const lines=[['Sekolah',school.nama_sekolah||'-'],['NPSN',school.npsn||cur.npsn||'-'],['Kecamatan',school.kecamatan||'-'],['Periode',cur.idPeriode||'-'],['BKU Data',r.bku_ready?'VALID':'BELUM'],['Kelengkapan Dokumen',(r.documents_complete_count||0)+'/10'],['Nilai Fase 1',r.phase1_score==null?'-':Number(r.phase1_score).toFixed(2)],['Status Fase 1',r.phase1_approved?'DISETUJUI DINAS':String(r.phase1_state||'-').replaceAll('_',' ')],['Nilai Fase 2',r.phase2_score==null?'-':Number(r.phase2_score).toFixed(2)],['Status Akhir',r.final_done?'FINAL':'PROSES']];
-    for(const [k,v] of lines){page.drawText(pdfSafeTextRc2(k)+':',{x:45,y,size:9,font:bold});y=addPdfTextBlockRc2(page,v,165,y,regular,9,380,12)-5;}
-    y-=8;page.drawText('Ringkasan 10 Instrumen Dokumen Scan',{x:45,y,size:11,font:bold});y-=20;
-    for(const x of instr){if(y<70){page=pdf.addPage(A4);y=790;}y=addPdfTextBlockRc2(page,`${x.no}. ${x.nama} | Dokumen: ${x.status_dokumen||'-'} | Skor: ${x.skor==null?'-':Number(x.skor).toFixed(2)}`,45,y,regular,8.5,500,11)-4;}
-    page=pdf.addPage(A4);y=790;page.drawText('INDEKS LAMPIRAN 10 INSTRUMEN DOKUMEN SCAN PDF',{x:45,y,size:12,font:bold});y-=24;
-    const attachments=d.attachments||[];
-    for(let i=0;i<10;i++){const a=attachments[i]||{no:i+1,nama:(instr[i]?.nama||'Instrumen '+(i+1)),tersedia_pdf:false};y=addPdfTextBlockRc2(page,`${a.no||i+1}. ${a.nama||'-'} - ${a.tersedia_pdf?'PDF TERSEDIA':'PDF BELUM TERSEDIA'}`,45,y,regular,9,500,12)-5;}
-    for(let i=0;i<10;i++){
-      const a=attachments[i]||{no:i+1,nama:(instr[i]?.nama||'Instrumen '+(i+1)),file_id:''};progress.innerHTML=`<b>Memuat lampiran ${i+1}/10:</b> ${esc(a.nama||'Instrumen')}`;
-      const divider=pdf.addPage(A4);divider.drawText(`LAMPIRAN ${i+1} / 10`,{x:45,y:790,size:15,font:bold});addPdfTextBlockRc2(divider,a.nama||('Instrumen '+(i+1)),45,760,bold,11,500,15);addPdfTextBlockRc2(divider,a.nama_file||'Dokumen PDF tidak tersedia',45,730,regular,9,500,12);
-      if(!a.file_id){divider.drawText('STATUS: PDF BELUM TERSEDIA',{x:45,y:690,size:10,font:bold});continue;}
-      try{
-        const src=await api('getDokumenPdfBase64',{fileId:a.file_id,idPeriode:cur.idPeriode,npsn:cur.npsn}),bin=atob(src.base64||''),bytes=new Uint8Array(bin.length);for(let j=0;j<bin.length;j++)bytes[j]=bin.charCodeAt(j);
-        const doc=await PDFDocument.load(bytes,{ignoreEncryption:true}),copied=await pdf.copyPages(doc,doc.getPageIndices());copied.forEach(p=>pdf.addPage(p));
-      }catch(err){divider.drawText('STATUS: PDF GAGAL DIMUAT',{x:45,y:670,size:10,font:bold});addPdfTextBlockRc2(divider,errorText(err),45,650,regular,8,500,11);}
+    const logo=await loadReportLogoForPdfRc2(pdf);
+    const school=d.sekolah||{},f1=d.phase1||{},instr=f1.instruments||[];
+    let page=pdf.addPage(A4);
+    const reportTitle='LAPORAN PENILAIAN '+reportPhaseLabelRc2(phase)+' - '+(school.nama_sekolah||school.npsn||'SEKOLAH');
+    let y=drawDinasLetterheadPdfRc2(page,logo,regular,bold,rgb,reportTitle);
+
+    const lines=[
+      ['Sekolah',school.nama_sekolah||'-'],
+      ['NPSN',school.npsn||cur.npsn||'-'],
+      ['Kecamatan',school.kecamatan||'-'],
+      ['Periode',cur.idPeriode||'-'],
+      ['BKU Data',r.bku_ready?'VALID':'BELUM'],
+      ['Kelengkapan Dokumen',(r.documents_complete_count||0)+'/10'],
+      ['Nilai Fase 1',r.phase1_score==null?'-':Number(r.phase1_score).toFixed(2)],
+      ['Status Fase 1',r.phase1_approved?'DISETUJUI DINAS':String(r.phase1_state||'-').replaceAll('_',' ')],
+      ['Nilai Fase 2',r.phase2_score==null?'-':Number(r.phase2_score).toFixed(2)],
+      ['Status Akhir',r.final_done?'FINAL':'PROSES']
+    ];
+    for(const [k,v] of lines){
+      if(y<90){page=pdf.addPage(A4);y=790;}
+      page.drawText(pdfSafeTextRc2(k)+':',{x:45,y,size:9,font:bold});
+      y=addPdfTextBlockRc2(page,v,165,y,regular,9,380,12)-5;
     }
-    progress.innerHTML='<b>Menyimpan PDF gabungan...</b>';const bytes=await pdf.save(),blob=new Blob([bytes],{type:'application/pdf'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`SIMPELSPJ_${phase}_${cur.npsn}_${cur.idPeriode}_plus_10_lampiran.pdf`;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);progress.className='message ok';progress.innerHTML='<b>PDF laporan + 10 lampiran selesai dibuat.</b>';
+
+    y-=8;
+    if(y<100){page=pdf.addPage(A4);y=790;}
+    page.drawText('Ringkasan 10 Instrumen Dokumen Scan',{x:45,y,size:11,font:bold});y-=20;
+    for(const x of instr){
+      if(y<70){page=pdf.addPage(A4);y=790;}
+      y=addPdfTextBlockRc2(page,`${x.no}. ${x.nama} | Dokumen: ${x.status_dokumen||'-'} | Skor: ${x.skor==null?'-':Number(x.skor).toFixed(2)}`,45,y,regular,8.5,500,11)-4;
+    }
+
+    page=pdf.addPage(A4);
+    y=drawDinasLetterheadPdfRc2(page,logo,regular,bold,rgb,'INDEKS LAMPIRAN 10 INSTRUMEN DOKUMEN SCAN PDF');
+    const attachments=d.attachments||[];
+    for(let i=0;i<10;i++){
+      const a=attachments[i]||{no:i+1,nama:(instr[i]?.nama||'Instrumen '+(i+1)),tersedia_pdf:false};
+      y=addPdfTextBlockRc2(page,`${a.no||i+1}. ${a.nama||'-'} - ${a.tersedia_pdf?'PDF TERSEDIA':'PDF BELUM TERSEDIA'}`,45,y,regular,9,500,12)-5;
+    }
+
+    for(let i=0;i<10;i++){
+      const a=attachments[i]||{no:i+1,nama:(instr[i]?.nama||'Instrumen '+(i+1)),file_id:''};
+      progress.innerHTML=`<b>Memuat lampiran ${i+1}/10:</b> ${esc(a.nama||'Instrumen')}`;
+      const divider=pdf.addPage(A4);
+      let dividerY=drawDinasLetterheadPdfRc2(divider,logo,regular,bold,rgb,`LAMPIRAN ${i+1} / 10`);
+      dividerY=addPdfTextBlockRc2(divider,a.nama||('Instrumen '+(i+1)),45,dividerY,bold,11,500,15)-8;
+      addPdfTextBlockRc2(divider,a.nama_file||'Dokumen PDF tidak tersedia',45,dividerY,regular,9,500,12);
+      if(!a.file_id){divider.drawText('STATUS: PDF BELUM TERSEDIA',{x:45,y:dividerY-44,size:10,font:bold});continue;}
+      try{
+        const src=await api('getDokumenPdfBase64',{fileId:a.file_id,idPeriode:cur.idPeriode,npsn:cur.npsn}),bin=atob(src.base64||''),bytes=new Uint8Array(bin.length);
+        for(let j=0;j<bin.length;j++)bytes[j]=bin.charCodeAt(j);
+        const doc=await PDFDocument.load(bytes,{ignoreEncryption:true}),copied=await pdf.copyPages(doc,doc.getPageIndices());
+        copied.forEach(p=>pdf.addPage(p));
+      }catch(err){
+        divider.drawText('STATUS: PDF GAGAL DIMUAT',{x:45,y:dividerY-44,size:10,font:bold});
+        addPdfTextBlockRc2(divider,errorText(err),45,dividerY-64,regular,8,500,11);
+      }
+    }
+
+    progress.innerHTML='<b>Menyimpan PDF gabungan...</b>';
+    const bytes=await pdf.save(),blob=new Blob([bytes],{type:'application/pdf'}),url=URL.createObjectURL(blob),a=document.createElement('a');
+    a.href=url;a.download=`SIMPELSPJ_${phase}_${cur.npsn}_${cur.idPeriode}_plus_10_lampiran.pdf`;
+    document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+    progress.className='message ok';progress.innerHTML='<b>PDF laporan + 10 lampiran selesai dibuat dengan kop resmi DINAS.</b>';
   }catch(e){progress.className='message error';progress.innerHTML=`<b>Gagal membuat PDF:</b> ${esc(errorText(e))}`;}
 };
 window.publishAssessmentReportRc2=async function(targetRole){
