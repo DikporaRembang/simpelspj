@@ -4193,10 +4193,29 @@ window.openImportPaketSPJ = function(){
     $('#paketUploadBtn').disabled=false;
   };
 
-  $('#paketUploadBtn').onclick=async()=>{
+  
+/* RC3 Upload Governance client guard */
+const SIMPEL_UPLOAD_RC3 = {
+  EXCEL_MAX:20*1024*1024,
+  PDF_MAX:50*1024*1024
+};
+function _validateUploadFileRc3_(f){
+  const n=String(f.name||'').toLowerCase();
+  const isExcel=/\.(xls|xlsx)$/.test(n);
+  const isPdf=/\.pdf$/.test(n);
+  if(isExcel && f.size>SIMPEL_UPLOAD_RC3.EXCEL_MAX)
+    throw new Error('BKU Excel maksimal 20 MB.');
+  if(isPdf && f.size>SIMPEL_UPLOAD_RC3.PDF_MAX)
+    throw new Error('PDF maksimal 50 MB.');
+}
+
+$('#paketUploadBtn').onclick=async()=>{
     const files=Array.from($('#paketFiles').files||[]);
     const selects=Array.from(document.querySelectorAll('.paket-map-select'));
     if(!files.length) return;
+    try{ files.forEach(_validateUploadFileRc3_); }catch(e){
+      $('#paketMsg').innerHTML=msg(errorText(e)); return;
+    }
     const mappings=selects.map(x=>x.value);
     if(mappings.some(v=>!v)){ $('#paketMsg').innerHTML=msg('Semua file harus dipetakan ke komponen SPJ.'); return; }
     if(new Set(mappings).size!==mappings.length){ $('#paketMsg').innerHTML=msg('Satu komponen SPJ hanya boleh dipilih satu kali dalam satu impor.'); return; }
@@ -7552,7 +7571,7 @@ window.openAssessment = async function(){
       state.reopenAssessmentId = null; 
     }
     const indRes = await safeApi('hitungIndikatorDariTemuan', { idPeriode: p, npsn: n, idAsesmen: asesmen.id_asesmen }, { data: [] });
-    renderAssessment(asesmen, indRes.data || []);
+    renderAssessment(asesmen, indRes.data || [], indRes);
   } catch(e) {
     a.innerHTML = msg(errorText(e));
   }
@@ -8421,13 +8440,21 @@ window.loadAssessmentReportRc2=async function(){
       if(!ok)availability='<div class="message warning"><b>Laporan belum resmi tersedia untuk fase yang dipilih.</b> Status proses tetap ditampilkan untuk monitoring.</div>';
     }
     const reportHtml=schoolMode?renderAssessmentSchoolRc2(matrix,detail):renderAssessmentAggregateRc2(matrix);
-    let actions='<div class="toolbar" style="margin-top:14px;justify-content:flex-end;flex-wrap:wrap"><button class="btn btn-light" onclick="printAssessmentReportRc2()">Cetak / Simpan PDF</button>';
+    const canPrint=isDinas()||!schoolMode||assessmentReportOfficialAvailabilityRc2_();
+    let actions='<div class="toolbar" style="margin-top:14px;justify-content:flex-end;flex-wrap:wrap">'+(canPrint?'<button class="btn btn-light" onclick="printAssessmentReportRc2()">Cetak / Simpan PDF</button>':'<span class="badge badge-warning">CETAK MENUNGGU HASIL RESMI</span>');
     if(isDinas()&&scope==='SEKOLAH')actions+='<button class="btn btn-primary" onclick="buildDinasSchoolReportWithAttachmentsRc2()">PDF + 10 Lampiran Scan</button>';
     actions+='</div>';area.innerHTML=availability+reportHtml+actions;
   }catch(e){area.innerHTML=msg(errorText(e),'error');}
 };
+function assessmentReportOfficialAvailabilityRc2_(){
+  const cur=window._assessmentReportCurrent||{},d=cur.detail||{},phase=cur.phase||'FASE1',schoolMode=cur.scope==='SEKOLAH'||cur.scope==='OWN';
+  if(isDinas())return true;
+  if(!schoolMode)return true;
+  return phase==='FASE1'?!!d.phase1_available:phase==='FASE2'?!!d.phase2_available:(!!d.phase1_available&&!!d.phase2_available);
+}
 window.loadArsipRc2=window.loadAssessmentReportRc2;
 window.printAssessmentReportRc2=function(){
+  if(!assessmentReportOfficialAvailabilityRc2_()){toast('Laporan resmi fase ini belum tersedia.','warning');return;}
   const body=$('#assessmentReportPrintableRc2')?.outerHTML;if(!body){toast('Muat laporan terlebih dahulu.','warning');return;}
   const w=window.open('','_blank');if(!w){toast('Popup diblokir browser. Izinkan popup untuk mencetak laporan.','warning');return;}
   w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Laporan SIMPEL SPJ</title><style>
@@ -9062,7 +9089,7 @@ function renderPhase1ReviewListRc2_(){
 window.savePhase1ComponentRc2=async function(status){
   const st=window.__phase1ReviewState||{},wb=st.workbench||{},c=f1CurrentComponentRc2_();if(!c||wb.read_only||isDinas())return;
   const scoreRaw=$('#f1ComponentScore')?.value,score=scoreRaw===''?null:Number(scoreRaw),note=$('#f1ComponentNote')?.value.trim()||'',items=Object.entries(st.decisions||{}).map(([id,d])=>[id,d.status,Number(d.page_no||0),Number(d.confidence||0)]);
-  if(status==='SELESAI'&&(!Number.isFinite(score)||score<0||score>4)){toast('Skor komponen harus 0–4.','warning');return;}
+  if(score!==null&&(!Number.isFinite(score)||score<0||score>4)){toast('Skor komponen harus 0–4.','warning');return;}
   try{await api('savePhase1ComponentReview',{data:{npsn:wb.npsn,id_periode:wb.id_periode,no_komponen:c.no,status,skor_komponen:score,catatan:note,items}});toast(status==='SELESAI'?'Komponen Fase 1 selesai.':'Progres review tersimpan.','ok');await loadPenilaianFase1Rc2();if(status!=='SELESAI')setTimeout(()=>openPhase1ComponentRc2(c.no),0);}catch(e){toast(errorText(e),'error',7000);}
 };
 
@@ -9598,13 +9625,16 @@ function f2ComponentMetricsClientRc2_(component,decisions,txMap){
   return {total_count:total,total_value:totalValue,sesuai_count:sesuai,tidak_sesuai_count:mismatch,pending_count:pending,perlu_cek_count:perlu,bukti_tidak_ditemukan_count:missing,coverage_percent:total?((total-pending)/total*100):100,recommended_score:ratio==null?null:Math.round(4*ratio*100)/100,value_match_percent:ratio==null?null:ratio*100};
 }
 function renderPhase2CockpitRc2_(p,wb){
-  const s=wb.summary||{},cards=(wb.components||[]).map(c=>{
+  const s=wb.summary||{},readonly=!!wb.read_only,cards=(wb.components||[]).map(c=>{
     const r=c.review||{},score=r.skor_komponen==null?'—':Number(r.skor_komponen).toFixed(2),doc=c.document?.file_id?'<span class="badge badge-success">PDF ADA</span>':'<span class="badge badge-danger">PDF BELUM</span>';
     const taxWarn=c.no===8&&Number(c.unclassified_tax?.count||0)>0?`<div class="message warning" style="margin-top:8px;padding:8px"><b>${fmtNum(c.unclassified_tax.count)} transaksi pajak belum terklasifikasi</b> (${fmtRupiah(c.unclassified_tax.value||0)}). Tidak otomatis dianggap Pajak Pusat.</div>`:'';
-    return `<article class="f2-component-card"><div class="f2-component-top"><div><small>KOMPONEN ${String(c.no).padStart(2,'0')} • BOBOT ${fmtNum(c.bobot)}</small><h4>${esc(c.nama)}</h4></div>${f2StatusBadgeRc2_(r.status)}</div><p>${esc(c.subtitle||'')}</p><div style="margin-top:8px">${doc} <span class="badge badge-info">${fmtNum(c.transaction_count||0)} acuan BKU</span></div>${taxWarn}<div class="f2-score">${score}<small style="font-size:.72rem;font-weight:700"> / 4</small></div><div class="toolbar" style="margin-top:9px"><button class="btn ${String(r.status||'')==='SELESAI'?'btn-light':'btn-primary'} btn-sm" onclick="openPhase2ComponentRc2(${c.no})">${String(r.status||'')==='SELESAI'?'Review':'Periksa'} →</button></div></article>`;
+    return `<article class="f2-component-card"><div class="f2-component-top"><div><small>KOMPONEN ${String(c.no).padStart(2,'0')} • BOBOT ${fmtNum(c.bobot)}</small><h4>${esc(c.nama)}</h4></div>${f2StatusBadgeRc2_(r.status)}</div><p>${esc(c.subtitle||'')}</p><div style="margin-top:8px">${doc} <span class="badge badge-info">${fmtNum(c.transaction_count||0)} acuan BKU</span></div>${taxWarn}<div class="f2-score">${score}<small style="font-size:.72rem;font-weight:700"> / 4</small></div><div class="toolbar" style="margin-top:9px"><button class="btn ${String(r.status||'')==='SELESAI'||readonly?'btn-light':'btn-primary'} btn-sm" onclick="openPhase2ComponentRc2(${c.no})">${readonly||String(r.status||'')==='SELESAI'?'Review':'Periksa'} →</button></div></article>`;
   }).join('');
-  const finalBtn=s.all_complete&&!p.phase2_done?`<button class="btn btn-primary" onclick="finalizePhase2FromComponentsRc2()">✓ Tetapkan Nilai Fase 2 ${s.nilai_fase2==null?'':Number(s.nilai_fase2).toFixed(2)}</button>`:'';
-  return `${rc2PipelineCards_(p)}${rc2ReadinessBanner_(p)}<section class="f2-cockpit"><div class="message info"><b>Prinsip:</b> sistem mencari dan menyandingkan bukti; keputusan resmi tetap DINAS. Skor tiap komponen 0–4 dan nilai Fase 2 dihitung otomatis menjadi 0–100.</div><div class="f2-summary"><div class="stat"><small>Komponen selesai</small><strong>${fmtNum(s.components_complete||0)}/6</strong></div><div class="stat"><small>Nilai Fase 2</small><strong>${s.nilai_fase2==null?'—':Number(s.nilai_fase2).toFixed(2)}</strong></div><div class="stat"><small>Status Rekonsiliasi</small><strong>${p.reconciliation_done?'SELESAI':'BELUM'}</strong></div><div class="stat"><small>Status Fase 2</small><strong>${p.phase2_done?'SELESAI':'PROSES'}</strong></div><div class="stat"><small>Metode</small><strong style="font-size:.82rem">BKU ↔ PDF</strong></div></div><div class="f2-component-grid">${cards}</div><div class="toolbar" style="margin-top:14px">${finalBtn}${p.phase2_done?`<span class="badge badge-success">NILAI FASE 2 ${Number(p.phase2_score||0).toFixed(2)} / 100</span><span class="badge badge-info">NILAI AKHIR ${p.final_score==null?'—':Number(p.final_score).toFixed(2)} / 100</span>`:''}</div><div id="rc2F2WorkbenchDetail"></div></section>`;
+  const finalBtn=s.all_complete&&!p.phase2_done&&wb.can_save?`<button class="btn btn-primary" onclick="finalizePhase2FromComponentsRc2()">✓ Tetapkan Nilai Fase 2 ${s.nilai_fase2==null?'':Number(s.nilai_fase2).toFixed(2)}</button>`:'';
+  const modeNote=readonly&&!p.phase2_done
+    ? `<div class="message warning"><b>Mode baca-saja.</b> Review Fase 2 hanya dapat disimpan ketika tahap aktif DINAS adalah PENILAIAN_2, Fase 1 sudah disetujui, dan Rekonsiliasi selesai.</div>`
+    : '';
+  return `${rc2PipelineCards_(p)}${rc2ReadinessBanner_(p)}<section class="f2-cockpit"><div class="message info"><b>Prinsip:</b> sistem mencari dan menyandingkan bukti; keputusan resmi tetap DINAS. Skor tiap komponen 0–4 dan nilai Fase 2 dihitung otomatis menjadi 0–100.</div>${modeNote}<div class="f2-summary"><div class="stat"><small>Komponen selesai</small><strong>${fmtNum(s.components_complete||0)}/6</strong></div><div class="stat"><small>Nilai Fase 2</small><strong>${s.nilai_fase2==null?'—':Number(s.nilai_fase2).toFixed(2)}</strong></div><div class="stat"><small>Status Rekonsiliasi</small><strong>${p.reconciliation_done?'SELESAI':'BELUM'}</strong></div><div class="stat"><small>Status Fase 2</small><strong>${p.phase2_done?'SELESAI':'PROSES'}</strong></div><div class="stat"><small>Metode</small><strong style="font-size:.82rem">BKU ↔ PDF</strong></div></div><div class="f2-component-grid">${cards}</div><div class="toolbar" style="margin-top:14px">${finalBtn}${p.phase2_done?`<span class="badge badge-success">NILAI FASE 2 ${p.phase2_score==null?'—':Number(p.phase2_score).toFixed(2)} / 100</span><span class="badge badge-info">NILAI AKHIR ${p.final_score==null?'—':Number(p.final_score).toFixed(2)} / 100</span>`:''}</div><div id="rc2F2WorkbenchDetail"></div></section>`;
 }
 window.loadFase2Rc2=async function(){
   const {npsn,idPeriode}=rc2Context_('rc2f2'),area=$('#rc2F2Area');if(!npsn||!idPeriode){area.innerHTML=msg('Pilih sekolah dan periode.','warning');return;}
@@ -9656,15 +9686,15 @@ window.runPhase2ComponentAnalysisRc2=async function(){
   }catch(e){if(host)host.innerHTML=msg(errorText(e),'error');}
 };
 function f2MatchMapRc2_(){const m={};(window.__phase2ReviewState?.matches||[]).forEach(x=>m[String(x.id_transaksi||'')]=x);return m;}
-window.setPhase2DecisionRc2=function(id,status){const st=window.__phase2ReviewState||{},match=f2MatchMapRc2_()[String(id)]||{};st.decisions[String(id)]={status:String(status),page_no:Number(match.page||st.decisions[String(id)]?.page_no||0),confidence:Number(match.confidence||st.decisions[String(id)]?.confidence||0)};renderPhase2ReviewListRc2_();};
-window.acceptHighPhase2MatchesRc2=function(){const st=window.__phase2ReviewState||{},m=f2MatchMapRc2_();let n=0;f2CurrentTransactionsRc2_().forEach(tx=>{const x=m[String(tx.id_transaksi||'')];if(x&&Number(x.confidence)>=75&&!st.decisions[String(tx.id_transaksi||'')]){st.decisions[String(tx.id_transaksi)]={status:'SESUAI',page_no:Number(x.page||0),confidence:Number(x.confidence||0)};n++;}});renderPhase2ReviewListRc2_();toast(`${n} kandidat confidence tinggi diterima untuk review DINAS.`,n?'ok':'info');};
+window.setPhase2DecisionRc2=function(id,status){const st=window.__phase2ReviewState||{};if(st.workbench?.read_only)return;const match=f2MatchMapRc2_()[String(id)]||{};st.decisions[String(id)]={status:String(status),page_no:Number(match.page||st.decisions[String(id)]?.page_no||0),confidence:Number(match.confidence||st.decisions[String(id)]?.confidence||0)};renderPhase2ReviewListRc2_();};
+window.acceptHighPhase2MatchesRc2=function(){const st=window.__phase2ReviewState||{};if(st.workbench?.read_only)return;const m=f2MatchMapRc2_();let n=0;f2CurrentTransactionsRc2_().forEach(tx=>{const x=m[String(tx.id_transaksi||'')];if(x&&Number(x.confidence)>=75&&!st.decisions[String(tx.id_transaksi||'')]){st.decisions[String(tx.id_transaksi)]={status:'SESUAI',page_no:Number(x.page||0),confidence:Number(x.confidence||0)};n++;}});renderPhase2ReviewListRc2_();toast(`${n} kandidat confidence tinggi diterima untuk review DINAS.`,n?'ok':'info');};
 window.filterPhase2ReviewRc2=function(v){const st=window.__phase2ReviewState||{};st.filter=String(v||'ALL');st.listPage=1;renderPhase2ReviewListRc2_();};
 window.changePhase2ReviewPageRc2=function(delta){const st=window.__phase2ReviewState||{};st.listPage=Math.max(1,(Number(st.listPage)||1)+Number(delta||0));renderPhase2ReviewListRc2_();};
 window.setPhase2ReviewPageSizeRc2=function(v){const st=window.__phase2ReviewState||{},n=Number(v);st.pageSize=[50,100,200].includes(n)?n:100;st.listPage=1;renderPhase2ReviewListRc2_();};
 function renderPhase2ReviewListRc2_(){
-  const host=$('#f2ReviewContent'),st=window.__phase2ReviewState||{},c=f2CurrentComponentRc2_();
+  const host=$('#f2ReviewContent'),st=window.__phase2ReviewState||{},c=f2CurrentComponentRc2_(),wb=st.workbench||{};
   if(!host||!c)return;
-  const tx=f2CurrentTransactionsRc2_(),txMap=f2TransactionMapRc2_(st.workbench),matches=f2MatchMapRc2_(),metrics=f2ComponentMetricsClientRc2_(c,st.decisions,txMap),filter=st.filter||'ALL';
+  const readonly=!!wb.read_only,tx=f2CurrentTransactionsRc2_(),txMap=f2TransactionMapRc2_(wb),matches=f2MatchMapRc2_(),metrics=f2ComponentMetricsClientRc2_(c,st.decisions,txMap),filter=st.filter||'ALL';
   const filtered=tx.filter(t=>{
     const id=String(t.id_transaksi||''),d=st.decisions[id],m=matches[id]||{};
     if(filter==='EXCEPTION')return !d||d.status!=='SESUAI'||Number(m.confidence||0)<75;
@@ -9677,15 +9707,21 @@ function renderPhase2ReviewListRc2_(){
   const start=(st.listPage-1)*pageSize,end=Math.min(filtered.length,start+pageSize);
   const rows=filtered.slice(start,end).map(t=>{
     const id=String(t.id_transaksi||''),m=matches[id]||{},d=st.decisions[id]||{},conf=Number(m.confidence||d.confidence||0),level=conf>=75?'high':conf>=50?'medium':'low',page=Number(m.page||d.page_no||0),reason=(m.reasons||[]).join(', ')||'belum dianalisis';
-    const btn=(s,l)=>`<button class="btn btn-sm ${d.status===s?'btn-primary active':'btn-light'}" onclick="setPhase2DecisionRc2('${esc(id)}','${s}')">${l}</button>`;
-    return `<div class="f2-match-row ${level}"><div class="f2-match-main"><div><b>${esc(t.tanggal_transaksi||'-')} • ${esc(t.nomor_bukti||'Tanpa nomor bukti')}</b><div>${esc(t.uraian_transaksi||'-')}</div><div class="f2-match-meta">${esc(t.kode_rekening||'-')} • ${fmtRupiah(t.nilai_transaksi||0)} • kandidat ${conf?conf+'%':'belum ada'} • ${esc(reason)}</div></div><div>${page?`<button class="btn btn-light btn-sm" onclick="renderPhase2PdfPageRc2(${page})">PDF h.${page}</button>`:''}</div></div><div class="f2-decision">${btn('SESUAI','✓ Sesuai')}${btn('PERLU_CEK','⚠ Perlu cek')}${btn('TIDAK_SESUAI','✕ Tidak sesuai')}${btn('BUKTI_TIDAK_DITEMUKAN','○ Bukti tidak ditemukan')}</div></div>`;
+    const actions=readonly
+      ? `<span class="badge ${d.status==='SESUAI'?'badge-success':d.status==='TIDAK_SESUAI'||d.status==='BUKTI_TIDAK_DITEMUKAN'?'badge-danger':'badge-warning'}">${esc(String(d.status||'BELUM DIPUTUSKAN').replaceAll('_',' '))}</span>`
+      : [['SESUAI','✓ Sesuai'],['PERLU_CEK','⚠ Perlu cek'],['TIDAK_SESUAI','✕ Tidak sesuai'],['BUKTI_TIDAK_DITEMUKAN','○ Bukti tidak ditemukan']].map(([s,l])=>`<button class="btn btn-sm ${d.status===s?'btn-primary active':'btn-light'}" onclick="setPhase2DecisionRc2('${esc(id)}','${s}')">${l}</button>`).join('');
+    return `<div class="f2-match-row ${level}"><div class="f2-match-main"><div><b>${esc(t.tanggal_transaksi||'-')} • ${esc(t.nomor_bukti||'Tanpa nomor bukti')}</b><div>${esc(t.uraian_transaksi||'-')}</div><div class="f2-match-meta">${esc(t.kode_rekening||'-')} • ${fmtRupiah(t.nilai_transaksi||0)} • kandidat ${conf?conf+'%':'belum ada'} • ${esc(reason)}</div></div><div>${page?`<button class="btn btn-light btn-sm" onclick="renderPhase2PdfPageRc2(${page})">PDF h.${page}</button>`:''}</div></div><div class="f2-decision">${actions}</div></div>`;
   }).join('');
   const pager=filtered.length?`<div class="toolbar" style="justify-content:space-between;align-items:center;margin:10px 0;gap:8px;flex-wrap:wrap"><div class="muted">Menampilkan ${fmtNum(start+1)}–${fmtNum(end)} dari ${fmtNum(filtered.length)} baris • Halaman ${fmtNum(st.listPage)}/${fmtNum(totalPages)}</div><div class="toolbar"><select onchange="setPhase2ReviewPageSizeRc2(this.value)" style="min-width:92px"><option value="50" ${pageSize===50?'selected':''}>50/baris</option><option value="100" ${pageSize===100?'selected':''}>100/baris</option><option value="200" ${pageSize===200?'selected':''}>200/baris</option></select><button class="btn btn-light btn-sm" onclick="changePhase2ReviewPageRc2(-1)" ${st.listPage<=1?'disabled':''}>← Sebelumnya</button><button class="btn btn-light btn-sm" onclick="changePhase2ReviewPageRc2(1)" ${st.listPage>=totalPages?'disabled':''}>Berikutnya →</button></div></div>`:'';
   const rec=metrics.recommended_score==null?'—':Number(metrics.recommended_score).toFixed(2),saved=c.review||{},scoreVal=saved.skor_komponen==null?(metrics.pending_count===0&&metrics.recommended_score!=null?metrics.recommended_score:''):saved.skor_komponen;
-  host.innerHTML=`<div class="f2-filter-row"><button class="btn btn-light btn-sm" onclick="acceptHighPhase2MatchesRc2()">✓ Terima Kandidat Tinggi</button><select onchange="filterPhase2ReviewRc2(this.value)"><option value="ALL" ${filter==='ALL'?'selected':''}>Semua</option><option value="EXCEPTION" ${filter==='EXCEPTION'?'selected':''}>Prioritas / Exception</option><option value="PENDING" ${filter==='PENDING'?'selected':''}>Belum diputuskan</option><option value="MISMATCH" ${filter==='MISMATCH'?'selected':''}>Tidak sesuai</option></select></div><div class="cards" style="grid-template-columns:repeat(4,1fr);margin-bottom:10px"><div class="stat"><small>Acuan BKU</small><strong>${fmtNum(metrics.total_count)}</strong></div><div class="stat"><small>Sesuai</small><strong>${fmtNum(metrics.sesuai_count)}</strong></div><div class="stat"><small>Exception</small><strong>${fmtNum(metrics.tidak_sesuai_count)}</strong></div><div class="stat"><small>Pending</small><strong>${fmtNum(metrics.pending_count)}</strong></div></div><div class="f2-progressbar" style="color:var(--primary)"><i style="width:${Math.max(0,Math.min(100,metrics.coverage_percent))}%"></i></div><div class="muted" style="margin:5px 0 10px">Coverage keputusan DINAS ${Number(metrics.coverage_percent||0).toFixed(1)}% • skor rekomendasi terverifikasi ${rec}/4</div>${pager}${rows||msg(c.transaction_count?'Belum ada baris pada filter ini.':'Tidak ada transaksi acuan untuk komponen ini.','info')}${pager}<div class="f2-score-box"><div class="form-grid"><div class="field"><label>Skor Komponen 0–4</label><input id="f2ComponentScore" type="number" min="0" max="4" step="0.01" value="${esc(scoreVal)}"></div><div class="field"><label>Catatan DINAS</label><textarea id="f2ComponentNote" rows="3" placeholder="Wajib bila skor menyimpang dari rekomendasi atau ada item belum diputuskan.">${esc(saved.catatan||'')}</textarea></div></div><div class="toolbar"><button class="btn btn-light" onclick="savePhase2ComponentRc2('PROSES')">Simpan Progres</button>${c.target?.allow_na&&c.transaction_count===0?`<button class="btn btn-light" onclick="savePhase2ComponentRc2('N/A')">Tandai N/A</button>`:''}<button class="btn btn-primary" onclick="savePhase2ComponentRc2('SELESAI')">✓ Selesaikan Komponen</button></div><div class="muted">${c.requires_full_review?'Komponen ini mensyaratkan semua transaksi acuan diputuskan sebelum selesai.':'Komponen pendukung dapat diselesaikan dengan judgement DINAS; catatan wajib jika masih ada item pending.'}</div></div>`;
+  const tools=readonly?'':`<div class="f2-filter-row"><button class="btn btn-light btn-sm" onclick="acceptHighPhase2MatchesRc2()">✓ Terima Kandidat Tinggi</button><select onchange="filterPhase2ReviewRc2(this.value)"><option value="ALL" ${filter==='ALL'?'selected':''}>Semua</option><option value="EXCEPTION" ${filter==='EXCEPTION'?'selected':''}>Prioritas / Exception</option><option value="PENDING" ${filter==='PENDING'?'selected':''}>Belum diputuskan</option><option value="MISMATCH" ${filter==='MISMATCH'?'selected':''}>Tidak sesuai</option></select></div>`;
+  const scoreBox=readonly
+    ? `<div class="f2-score-box"><div class="report-meta"><b>Skor DINAS</b><span>${saved.skor_komponen==null?'—':Number(saved.skor_komponen).toFixed(2)} / 4</span><b>Rekomendasi</b><span>${saved.skor_rekomendasi==null?'—':Number(saved.skor_rekomendasi).toFixed(2)} / 4</span><b>Catatan</b><span>${esc(saved.catatan||'-')}</span></div></div>`
+    : `<div class="f2-score-box"><div class="form-grid"><div class="field"><label>Skor Komponen 0–4</label><input id="f2ComponentScore" type="number" min="0" max="4" step="0.01" value="${esc(scoreVal)}"></div><div class="field"><label>Catatan DINAS</label><textarea id="f2ComponentNote" rows="3" placeholder="Wajib bila skor menyimpang dari rekomendasi atau ada item belum diputuskan.">${esc(saved.catatan||'')}</textarea></div></div><div class="toolbar"><button class="btn btn-light" onclick="savePhase2ComponentRc2('PROSES')">Simpan Progres</button>${c.target?.allow_na&&c.transaction_count===0?`<button class="btn btn-light" onclick="savePhase2ComponentRc2('N/A')">Tandai N/A</button>`:''}<button class="btn btn-primary" onclick="savePhase2ComponentRc2('SELESAI')">✓ Selesaikan Komponen</button></div><div class="muted">${c.requires_full_review?'Komponen ini mensyaratkan semua transaksi acuan diputuskan sebelum selesai.':'Komponen pendukung dapat diselesaikan dengan judgement DINAS; catatan wajib jika masih ada item pending.'}</div></div>`;
+  host.innerHTML=`${tools}<div class="cards" style="grid-template-columns:repeat(4,1fr);margin-bottom:10px"><div class="stat"><small>Acuan BKU</small><strong>${fmtNum(metrics.total_count)}</strong></div><div class="stat"><small>Sesuai</small><strong>${fmtNum(metrics.sesuai_count)}</strong></div><div class="stat"><small>Exception</small><strong>${fmtNum(metrics.tidak_sesuai_count)}</strong></div><div class="stat"><small>Pending</small><strong>${fmtNum(metrics.pending_count)}</strong></div></div><div class="f2-progressbar" style="color:var(--primary)"><i style="width:${Math.max(0,Math.min(100,metrics.coverage_percent))}%"></i></div><div class="muted" style="margin:5px 0 10px">Coverage keputusan DINAS ${Number(metrics.coverage_percent||0).toFixed(1)}% • skor rekomendasi terverifikasi ${rec}/4</div>${pager}${rows||msg(c.transaction_count?'Belum ada baris pada filter ini.':'Tidak ada transaksi acuan untuk komponen ini.','info')}${pager}${scoreBox}`;
 }
 window.savePhase2ComponentRc2=async function(status){
-  const st=window.__phase2ReviewState||{},wb=st.workbench||{},c=f2CurrentComponentRc2_();if(!c)return;const scoreRaw=$('#f2ComponentScore')?.value,score=scoreRaw===''?null:Number(scoreRaw),note=$('#f2ComponentNote')?.value.trim()||'',items=Object.entries(st.decisions||{}).map(([id,d])=>[id,d.status,Number(d.page_no||0),Number(d.confidence||0)]);
+  const st=window.__phase2ReviewState||{},wb=st.workbench||{},c=f2CurrentComponentRc2_();if(!c)return;if(wb.read_only){toast('Fase 2 sedang dalam mode baca-saja.','warning');return;}const scoreRaw=$('#f2ComponentScore')?.value,score=scoreRaw===''?null:Number(scoreRaw),note=$('#f2ComponentNote')?.value.trim()||'',items=Object.entries(st.decisions||{}).map(([id,d])=>[id,d.status,Number(d.page_no||0),Number(d.confidence||0)]);
   if(status==='SELESAI'&&(!Number.isFinite(score)||score<0||score>4)){toast('Skor komponen harus 0–4.','warning');return;}
   try{await api('savePhase2ComponentReview',{data:{npsn:wb.npsn,id_periode:wb.id_periode,no_komponen:c.no,status,skor_komponen:score,catatan:note,items}});toast(status==='SELESAI'?'Komponen Fase 2 selesai.':'Progres review tersimpan.','ok');await loadFase2Rc2();if(status!=='SELESAI')setTimeout(()=>openPhase2ComponentRc2(c.no),0);}catch(e){toast(errorText(e),'error',7000);}
 };
@@ -9944,7 +9980,8 @@ window.bukaPenilaianUntukKajiUlang=async function(idAsesmen){
   state.reopenAssessmentId=idAsesmen; await loadView('asesmen');
 };
 
-function renderAssessment(a, indicators){
+function renderAssessment(a, indicators, indicatorResp){
+  indicatorResp=indicatorResp||{};
   const interactiveBtn=`<button class="btn btn-light" onclick="loadView('pdfInteraktif')">📄 Buka PDF & Penilaian Interaktif</button>`;
   const applicable=indicators.filter(x=>x.berlaku!==false);
   const totalWeight=applicable.reduce((s,x)=>s+Math.max(0,Number(x.bobot_efektif??x.bobot)||0),0);
@@ -10871,21 +10908,23 @@ window.bukaArsipTersahkan=async function(idAsesmen){
     const r=await api('getPengesahanPenilaian',{idAsesmen});
     const d=r.data||{};
     if(!d.persetujuan_sekolah || !d.pengesahan_pengawas || !d.pengesahan_dinas) {
-      toast('Berkas final baru dapat dicetak setelah tanda tangan Sekolah, Pengawas, dan DINAS lengkap.','warning',5000);
+      toast('Berkas final baru dapat dibuka setelah tanda tangan Sekolah, Pengawas, dan DINAS lengkap.','warning',5000);
       return;
     }
     state.selectedNpsn=d.npsn;
     state.selectedPeriode=d.id_periode;
+    await loadView('arsipPenilaianV5');
+    const period=$('#reportPeriodRc2');if(period)period.value=d.id_periode||'';
     if(isDinas()){
-      await openDinasArchiveV241(d.npsn,d.id_periode);
-    }else{
-      await loadView('arsipPenilaianV5');
-      const n=$('#v5ArchiveNpsn'), p=$('#v5ArchivePeriode');
-      if(n) n.value=d.npsn;
-      if(p) p.value=d.id_periode;
-      await loadV5Archive();
+      const phase=$('#reportPhaseRc2');if(phase)phase.value='GABUNGAN';
+      const scope=$('#reportScopeRc2');if(scope)scope.value='SEKOLAH';
+      updateReportScopeControlsRc2();
+      const school=$('#reportSchoolRc2');if(school)school.value=d.npsn||'';
+    }else if(isSchool()){
+      const phase=$('#reportPhaseRc2');if(phase)phase.value='FASE2';
     }
-    setTimeout(()=>printV5Archive(),400);
+    if(typeof loadAssessmentReportRc2==='function')await loadAssessmentReportRc2();
+    toast('Laporan resmi dibuka di Pusat Laporan Penilaian.','ok',3500);
   }catch(e){toast(errorText(e),'error',5000);}
 };
 
@@ -10908,8 +10947,8 @@ window.tandaTanganiPenilaian=async function(idAsesmen){
 };
 
 const _renderAssessmentBeforeSigning = renderAssessment;
-renderAssessment = function(a, indicators){
-  _renderAssessmentBeforeSigning(a, indicators);
+renderAssessment = function(a, indicators, indicatorResp){
+  _renderAssessmentBeforeSigning(a, indicators, indicatorResp);
   const area=document.getElementById('assessmentArea');
   if(!area)return;
   const old=document.getElementById('assessmentSigningArea');
