@@ -3768,8 +3768,8 @@ function _v222BookSummaryHtml_(m,summaries){
         <span class="v222-rule-badge">${localValue>0?'TERDETEKSI DI BKU':'ADA / N/A'}</span>
       </div>
       ${localValue>0
-        ? `<div class="v222-target-value"><small>Setoran ${esc(profile.title)} dari BKU</small><strong>${fmtRupiah(localValue)}</strong></div><div class="v222-rule-note">Karena BKU memuat data pajak ini, komponen <b>tidak boleh N/A</b> untuk periode tersebut.</div>`
-        : `<div class="muted">Tidak ada data \${esc(profile.title)} pada BKU periode ini. Sekolah dapat mengunggah PDF bila ada, atau memilih <b>N/A</b>.</div>`}
+        ? '<div class="v222-target-value"><small>Setoran '+esc(profile.title)+' dari BKU</small><strong>'+fmtRupiah(localValue)+'</strong></div><div class="v222-rule-note">Karena BKU memuat data pajak ini, komponen <b>tidak boleh N/A</b> untuk periode tersebut.</div>'
+        : '<div class="muted">Tidak ada data '+esc(profile.title)+' pada BKU periode ini. Sekolah dapat mengunggah PDF bila ada, atau memilih <b>N/A</b>.</div>'}
     </div>`;
   }
 
