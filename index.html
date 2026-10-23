@@ -2101,7 +2101,7 @@ aside.sidebar *,
 <script>
 'use strict';
 
-const V10_VERSION = 'RC2-WORKFLOW-ALIGNED';
+const V10_VERSION = 'V24.3.0-PERFORMANCE-OPTIMIZED';
 
 const API_URL = 'https://script.google.com/macros/s/AKfycbyWvJXKr1QZ1zwbeJDoULTUihycj1771SsDlGFy8jnuF4i3DsEbHXlcJU48VDAg17fqDA/exec';
 
@@ -2421,6 +2421,7 @@ function head(title,desc=''){
 function emptyRow(cols,text='Tidak ada data.'){ return `<tr><td colspan="${cols}" class="muted" style="text-align:center;padding:25px">${esc(text)}</td></tr>`; }
 
 async function api(action, payload={}){
+  const _apiStartedAt = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
   const body = { action, ...payload };
   if(state.token) body.token = state.token;
 
@@ -2453,6 +2454,8 @@ async function api(action, payload={}){
   }
 
   if(!data.success) throw new Error(data.message || 'Permintaan gagal.');
+  const _apiElapsedMs = Math.round(((typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now()) - _apiStartedAt);
+  if (_apiElapsedMs >= 1200) console.warn('[SIMPEL SPJ PERF] API lambat:', action, _apiElapsedMs + ' ms');
   return data;
 }
 async function safeApi(action,payload={},fallback=null){ try{return await api(action,payload);}catch(e){ console.error('[SIMPEL SPJ API]',action,e); if(fallback && typeof fallback==='object' && !Array.isArray(fallback)) return Object.assign({},fallback,{_error:e.message||String(e)}); return fallback; } }
@@ -2791,8 +2794,9 @@ window.showRegisterView = function(e) {
       </section>
     </main>`;
 
+  // toggleRegisterFields() already refreshes the registration window.
+  // Calling it again here caused two identical 10–15 second backend requests on form open.
   toggleRegisterFields();
-  loadPublicRegistrationWindow();
 
   $('#registerForm').onsubmit = async ev => {
     ev.preventDefault();
@@ -2845,14 +2849,20 @@ window.loadPublicRegistrationWindow = async function(){
   const npsn=roleVal==='SEKOLAH'?($('#regNpsn')?.value||'').trim():'';
   const nip=roleVal==='PENGAWAS'?($('#regNip')?.value||'').trim():'';
   const submitBtn=document.querySelector('#registerForm button[type="submit"]');
+  const requestKey = JSON.stringify([roleVal,npsn,nip]);
+  if (window._publicRegistrationWindowInFlight && window._publicRegistrationWindowInFlight.key === requestKey) {
+    return window._publicRegistrationWindowInFlight.promise;
+  }
   if(submitBtn){
     submitBtn.disabled=true;
     submitBtn.dataset.scheduleLocked='1';
     submitBtn.textContent='Memeriksa Jadwal...';
   }
   box.innerHTML='<div class="workflow-reg-chip">Memeriksa jadwal pendaftaran...</div>';
+  const requestPromise = api('getPublicRegistrationWindow',{role:roleVal,npsn:npsn,nip:nip});
+  window._publicRegistrationWindowInFlight = {key:requestKey,promise:requestPromise};
   try{
-    const r=await api('getPublicRegistrationWindow',{role:roleVal,npsn:npsn,nip:nip});
+    const r=await requestPromise;
     const d=r?.data||{};
     const meta=workflowPhaseMeta(d.phase);
     const row=d.row||{};
@@ -2885,6 +2895,10 @@ window.loadPublicRegistrationWindow = async function(){
   }catch(e){
     box.innerHTML=`<div class="workflow-reg-chip danger"><b>Jadwal belum dapat diperiksa</b><span>${esc(errorText(e))}</span></div>`;
     if(submitBtn){submitBtn.disabled=true;submitBtn.dataset.scheduleLocked='1';submitBtn.textContent='Pendaftaran Belum Dibuka';}
+  }finally{
+    if(window._publicRegistrationWindowInFlight && window._publicRegistrationWindowInFlight.promise === requestPromise){
+      window._publicRegistrationWindowInFlight = null;
+    }
   }
 };
 
@@ -3062,14 +3076,11 @@ async function startApp(){
   // Beranda tampil lebih dahulu, proses tambahan berjalan di belakang.
   await loadView('home');
 
-  setTimeout(async()=>{
-    try{
-      await ensurePaketPemeriksaan(true);
-      await updateUnreadMessageBadge();
-    }catch(e){
-      console.warn('Background startup task skipped:', e);
-    }
-  },100);
+  // Konfigurasi pemeriksaan dimuat secara lazy saat modul yang membutuhkannya dibuka.
+  // Jangan menambah request backend bersamaan dengan dashboard awal.
+  setTimeout(()=>{
+    updateUnreadMessageBadge().catch(e=>console.warn('Gagal memuat badge pesan:',e));
+  },1200);
 }
 
 
@@ -3103,10 +3114,10 @@ function showSubmenuMotivation(viewLabel){
     if(closed)return;
     closed=true;
     // Biarkan hero + api menyala sebentar agar tetap terasa, tetapi modul memuat paralel.
-    const wait=Math.max(0,1250-(Date.now()-started));
+    const wait=Math.max(0,180-(Date.now()-started));
     setTimeout(()=>{
       overlay.classList.add('fade');
-      setTimeout(()=>overlay.remove(),390);
+      setTimeout(()=>overlay.remove(),180);
     },wait);
   };
   // Safety dismissal bila request backend lama; tidak pernah menutupi app penuh.
