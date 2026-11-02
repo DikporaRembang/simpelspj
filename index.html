@@ -2422,6 +2422,9 @@ function emptyRow(cols,text='Tidak ada data.'){ return `<tr><td colspan="${cols}
 
 async function api(action, payload={}){
   const _apiStartedAt = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+  // Ikat respons ke identitas sesi yang memulai request. Respons lama tidak
+  // boleh mengisi UI setelah logout atau pergantian akun.
+  const requestToken = String(state.token || '');
   const body = { action, ...payload };
   if(state.token) body.token = state.token;
 
@@ -2453,7 +2456,19 @@ async function api(action, payload={}){
     throw new Error('Server dapat dijangkau tetapi respons bukan JSON. Pastikan URL yang digunakan adalah URL Web App /exec terbaru.');
   }
 
-  if(!data.success) throw new Error(data.message || 'Permintaan gagal.');
+  if(requestToken && requestToken !== String(state.token || '')){
+    const staleError = new Error('Respons diabaikan karena sesi pengguna telah berubah. Silakan muat ulang tampilan.');
+    staleError.code = 'STALE_SESSION_RESPONSE';
+    throw staleError;
+  }
+
+  if(!data.success) {
+    const failureMessage = String(data.message || 'Permintaan gagal.');
+    if (/sesi login tidak valid|sesi berakhir|sesi maksimum|akun anda telah dinonaktifkan|akun tidak aktif/i.test(failureMessage) && state.token) {
+      expireFrontendSession_(failureMessage);
+    }
+    throw new Error(failureMessage);
+  }
   const _apiElapsedMs = Math.round(((typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now()) - _apiStartedAt);
   if (_apiElapsedMs >= 1200) console.warn('[SIMPEL SPJ PERF] API lambat:', action, _apiElapsedMs + ' ms');
   return data;
@@ -2654,6 +2669,7 @@ async function doLogin(e){
   }
   try{
     const r=await api('login',{username:$('#username').value.trim(),password:$('#password').value});
+    clearSensitiveFrontendCaches_('login-transition');
     state.token=r.token; state.user=r.user || {};
     if(isSchool() && !state.user.npsn && /^\\d{8}$/.test(String(state.user.username||''))){
       state.user.npsn = String(state.user.username);
@@ -2778,7 +2794,7 @@ window.showRegisterView = function(e) {
             <div class="field">
               <label>Kata Sandi</label>
               <div class="password-wrapper">
-                <input id="regPassword" type="password" required placeholder="Minimal 6 karakter">
+                <input id="regPassword" type="password" required placeholder="Minimal 12 karakter" minlength="12">
                 <button type="button" class="toggle-password-btn" onclick="togglePassword('regPassword', this)" title="Tampilkan / Sembunyikan Password">
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
                 </button>
@@ -3034,6 +3050,7 @@ function startSessionHeartbeat(){
       if(r?.data) state.user = Object.assign({},state.user||{},r.data);
     }catch(e){
       stopSessionHeartbeat();
+      clearSensitiveFrontendCaches_('session-expired');
       state.token=''; state.user=null;
       sessionStorage.removeItem('simpel_token');
       authView(msg(errorText(e),'warning'));
@@ -3054,15 +3071,21 @@ async function restoreSession(){
     }
     await startApp();
     startSessionHeartbeat();
-  }catch(e){state.token=''; state.user=null; sessionStorage.removeItem('simpel_token'); authView();}
+  }catch(e){clearSensitiveFrontendCaches_('restore-failed');state.token=''; state.user=null; sessionStorage.removeItem('simpel_token'); authView();}
 }
 
 async function logout(){
   stopSessionHeartbeat();
-  try{if(state.token) await api('logout');}catch(e){}
+  const tokenToRevoke = String(state.token || '');
+  // Putus sesi lokal terlebih dahulu agar request lama tidak dapat mengisi UI
+  // setelah pengguna menekan Logout. Token lama hanya dipakai untuk revoke.
   invalidateRkasFrontendCaches();
+  clearSensitiveFrontendCaches_('logout');
+  state.token=''; state.user=null;
+  try{sessionStorage.removeItem('simpel_token');}catch(_){}
   resetViewNavigationState();
-  state.token=''; state.user=null; sessionStorage.removeItem('simpel_token'); authView(msg('Anda telah keluar dari aplikasi.','ok'));
+  try{if(tokenToRevoke) await api('logout',{token:tokenToRevoke});}catch(e){}
+  authView(msg('Anda telah keluar dari aplikasi.','ok'));
 }
 
 async function startApp(){
@@ -7598,6 +7621,77 @@ function drivePreviewUrl(url){ return ''; }
 
 let __pdfJsPromise=null;
 const __protectedPdfCache=new Map();
+let __sensitiveDataEpoch=0;
+
+function sensitiveDocumentCacheKey_(fileId, period, npsn){
+  return [String(state.token||''),String(npsn||''),String(period||''),String(fileId||'')].join('|');
+}
+
+function assertSensitiveSessionCurrent_(epoch, token){
+  if(!token || state.token!==token || __sensitiveDataEpoch!==epoch) throw new Error('Sesi berubah atau berakhir. Data dokumen dibersihkan; silakan login kembali.');
+}
+
+function clearSensitiveFrontendCaches_(reason){
+  __sensitiveDataEpoch++;
+  window.__pageAwareOcrCancel=true;
+  try {
+    __protectedPdfCache.forEach(function(pdf){ try { if(pdf && typeof pdf.destroy==='function') pdf.destroy().catch(function(){}); } catch(_){} });
+    __protectedPdfCache.clear();
+  } catch(_) {}
+  ['__pageAwareOcrCache','__phase1OcrCache','__phase2OcrCache'].forEach(function(key){ window[key]={}; });
+  try {
+    const states=['__instrumentPdfState','__phase1ReviewState','__phase2ReviewState'];
+    states.forEach(function(key){ const st=window[key]; if(st && st.pdf && typeof st.pdf.destroy==='function'){try{st.pdf.destroy().catch(function(){});}catch(_){}} });
+    window.__instrumentPdfState=null;
+    window.__phase1ReviewState={workbench:null,componentNo:0,pdf:null,page:1,zoom:1,pages:[],matches:[],decisions:{},filter:'ALL',listPage:1,pageSize:100};
+    window.__phase2ReviewState={workbench:null,componentNo:0,pdf:null,page:1,zoom:1,pages:[],matches:[],decisions:{},filter:'ALL',listPage:1,pageSize:100};
+    window.__pdfInteractiveContext=null;
+    window.__pdfInteractiveIndicators=[];
+    window.__pdfInteractiveUiState={docId:'',page:1,zoom:1,totalPages:0};
+    window.__v217Workbench=null;
+  } catch(_) {}
+  try {
+    document.querySelectorAll('.instrument-pdf-inline-frame,#interactivePdfFrame,#f1PdfFrame,#f2PdfFrame').forEach(function(el){
+      try { if(el._pdfDoc && typeof el._pdfDoc.destroy==='function') el._pdfDoc.destroy().catch(function(){}); } catch(_){}
+      el._pdfDoc=null; el.innerHTML='';
+    });
+    document.querySelectorAll('.instrument-pdf-inline').forEach(function(el){el.hidden=true;el.innerHTML='';});
+    document.querySelectorAll('#pageAwareOcrModal,.simple-modal,.workflow-modal-backdrop').forEach(function(el){el.remove();});
+  } catch(_) {}
+  try {
+    state.user=null;
+    state.selectedPeriode=''; state.selectedNpsn='';
+    state.masterSpj=[]; state.importedTransactions=[]; state.bkuImport=null;
+    state.pemeriksaanConfig=null;
+    // Hapus pula cache data lintas modul (monitoring, laporan, RKAS, penugasan,
+    // pencarian, kesiapan akun, dan keberatan) agar tidak tertinggal antar-role.
+    [
+      '__appealRows','__bkuAutoAnalysis','__v227CurrentAssessmentId',
+      '_activeDinasStatus','_assessmentDashboardBuckets','_assessmentReportCurrent',
+      '_cachedAuditSchoolsGlobal','_cachedDinasCenterGlobal','_cachedDinasPenugasan',
+      '_cachedDinasSekolah','_cachedGlobalMon','_cachedGlobalMonGlobal',
+      '_cachedPaguSekolah','_cachedPenugasan','_cachedPenugasanGlobal',
+      '_cachedRekapPaguGlobal','_currentDinasRkasList','_globalSearchRows',
+      '_monState','_paguRkasMeta','_pengawasPhase1Summary','_pengawasReadinessRows',
+      '_pengawasReadinessSummary','_pengawasReadinessFilter','_rc2Fase1DinasAssignments','_rc2Fase1DinasGroupRows',
+      '_rc2Fase2Assignments','_rc2Fase2GroupRows','_rc2RekonAssignments',
+      '_rc2RekonGroupRows','_renderedDinasRkasList','_reportSchoolsRc2',
+      '_rkasImportPreview','_rkasReplacePreview','_rkasReplaceSchools',
+      '_rkasTargetSchools','_schoolDirectoryCache','_schoolDirectoryData',
+      '_selectedDinasRkasPackage','_userReadinessData','_userReadinessFilter','_userReadinessQuery',
+      '_workflowOverview','_workflowSelectedYear'
+    ].forEach(function(key){ try{window[key]=null;}catch(_){} });
+  } catch(_) {}
+}
+
+function expireFrontendSession_(message){
+  if(!state.token) return;
+  stopSessionHeartbeat();
+  clearSensitiveFrontendCaches_('session-expired');
+  state.token=''; state.user=null;
+  try{sessionStorage.removeItem('simpel_token');}catch(_){}
+  try{authView(msg(message || 'Sesi berakhir. Silakan login kembali.','warning'));}catch(_){}
+}
 
 async function ensurePdfJs(){
   if(window.pdfjsLib) {
@@ -7629,18 +7723,26 @@ function base64ToUint8Array_(base64){
   return out;
 }
 
-async function getProtectedPdfDocument_(doc){
+async function getProtectedPdfDocument_(doc, context={}){
   const fileId=String(doc?.file_id||'');
-  const period=String(window.__pdfInteractiveContext?.p||state.selectedPeriode||'');
-  const npsn=String(window.__pdfInteractiveContext?.n||state.selectedNpsn||ownNpsn()||'');
+  const period=String(context.period||context.p||window.__pdfInteractiveContext?.p||state.selectedPeriode||'');
+  const npsn=String(context.npsn||context.n||window.__pdfInteractiveContext?.n||state.selectedNpsn||ownNpsn()||'');
+  const requestToken=String(state.token||''), epoch=__sensitiveDataEpoch;
   if(!fileId) throw new Error('Dokumen ini tidak memiliki file_id Drive yang dapat dibaca oleh viewer aman.');
+  if(!requestToken) throw new Error('Sesi login tidak tersedia untuk membuka PDF.');
+  if(!period || !npsn) throw new Error('Konteks sekolah dan periode wajib tersedia untuk membuka PDF.');
+  const cacheKey=sensitiveDocumentCacheKey_(fileId,period,npsn);
   const lib=await ensurePdfJs();
-  if(__protectedPdfCache.has(fileId)) return __protectedPdfCache.get(fileId);
+  assertSensitiveSessionCurrent_(epoch,requestToken);
+  if(__protectedPdfCache.has(cacheKey)) return __protectedPdfCache.get(cacheKey);
   const r=await api('getDokumenPdfBase64',{fileId,idPeriode:period,npsn});
+  assertSensitiveSessionCurrent_(epoch,requestToken);
   if(!r?.base64) throw new Error('Server tidak mengembalikan data PDF.');
   const loadingTask=lib.getDocument({data:base64ToUint8Array_(r.base64)});
   const pdf=await loadingTask.promise;
-  __protectedPdfCache.set(fileId,pdf);
+  try { assertSensitiveSessionCurrent_(epoch,requestToken); }
+  catch(staleError){ try{pdf.destroy();}catch(_){} throw staleError; }
+  __protectedPdfCache.set(cacheKey,pdf);
   return pdf;
 }
 
@@ -7651,7 +7753,7 @@ async function ubahPasswordView(){
   `<div class="panel" style="max-width:620px">
     <div class="message ok"><b>Catatan:</b> username, sesi, dan cara login tidak berubah. Setelah password berhasil diubah, gunakan password baru pada login berikutnya.</div>
     <div class="field" style="margin-top:14px"><label>Password Lama</label><div class="password-wrapper"><input id="oldPasswordV10" type="password" autocomplete="current-password" placeholder="Masukkan password lama"><button type="button" class="toggle-password-btn" onclick="togglePassword('oldPasswordV10',this)">👁</button></div></div>
-    <div class="field" style="margin-top:12px"><label>Password Baru</label><div class="password-wrapper"><input id="newPasswordV10" type="password" autocomplete="new-password" placeholder="Minimal 6 karakter"><button type="button" class="toggle-password-btn" onclick="togglePassword('newPasswordV10',this)">👁</button></div></div>
+    <div class="field" style="margin-top:12px"><label>Password Baru</label><div class="password-wrapper"><input id="newPasswordV10" type="password" autocomplete="new-password" placeholder="Minimal 12 karakter" minlength="12"><button type="button" class="toggle-password-btn" onclick="togglePassword('newPasswordV10',this)">👁</button></div></div>
     <div class="field" style="margin-top:12px"><label>Konfirmasi Password Baru</label><div class="password-wrapper"><input id="confirmPasswordV10" type="password" autocomplete="new-password" placeholder="Ulangi password baru"><button type="button" class="toggle-password-btn" onclick="togglePassword('confirmPasswordV10',this)">👁</button></div></div>
     <div class="toolbar" style="margin-top:16px"><button class="btn btn-primary" onclick="submitPasswordChangeV10()">🔐 Simpan Password Baru</button></div>
   </div>`;
@@ -7660,10 +7762,13 @@ window.submitPasswordChangeV10=async function(){
   const oldPw=$('#oldPasswordV10')?.value||'', newPw=$('#newPasswordV10')?.value||'', conf=$('#confirmPasswordV10')?.value||'';
   if(!oldPw||!newPw||!conf){toast('Semua password wajib diisi.','warning');return;}
   if(newPw!==conf){toast('Konfirmasi password baru tidak sama.','warning');return;}
-  if(newPw.length<6){toast('Password baru minimal 6 karakter.','warning');return;}
+  if(newPw.length<12){toast('Password baru minimal 12 karakter.','warning');return;}
   if(!confirm('Ubah password akun ini sekarang?'))return;
-  try{ await api('ubahPasswordSendiri',{passwordLama:oldPw,passwordBaru:newPw,konfirmasiPassword:conf}); toast('Password berhasil diubah. Gunakan password baru pada login berikutnya.','ok',5000); $('#oldPasswordV10').value=''; $('#newPasswordV10').value=''; $('#confirmPasswordV10').value=''; }
-  catch(e){toast(errorText(e),'error',5000);}
+  try{
+    await api('ubahPasswordSendiri',{passwordLama:oldPw,passwordBaru:newPw,konfirmasiPassword:conf});
+    $('#oldPasswordV10').value=''; $('#newPasswordV10').value=''; $('#confirmPasswordV10').value='';
+    expireFrontendSession_('Password berhasil diubah. Silakan login kembali menggunakan password baru.');
+  }catch(e){toast(errorText(e),'error',5000);}
 };
 
 window.__pageAwareOcrCache = window.__pageAwareOcrCache || {};
@@ -7733,12 +7838,14 @@ function _showPageAwareOcrModal_(name,totalPages){
 }
 
 window.ocrCurrentInteractivePdf=async function(){
+  const __ocrSessionTokenAtStart=String(state.token||''), __sensitiveDataEpochAtStart=__sensitiveDataEpoch;
   const c=window.__pdfInteractiveContext||{}; const select=$('#interactiveDocSelect');
   const doc=(c.docs||[]).find(d=>String(d.file_id||d.id_dokumen)===String(select?.value||''))||c.docs?.[0];
   if(!doc?.file_id){toast('Dokumen tidak memiliki file_id.','warning');return;}
 
   // Hasil untuk file yang sama tidak diproses ulang selama sesi browser.
-  const cached=window.__pageAwareOcrCache?.[String(doc.file_id)];
+  const ocrCacheKey=sensitiveDocumentCacheKey_(doc.file_id,c.p,c.n);
+  const cached=window.__pageAwareOcrCache?.[ocrCacheKey];
   if(cached?.pages?.length){
     const reuse=confirm(`Analisis dokumen ini sudah tersedia (${cached.pages.length} halaman). Gunakan hasil yang sudah ada?`);
     if(reuse){
@@ -7826,7 +7933,8 @@ window.ocrCurrentInteractivePdf=async function(){
     }
 
     const matches=_matchTransactionsToOcrPages_(c.tx||[],pages);
-    window.__pageAwareOcrCache[String(doc.file_id)]={pages,matches,createdAt:Date.now(),scannedPages:scannedPages.length,ocrUsed:processedScan};
+    assertSensitiveSessionCurrent_(__sensitiveDataEpochAtStart, __ocrSessionTokenAtStart);
+    window.__pageAwareOcrCache[ocrCacheKey]={pages,matches,createdAt:Date.now(),scannedPages:scannedPages.length,ocrUsed:processedScan};
     const byId={};matches.forEach(m=>{if(m.id_transaksi)byId[m.id_transaksi]=m;});
     (c.tx||[]).forEach(t=>{const m=byId[String(t.id_transaksi||'')];if(m){t.ocr_page=m.page;t.ocr_confidence=m.confidence;t.ocr_confidence_level=m.confidence_level;t.ocr_reasons=m.reasons;}});
 
@@ -8554,14 +8662,20 @@ function drawDinasLetterheadPdfRc2(page,logo,regular,bold,rgb,title){
 }
 window.buildDinasSchoolReportWithAttachmentsRc2=async function(){
   if(!isDinas()){toast('Lampiran gabungan hanya tersedia untuk DINAS.','warning');return;}
+  const sessionTokenAtStart=String(state.token||''),epochAtStart=__sensitiveDataEpoch;
+  if(!sessionTokenAtStart){toast('Sesi login tidak tersedia. Silakan login kembali.','warning');return;}
+  const assertExportSession=()=>assertSensitiveSessionCurrent_(epochAtStart,sessionTokenAtStart);
   const cur=window._assessmentReportCurrent||{};if(cur.scope!=='SEKOLAH'||!cur.detail){toast('Pilih laporan per sekolah terlebih dahulu.','warning');return;}
   const d=cur.detail,r=d.readiness||{},phase=cur.phase||'FASE1';
   const official=phase==='FASE1'?d.phase1_available:phase==='FASE2'?d.phase2_available:(d.phase1_available&&d.phase2_available);
   if(!official){toast('Laporan fase yang dipilih belum resmi tersedia.','warning');return;}
   const area=$('#rc2ArchiveArea'),progress=document.createElement('div');progress.className='message info';progress.id='pdfAttachmentProgressRc2';progress.innerHTML='<b>Menyiapkan PDF laporan + lampiran...</b>';area?.prepend(progress);
   try{
-    const {PDFDocument,StandardFonts,rgb}=await ensurePdfLibRc2(),pdf=await PDFDocument.create(),regular=await pdf.embedFont(StandardFonts.Helvetica),bold=await pdf.embedFont(StandardFonts.HelveticaBold),A4=[595.28,841.89];
+    const {PDFDocument,StandardFonts,rgb}=await ensurePdfLibRc2();
+    assertExportSession();
+    const pdf=await PDFDocument.create(),regular=await pdf.embedFont(StandardFonts.Helvetica),bold=await pdf.embedFont(StandardFonts.HelveticaBold),A4=[595.28,841.89];
     const logo=await loadReportLogoForPdfRc2(pdf);
+    assertExportSession();
     const school=d.sekolah||{},f1=d.phase1||{},f2=d.phase2||{},instr1=f1.instruments||[],instr2=f2.components||[];
     let page=pdf.addPage(A4);
     const reportTitle='LAPORAN PENILAIAN '+reportPhaseLabelRc2(phase)+' - '+(school.nama_sekolah||school.npsn||'SEKOLAH');
@@ -8608,6 +8722,7 @@ window.buildDinasSchoolReportWithAttachmentsRc2=async function(){
     }
 
     for(let i=0;i<10;i++){
+      assertExportSession();
       const a=attachments[i]||{no:i+1,nama:'Dokumen '+(i+1),file_id:''};
       progress.innerHTML=`<b>Memuat lampiran ${i+1}/10:</b> ${esc(a.nama||'Dokumen')}`;
       const divider=pdf.addPage(A4);
@@ -8616,9 +8731,14 @@ window.buildDinasSchoolReportWithAttachmentsRc2=async function(){
       addPdfTextBlockRc2(divider,a.nama_file||'Dokumen PDF tidak tersedia',45,dividerY,regular,9,500,12);
       if(!a.file_id){divider.drawText('STATUS: PDF BELUM TERSEDIA',{x:45,y:dividerY-44,size:10,font:bold});continue;}
       try{
-        const src=await api('getDokumenPdfBase64',{fileId:a.file_id,idPeriode:cur.idPeriode,npsn:cur.npsn}),bin=atob(src.base64||''),bytes=new Uint8Array(bin.length);
+        const src=await api('getDokumenPdfBase64',{fileId:a.file_id,idPeriode:cur.idPeriode,npsn:cur.npsn});
+        assertExportSession();
+        const bin=atob(src.base64||''),bytes=new Uint8Array(bin.length);
         for(let j=0;j<bin.length;j++)bytes[j]=bin.charCodeAt(j);
-        const doc=await PDFDocument.load(bytes,{ignoreEncryption:true}),copied=await pdf.copyPages(doc,doc.getPageIndices());
+        const doc=await PDFDocument.load(bytes,{ignoreEncryption:true});
+        assertExportSession();
+        const copied=await pdf.copyPages(doc,doc.getPageIndices());
+        assertExportSession();
         copied.forEach(p=>pdf.addPage(p));
       }catch(err){
         divider.drawText('STATUS: PDF GAGAL DIMUAT',{x:45,y:dividerY-44,size:10,font:bold});
@@ -8626,12 +8746,18 @@ window.buildDinasSchoolReportWithAttachmentsRc2=async function(){
       }
     }
 
+    assertExportSession();
     progress.innerHTML='<b>Menyimpan PDF gabungan...</b>';
-    const bytes=await pdf.save(),blob=new Blob([bytes],{type:'application/pdf'}),url=URL.createObjectURL(blob),a=document.createElement('a');
+    const bytes=await pdf.save();
+    assertExportSession();
+    const blob=new Blob([bytes],{type:'application/pdf'}),url=URL.createObjectURL(blob),a=document.createElement('a');
     a.href=url;a.download=`SIMPELSPJ_${phase}_${cur.npsn}_${cur.idPeriode}_plus_10_lampiran.pdf`;
     document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
     progress.className='message ok';progress.innerHTML='<b>PDF laporan + 10 lampiran selesai dibuat dengan kop resmi DINAS.</b>';
-  }catch(e){progress.className='message error';progress.innerHTML=`<b>Gagal membuat PDF:</b> ${esc(errorText(e))}`;}
+  }catch(e){
+    if(!state.token || state.token!==sessionTokenAtStart || __sensitiveDataEpoch!==epochAtStart) return;
+    progress.className='message error';progress.innerHTML=`<b>Gagal membuat PDF:</b> ${esc(errorText(e))}`;
+  }
 };
 window.publishAssessmentReportRc2=async function(targetRole){
   const cur=window._assessmentReportCurrent||{},npsn=cur.npsn||state.selectedNpsn||'',idPeriode=cur.idPeriode||state.selectedPeriode||'';
@@ -9042,9 +9168,10 @@ window.openPhase1ComponentRc2=async function(no){
 };
 async function getPhase1PdfDocumentRc2_(component){
   if(!component?.document?.file_id)throw new Error('PDF tidak tersedia.');
-  const st=window.__phase1ReviewState||{};if(st.pdf)return st.pdf;
-  const lib=await ensurePdfJs(),wb=st.workbench||{},r=await api('getDokumenPdfBase64',{fileId:component.document.file_id,idPeriode:wb.id_periode,npsn:wb.npsn});
-  st.pdf=await lib.getDocument({data:base64ToUint8Array_(r.base64)}).promise;return st.pdf;
+  const st=window.__phase1ReviewState||{},wb=st.workbench||{};
+  if(st.pdf)return st.pdf;
+  st.pdf=await getProtectedPdfDocument_(component.document,{period:wb.id_periode,npsn:wb.npsn});
+  return st.pdf;
 }
 window.renderPhase1PdfPageRc2=async function(pageNo){
   const st=window.__phase1ReviewState||{},c=f1CurrentComponentRc2_(),frame=$('#f1PdfFrame');if(!c||!frame||!c.document?.file_id)return;
@@ -9056,7 +9183,8 @@ window.phase1PdfZoomRc2=async d=>{const st=window.__phase1ReviewState||{};st.zoo
 
 window.runPhase1ComponentAnalysisRc2=async function(){
   const st=window.__phase1ReviewState||{},c=f1CurrentComponentRc2_();if(!c?.document?.file_id)return;
-  const key=String(c.document.file_id),cached=window.__phase1OcrCache[key];
+  const sessionTokenAtStart=String(state.token||''),epochAtStart=__sensitiveDataEpoch;
+  const wbAtStart=st.workbench||{},key=sensitiveDocumentCacheKey_(c.document.file_id,wbAtStart.id_periode,wbAtStart.npsn),cached=window.__phase1OcrCache[key];
   if(cached?.pages?.length){st.pages=cached.pages;st.matches=_matchTransactionsToOcrPages_(f1CurrentTransactionsRc2_(),st.pages);renderPhase1ReviewListRc2_();toast('Hasil analisis sesi ini digunakan kembali.','ok');return;}
   const host=$('#f1ReviewContent');if(host)host.innerHTML=loading('Membaca halaman PDF dan menyandingkan dengan BKU...');
   try{
@@ -9068,6 +9196,7 @@ window.runPhase1ComponentAnalysisRc2=async function(){
     }
     let cap={available:false};if(scanned.length)cap=await safeApi('getOcrCapability',{}, {available:false});
     let done=0;if(cap.available){for(const no of scanned){const pg=await pdf.getPage(no),base=pg.getViewport({scale:1}),target=Math.min(1450,Math.max(1050,base.width*1.5)),vp=pg.getViewport({scale:target/base.width}),canvas=document.createElement('canvas');canvas.width=Math.ceil(vp.width);canvas.height=Math.ceil(vp.height);const ctx=canvas.getContext('2d',{alpha:false});ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);await pg.render({canvasContext:ctx,viewport:vp}).promise;const imageBase64=await _canvasToBase64Jpeg_(canvas,.78),wb=st.workbench||{},r=await api('ocrPdfPageImage',{data:{fileId:c.document.file_id,idPeriode:wb.id_periode,npsn:wb.npsn,pageNo:no,imageBase64,mimeType:'image/jpeg'}});pages.push({page:no,text:String(r.text||''),characters:Number(r.characters||0),source:'OCR'});done++;canvas.width=1;canvas.height=1;if(host)host.innerHTML=loading(`OCR halaman scan ${done}/${scanned.length}`);await new Promise(r=>setTimeout(r,0));}}
+    assertSensitiveSessionCurrent_(epochAtStart,sessionTokenAtStart);
     pages.sort((a,b)=>a.page-b.page);st.pages=pages;st.matches=_matchTransactionsToOcrPages_(f1CurrentTransactionsRc2_(),pages);window.__phase1OcrCache[key]={pages:pages,createdAt:Date.now()};renderPhase1ReviewListRc2_();
     if(scanned.length&&!cap.available)toast(`${scanned.length} halaman scan belum dapat OCR karena Drive API tidak aktif. Text-layer tetap dianalisis.`,'warning',8000);else toast('Analisis Fase 1 selesai. Pengawas cukup fokus pada kandidat sedang/rendah.','ok',5000);
   }catch(e){if(host)host.innerHTML=msg(errorText(e),'error');}
@@ -9673,9 +9802,10 @@ window.openPhase2ComponentRc2=async function(no){
 };
 async function getPhase2PdfDocumentRc2_(component){
   if(!component?.document?.file_id)throw new Error('PDF tidak tersedia.');
-  const st=window.__phase2ReviewState||{};if(st.pdf)return st.pdf;
-  const lib=await ensurePdfJs(),wb=st.workbench||{},r=await api('getDokumenPdfBase64',{fileId:component.document.file_id,idPeriode:wb.id_periode,npsn:wb.npsn});
-  st.pdf=await lib.getDocument({data:base64ToUint8Array_(r.base64)}).promise;return st.pdf;
+  const st=window.__phase2ReviewState||{},wb=st.workbench||{};
+  if(st.pdf)return st.pdf;
+  st.pdf=await getProtectedPdfDocument_(component.document,{period:wb.id_periode,npsn:wb.npsn});
+  return st.pdf;
 }
 window.renderPhase2PdfPageRc2=async function(pageNo){
   const st=window.__phase2ReviewState||{},c=f2CurrentComponentRc2_(),frame=$('#f2PdfFrame');if(!c||!frame||!c.document?.file_id)return;
@@ -9686,7 +9816,8 @@ window.phase2PdfNextRc2=async()=>{const st=window.__phase2ReviewState||{},pdf=st
 window.phase2PdfZoomRc2=async d=>{const st=window.__phase2ReviewState||{};st.zoom=Math.max(.7,Math.min(2,(Number(st.zoom)||1)+Number(d||0)));await renderPhase2PdfPageRc2(st.page||1);};
 window.runPhase2ComponentAnalysisRc2=async function(){
   const st=window.__phase2ReviewState||{},c=f2CurrentComponentRc2_();if(!c?.document?.file_id)return;
-  const key=String(c.document.file_id),cached=window.__phase2OcrCache[key];
+  const sessionTokenAtStart=String(state.token||''),epochAtStart=__sensitiveDataEpoch;
+  const wbAtStart=st.workbench||{},key=sensitiveDocumentCacheKey_(c.document.file_id,wbAtStart.id_periode,wbAtStart.npsn),cached=window.__phase2OcrCache[key];
   if(cached?.pages?.length){st.pages=cached.pages;st.matches=_matchTransactionsToOcrPages_(f2CurrentTransactionsRc2_(),st.pages);renderPhase2ReviewListRc2_();toast('Hasil analisis sesi ini digunakan kembali.','ok');return;}
   const host=$('#f2ReviewContent');if(host)host.innerHTML=loading('Membaca halaman PDF dan mencari pasangan BKU...');
   try{
@@ -9698,6 +9829,7 @@ window.runPhase2ComponentAnalysisRc2=async function(){
     }
     let cap={available:false};if(scanned.length)cap=await safeApi('getOcrCapability',{}, {available:false});
     let done=0;if(cap.available){for(const no of scanned){const pg=await pdf.getPage(no),base=pg.getViewport({scale:1}),target=Math.min(1450,Math.max(1050,base.width*1.5)),vp=pg.getViewport({scale:target/base.width}),canvas=document.createElement('canvas');canvas.width=Math.ceil(vp.width);canvas.height=Math.ceil(vp.height);const ctx=canvas.getContext('2d',{alpha:false});ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);await pg.render({canvasContext:ctx,viewport:vp}).promise;const imageBase64=await _canvasToBase64Jpeg_(canvas,.78),wb=st.workbench||{},r=await api('ocrPdfPageImage',{data:{fileId:c.document.file_id,idPeriode:wb.id_periode,npsn:wb.npsn,pageNo:no,imageBase64,mimeType:'image/jpeg'}});pages.push({page:no,text:String(r.text||''),characters:Number(r.characters||0),source:'OCR'});done++;canvas.width=1;canvas.height=1;if(host)host.innerHTML=loading(`OCR halaman scan ${done}/${scanned.length}`);await new Promise(r=>setTimeout(r,0));}}
+    assertSensitiveSessionCurrent_(epochAtStart,sessionTokenAtStart);
     pages.sort((a,b)=>a.page-b.page);st.pages=pages;st.matches=_matchTransactionsToOcrPages_(f2CurrentTransactionsRc2_(),pages);window.__phase2OcrCache[key]={pages:pages,createdAt:Date.now()};renderPhase2ReviewListRc2_();
     if(scanned.length&&!cap.available)toast(`${scanned.length} halaman scan belum dapat OCR karena Drive API tidak aktif. Text-layer tetap dianalisis.`,'warning',8000);else toast('Analisis PDF selesai. Fokuskan review pada kandidat sedang/rendah.','ok',5000);
   }catch(e){if(host)host.innerHTML=msg(errorText(e),'error');}
@@ -13761,13 +13893,13 @@ window.openManagedUserPasswordReset=function(userId){
   const row=all.find(x=>String(x.user_id||'')===String(userId))||{};
   const label=row.nama_sekolah||row.nama_pengawas||row.nama_pengguna||row.username||'pengguna';
   const wrap=document.createElement('div');wrap.id='managedUserPasswordModal';wrap.className='workflow-modal-backdrop';
-  wrap.innerHTML=`<div class="workflow-modal-card account-reset-modal"><div class="account-reset-head"><div><small>ADMINISTRASI AKUN</small><h3>Reset Password</h3><p>${esc(label)}${row.username?` · ${esc(row.username)}`:''}</p></div><button type="button" class="account-reset-close" onclick="$('#managedUserPasswordModal').remove()" aria-label="Tutup">×</button></div><div class="field"><label>Password Baru</label><input id="managedNewPassword" type="password" autocomplete="new-password" placeholder="Minimal 6 karakter"></div><div class="field"><label>Konfirmasi Password Baru</label><input id="managedConfirmPassword" type="password" autocomplete="new-password" placeholder="Ulangi password baru"></div><div class="message warning account-reset-note">Reset tidak membuat akun baru. NPSN/NIP dan seluruh histori akun tetap sama.</div><div id="managedPasswordMsg"></div><div class="workflow-modal-actions"><button class="btn btn-light" onclick="$('#managedUserPasswordModal').remove()">Batal</button><button class="btn btn-primary" onclick="submitManagedUserPasswordReset('${esc(userId)}')">Simpan Password Baru</button></div></div>`;
+  wrap.innerHTML=`<div class="workflow-modal-card account-reset-modal"><div class="account-reset-head"><div><small>ADMINISTRASI AKUN</small><h3>Reset Password</h3><p>${esc(label)}${row.username?` · ${esc(row.username)}`:''}</p></div><button type="button" class="account-reset-close" onclick="$('#managedUserPasswordModal').remove()" aria-label="Tutup">×</button></div><div class="field"><label>Password Baru</label><input id="managedNewPassword" type="password" autocomplete="new-password" placeholder="Minimal 12 karakter" minlength="12"></div><div class="field"><label>Konfirmasi Password Baru</label><input id="managedConfirmPassword" type="password" autocomplete="new-password" placeholder="Ulangi password baru"></div><div class="message warning account-reset-note">Reset tidak membuat akun baru. NPSN/NIP dan seluruh histori akun tetap sama.</div><div id="managedPasswordMsg"></div><div class="workflow-modal-actions"><button class="btn btn-light" onclick="$('#managedUserPasswordModal').remove()">Batal</button><button class="btn btn-primary" onclick="submitManagedUserPasswordReset('${esc(userId)}')">Simpan Password Baru</button></div></div>`;
   document.body.appendChild(wrap);
   setTimeout(()=>$('#managedNewPassword')?.focus(),0);
 };
 window.submitManagedUserPasswordReset=async function(userId){
   const password=$('#managedNewPassword')?.value||'',confirmPw=$('#managedConfirmPassword')?.value||'',box=$('#managedPasswordMsg');
-  if(password.length<6){if(box)box.innerHTML=msg('Password baru minimal 6 karakter.');return;}
+  if(password.length<12){if(box)box.innerHTML=msg('Password baru minimal 12 karakter.');return;}
   if(password!==confirmPw){if(box)box.innerHTML=msg('Konfirmasi password baru tidak sama.');return;}
   try{
     await api('resetManagedUserPassword',{data:{user_id:userId,password_baru:password}});
