@@ -3936,7 +3936,7 @@ async function renderDokumenTable(){
                           status === 'PERLU_PERBAIKAN' ? 'danger' : 'info';
       const allowNA = _v222AllowNa_(m,bookSummaries);
       const viewerId = `instrumentPdfViewer_${String(m.id_spj||i).replace(/[^a-zA-Z0-9_-]/g,'_')}_${i}`;
-      const pdfReady = !!(d?.file_url && String(d.status||'').toUpperCase() !== 'N/A');
+      const pdfReady = !!(d?.file_id && String(d.status||'').toUpperCase() !== 'N/A');
       return `<div class="doc-row instrument-doc-row" data-instrument-index="${i}">
         <div class="doc-meta">
           <div class="iconbox">${String(i+1).padStart(2,'0')}</div>
@@ -3951,7 +3951,6 @@ async function renderDokumenTable(){
           ${badge(status,statusClass)}
           ${pdfReady ? `<button class="btn btn-light instrument-view-pdf-btn" type="button"
               data-file-id="${esc(d.file_id||'')}"
-              data-pdf-url="${esc(d.file_url||'')}"
               data-pdf-name="${esc(d.nama_file || m.nama_spj || 'Dokumen SPJ')}"
               data-target="${esc(viewerId)}"
               onclick="showInstrumentPdf(this)">👁️ Lihat</button>` : ''}
@@ -4208,17 +4207,16 @@ window.openImportPaketSPJ = function(){
   
 /* RC3 Upload Governance client guard */
 const SIMPEL_UPLOAD_RC3 = {
-  EXCEL_MAX:20*1024*1024,
   PDF_MAX:50*1024*1024
 };
 function _validateUploadFileRc3_(f){
+  if(!f) throw new Error('Pilih file PDF terlebih dahulu.');
   const n=String(f.name||'').toLowerCase();
-  const isExcel=/\.(xls|xlsx)$/.test(n);
-  const isPdf=/\.pdf$/.test(n);
-  if(isExcel && f.size>SIMPEL_UPLOAD_RC3.EXCEL_MAX)
-    throw new Error('BKU Excel maksimal 20 MB.');
-  if(isPdf && f.size>SIMPEL_UPLOAD_RC3.PDF_MAX)
-    throw new Error('PDF maksimal 50 MB.');
+  if(!/\.pdf$/.test(n)) throw new Error('Dokumen SPJ hanya menerima file PDF.');
+  if(!f.size || f.size<12) throw new Error('File PDF kosong atau terlalu kecil.');
+  if(f.size>SIMPEL_UPLOAD_RC3.PDF_MAX) throw new Error('PDF maksimal 50 MB per file.');
+  if(f.type && ['application/pdf','application/octet-stream'].indexOf(f.type.toLowerCase())<0)
+    throw new Error('Tipe file browser tidak sesuai. Pilih file PDF yang benar.');
 }
 
 $('#paketUploadBtn').onclick=async()=>{
@@ -4276,11 +4274,13 @@ window.openUpload = function(idSpj, namaSpj) {
   if (!periode) { toast('Pilih periode SPJ terlebih dahulu.','warning'); return; }
   const wrap = document.createElement('div');
   wrap.id = 'modalUploadOverlay';
-  wrap.innerHTML = `<div style="position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:999;padding:16px"><div style="background:#fff;padding:28px;border-radius:24px;width:min(100%,480px);box-shadow:0 20px 40px rgba(0,0,0,.2)"><h3 style="margin-top:0;color:var(--primary)">Unggah Berkas PDF</h3><p class="muted" style="margin-bottom:14px">${esc(namaSpj)}</p><form id="uploadLocalForm"><div class="field"><label>Pilih File PDF</label><input id="localFile" type="file" accept=".pdf" required style="padding:10px"></div><div id="uploadMsg" style="margin:10px 0"></div><div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px"><button type="button" class="btn btn-light" onclick="$('#modalUploadOverlay').remove()">Batal</button><button class="btn btn-primary" id="uploadBtn">Unggah Sekarang</button></div></form></div></div>`;
+  wrap.innerHTML = `<div style="position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:999;padding:16px"><div style="background:#fff;padding:28px;border-radius:24px;width:min(100%,480px);box-shadow:0 20px 40px rgba(0,0,0,.2)"><h3 style="margin-top:0;color:var(--primary)">Unggah Berkas PDF</h3><p class="muted" style="margin-bottom:14px">${esc(namaSpj)}</p><form id="uploadLocalForm"><div class="field"><label>Pilih File PDF</label><input id="localFile" type="file" accept=".pdf,application/pdf" required style="padding:10px"></div><div id="uploadMsg" style="margin:10px 0"></div><div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px"><button type="button" class="btn btn-light" onclick="$('#modalUploadOverlay').remove()">Batal</button><button class="btn btn-primary" id="uploadBtn">Unggah Sekarang</button></div></form></div></div>`;
   document.body.appendChild(wrap);
   $('#uploadLocalForm').onsubmit = async e => {
     e.preventDefault();
     const file = $('#localFile').files[0]; if (!file) return;
+    try { _validateUploadFileRc3_(file); }
+    catch(validationError) { $('#uploadMsg').innerHTML = msg(errorText(validationError)); return; }
     const btn = $('#uploadBtn'); btn.disabled = true; btn.textContent = 'Memproses...';
     const reader = new FileReader();
     reader.onload = async () => {
