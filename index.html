@@ -2101,7 +2101,7 @@ aside.sidebar *,
 <script>
 'use strict';
 
-const V10_VERSION = 'V24.4.0-OCR-CORRECTION';
+const V10_VERSION = 'V24.5.0-BKU-RECONCILIATION';
 
 const API_URL = 'https://script.google.com/macros/s/AKfycbyWvJXKr1QZ1zwbeJDoULTUihycj1771SsDlGFy8jnuF4i3DsEbHXlcJU48VDAg17fqDA/exec';
 
@@ -2216,36 +2216,23 @@ const fmtRupiah = v => {
 };
 const fmtNum = v => Number.isFinite(Number(v)) ? new Intl.NumberFormat('id-ID').format(Number(v)) : '-';
 
-function groupBelanjaClient(list, amountField, contextFields=[]) {
-  const map = new Map();
-  (list || []).forEach(x => {
-    const ctx = contextFields.map(k => String(x[k] ?? '')).join('|');
-    const groupCode = String(x.kode_kelompok_belanja || x.kode_rekening || 'LAINNYA').trim();
-    // Jika backend sudah menemukan referensi exact, nama referensi menjadi label utama.
-    // Ini hanya memengaruhi label kelompok; pagu/subtotal tetap dihitung dari amountField.
-    const groupName = String(x.nama_referensi || x.nama_kelompok_belanja || 'Belanja Belum Terpetakan').trim();
-    const key = [ctx, groupCode, groupName].join('||');
-    if (!map.has(key)) map.set(key, {
-      context: contextFields.reduce((o,k)=>{o[k]=x[k]??'';return o;},{}),
-      kode_kelompok_belanja: groupCode,
-      nama_kelompok_belanja: groupName,
-      items: [], subtotal: 0
-    });
-    const g = map.get(key);
-    g.items.push(x);
-    g.subtotal += Number(x[amountField] || 0);
+function groupBelanjaClient(list,amountField,contextFields=[],subtotalPredicate=null){
+  const map=new Map();
+  (list||[]).forEach(x=>{
+    const ctx=contextFields.map(k=>String(x[k]??'')).join('|');
+    const code=String(x.kode_kelompok_belanja||x.kode_rekening||'LAINNYA').trim();
+    const name=String(x.nama_referensi||x.nama_kelompok_belanja||'Belanja Belum Terpetakan').trim();
+    const key=[ctx,code,name].join('||');
+    if(!map.has(key))map.set(key,{context:contextFields.reduce((o,k)=>{o[k]=x[k]??'';return o;},{}),kode_kelompok_belanja:code,nama_kelompok_belanja:name,items:[],subtotal:0});
+    const g=map.get(key);g.items.push(x);
+    if(!subtotalPredicate||subtotalPredicate(x))g.subtotal+=Number(x[amountField]||0);
   });
-  const groups = Array.from(map.values()).sort((a,b)=>{
-    const ca = contextFields.map(k=>String(a.context[k]||'')).join('|');
-    const cb = contextFields.map(k=>String(b.context[k]||'')).join('|');
-    return ca.localeCompare(cb) || String(a.kode_kelompok_belanja).localeCompare(String(b.kode_kelompok_belanja), undefined, {numeric:true});
+  const groups=Array.from(map.values()).sort((a,b)=>{
+    const ca=contextFields.map(k=>String(a.context[k]||'')).join('|'),cb=contextFields.map(k=>String(b.context[k]||'')).join('|');
+    return ca.localeCompare(cb)||String(a.kode_kelompok_belanja).localeCompare(String(b.kode_kelompok_belanja),undefined,{numeric:true});
   });
-  groups.forEach(g => {
-    g.items.sort((a,b) =>
-      String(a.kode_rekening || '').localeCompare(String(b.kode_rekening || ''), undefined, {numeric:true}) ||
-      String(a.uraian || a.uraian_transaksi || '').localeCompare(String(b.uraian || b.uraian_transaksi || ''))
-    );
-  });
+  groups.forEach(g=>g.items.sort((a,b)=>String(a.kode_rekening||'').localeCompare(String(b.kode_rekening||''),undefined,{numeric:true})||
+    String(a.uraian_transaksi||a.uraian||'').localeCompare(String(b.uraian_transaksi||b.uraian||''))));
   return groups;
 }
 
@@ -2422,6 +2409,9 @@ function emptyRow(cols,text='Tidak ada data.'){ return `<tr><td colspan="${cols}
 
 async function api(action, payload={}){
   const _apiStartedAt = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+  // Ikat respons ke identitas sesi yang memulai request. Respons lama tidak
+  // boleh mengisi UI setelah logout atau pergantian akun.
+  const requestToken = String(state.token || '');
   const body = { action, ...payload };
   if(state.token) body.token = state.token;
 
@@ -2453,7 +2443,19 @@ async function api(action, payload={}){
     throw new Error('Server dapat dijangkau tetapi respons bukan JSON. Pastikan URL yang digunakan adalah URL Web App /exec terbaru.');
   }
 
-  if(!data.success) throw new Error(data.message || 'Permintaan gagal.');
+  if(requestToken && requestToken !== String(state.token || '')){
+    const staleError = new Error('Respons diabaikan karena sesi pengguna telah berubah. Silakan muat ulang tampilan.');
+    staleError.code = 'STALE_SESSION_RESPONSE';
+    throw staleError;
+  }
+
+  if(!data.success) {
+    const failureMessage = String(data.message || 'Permintaan gagal.');
+    if (/sesi login tidak valid|sesi berakhir|sesi maksimum|akun anda telah dinonaktifkan|akun tidak aktif/i.test(failureMessage) && state.token) {
+      expireFrontendSession_(failureMessage);
+    }
+    throw new Error(failureMessage);
+  }
   const _apiElapsedMs = Math.round(((typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now()) - _apiStartedAt);
   if (_apiElapsedMs >= 1200) console.warn('[SIMPEL SPJ PERF] API lambat:', action, _apiElapsedMs + ' ms');
   return data;
@@ -2654,6 +2656,7 @@ async function doLogin(e){
   }
   try{
     const r=await api('login',{username:$('#username').value.trim(),password:$('#password').value});
+    clearSensitiveFrontendCaches_('login-transition');
     state.token=r.token; state.user=r.user || {};
     if(isSchool() && !state.user.npsn && /^\\d{8}$/.test(String(state.user.username||''))){
       state.user.npsn = String(state.user.username);
@@ -2778,7 +2781,7 @@ window.showRegisterView = function(e) {
             <div class="field">
               <label>Kata Sandi</label>
               <div class="password-wrapper">
-                <input id="regPassword" type="password" required placeholder="Minimal 6 karakter">
+                <input id="regPassword" type="password" required placeholder="Minimal 12 karakter" minlength="12">
                 <button type="button" class="toggle-password-btn" onclick="togglePassword('regPassword', this)" title="Tampilkan / Sembunyikan Password">
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
                 </button>
@@ -3034,6 +3037,7 @@ function startSessionHeartbeat(){
       if(r?.data) state.user = Object.assign({},state.user||{},r.data);
     }catch(e){
       stopSessionHeartbeat();
+      clearSensitiveFrontendCaches_('session-expired');
       state.token=''; state.user=null;
       sessionStorage.removeItem('simpel_token');
       authView(msg(errorText(e),'warning'));
@@ -3054,15 +3058,21 @@ async function restoreSession(){
     }
     await startApp();
     startSessionHeartbeat();
-  }catch(e){state.token=''; state.user=null; sessionStorage.removeItem('simpel_token'); authView();}
+  }catch(e){clearSensitiveFrontendCaches_('restore-failed');state.token=''; state.user=null; sessionStorage.removeItem('simpel_token'); authView();}
 }
 
 async function logout(){
   stopSessionHeartbeat();
-  try{if(state.token) await api('logout');}catch(e){}
+  const tokenToRevoke = String(state.token || '');
+  // Putus sesi lokal terlebih dahulu agar request lama tidak dapat mengisi UI
+  // setelah pengguna menekan Logout. Token lama hanya dipakai untuk revoke.
   invalidateRkasFrontendCaches();
+  clearSensitiveFrontendCaches_('logout');
+  state.token=''; state.user=null;
+  try{sessionStorage.removeItem('simpel_token');}catch(_){}
   resetViewNavigationState();
-  state.token=''; state.user=null; sessionStorage.removeItem('simpel_token'); authView(msg('Anda telah keluar dari aplikasi.','ok'));
+  try{if(tokenToRevoke) await api('logout',{token:tokenToRevoke});}catch(e){}
+  authView(msg('Anda telah keluar dari aplikasi.','ok'));
 }
 
 async function startApp(){
@@ -3641,7 +3651,7 @@ async function ensurePaketPemeriksaan(force=false){
 function pemeriksaanContextHtml_(cfg){
   if(!cfg) return '';
   const f=String(cfg.frekuensi||'').toUpperCase();
-  const label=f==='BULANAN'?'Bulanan':f==='TRIWULANAN'?'Triwulanan':f==='SEMESTERAN'?'Semesteran':'Belum ditetapkan';
+  const label=f==='BULANAN'?'Bulanan':f==='TRIWULANAN'?'Triwulanan':f==='SEMESTERAN'?'Semesteran':f==='TAHUNAN'?'Tahunan':'Belum ditetapkan';
   const locked=role()!=='DINAS';
   return `<div class="panel" style="padding:12px 16px;margin-bottom:14px;border-left:4px solid var(--primary)">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
@@ -3684,7 +3694,7 @@ async function periodeSelect(id = 'periodeSelect', required = true, defaultMode 
     Number(p.tahun) === configuredYear &&
     (!configuredFrequency || String(p.frekuensi || '').toUpperCase() === configuredFrequency)
   );
-  const label = configuredFrequency === 'BULANAN' ? 'Bulanan' : configuredFrequency === 'TRIWULANAN' ? 'Triwulanan' : configuredFrequency === 'SEMESTERAN' ? 'Semesteran' : 'Belum dikonfigurasi';
+  const label = configuredFrequency === 'BULANAN' ? 'Bulanan' : configuredFrequency === 'TRIWULANAN' ? 'Triwulanan' : configuredFrequency === 'SEMESTERAN' ? 'Semesteran' : configuredFrequency === 'TAHUNAN' ? 'Tahunan' : 'Belum dikonfigurasi';
   const optionsHtml = periods.map(p => `<option value="${esc(p.id_periode)}">${esc(p.nama_periode || p.id_periode)}</option>`).join('');
   return `
     <div>
@@ -3954,7 +3964,7 @@ async function renderDokumenTable(){
               data-pdf-name="${esc(d.nama_file || m.nama_spj || 'Dokumen SPJ')}"
               data-target="${esc(viewerId)}"
               onclick="showInstrumentPdf(this)">👁️ Lihat</button>` : ''}
-          <button class="btn ${pdfReady ? 'btn-light' : 'btn-primary'}" type="button" onclick="openUpload('${esc(m.id_spj)}','${esc(m.nama_spj || m.nama_dokumen || m.kode || m.id_spj)}',${pdfReady ? 'true' : 'false'})">${pdfReady ? 'Ganti PDF' : 'Upload PDF'}</button>
+          <button class="btn ${d ? 'btn-light' : 'btn-primary'}" type="button" onclick="openUpload('${esc(m.id_spj)}','${esc(m.nama_spj || m.nama_dokumen || m.kode || m.id_spj)}',${d ? 'true' : 'false'})">${d ? 'Ganti PDF' : 'Upload PDF'}</button>
           ${allowNA ? `<button class="btn btn-light" type="button" onclick="openNaModal('${esc(m.id_spj)}','${esc(m.nama_spj || m.nama_dokumen || m.kode || m.id_spj)}')">N/A</button>` : ''}
         </div>
       </div>
@@ -4158,20 +4168,16 @@ window.closeInstrumentPdf=function(id){
 
 
 
-/* RC3 Upload Governance client guard — global scope.
-   Dipakai oleh upload satu dokumen dan impor paket SPJ. */
+/* SIMPEL SPJ upload validator — global scope for single and batch upload. */
 window.SIMPEL_UPLOAD_RC3 = Object.freeze({ PDF_MAX: 50 * 1024 * 1024 });
 window._validateUploadFileRc3_ = function(f){
   if(!f) throw new Error('Pilih file PDF terlebih dahulu.');
-  const n = String(f.name || '').toLowerCase();
+  const n=String(f.name||'').toLowerCase();
   if(!/\.pdf$/.test(n)) throw new Error('Dokumen SPJ hanya menerima file PDF.');
-  if(!Number.isFinite(Number(f.size)) || Number(f.size) < 12)
-    throw new Error('File PDF kosong atau terlalu kecil.');
-  if(Number(f.size) > window.SIMPEL_UPLOAD_RC3.PDF_MAX)
-    throw new Error('PDF maksimal 50 MB per file.');
-  const mime = String(f.type || '').toLowerCase();
-  if(mime && !['application/pdf','application/octet-stream'].includes(mime))
-    throw new Error('Tipe file browser tidak sesuai. Pilih file PDF yang benar.');
+  if(!Number.isFinite(Number(f.size))||Number(f.size)<12) throw new Error('File PDF kosong atau terlalu kecil.');
+  if(Number(f.size)>window.SIMPEL_UPLOAD_RC3.PDF_MAX) throw new Error('PDF maksimal 50 MB per file.');
+  const mime=String(f.type||'').toLowerCase();
+  if(mime&&!['application/pdf','application/octet-stream'].includes(mime)) throw new Error('Tipe file browser tidak sesuai. Pilih file PDF yang benar.');
   return true;
 };
 
@@ -4221,6 +4227,7 @@ window.openImportPaketSPJ = function(){
     $('#paketUploadBtn').disabled=false;
   };
 
+  
 
 $('#paketUploadBtn').onclick=async()=>{
     const files=Array.from($('#paketFiles').files||[]);
@@ -4329,6 +4336,7 @@ window.openUpload = function(idSpj, namaSpj, hasExistingDocument) {
     reader.readAsDataURL(file);
   };
 };
+
 
 async function statusSekolahView(){
   const c=$('#mainContent');
@@ -4547,6 +4555,29 @@ function invalidateRkasFrontendCaches(){
   window._selectedDinasRkasPackage = null;
 }
 
+function formatBkuDateClient(v){
+  const s=String(v??'').trim(),m=s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if(m){const months=['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];return `${m[3]} ${months[Number(m[2])-1]||m[2]} ${m[1]}`;}
+  const d=new Date(v);return Number.isNaN(d.getTime())?(s||'-'):new Intl.DateTimeFormat('id-ID',{day:'2-digit',month:'short',year:'numeric',timeZone:'Asia/Jakarta'}).format(d);
+}
+function bkuStatusLabelClient(v){
+  const raw=String(v||'').trim(),key=(raw.includes('|')?raw.split('|').pop():raw).toUpperCase();
+  const map={RKAS_COCOK:'Sesuai RKAS',RKAS_COCOK_HISTORIS:'Sesuai RKAS historis',RKAS_TIDAK_DITEMUKAN:'Belum cocok dengan RKAS',
+    KODE_KOSONG:'Kode rekening kosong',PAJAK_PUNGUT:'Pajak dipungut',PAJAK_SETOR:'Pajak disetor',TRANSFER_INTERNAL:'Transfer internal',
+    PENERIMAAN_NON_RKAS:'Penerimaan non-RKAS',PENGELUARAN_NON_RKAS:'Pengeluaran non-RKAS',
+    PERLU_VERIFIKASI_KLASIFIKASI:'Perlu verifikasi klasifikasi',
+    PAJAK_PASANGAN_TERIMA_SETOR_JENIS_TIDAK_TERIDENTIFIKASI:'Pasangan Terima–Setor · jenis pajak perlu verifikasi',
+    DETAIL_FALLBACK:'Detail impor · perlu verifikasi'};
+  return map[key]||key.replace(/_/g,' ').toLowerCase().replace(/^./,c=>c.toUpperCase())||'Perlu verifikasi';
+}
+function bkuStatusColorClient(v){
+  const s=String(v||'').toUpperCase();
+  if(s.includes('RKAS_COCOK'))return 'success';
+  if(s.includes('PAJAK')||s.includes('TRANSFER_INTERNAL')||s.includes('PENERIMAAN_NON_RKAS'))return 'info';
+  if(s.includes('PERLU_VERIFIKASI')||s.includes('TIDAK_DITEMUKAN')||s.includes('KODE_KOSONG'))return 'warning';
+  return 'secondary';
+}
+
 async function renderTransaksi(page = 1){
   const p = $('#periodeSelect').value, area = $('#trxArea'); 
   if (!p) return;
@@ -4591,18 +4622,18 @@ async function renderTransaksi(page = 1){
     const npsn = isSchool() ? undefined : state.selectedNpsn;
     const r = await api('getTransaksiSPJPaged', { idPeriode: p, npsn, page, limit: 50 });
     const rows = r.data || [];
-    const groups = groupBelanjaClient(rows, 'nilai_transaksi');
+    const groups = groupBelanjaClient(rows, 'nilai_transaksi', [], x => String(x.jenis_belanja||'').toUpperCase()==='BELANJA_RKAS');
     
     const groupedRows = groups.flatMap(g => [
-      kelompokHeaderHtml(g, 'Subtotal SPJ'),
+      kelompokHeaderHtml(g, 'Subtotal Realisasi Belanja RKAS'),
       ...g.items.map(x => `
         <tr>
-          <td>${esc(x.tanggal_transaksi)}</td>
-          <td><code>${esc(x.kode_rekening)}</code></td>
-          <td>${esc(x.uraian_transaksi)}</td>
-          <td>${esc(x.nomor_bukti)}</td>
+          <td>${esc(formatBkuDateClient(x.tanggal_transaksi))}</td>
+          <td><code>${esc(x.kode_rekening||'-')}</code></td>
+          <td>${esc(x.uraian_transaksi||'-')}</td>
+          <td>${esc(x.nomor_bukti||'-')}</td>
           <td><b>${fmtRupiah(x.nilai_transaksi)}</b></td>
-          <td>${badge(x.status_crosscheck || 'PERLU_VERIFIKASI', 'info')}</td>
+          <td>${badge(bkuStatusLabelClient(x.status_crosscheck||x.jenis_belanja||'PERLU_VERIFIKASI'),bkuStatusColorClient(x.status_crosscheck||x.jenis_belanja))}</td>
         </tr>`)
     ]).join('');
 
@@ -4637,9 +4668,11 @@ async function renderTransaksi(page = 1){
     
     area.innerHTML = `${trxNextAction}
       <div class="toolbar">${back}${edit}</div>
-      <div class="panel" style="margin:12px 0;background:rgba(23,75,67,.05);">
-        <b>Total Arus Transaksi BKU: ${fmtRupiah(r.totalNilai||0)}</b>
-        <span class="muted" style="margin-left:10px;">${fmtNum(r.total)} transaksi • 50 per halaman</span>
+      <div class="cards" style="margin:12px 0;grid-template-columns:repeat(auto-fit,minmax(190px,1fr))">
+        <div class="stat"><small>Total Penerimaan</small><strong>${fmtRupiah(r.ringkasan?.total_penerimaan||0)}</strong></div>
+        <div class="stat"><small>Total Pengeluaran</small><strong>${fmtRupiah(r.ringkasan?.total_pengeluaran||0)}</strong></div>
+        <div class="stat"><small>Total Arus Bruto</small><strong>${fmtRupiah(r.ringkasan?.total_arus_bruto||r.totalNilai||0)}</strong><div class="muted">${fmtNum(r.total)} transaksi • 50 per halaman</div></div>
+        <div class="stat"><small>Realisasi Belanja RKAS</small><strong>${fmtRupiah(r.ringkasan?.total_realisasi_belanja||0)}</strong><div class="muted">Tidak termasuk penerimaan, pajak, dan transfer</div></div>
       </div>
       <div class="table-wrap">
         <table class="friendly-table">
@@ -4744,16 +4777,16 @@ function _bkuPdfDate_(v){
   m=s.match(/\b(\d{4})[\/-](\d{2})[\/-](\d{2})\b/);if(m)return `${m[1]}-${m[2]}-${m[3]}`;
   return '';
 }
-function _bkuPdfRows_(items){
-  const rows=[]; const tol=2.5;
+function _bkuPdfMatrixMultiply_(a,b){return [a[0]*b[0]+a[2]*b[1],a[1]*b[0]+a[3]*b[1],a[0]*b[2]+a[2]*b[3],a[1]*b[2]+a[3]*b[3],a[0]*b[4]+a[2]*b[5]+a[4],a[1]*b[4]+a[3]*b[5]+a[5]];}
+function _bkuPdfRows_(items,viewport){
+  const rows=[],tol=2.5,view=viewport&&viewport.transform?viewport.transform:[1,0,0,1,0,0];
   (items||[]).filter(x=>_bkuPdfNorm_(x.str)).forEach(x=>{
-    const y=Number(x.transform?.[5]||0), xx=Number(x.transform?.[4]||0);
-    let row=rows.find(r=>Math.abs(r.y-y)<=tol);
-    if(!row){row={y,items:[]};rows.push(row);} row.items.push({x:xx,text:_bkuPdfNorm_(x.str)});
+    const m=_bkuPdfMatrixMultiply_(view,x.transform||[1,0,0,1,0,0]),y=Number(m[5]||0),xx=Number(m[4]||0);
+    let row=rows.find(r=>Math.abs(r.y-y)<=tol);if(!row){row={y,items:[]};rows.push(row);}row.items.push({x:xx,text:_bkuPdfNorm_(x.str)});
   });
-  rows.forEach(r=>r.items.sort((a,b)=>a.x-b.x));
-  return rows.sort((a,b)=>b.y-a.y);
+  rows.forEach(r=>r.items.sort((a,b)=>a.x-b.x));return rows.sort((a,b)=>b.y-a.y);
 }
+
 function _bkuPdfLayout_(rows){
   for(const row of rows){
     const all=_bkuPdfHeaderKey_(row.items.map(x=>x.text).join(' '));
@@ -4802,43 +4835,70 @@ window.parsePdfBkuDigital=async function(){
   const f=$('#pdfBkuFile')?.files?.[0],out=$('#pdfBkuPreview'),btn=$('#pdfBkuReadBtn');
   if(!f){out.innerHTML=msg('Pilih PDF BKU Digital terlebih dahulu.','warning');return;}
   if(!/\.pdf$/i.test(f.name)){out.innerHTML=msg('File BKU Digital harus berformat PDF.','warning');return;}
-  btn.disabled=true;btn.textContent='Membaca PDF...';out.innerHTML=loading('Mengekstrak text layer dan struktur tabel BKU...');
+  btn.disabled=true;btn.textContent='Membaca PDF...';out.innerHTML=loading('Mengekstrak text layer, menormalkan orientasi, dan memvalidasi saldo...');
   try{
-    const lib=await ensurePdfJs();
-    const pdf=await lib.getDocument({data:new Uint8Array(await f.arrayBuffer())}).promise;
-    let layout=null;const data=[];let allText='';let logicalRow=0;let pagesWithLayout=0;
+    const lib=await ensurePdfJs(),pdf=await lib.getDocument({data:new Uint8Array(await f.arrayBuffer())}).promise;
+    if(pdf.numPages>60)throw new Error('PDF BKU melebihi batas 60 halaman.');
+    let layout=null,allText='',logicalRow=0,pagesWithLayout=0;
+    const data=[];let openingBalance=0,prevSaldo=null,lastSaldo=null,totalPenerimaan=0,totalPengeluaran=0,invalidSaldo=0,dualSideCount=0;
     for(let p=1;p<=pdf.numPages;p++){
-      const page=await pdf.getPage(p),tc=await page.getTextContent();
-      const rows=_bkuPdfRows_(tc.items||[]);allText+=' '+rows.map(r=>r.items.map(x=>x.text).join(' ')).join(' ');
+      const page=await pdf.getPage(p),tc=await page.getTextContent(),viewport=page.getViewport({scale:1});
+      const rows=_bkuPdfRows_(tc.items||[],viewport);
+      allText+=' '+rows.map(r=>r.items.map(x=>x.text).join(' ')).join(' ');
       const pageLayout=_bkuPdfLayout_(rows);if(pageLayout){layout=pageLayout;pagesWithLayout++;}
       if(!layout)continue;
       for(const row of rows){
-        const c=_bkuPdfAssign_(row,layout),tanggal=_bkuPdfDate_(c.tanggal);
-        if(!tanggal)continue;
+        const c=_bkuPdfAssign_(row,layout),tanggal=_bkuPdfDate_(c.tanggal);if(!tanggal)continue;
         const penerimaan=_bkuNumberClient(c.penerimaan),pengeluaran=_bkuNumberClient(c.pengeluaran),saldo=_bkuNumberClient(c.saldo);
+        const uraian=String(c.uraian||'').trim();
+        if(/^Saldo (Bank|Tunai) Bulan/i.test(uraian)){openingBalance+=saldo;prevSaldo=openingBalance;lastSaldo=openingBalance;continue;}
         const nilai=Math.max(Math.abs(penerimaan),Math.abs(pengeluaran));if(!(nilai>0))continue;
-        logicalRow++;
-        data.push({source_row:`P${p}-R${logicalRow}`,tanggal_transaksi:tanggal,kode_kegiatan:c.kode_kegiatan||'',kode_rekening:c.kode_rekening||'',nomor_bukti:c.nomor_bukti||'',uraian_transaksi:c.uraian||'Transaksi BKU',penerimaan,pengeluaran,nilai_transaksi:nilai,saldo});
+        if(penerimaan>0&&pengeluaran>0)dualSideCount++;
+        if(prevSaldo!==null&&Math.abs(prevSaldo+penerimaan-pengeluaran-saldo)>1)invalidSaldo++;
+        prevSaldo=saldo;lastSaldo=saldo;totalPenerimaan+=penerimaan;totalPengeluaran+=pengeluaran;logicalRow++;
+        data.push({source_row:`P${p}-R${logicalRow}`,tanggal_transaksi:tanggal,kode_kegiatan:c.kode_kegiatan||'',kode_rekening:c.kode_rekening||'',
+          nomor_bukti:c.nomor_bukti||'',uraian_transaksi:uraian||'Transaksi BKU',penerimaan,pengeluaran,nilai_transaksi:nilai,saldo});
       }
     }
     const compact=allText.replace(/\s+/g,' ').trim();
-    if(compact.length<200)throw new Error('PDF tidak memiliki text layer yang memadai. File ini terindikasi scan dan tidak dapat digunakan sebagai BKU Data. Unggah sebagai BKU Dokumen Resmi.');
-    if(!pagesWithLayout||!data.length)throw new Error('Tabel transaksi BKU tidak dapat dikenali dengan aman dari PDF ini. Gunakan Excel BKU atau PDF digital ekspor BKU yang memuat kolom Tanggal, Uraian, Penerimaan, Pengeluaran, dan Saldo.');
+    if(compact.length<200)throw new Error('PDF tidak memiliki text layer yang memadai. File ini kemungkinan scan atau memakai font yang tidak menyediakan pemetaan teks.');
+    if(!pagesWithLayout||!data.length)throw new Error('PDF tampak digital, tetapi teks tabel tidak dapat diekstrak secara semantik (misalnya font Type 3/custom tanpa Unicode map). Jangan impor hasil yang tidak pasti. Gunakan Excel BKU ARKAS untuk BKU Data atau unggah PDF ini sebagai BKU Resmi.');
     const meta=_bkuPdfMeta_(compact);
-    if(!meta.npsn)throw new Error('NPSN tidak terbaca dari PDF BKU Digital. File belum dapat ditetapkan sebagai sumber transaksi.');
+    if(!meta.npsn)throw new Error('NPSN tidak terbaca dari PDF BKU Digital.');
     if(isSchool()&&String(meta.npsn)!==String(ownNpsn()))throw new Error(`NPSN pada PDF (${meta.npsn}) tidak sama dengan akun sekolah (${ownNpsn()}).`);
-    const totalPenerimaan=data.reduce((a,x)=>a+Number(x.penerimaan||0),0),totalPengeluaran=data.reduce((a,x)=>a+Number(x.pengeluaran||0),0),lastSaldo=Number(data[data.length-1]?.saldo||0);
+    const balanced=lastSaldo!==null&&Math.abs(openingBalance+totalPenerimaan-totalPengeluaran-lastSaldo)<=1;
     const months=[...new Set(data.map(x=>x.tanggal_transaksi.slice(0,7)))].sort();
+    const years=[...new Set(data.map(x=>Number(x.tanggal_transaksi.slice(0,4))))],year=Number(meta.tahun||years[0]||0);
+    const yearMismatch=data.filter(x=>Number(x.tanggal_transaksi.slice(0,4))!==year).length;
+    const mappingErrors=data.filter(x=>/^[-+]?\d+(?:[.,]\d+)?$/.test(x.uraian_transaksi)||x.nomor_bukti.length>24&&/\s/.test(x.nomor_bukti));
+    const canImport=balanced&&invalidSaldo===0&&dualSideCount===0&&yearMismatch===0&&mappingErrors.length===0;
     state.importedTransactions=data;
-    state.bkuImport={fileName:f.name,sourceType:'PDF_BKU_DIGITAL',meta,validation:{totalPenerimaan,totalPengeluaran,lastSaldo,months,pages:pdf.numPages,pagesWithLayout}};
-    out.innerHTML=msg(`PDF BKU Digital valid. ${fmtNum(data.length)} transaksi berhasil diekstrak dan siap dinormalisasi.`,'ok')+
-      `<div class="cards" style="margin:12px 0;grid-template-columns:repeat(auto-fit,minmax(170px,1fr))"><div class="stat"><small>NPSN</small><strong style="font-size:.95rem">${esc(meta.npsn)}</strong><div class="muted">${esc(meta.nama||'-')}</div></div><div class="stat"><small>TAHUN</small><strong>${esc(meta.tahun||'-')}</strong><div class="muted">${esc(months.join(', '))}</div></div><div class="stat"><small>TRANSAKSI</small><strong>${fmtNum(data.length)}</strong><div class="muted">${fmtNum(pdf.numPages)} halaman PDF</div></div><div class="stat"><small>SUMBER</small><strong style="font-size:.9rem">PDF DIGITAL</strong><div class="muted">text layer terdeteksi</div></div></div>`+
-      `<div class="panel"><b>Kontrol BKU PDF</b><div class="table-wrap" style="margin-top:8px"><table class="friendly-table"><tbody><tr><td>Total Penerimaan</td><td><b>${fmtRupiah(totalPenerimaan)}</b></td></tr><tr><td>Total Pengeluaran</td><td><b>${fmtRupiah(totalPengeluaran)}</b></td></tr><tr><td>Saldo Akhir Terbaca</td><td><b>${fmtRupiah(lastSaldo)}</b></td></tr></tbody></table></div></div>`+
-      `<div class="table-wrap"><table class="friendly-table"><thead><tr><th>Tanggal</th><th>Kode Rekening</th><th>No. Bukti</th><th>Uraian</th><th>Penerimaan</th><th>Pengeluaran</th><th>Saldo</th></tr></thead><tbody>${data.slice(0,25).map(x=>`<tr><td>${esc(x.tanggal_transaksi)}</td><td><code>${esc(x.kode_rekening||'-')}</code></td><td>${esc(x.nomor_bukti||'-')}</td><td>${esc(x.uraian_transaksi)}</td><td>${fmtRupiah(x.penerimaan)}</td><td>${fmtRupiah(x.pengeluaran)}</td><td>${fmtRupiah(x.saldo)}</td></tr>`).join('')}</tbody></table></div>`+
-      `<div class="message warning" style="margin-top:12px"><b>Konfirmasi snapshot.</b> Menetapkan PDF ini akan menggantikan snapshot BKU Data aktif pada periode yang tercakup, tanpa menghapus riwayat impor sebelumnya.</div><button class="btn btn-primary" style="margin-top:12px" onclick="saveImportedTransactions()">✓ Tetapkan sebagai BKU Data</button>`;
+    state.bkuImport={fileName:f.name,sourceType:'PDF_BKU_DIGITAL',meta,canImport,
+      validation:{totalPenerimaan,totalPengeluaran,lastSaldo,openingBalance,invalidSaldo,dualSideCount,balanced,yearMismatch,mappingErrors,months,pages:pdf.numPages,pagesWithLayout,sourceRows:data.length}};
+    const issues=[...(invalidSaldo?[`${invalidSaldo} baris saldo berjalan tidak konsisten`]:[]),
+      ...(dualSideCount?[`${dualSideCount} baris mengisi penerimaan dan pengeluaran sekaligus`]:[]),
+      ...(yearMismatch?[`${yearMismatch} transaksi di luar tahun ${year}`]:[]),
+      ...(mappingErrors.length?[`${mappingErrors.length} baris terindikasi salah pemetaan`]:[]),
+      ...(!balanced?['Saldo akhir tidak seimbang']:[])];
+    out.innerHTML=(canImport?msg(`PDF BKU Digital lolos pemeriksaan dasar. ${fmtNum(data.length)} transaksi berhasil diekstrak.`,'ok'):msg('PDF terbaca, tetapi belum lolos validasi. Snapshot tidak dapat ditetapkan.','error'))+
+      `<div class="cards" style="margin:12px 0;grid-template-columns:repeat(auto-fit,minmax(170px,1fr))">
+        <div class="stat"><small>NPSN</small><strong>${esc(meta.npsn)}</strong><div class="muted">${esc(meta.nama||'-')}</div></div>
+        <div class="stat"><small>TAHUN</small><strong>${esc(year||'-')}</strong><div class="muted">${esc(months.join(', '))}</div></div>
+        <div class="stat"><small>TRANSAKSI</small><strong>${fmtNum(data.length)}</strong><div class="muted">${fmtNum(pdf.numPages)} halaman PDF</div></div>
+        <div class="stat"><small>VALIDASI</small><strong>${canImport?'LULUS':'PERLU REVIEW'}</strong><div class="muted">${issues.length} temuan</div></div>
+      </div>
+      <div class="panel"><b>Kontrol BKU PDF</b><div class="table-wrap"><table class="friendly-table"><tbody>
+        <tr><td>Total Penerimaan</td><td><b>${fmtRupiah(totalPenerimaan)}</b></td></tr><tr><td>Total Pengeluaran</td><td><b>${fmtRupiah(totalPengeluaran)}</b></td></tr>
+        <tr><td>Saldo Awal</td><td><b>${fmtRupiah(openingBalance)}</b></td></tr><tr><td>Saldo Akhir</td><td><b>${fmtRupiah(lastSaldo||0)}</b></td></tr>
+        <tr><td>Saldo berjalan</td><td>${invalidSaldo?badge(`${invalidSaldo} baris perlu review`,'warning'):badge('KONSISTEN','success')}</td></tr>
+        <tr><td>Rekonsiliasi</td><td>${balanced?badge('KONSISTEN','success'):badge('TIDAK SEIMBANG','danger')}</td></tr></tbody></table></div></div>
+      ${issues.length?`<div class="message warning"><b>Temuan validasi</b><ul>${issues.slice(0,12).map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>`:''}
+      <div class="table-wrap"><table class="friendly-table"><thead><tr><th>Tanggal</th><th>Kode Rekening</th><th>No. Bukti</th><th>Uraian</th><th>Penerimaan</th><th>Pengeluaran</th><th>Saldo</th></tr></thead><tbody>${data.slice(0,25).map(x=>`<tr><td>${esc(formatBkuDateClient(x.tanggal_transaksi))}</td><td><code>${esc(x.kode_rekening||'-')}</code></td><td>${esc(x.nomor_bukti||'-')}</td><td>${esc(x.uraian_transaksi)}</td><td>${fmtRupiah(x.penerimaan)}</td><td>${fmtRupiah(x.pengeluaran)}</td><td>${fmtRupiah(x.saldo)}</td></tr>`).join('')}</tbody></table></div>
+      ${canImport?`<div class="message warning"><b>Konfirmasi snapshot.</b> Satu BKU tahunan akan dipetakan otomatis sesuai periodisasi DINAS. Riwayat impor lama tetap tersimpan.</div><button class="btn btn-primary" onclick="saveImportedTransactions()">✓ Tetapkan sebagai BKU Data</button>`:''}`;
   }catch(err){out.innerHTML=msg(errorText(err),'error');state.bkuImport=null;state.importedTransactions=[];}
   finally{btn.disabled=false;btn.textContent='Baca & Validasi PDF';}
 };
+
 
 window.openExcelImport=function(){
   const area=document.createElement('div');area.id='excelModal';
@@ -4861,14 +4921,17 @@ function _bkuNormLabelClient(v){
   return String(v??'').replace(/\s+/g,' ').trim().toUpperCase().replace(/[.:]/g,'');
 }
 function _bkuNumberClient(v){
-  if(typeof v==='number' && Number.isFinite(v)) return v;
+  if(typeof v==='number'&&Number.isFinite(v))return v;
   let s=String(v??'').trim();if(!s)return 0;
-  s=s.replace(/\s/g,'').replace(/Rp/ig,'');
-  if(s.includes('.') && s.includes(',')) s=s.replace(/\./g,'').replace(',','.');
-  else if(/^[-+]?\d{1,3}(\.\d{3})+$/.test(s)) s=s.replace(/\./g,'');
-  else s=s.replace(/[^0-9,.-]/g,'').replace(',','.');
+  s=s.replace(/Rp/ig,'').replace(/\s/g,'').replace(/[^0-9,.-]/g,'');
+  if(!s||s==='-'||s==='.')return 0;
+  const dot=s.lastIndexOf('.'),comma=s.lastIndexOf(',');
+  if(dot>=0&&comma>=0){if(comma>dot)s=s.replace(/\./g,'').replace(',','.');else s=s.replace(/,/g,'');}
+  else if(dot>=0){s=s.replace(/\./g,'');}
+  else if(comma>=0){const tail=s.slice(comma+1);s=tail.length===3?s.replace(/,/g,''):s.replace(',','.');}
   const n=Number(s);return Number.isFinite(n)?n:0;
 }
+
 function _bkuDateClient(v){
   if(v instanceof Date && !isNaN(v)) return `${v.getFullYear()}-${String(v.getMonth()+1).padStart(2,'0')}-${String(v.getDate()).padStart(2,'0')}`;
   if(typeof v==='number' && Number.isFinite(v)){
@@ -4881,21 +4944,29 @@ function _bkuDateClient(v){
   return '';
 }
 function _bkuFindHeaderClient(rows){
+  const numericOnly=v=>/^[-+]?\d+(?:[.,]\d+)?$/.test(String(v??'').trim());
+  const proofLike=v=>/^(BPU|BBU|BKU)[A-Z0-9._/-]*$/i.test(String(v??'').trim());
+  const descriptionLike=v=>{const s=String(v??'').trim();return s.length>3&&!numericOnly(s)&&!proofLike(s);};
   for(let r=0;r<Math.min(rows.length,40);r++){
     const cells=(rows[r]||[]).map(_bkuNormLabelClient);
-    const hasDate=cells.includes('TANGGAL'), hasRek=cells.includes('KODE REKENING'), hasUraian=cells.includes('URAIAN'), hasKeluar=cells.includes('PENGELUARAN');
-    if(hasDate&&hasRek&&hasUraian&&hasKeluar){
-      // Ekspor BKU ARKAS memakai merge cell pada header. Pada data,
-      // NO. BUKTI dan URAIAN berada satu kolom di kanan label header.
-      const date=cells.indexOf('TANGGAL'), kegiatan=cells.indexOf('KODE KEGIATAN'), rekening=cells.indexOf('KODE REKENING');
-      const buktiHead=cells.indexOf('NO BUKTI'), uraianHead=cells.indexOf('URAIAN');
-      const bukti=buktiHead+1 < (rows[r+1]||[]).length ? buktiHead+1 : buktiHead;
-      const uraian=uraianHead+1 < (rows[r+1]||[]).length ? uraianHead+1 : uraianHead;
-      return {row:r,date,kodeKegiatan:kegiatan,kodeRekening:rekening,bukti,uraian,penerimaan:cells.indexOf('PENERIMAAN'),pengeluaran:cells.indexOf('PENGELUARAN'),saldo:cells.indexOf('SALDO')};
-    }
+    if(!(cells.includes('TANGGAL')&&cells.includes('KODE REKENING')&&cells.includes('URAIAN')&&cells.includes('PENGELUARAN')))continue;
+    const date=cells.indexOf('TANGGAL'),kegiatan=cells.indexOf('KODE KEGIATAN'),rekening=cells.indexOf('KODE REKENING');
+    const bh=cells.indexOf('NO BUKTI'),uh=cells.indexOf('URAIAN'),sample=rows.slice(r+2,Math.min(rows.length,r+22));
+    const choose=(head,kind)=>{
+      return [head,head+1].filter(c=>c>=0).map(col=>{
+        let score=0;sample.forEach(row=>{const v=String((row||[])[col]??'').trim();if(!v)return;
+          if(kind==='bukti')score+=proofLike(v)?5:(v.length>24&&/\s/.test(v)?-8:-1);
+          else score+=descriptionLike(v)?4:(numericOnly(v)?-8:-1);
+        });return {col,score};
+      }).sort((a,b)=>b.score-a.score)[0];
+    };
+    const b=choose(bh,'bukti'),u=choose(uh,'uraian');
+    return {row:r,date,kodeKegiatan:kegiatan,kodeRekening:rekening,bukti:b?b.col:bh,uraian:u?u.col:uh,
+      penerimaan:cells.indexOf('PENERIMAAN'),pengeluaran:cells.indexOf('PENGELUARAN'),saldo:cells.indexOf('SALDO')};
   }
   return null;
 }
+
 function _bkuMetaClient(rows){
   let npsn='',nama='',tahun='';
   for(let r=0;r<Math.min(rows.length,18);r++){
@@ -4913,87 +4984,61 @@ function _bkuMetaClient(rows){
 window.parseExcelBku=async function(){
   const f=$('#excelFile')?.files?.[0],out=$('#excelPreview'),btn=$('#bkuReadBtn');
   if(!f){out.innerHTML=msg('Pilih file Excel BKU ARKAS terlebih dahulu.');return;}
-  btn.disabled=true;
-  try{await ensureXlsxLib();}catch(e){out.innerHTML=msg(e.message,'warning');btn.disabled=false;return;}
-  btn.textContent='Membaca Excel...';out.innerHTML=loading('Membaca nilai BKU tanpa style/format Excel...');
+  btn.disabled=true;btn.textContent='Membaca Excel...';out.innerHTML=loading('Membaca struktur BKU dan memvalidasi angka serta saldo...');
   try{
-    const buffer=await f.arrayBuffer();
-    // FAST PATH: untuk BKU kita hanya butuh nilai sel. Style, rich text, formula
-    // formatting, dan konversi Date tidak perlu diproses oleh SheetJS.
-    const wb=XLSX.read(buffer,{
-      type:'array',
-      cellDates:false,
-      cellStyles:false,
-      cellNF:false,
-      cellText:false,
-      cellFormula:false,
-      cellHTML:false
-    });
-    const ws=wb.Sheets[wb.SheetNames[0]];
-    const rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:true,defval:'',blankrows:false});
-    const h=_bkuFindHeaderClient(rows);
-    if(!h)throw new Error('Header BKU tidak ditemukan. Pastikan file berasal dari ekspor Buku Kas Umum ARKAS.');
-    const meta=_bkuMetaClient(rows);
-    if(!meta.npsn)throw new Error('NPSN tidak terbaca dari Excel BKU.');
-    if(isSchool() && String(meta.npsn)!==String(ownNpsn()))throw new Error(`NPSN pada Excel (${meta.npsn}) tidak sama dengan akun sekolah (${ownNpsn()}).`);
-
-    const data=[];let excluded=0,invalidSaldo=0;
-    let totalPenerimaan=0,totalPengeluaran=0,lastSaldo=null,prevSaldo=null;
+    await ensureXlsxLib();
+    const wb=XLSX.read(await f.arrayBuffer(),{type:'array',cellDates:false,cellStyles:false,cellNF:false,cellText:false,cellFormula:false,cellHTML:false});
+    const ws=wb.Sheets[wb.SheetNames[0]],rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:true,defval:'',blankrows:true});
+    const h=_bkuFindHeaderClient(rows);if(!h)throw new Error('Header BKU tidak ditemukan. Pastikan file berasal dari ekspor Buku Kas Umum ARKAS.');
+    const meta=_bkuMetaClient(rows);if(!meta.npsn)throw new Error('NPSN tidak terbaca dari Excel BKU.');
+    if(isSchool()&&String(meta.npsn)!==String(ownNpsn()))throw new Error(`NPSN pada Excel (${meta.npsn}) tidak sama dengan akun sekolah (${ownNpsn()}).`);
+    const data=[];let invalidSaldo=0,dualSideCount=0,openingBalance=0,prevSaldo=null,lastSaldo=null,totalPenerimaan=0,totalPengeluaran=0;
+    const mappingErrors=[];
     for(let i=h.row+1;i<rows.length;i++){
-      const row=rows[i]||[];
-      const tanggal=_bkuDateClient(row[h.date]);if(!tanggal){excluded++;continue;}
-      const uraian=String(row[h.uraian]??'').trim();
-      const penerimaan=_bkuNumberClient(row[h.penerimaan]);
-      const pengeluaran=_bkuNumberClient(row[h.pengeluaran]);
-      const saldo=_bkuNumberClient(row[h.saldo]);
-      const kode=String(row[h.kodeRekening]??'').trim();
-      const bukti=String(row[h.bukti]??'').trim();
-      const kodeKegiatan=String(row[h.kodeKegiatan]??'').trim();
-      if(/^Saldo (Bank|Tunai) Bulan/i.test(uraian)){prevSaldo=saldo;lastSaldo=saldo;excluded++;continue;}
-      const nilai=Math.max(Math.abs(penerimaan),Math.abs(pengeluaran));
-      if(!(nilai>0)){excluded++;continue;}
-      if(prevSaldo!==null){
-        const expected=prevSaldo+penerimaan-pengeluaran;
-        if(Math.abs(expected-saldo)>1)invalidSaldo++;
-      }
-      prevSaldo=saldo;lastSaldo=saldo;
-      totalPenerimaan+=penerimaan;totalPengeluaran+=pengeluaran;
-      data.push({
-        source_row:i+1,tanggal_transaksi:tanggal,kode_kegiatan:kodeKegiatan,kode_rekening:kode,
-        nomor_bukti:bukti,uraian_transaksi:uraian||'Transaksi BKU',
-        penerimaan,pengeluaran,nilai_transaksi:nilai,saldo
-      });
+      const row=rows[i]||[],tanggal=_bkuDateClient(row[h.date]);
+      if(!tanggal)continue;
+      const uraian=String(row[h.uraian]??'').trim(),penerimaan=_bkuNumberClient(row[h.penerimaan]),pengeluaran=_bkuNumberClient(row[h.pengeluaran]),saldo=_bkuNumberClient(row[h.saldo]);
+      const kode=String(row[h.kodeRekening]??'').trim(),bukti=String(row[h.bukti]??'').trim(),kodeKegiatan=h.kodeKegiatan>=0?String(row[h.kodeKegiatan]??'').trim():'';
+      if(/^Saldo (Bank|Tunai) Bulan/i.test(uraian)){openingBalance+=saldo;prevSaldo=openingBalance;lastSaldo=openingBalance;continue;}
+      const nilai=Math.max(Math.abs(penerimaan),Math.abs(pengeluaran));if(!(nilai>0))continue;
+      if(penerimaan>0&&pengeluaran>0)dualSideCount++;
+      if(/^[-+]?\d+(?:[.,]\d+)?$/.test(uraian))mappingErrors.push({row:i+1,reason:'Uraian hanya angka',uraian,bukti});
+      if(bukti.length>24&&/\s/.test(bukti)&&!/^(BPU|BBU|BKU)[A-Z0-9._/-]*$/i.test(bukti))mappingErrors.push({row:i+1,reason:'Nomor bukti tampak berisi uraian',uraian,bukti});
+      if(prevSaldo!==null&&Math.abs(prevSaldo+penerimaan-pengeluaran-saldo)>1)invalidSaldo++;
+      prevSaldo=saldo;lastSaldo=saldo;totalPenerimaan+=penerimaan;totalPengeluaran+=pengeluaran;
+      data.push({source_row:i+1,tanggal_transaksi:tanggal,kode_kegiatan:kodeKegiatan,kode_rekening:kode,nomor_bukti:bukti,uraian_transaksi:uraian||'Transaksi BKU',penerimaan,pengeluaran,nilai_transaksi:nilai,saldo});
     }
     if(!data.length)throw new Error('Tidak ditemukan transaksi bernilai lebih dari nol pada BKU.');
-    const months=[...new Set(data.map(x=>x.tanggal_transaksi.slice(0,7)))].sort();
-    const withCode=data.filter(x=>x.kode_rekening).length;
-    const tax=data.filter(x=>/\b(PPh|PPN|PAJAK|SSPD|SETOR PPh|SETOR PPN)\b/i.test(x.uraian_transaksi)).length;
-    const balanced=Math.abs(totalPenerimaan-totalPengeluaran-(Number(lastSaldo)||0))<=1;
-    state.importedTransactions=data;
-    state.bkuImport={fileName:f.name,sourceType:'EXCEL_BKU_ARKAS',meta,validation:{totalPenerimaan,totalPengeluaran,lastSaldo:Number(lastSaldo)||0,invalidSaldo,months,balanced}};
-
-    out.innerHTML=msg(`Excel BKU valid. ${fmtNum(data.length)} transaksi siap dijadikan basis penilaian.`,'ok')+
+    const months=[...new Set(data.map(x=>x.tanggal_transaksi.slice(0,7)))].sort(),year=Number(meta.tahun||data[0].tanggal_transaksi.slice(0,4));
+    const balanced=lastSaldo!==null&&Math.abs(openingBalance+totalPenerimaan-totalPengeluaran-lastSaldo)<=1;
+    const yearMismatch=data.filter(x=>Number(x.tanggal_transaksi.slice(0,4))!==year).length;
+    const canImport=invalidSaldo===0&&dualSideCount===0&&mappingErrors.length===0&&balanced&&yearMismatch===0;
+    state.importedTransactions=data;state.bkuImport={fileName:f.name,sourceType:'EXCEL_BKU_ARKAS',meta,canImport,
+      validation:{totalPenerimaan,totalPengeluaran,lastSaldo,openingBalance,invalidSaldo,dualSideCount,balanced,yearMismatch,mappingErrors,months,sourceRows:data.length}};
+    const issues=[...(mappingErrors.map(x=>`Baris ${x.row}: ${x.reason}`)),...(invalidSaldo?[`${invalidSaldo} baris saldo berjalan tidak konsisten`]:[]),
+      ...(dualSideCount?[`${dualSideCount} baris memiliki penerimaan dan pengeluaran sekaligus`]:[]),...(yearMismatch?[`${yearMismatch} transaksi di luar tahun ${year}`]:[]),...(!balanced?['Saldo akhir tidak seimbang']:[])];
+    out.innerHTML=(canImport?msg(`Excel BKU valid. ${fmtNum(data.length)} transaksi siap dipetakan ke periode DINAS.`,'ok'):msg('BKU belum dapat ditetapkan. Periksa anomali validasi berikut.','error'))+
       `<div class="cards" style="margin:12px 0;grid-template-columns:repeat(auto-fit,minmax(170px,1fr))">
-        <div class="stat"><small>NPSN</small><strong style="font-size:.95rem">${esc(meta.npsn)}</strong><div class="muted">${esc(meta.nama||'-')}</div></div>
-        <div class="stat"><small>TAHUN</small><strong>${esc(meta.tahun||'-')}</strong><div class="muted">${esc(months.join(', '))}</div></div>
-        <div class="stat"><small>TRANSAKSI</small><strong>${fmtNum(data.length)}</strong><div class="muted">${fmtNum(withCode)} berkode rekening</div></div>
-        <div class="stat"><small>PAJAK</small><strong>${fmtNum(tax)}</strong><div class="muted">baris terindikasi pajak</div></div>
-      </div>`+
-      `<div class="panel" style="margin:12px 0"><b>Kontrol BKU Excel</b><div class="table-wrap" style="margin-top:8px"><table class="friendly-table"><tbody>
-        <tr><td>Total Penerimaan</td><td><b>${fmtRupiah(totalPenerimaan)}</b></td></tr>
-        <tr><td>Total Pengeluaran</td><td><b>${fmtRupiah(totalPengeluaran)}</b></td></tr>
-        <tr><td>Saldo Akhir</td><td><b>${fmtRupiah(Number(lastSaldo)||0)}</b></td></tr>
-        <tr><td>Konsistensi saldo berantai</td><td>${invalidSaldo?badge(`${invalidSaldo} baris perlu review`,'warning'):badge('KONSISTEN','success')}</td></tr>
-      </tbody></table></div></div>`+
-      `<div class="table-wrap"><table class="friendly-table"><thead><tr><th>Tanggal</th><th>Kegiatan</th><th>Kode Rekening</th><th>No. Bukti</th><th>Uraian</th><th>Penerimaan</th><th>Pengeluaran</th><th>Saldo</th></tr></thead><tbody>${data.slice(0,25).map(x=>`<tr><td>${esc(x.tanggal_transaksi)}</td><td>${esc(x.kode_kegiatan||'-')}</td><td><code>${esc(x.kode_rekening||'-')}</code></td><td>${esc(x.nomor_bukti||'-')}</td><td>${esc(x.uraian_transaksi)}</td><td>${fmtRupiah(x.penerimaan)}</td><td>${fmtRupiah(x.pengeluaran)}</td><td>${fmtRupiah(x.saldo)}</td></tr>`).join('')}</tbody></table></div>`+
-      `<div class="message warning" style="margin-top:12px"><b>Snapshot penilaian.</b> Setelah disimpan, Excel ini menjadi BKU aktif untuk periode yang tercakup. Impor Excel baru akan menggantikan snapshot aktif pada penilaian tanpa menghapus riwayat impor sebelumnya.</div>`+
-      `<button class="btn btn-primary" style="margin-top:12px" onclick="saveImportedTransactions()">✓ Tetapkan sebagai BKU Penilaian</button>`;
+        <div class="stat"><small>NPSN</small><strong>${esc(meta.npsn)}</strong><div class="muted">${esc(meta.nama||'-')}</div></div>
+        <div class="stat"><small>TAHUN</small><strong>${esc(year||'-')}</strong><div class="muted">${esc(months.join(', '))}</div></div>
+        <div class="stat"><small>TRANSAKSI</small><strong>${fmtNum(data.length)}</strong></div>
+        <div class="stat"><small>VALIDASI</small><strong>${canImport?'LULUS':'PERLU REVIEW'}</strong><div class="muted">${issues.length} temuan</div></div>
+      </div>
+      <div class="panel"><b>Kontrol BKU Excel</b><div class="table-wrap"><table class="friendly-table"><tbody>
+      <tr><td>Total Penerimaan</td><td><b>${fmtRupiah(totalPenerimaan)}</b></td></tr><tr><td>Total Pengeluaran</td><td><b>${fmtRupiah(totalPengeluaran)}</b></td></tr>
+      <tr><td>Saldo Awal</td><td><b>${fmtRupiah(openingBalance)}</b></td></tr><tr><td>Saldo Akhir</td><td><b>${fmtRupiah(lastSaldo||0)}</b></td></tr>
+      <tr><td>Saldo berjalan</td><td>${invalidSaldo?badge(`${invalidSaldo} baris perlu review`,'warning'):badge('KONSISTEN','success')}</td></tr>
+      <tr><td>Rekonsiliasi</td><td>${balanced?badge('KONSISTEN','success'):badge('TIDAK SEIMBANG','danger')}</td></tr></tbody></table></div></div>
+      ${issues.length?`<div class="message warning"><b>Temuan validasi</b><ul>${issues.slice(0,12).map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>`:''}
+      <div class="table-wrap"><table class="friendly-table"><thead><tr><th>Tanggal</th><th>Kegiatan</th><th>Kode Rekening</th><th>No. Bukti</th><th>Uraian</th><th>Penerimaan</th><th>Pengeluaran</th><th>Saldo</th></tr></thead><tbody>${data.slice(0,25).map(x=>`<tr><td>${esc(formatBkuDateClient(x.tanggal_transaksi))}</td><td>${esc(x.kode_kegiatan||'-')}</td><td>${esc(x.kode_rekening||'-')}</td><td>${esc(x.nomor_bukti||'-')}</td><td>${esc(x.uraian_transaksi)}</td><td>${fmtRupiah(x.penerimaan)}</td><td>${fmtRupiah(x.pengeluaran)}</td><td>${fmtRupiah(x.saldo)}</td></tr>`).join('')}</tbody></table></div>
+      ${canImport?`<div class="message warning"><b>Konfirmasi snapshot.</b> Satu BKU tahunan akan dipetakan otomatis sesuai periodisasi DINAS. Riwayat impor lama tetap tersimpan.</div><button class="btn btn-primary" onclick="saveImportedTransactions()">✓ Tetapkan sebagai BKU Penilaian</button>`:''}`;
   }catch(err){out.innerHTML=msg(errorText(err),'error');state.bkuImport=null;state.importedTransactions=[];}
   finally{btn.disabled=false;btn.textContent='Baca & Validasi Excel';}
 };
 
+
 window.saveImportedTransactions=async function(){
-  const imp=state.bkuImport;if(!imp||!state.importedTransactions.length){toast('Baca dan validasi BKU Data terlebih dahulu.','warning');return;}
+  const imp=state.bkuImport;if(!imp||!state.importedTransactions.length){toast('Baca dan validasi BKU Data terlebih dahulu.','warning');return;}if(imp.canImport===false){toast('BKU belum lolos validasi integritas. Perbaiki sumber data sebelum menetapkan snapshot.','error',7000);return;}
   const sourceType=String(imp.sourceType||'EXCEL_BKU_ARKAS').toUpperCase();
   if(!['EXCEL_BKU_ARKAS','PDF_BKU_DIGITAL'].includes(sourceType)){toast('Jenis sumber BKU Data tidak valid.','error');return;}
   const btn=$('#bkuReadBtn')||$('#pdfBkuReadBtn');if(btn){btn.disabled=true;btn.textContent='Menetapkan snapshot...';}
@@ -7434,7 +7479,7 @@ async function masterSpjView(){
   const freq = String(cfg.frekuensi || perRes.frekuensi || '').toUpperCase();
   const rawYear = Number(cfg.tahun || perRes.tahun || new Date().getFullYear());
   const year = rawYear>=2000&&rawYear<=2100 ? Math.floor(rawYear) : new Date().getFullYear();
-  const freqLabel = freq === 'BULANAN' ? 'Bulanan' : freq === 'TRIWULANAN' ? 'Triwulanan' : freq === 'SEMESTERAN' ? 'Semesteran' : 'Belum dipilih';
+  const freqLabel = freq === 'BULANAN' ? 'Bulanan' : freq === 'TRIWULANAN' ? 'Triwulanan' : freq === 'SEMESTERAN' ? 'Semesteran' : freq === 'TAHUNAN' ? 'Tahunan' : 'Belum dipilih';
   const activePeriods = pers.filter(x => Number(x.tahun) === year && String(x.frekuensi || '').toUpperCase() === freq);
 
   // OPTIMASI: Rendering baris tabel menggunakan .map().join('') secara bersih di memori
@@ -7477,12 +7522,13 @@ async function masterSpjView(){
           <option value="BULANAN" ${freq === 'BULANAN' ? 'selected' : ''}>Bulanan</option>
           <option value="TRIWULANAN" ${freq === 'TRIWULANAN' ? 'selected' : ''}>Triwulanan</option>
           <option value="SEMESTERAN" ${freq === 'SEMESTERAN' ? 'selected' : ''}>Semesteran</option>
+          <option value="TAHUNAN" ${freq === 'TAHUNAN' ? 'selected' : ''}>Tahunan</option>
         </select></div>
       </div>
       <div class="toolbar"><button class="btn btn-primary" id="btnSimpanFrekuensi">✓ Terapkan Frekuensi</button></div>
       <div id="freqConfigMsg"></div>
     </div>` +
-    `<div class="panel"><h3 class="section-title" style="margin-top:0">Periode Otomatis (${activePeriods.length})</h3><div class="muted" style="margin-bottom:10px">Sistem membuat ${freq === 'BULANAN' ? '12 periode bulanan' : freq === 'TRIWULANAN' ? '4 periode triwulanan' : freq === 'SEMESTERAN' ? '2 periode semesteran' : 'periode sesuai pilihan'} tanpa input tanggal manual.</div><div class="table-wrap"><table class="friendly-table"><thead><tr><th>Nama</th><th>Tahun</th><th>Frekuensi</th><th>Mulai</th><th>Selesai</th><th>Status</th></tr></thead><tbody>${perRows}</tbody></table></div></div>` +
+    `<div class="panel"><h3 class="section-title" style="margin-top:0">Periode Otomatis (${activePeriods.length})</h3><div class="muted" style="margin-bottom:10px">Sistem membuat ${freq === 'BULANAN' ? '12 periode bulanan' : freq === 'TRIWULANAN' ? '4 periode triwulanan' : freq === 'SEMESTERAN' ? '2 periode semesteran' : freq === 'TAHUNAN' ? '1 periode tahunan' : 'periode sesuai pilihan'} tanpa input tanggal manual.</div><div class="table-wrap"><table class="friendly-table"><thead><tr><th>Nama</th><th>Tahun</th><th>Frekuensi</th><th>Mulai</th><th>Selesai</th><th>Status</th></tr></thead><tbody>${perRows}</tbody></table></div></div>` +
     `<div class="panel"><h3 class="section-title" style="margin-top:0">Standar Pemeriksaan Otomatis</h3><p class="muted">Indikator bawaan Risk Engine tampil otomatis. DINAS tidak perlu membuat indikator atau rule satu per satu; bobot yang ditampilkan sebagai DINAMIS dihitung ulang berdasarkan data pemeriksaan.</p><div class="table-wrap"><table class="friendly-table"><thead><tr><th>Kode</th><th>Indikator</th><th>Komponen</th><th>Bobot</th><th>Status</th></tr></thead><tbody>${indRows}</tbody></table></div></div>` +
     `<div class="panel"><h3 class="section-title" style="margin-top:0">Master SPJ Sistem</h3><div class="table-wrap"><table class="friendly-table"><thead><tr><th>Kode</th><th>Nama</th><th>Urutan</th><th>Status</th></tr></thead><tbody>${spjRows}</tbody></table></div></div>`;
 
@@ -7633,6 +7679,77 @@ function drivePreviewUrl(url){ return ''; }
 
 let __pdfJsPromise=null;
 const __protectedPdfCache=new Map();
+let __sensitiveDataEpoch=0;
+
+function sensitiveDocumentCacheKey_(fileId, period, npsn){
+  return [String(state.token||''),String(npsn||''),String(period||''),String(fileId||'')].join('|');
+}
+
+function assertSensitiveSessionCurrent_(epoch, token){
+  if(!token || state.token!==token || __sensitiveDataEpoch!==epoch) throw new Error('Sesi berubah atau berakhir. Data dokumen dibersihkan; silakan login kembali.');
+}
+
+function clearSensitiveFrontendCaches_(reason){
+  __sensitiveDataEpoch++;
+  window.__pageAwareOcrCancel=true;
+  try {
+    __protectedPdfCache.forEach(function(pdf){ try { if(pdf && typeof pdf.destroy==='function') pdf.destroy().catch(function(){}); } catch(_){} });
+    __protectedPdfCache.clear();
+  } catch(_) {}
+  ['__pageAwareOcrCache','__phase1OcrCache','__phase2OcrCache'].forEach(function(key){ window[key]={}; });
+  try {
+    const states=['__instrumentPdfState','__phase1ReviewState','__phase2ReviewState'];
+    states.forEach(function(key){ const st=window[key]; if(st && st.pdf && typeof st.pdf.destroy==='function'){try{st.pdf.destroy().catch(function(){});}catch(_){}} });
+    window.__instrumentPdfState=null;
+    window.__phase1ReviewState={workbench:null,componentNo:0,pdf:null,page:1,zoom:1,pages:[],matches:[],decisions:{},filter:'ALL',listPage:1,pageSize:100};
+    window.__phase2ReviewState={workbench:null,componentNo:0,pdf:null,page:1,zoom:1,pages:[],matches:[],decisions:{},filter:'ALL',listPage:1,pageSize:100};
+    window.__pdfInteractiveContext=null;
+    window.__pdfInteractiveIndicators=[];
+    window.__pdfInteractiveUiState={docId:'',page:1,zoom:1,totalPages:0};
+    window.__v217Workbench=null;
+  } catch(_) {}
+  try {
+    document.querySelectorAll('.instrument-pdf-inline-frame,#interactivePdfFrame,#f1PdfFrame,#f2PdfFrame').forEach(function(el){
+      try { if(el._pdfDoc && typeof el._pdfDoc.destroy==='function') el._pdfDoc.destroy().catch(function(){}); } catch(_){}
+      el._pdfDoc=null; el.innerHTML='';
+    });
+    document.querySelectorAll('.instrument-pdf-inline').forEach(function(el){el.hidden=true;el.innerHTML='';});
+    document.querySelectorAll('#pageAwareOcrModal,.simple-modal,.workflow-modal-backdrop').forEach(function(el){el.remove();});
+  } catch(_) {}
+  try {
+    state.user=null;
+    state.selectedPeriode=''; state.selectedNpsn='';
+    state.masterSpj=[]; state.importedTransactions=[]; state.bkuImport=null;
+    state.pemeriksaanConfig=null;
+    // Hapus pula cache data lintas modul (monitoring, laporan, RKAS, penugasan,
+    // pencarian, kesiapan akun, dan keberatan) agar tidak tertinggal antar-role.
+    [
+      '__appealRows','__bkuAutoAnalysis','__v227CurrentAssessmentId',
+      '_activeDinasStatus','_assessmentDashboardBuckets','_assessmentReportCurrent',
+      '_cachedAuditSchoolsGlobal','_cachedDinasCenterGlobal','_cachedDinasPenugasan',
+      '_cachedDinasSekolah','_cachedGlobalMon','_cachedGlobalMonGlobal',
+      '_cachedPaguSekolah','_cachedPenugasan','_cachedPenugasanGlobal',
+      '_cachedRekapPaguGlobal','_currentDinasRkasList','_globalSearchRows',
+      '_monState','_paguRkasMeta','_pengawasPhase1Summary','_pengawasReadinessRows',
+      '_pengawasReadinessSummary','_pengawasReadinessFilter','_rc2Fase1DinasAssignments','_rc2Fase1DinasGroupRows',
+      '_rc2Fase2Assignments','_rc2Fase2GroupRows','_rc2RekonAssignments',
+      '_rc2RekonGroupRows','_renderedDinasRkasList','_reportSchoolsRc2',
+      '_rkasImportPreview','_rkasReplacePreview','_rkasReplaceSchools',
+      '_rkasTargetSchools','_schoolDirectoryCache','_schoolDirectoryData',
+      '_selectedDinasRkasPackage','_userReadinessData','_userReadinessFilter','_userReadinessQuery',
+      '_workflowOverview','_workflowSelectedYear'
+    ].forEach(function(key){ try{window[key]=null;}catch(_){} });
+  } catch(_) {}
+}
+
+function expireFrontendSession_(message){
+  if(!state.token) return;
+  stopSessionHeartbeat();
+  clearSensitiveFrontendCaches_('session-expired');
+  state.token=''; state.user=null;
+  try{sessionStorage.removeItem('simpel_token');}catch(_){}
+  try{authView(msg(message || 'Sesi berakhir. Silakan login kembali.','warning'));}catch(_){}
+}
 
 async function ensurePdfJs(){
   if(window.pdfjsLib) {
@@ -7664,18 +7781,26 @@ function base64ToUint8Array_(base64){
   return out;
 }
 
-async function getProtectedPdfDocument_(doc){
+async function getProtectedPdfDocument_(doc, context={}){
   const fileId=String(doc?.file_id||'');
-  const period=String(window.__pdfInteractiveContext?.p||state.selectedPeriode||'');
-  const npsn=String(window.__pdfInteractiveContext?.n||state.selectedNpsn||ownNpsn()||'');
+  const period=String(context.period||context.p||window.__pdfInteractiveContext?.p||state.selectedPeriode||'');
+  const npsn=String(context.npsn||context.n||window.__pdfInteractiveContext?.n||state.selectedNpsn||ownNpsn()||'');
+  const requestToken=String(state.token||''), epoch=__sensitiveDataEpoch;
   if(!fileId) throw new Error('Dokumen ini tidak memiliki file_id Drive yang dapat dibaca oleh viewer aman.');
+  if(!requestToken) throw new Error('Sesi login tidak tersedia untuk membuka PDF.');
+  if(!period || !npsn) throw new Error('Konteks sekolah dan periode wajib tersedia untuk membuka PDF.');
+  const cacheKey=sensitiveDocumentCacheKey_(fileId,period,npsn);
   const lib=await ensurePdfJs();
-  if(__protectedPdfCache.has(fileId)) return __protectedPdfCache.get(fileId);
+  assertSensitiveSessionCurrent_(epoch,requestToken);
+  if(__protectedPdfCache.has(cacheKey)) return __protectedPdfCache.get(cacheKey);
   const r=await api('getDokumenPdfBase64',{fileId,idPeriode:period,npsn});
+  assertSensitiveSessionCurrent_(epoch,requestToken);
   if(!r?.base64) throw new Error('Server tidak mengembalikan data PDF.');
   const loadingTask=lib.getDocument({data:base64ToUint8Array_(r.base64)});
   const pdf=await loadingTask.promise;
-  __protectedPdfCache.set(fileId,pdf);
+  try { assertSensitiveSessionCurrent_(epoch,requestToken); }
+  catch(staleError){ try{pdf.destroy();}catch(_){} throw staleError; }
+  __protectedPdfCache.set(cacheKey,pdf);
   return pdf;
 }
 
@@ -7686,7 +7811,7 @@ async function ubahPasswordView(){
   `<div class="panel" style="max-width:620px">
     <div class="message ok"><b>Catatan:</b> username, sesi, dan cara login tidak berubah. Setelah password berhasil diubah, gunakan password baru pada login berikutnya.</div>
     <div class="field" style="margin-top:14px"><label>Password Lama</label><div class="password-wrapper"><input id="oldPasswordV10" type="password" autocomplete="current-password" placeholder="Masukkan password lama"><button type="button" class="toggle-password-btn" onclick="togglePassword('oldPasswordV10',this)">👁</button></div></div>
-    <div class="field" style="margin-top:12px"><label>Password Baru</label><div class="password-wrapper"><input id="newPasswordV10" type="password" autocomplete="new-password" placeholder="Minimal 6 karakter"><button type="button" class="toggle-password-btn" onclick="togglePassword('newPasswordV10',this)">👁</button></div></div>
+    <div class="field" style="margin-top:12px"><label>Password Baru</label><div class="password-wrapper"><input id="newPasswordV10" type="password" autocomplete="new-password" placeholder="Minimal 12 karakter" minlength="12"><button type="button" class="toggle-password-btn" onclick="togglePassword('newPasswordV10',this)">👁</button></div></div>
     <div class="field" style="margin-top:12px"><label>Konfirmasi Password Baru</label><div class="password-wrapper"><input id="confirmPasswordV10" type="password" autocomplete="new-password" placeholder="Ulangi password baru"><button type="button" class="toggle-password-btn" onclick="togglePassword('confirmPasswordV10',this)">👁</button></div></div>
     <div class="toolbar" style="margin-top:16px"><button class="btn btn-primary" onclick="submitPasswordChangeV10()">🔐 Simpan Password Baru</button></div>
   </div>`;
@@ -7695,10 +7820,13 @@ window.submitPasswordChangeV10=async function(){
   const oldPw=$('#oldPasswordV10')?.value||'', newPw=$('#newPasswordV10')?.value||'', conf=$('#confirmPasswordV10')?.value||'';
   if(!oldPw||!newPw||!conf){toast('Semua password wajib diisi.','warning');return;}
   if(newPw!==conf){toast('Konfirmasi password baru tidak sama.','warning');return;}
-  if(newPw.length<6){toast('Password baru minimal 6 karakter.','warning');return;}
+  if(newPw.length<12){toast('Password baru minimal 12 karakter.','warning');return;}
   if(!confirm('Ubah password akun ini sekarang?'))return;
-  try{ await api('ubahPasswordSendiri',{passwordLama:oldPw,passwordBaru:newPw,konfirmasiPassword:conf}); toast('Password berhasil diubah. Gunakan password baru pada login berikutnya.','ok',5000); $('#oldPasswordV10').value=''; $('#newPasswordV10').value=''; $('#confirmPasswordV10').value=''; }
-  catch(e){toast(errorText(e),'error',5000);}
+  try{
+    await api('ubahPasswordSendiri',{passwordLama:oldPw,passwordBaru:newPw,konfirmasiPassword:conf});
+    $('#oldPasswordV10').value=''; $('#newPasswordV10').value=''; $('#confirmPasswordV10').value='';
+    expireFrontendSession_('Password berhasil diubah. Silakan login kembali menggunakan password baru.');
+  }catch(e){toast(errorText(e),'error',5000);}
 };
 
 window.__pageAwareOcrCache = window.__pageAwareOcrCache || {};
@@ -7768,12 +7896,14 @@ function _showPageAwareOcrModal_(name,totalPages){
 }
 
 window.ocrCurrentInteractivePdf=async function(){
+  const __ocrSessionTokenAtStart=String(state.token||''), __sensitiveDataEpochAtStart=__sensitiveDataEpoch;
   const c=window.__pdfInteractiveContext||{}; const select=$('#interactiveDocSelect');
   const doc=(c.docs||[]).find(d=>String(d.file_id||d.id_dokumen)===String(select?.value||''))||c.docs?.[0];
   if(!doc?.file_id){toast('Dokumen tidak memiliki file_id.','warning');return;}
 
   // Hasil untuk file yang sama tidak diproses ulang selama sesi browser.
-  const cached=window.__pageAwareOcrCache?.[String(doc.file_id)];
+  const ocrCacheKey=sensitiveDocumentCacheKey_(doc.file_id,c.p,c.n);
+  const cached=window.__pageAwareOcrCache?.[ocrCacheKey];
   if(cached?.pages?.length){
     const reuse=confirm(`Analisis dokumen ini sudah tersedia (${cached.pages.length} halaman). Gunakan hasil yang sudah ada?`);
     if(reuse){
@@ -7861,7 +7991,8 @@ window.ocrCurrentInteractivePdf=async function(){
     }
 
     const matches=_matchTransactionsToOcrPages_(c.tx||[],pages);
-    window.__pageAwareOcrCache[String(doc.file_id)]={pages,matches,createdAt:Date.now(),scannedPages:scannedPages.length,ocrUsed:processedScan};
+    assertSensitiveSessionCurrent_(__sensitiveDataEpochAtStart, __ocrSessionTokenAtStart);
+    window.__pageAwareOcrCache[ocrCacheKey]={pages,matches,createdAt:Date.now(),scannedPages:scannedPages.length,ocrUsed:processedScan};
     const byId={};matches.forEach(m=>{if(m.id_transaksi)byId[m.id_transaksi]=m;});
     (c.tx||[]).forEach(t=>{const m=byId[String(t.id_transaksi||'')];if(m){t.ocr_page=m.page;t.ocr_confidence=m.confidence;t.ocr_confidence_level=m.confidence_level;t.ocr_reasons=m.reasons;}});
 
@@ -8053,6 +8184,7 @@ window.saveDerivedPdfOcrCorrection=async function(bookType,fileId){
   }catch(e){toast(errorText(e),'error',7000);}
 };
 
+
 window.runDerivedPdfCrossCheck=async function(bookType,fileId){
   const wb=window.__v217Workbench||{},c=window.__pdfInteractiveContext||{};
   const p=wb.id_periode||c.p||state.selectedPeriode||'',n=wb.npsn||c.n||state.selectedNpsn||state.user?.npsn||'';
@@ -8061,8 +8193,7 @@ window.runDerivedPdfCrossCheck=async function(bookType,fileId){
   try{
     const r=await api('crossCheckDerivedBookPdf',{data:{bookType:type,fileId:fileId,idPeriode:p,npsn:n}});
     if(host)host.innerHTML=_v217PdfCompareHtml_(r);
-    if(r.correction?.status==='DIAJUKAN_SEKOLAH')toast('Koreksi OCR sekolah menunggu verifikasi Pengawas.','warning',5500);
-    else if(r.status==='COCOK')toast('Cross-check PDF '+type+' cocok dengan BKU Data aktif.','ok',4500);
+    if(r.status==='COCOK')toast('Cross-check PDF '+type+' cocok dengan BKU Data aktif.','ok',4500);
     else if(r.status==='SELISIH')toast('Ada selisih pada PDF '+type+'.','warning',5500);
     else toast(r.message||'Cross-check selesai.','warning',5000);
   }catch(e){
@@ -8644,14 +8775,20 @@ function drawDinasLetterheadPdfRc2(page,logo,regular,bold,rgb,title){
 }
 window.buildDinasSchoolReportWithAttachmentsRc2=async function(){
   if(!isDinas()){toast('Lampiran gabungan hanya tersedia untuk DINAS.','warning');return;}
+  const sessionTokenAtStart=String(state.token||''),epochAtStart=__sensitiveDataEpoch;
+  if(!sessionTokenAtStart){toast('Sesi login tidak tersedia. Silakan login kembali.','warning');return;}
+  const assertExportSession=()=>assertSensitiveSessionCurrent_(epochAtStart,sessionTokenAtStart);
   const cur=window._assessmentReportCurrent||{};if(cur.scope!=='SEKOLAH'||!cur.detail){toast('Pilih laporan per sekolah terlebih dahulu.','warning');return;}
   const d=cur.detail,r=d.readiness||{},phase=cur.phase||'FASE1';
   const official=phase==='FASE1'?d.phase1_available:phase==='FASE2'?d.phase2_available:(d.phase1_available&&d.phase2_available);
   if(!official){toast('Laporan fase yang dipilih belum resmi tersedia.','warning');return;}
   const area=$('#rc2ArchiveArea'),progress=document.createElement('div');progress.className='message info';progress.id='pdfAttachmentProgressRc2';progress.innerHTML='<b>Menyiapkan PDF laporan + lampiran...</b>';area?.prepend(progress);
   try{
-    const {PDFDocument,StandardFonts,rgb}=await ensurePdfLibRc2(),pdf=await PDFDocument.create(),regular=await pdf.embedFont(StandardFonts.Helvetica),bold=await pdf.embedFont(StandardFonts.HelveticaBold),A4=[595.28,841.89];
+    const {PDFDocument,StandardFonts,rgb}=await ensurePdfLibRc2();
+    assertExportSession();
+    const pdf=await PDFDocument.create(),regular=await pdf.embedFont(StandardFonts.Helvetica),bold=await pdf.embedFont(StandardFonts.HelveticaBold),A4=[595.28,841.89];
     const logo=await loadReportLogoForPdfRc2(pdf);
+    assertExportSession();
     const school=d.sekolah||{},f1=d.phase1||{},f2=d.phase2||{},instr1=f1.instruments||[],instr2=f2.components||[];
     let page=pdf.addPage(A4);
     const reportTitle='LAPORAN PENILAIAN '+reportPhaseLabelRc2(phase)+' - '+(school.nama_sekolah||school.npsn||'SEKOLAH');
@@ -8698,6 +8835,7 @@ window.buildDinasSchoolReportWithAttachmentsRc2=async function(){
     }
 
     for(let i=0;i<10;i++){
+      assertExportSession();
       const a=attachments[i]||{no:i+1,nama:'Dokumen '+(i+1),file_id:''};
       progress.innerHTML=`<b>Memuat lampiran ${i+1}/10:</b> ${esc(a.nama||'Dokumen')}`;
       const divider=pdf.addPage(A4);
@@ -8706,9 +8844,14 @@ window.buildDinasSchoolReportWithAttachmentsRc2=async function(){
       addPdfTextBlockRc2(divider,a.nama_file||'Dokumen PDF tidak tersedia',45,dividerY,regular,9,500,12);
       if(!a.file_id){divider.drawText('STATUS: PDF BELUM TERSEDIA',{x:45,y:dividerY-44,size:10,font:bold});continue;}
       try{
-        const src=await api('getDokumenPdfBase64',{fileId:a.file_id,idPeriode:cur.idPeriode,npsn:cur.npsn}),bin=atob(src.base64||''),bytes=new Uint8Array(bin.length);
+        const src=await api('getDokumenPdfBase64',{fileId:a.file_id,idPeriode:cur.idPeriode,npsn:cur.npsn});
+        assertExportSession();
+        const bin=atob(src.base64||''),bytes=new Uint8Array(bin.length);
         for(let j=0;j<bin.length;j++)bytes[j]=bin.charCodeAt(j);
-        const doc=await PDFDocument.load(bytes,{ignoreEncryption:true}),copied=await pdf.copyPages(doc,doc.getPageIndices());
+        const doc=await PDFDocument.load(bytes,{ignoreEncryption:true});
+        assertExportSession();
+        const copied=await pdf.copyPages(doc,doc.getPageIndices());
+        assertExportSession();
         copied.forEach(p=>pdf.addPage(p));
       }catch(err){
         divider.drawText('STATUS: PDF GAGAL DIMUAT',{x:45,y:dividerY-44,size:10,font:bold});
@@ -8716,12 +8859,18 @@ window.buildDinasSchoolReportWithAttachmentsRc2=async function(){
       }
     }
 
+    assertExportSession();
     progress.innerHTML='<b>Menyimpan PDF gabungan...</b>';
-    const bytes=await pdf.save(),blob=new Blob([bytes],{type:'application/pdf'}),url=URL.createObjectURL(blob),a=document.createElement('a');
+    const bytes=await pdf.save();
+    assertExportSession();
+    const blob=new Blob([bytes],{type:'application/pdf'}),url=URL.createObjectURL(blob),a=document.createElement('a');
     a.href=url;a.download=`SIMPELSPJ_${phase}_${cur.npsn}_${cur.idPeriode}_plus_10_lampiran.pdf`;
     document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
     progress.className='message ok';progress.innerHTML='<b>PDF laporan + 10 lampiran selesai dibuat dengan kop resmi DINAS.</b>';
-  }catch(e){progress.className='message error';progress.innerHTML=`<b>Gagal membuat PDF:</b> ${esc(errorText(e))}`;}
+  }catch(e){
+    if(!state.token || state.token!==sessionTokenAtStart || __sensitiveDataEpoch!==epochAtStart) return;
+    progress.className='message error';progress.innerHTML=`<b>Gagal membuat PDF:</b> ${esc(errorText(e))}`;
+  }
 };
 window.publishAssessmentReportRc2=async function(targetRole){
   const cur=window._assessmentReportCurrent||{},npsn=cur.npsn||state.selectedNpsn||'',idPeriode=cur.idPeriode||state.selectedPeriode||'';
@@ -9132,9 +9281,10 @@ window.openPhase1ComponentRc2=async function(no){
 };
 async function getPhase1PdfDocumentRc2_(component){
   if(!component?.document?.file_id)throw new Error('PDF tidak tersedia.');
-  const st=window.__phase1ReviewState||{};if(st.pdf)return st.pdf;
-  const lib=await ensurePdfJs(),wb=st.workbench||{},r=await api('getDokumenPdfBase64',{fileId:component.document.file_id,idPeriode:wb.id_periode,npsn:wb.npsn});
-  st.pdf=await lib.getDocument({data:base64ToUint8Array_(r.base64)}).promise;return st.pdf;
+  const st=window.__phase1ReviewState||{},wb=st.workbench||{};
+  if(st.pdf)return st.pdf;
+  st.pdf=await getProtectedPdfDocument_(component.document,{period:wb.id_periode,npsn:wb.npsn});
+  return st.pdf;
 }
 window.renderPhase1PdfPageRc2=async function(pageNo){
   const st=window.__phase1ReviewState||{},c=f1CurrentComponentRc2_(),frame=$('#f1PdfFrame');if(!c||!frame||!c.document?.file_id)return;
@@ -9146,7 +9296,8 @@ window.phase1PdfZoomRc2=async d=>{const st=window.__phase1ReviewState||{};st.zoo
 
 window.runPhase1ComponentAnalysisRc2=async function(){
   const st=window.__phase1ReviewState||{},c=f1CurrentComponentRc2_();if(!c?.document?.file_id)return;
-  const key=String(c.document.file_id),cached=window.__phase1OcrCache[key];
+  const sessionTokenAtStart=String(state.token||''),epochAtStart=__sensitiveDataEpoch;
+  const wbAtStart=st.workbench||{},key=sensitiveDocumentCacheKey_(c.document.file_id,wbAtStart.id_periode,wbAtStart.npsn),cached=window.__phase1OcrCache[key];
   if(cached?.pages?.length){st.pages=cached.pages;st.matches=_matchTransactionsToOcrPages_(f1CurrentTransactionsRc2_(),st.pages);renderPhase1ReviewListRc2_();toast('Hasil analisis sesi ini digunakan kembali.','ok');return;}
   const host=$('#f1ReviewContent');if(host)host.innerHTML=loading('Membaca halaman PDF dan menyandingkan dengan BKU...');
   try{
@@ -9158,6 +9309,7 @@ window.runPhase1ComponentAnalysisRc2=async function(){
     }
     let cap={available:false};if(scanned.length)cap=await safeApi('getOcrCapability',{}, {available:false});
     let done=0;if(cap.available){for(const no of scanned){const pg=await pdf.getPage(no),base=pg.getViewport({scale:1}),target=Math.min(1450,Math.max(1050,base.width*1.5)),vp=pg.getViewport({scale:target/base.width}),canvas=document.createElement('canvas');canvas.width=Math.ceil(vp.width);canvas.height=Math.ceil(vp.height);const ctx=canvas.getContext('2d',{alpha:false});ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);await pg.render({canvasContext:ctx,viewport:vp}).promise;const imageBase64=await _canvasToBase64Jpeg_(canvas,.78),wb=st.workbench||{},r=await api('ocrPdfPageImage',{data:{fileId:c.document.file_id,idPeriode:wb.id_periode,npsn:wb.npsn,pageNo:no,imageBase64,mimeType:'image/jpeg'}});pages.push({page:no,text:String(r.text||''),characters:Number(r.characters||0),source:'OCR'});done++;canvas.width=1;canvas.height=1;if(host)host.innerHTML=loading(`OCR halaman scan ${done}/${scanned.length}`);await new Promise(r=>setTimeout(r,0));}}
+    assertSensitiveSessionCurrent_(epochAtStart,sessionTokenAtStart);
     pages.sort((a,b)=>a.page-b.page);st.pages=pages;st.matches=_matchTransactionsToOcrPages_(f1CurrentTransactionsRc2_(),pages);window.__phase1OcrCache[key]={pages:pages,createdAt:Date.now()};renderPhase1ReviewListRc2_();
     if(scanned.length&&!cap.available)toast(`${scanned.length} halaman scan belum dapat OCR karena Drive API tidak aktif. Text-layer tetap dianalisis.`,'warning',8000);else toast('Analisis Fase 1 selesai. Pengawas cukup fokus pada kandidat sedang/rendah.','ok',5000);
   }catch(e){if(host)host.innerHTML=msg(errorText(e),'error');}
@@ -9763,9 +9915,10 @@ window.openPhase2ComponentRc2=async function(no){
 };
 async function getPhase2PdfDocumentRc2_(component){
   if(!component?.document?.file_id)throw new Error('PDF tidak tersedia.');
-  const st=window.__phase2ReviewState||{};if(st.pdf)return st.pdf;
-  const lib=await ensurePdfJs(),wb=st.workbench||{},r=await api('getDokumenPdfBase64',{fileId:component.document.file_id,idPeriode:wb.id_periode,npsn:wb.npsn});
-  st.pdf=await lib.getDocument({data:base64ToUint8Array_(r.base64)}).promise;return st.pdf;
+  const st=window.__phase2ReviewState||{},wb=st.workbench||{};
+  if(st.pdf)return st.pdf;
+  st.pdf=await getProtectedPdfDocument_(component.document,{period:wb.id_periode,npsn:wb.npsn});
+  return st.pdf;
 }
 window.renderPhase2PdfPageRc2=async function(pageNo){
   const st=window.__phase2ReviewState||{},c=f2CurrentComponentRc2_(),frame=$('#f2PdfFrame');if(!c||!frame||!c.document?.file_id)return;
@@ -9776,7 +9929,8 @@ window.phase2PdfNextRc2=async()=>{const st=window.__phase2ReviewState||{},pdf=st
 window.phase2PdfZoomRc2=async d=>{const st=window.__phase2ReviewState||{};st.zoom=Math.max(.7,Math.min(2,(Number(st.zoom)||1)+Number(d||0)));await renderPhase2PdfPageRc2(st.page||1);};
 window.runPhase2ComponentAnalysisRc2=async function(){
   const st=window.__phase2ReviewState||{},c=f2CurrentComponentRc2_();if(!c?.document?.file_id)return;
-  const key=String(c.document.file_id),cached=window.__phase2OcrCache[key];
+  const sessionTokenAtStart=String(state.token||''),epochAtStart=__sensitiveDataEpoch;
+  const wbAtStart=st.workbench||{},key=sensitiveDocumentCacheKey_(c.document.file_id,wbAtStart.id_periode,wbAtStart.npsn),cached=window.__phase2OcrCache[key];
   if(cached?.pages?.length){st.pages=cached.pages;st.matches=_matchTransactionsToOcrPages_(f2CurrentTransactionsRc2_(),st.pages);renderPhase2ReviewListRc2_();toast('Hasil analisis sesi ini digunakan kembali.','ok');return;}
   const host=$('#f2ReviewContent');if(host)host.innerHTML=loading('Membaca halaman PDF dan mencari pasangan BKU...');
   try{
@@ -9788,6 +9942,7 @@ window.runPhase2ComponentAnalysisRc2=async function(){
     }
     let cap={available:false};if(scanned.length)cap=await safeApi('getOcrCapability',{}, {available:false});
     let done=0;if(cap.available){for(const no of scanned){const pg=await pdf.getPage(no),base=pg.getViewport({scale:1}),target=Math.min(1450,Math.max(1050,base.width*1.5)),vp=pg.getViewport({scale:target/base.width}),canvas=document.createElement('canvas');canvas.width=Math.ceil(vp.width);canvas.height=Math.ceil(vp.height);const ctx=canvas.getContext('2d',{alpha:false});ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);await pg.render({canvasContext:ctx,viewport:vp}).promise;const imageBase64=await _canvasToBase64Jpeg_(canvas,.78),wb=st.workbench||{},r=await api('ocrPdfPageImage',{data:{fileId:c.document.file_id,idPeriode:wb.id_periode,npsn:wb.npsn,pageNo:no,imageBase64,mimeType:'image/jpeg'}});pages.push({page:no,text:String(r.text||''),characters:Number(r.characters||0),source:'OCR'});done++;canvas.width=1;canvas.height=1;if(host)host.innerHTML=loading(`OCR halaman scan ${done}/${scanned.length}`);await new Promise(r=>setTimeout(r,0));}}
+    assertSensitiveSessionCurrent_(epochAtStart,sessionTokenAtStart);
     pages.sort((a,b)=>a.page-b.page);st.pages=pages;st.matches=_matchTransactionsToOcrPages_(f2CurrentTransactionsRc2_(),pages);window.__phase2OcrCache[key]={pages:pages,createdAt:Date.now()};renderPhase2ReviewListRc2_();
     if(scanned.length&&!cap.available)toast(`${scanned.length} halaman scan belum dapat OCR karena Drive API tidak aktif. Text-layer tetap dianalisis.`,'warning',8000);else toast('Analisis PDF selesai. Fokuskan review pada kandidat sedang/rendah.','ok',5000);
   }catch(e){if(host)host.innerHTML=msg(errorText(e),'error');}
@@ -13851,13 +14006,13 @@ window.openManagedUserPasswordReset=function(userId){
   const row=all.find(x=>String(x.user_id||'')===String(userId))||{};
   const label=row.nama_sekolah||row.nama_pengawas||row.nama_pengguna||row.username||'pengguna';
   const wrap=document.createElement('div');wrap.id='managedUserPasswordModal';wrap.className='workflow-modal-backdrop';
-  wrap.innerHTML=`<div class="workflow-modal-card account-reset-modal"><div class="account-reset-head"><div><small>ADMINISTRASI AKUN</small><h3>Reset Password</h3><p>${esc(label)}${row.username?` · ${esc(row.username)}`:''}</p></div><button type="button" class="account-reset-close" onclick="$('#managedUserPasswordModal').remove()" aria-label="Tutup">×</button></div><div class="field"><label>Password Baru</label><input id="managedNewPassword" type="password" autocomplete="new-password" placeholder="Minimal 6 karakter"></div><div class="field"><label>Konfirmasi Password Baru</label><input id="managedConfirmPassword" type="password" autocomplete="new-password" placeholder="Ulangi password baru"></div><div class="message warning account-reset-note">Reset tidak membuat akun baru. NPSN/NIP dan seluruh histori akun tetap sama.</div><div id="managedPasswordMsg"></div><div class="workflow-modal-actions"><button class="btn btn-light" onclick="$('#managedUserPasswordModal').remove()">Batal</button><button class="btn btn-primary" onclick="submitManagedUserPasswordReset('${esc(userId)}')">Simpan Password Baru</button></div></div>`;
+  wrap.innerHTML=`<div class="workflow-modal-card account-reset-modal"><div class="account-reset-head"><div><small>ADMINISTRASI AKUN</small><h3>Reset Password</h3><p>${esc(label)}${row.username?` · ${esc(row.username)}`:''}</p></div><button type="button" class="account-reset-close" onclick="$('#managedUserPasswordModal').remove()" aria-label="Tutup">×</button></div><div class="field"><label>Password Baru</label><input id="managedNewPassword" type="password" autocomplete="new-password" placeholder="Minimal 12 karakter" minlength="12"></div><div class="field"><label>Konfirmasi Password Baru</label><input id="managedConfirmPassword" type="password" autocomplete="new-password" placeholder="Ulangi password baru"></div><div class="message warning account-reset-note">Reset tidak membuat akun baru. NPSN/NIP dan seluruh histori akun tetap sama.</div><div id="managedPasswordMsg"></div><div class="workflow-modal-actions"><button class="btn btn-light" onclick="$('#managedUserPasswordModal').remove()">Batal</button><button class="btn btn-primary" onclick="submitManagedUserPasswordReset('${esc(userId)}')">Simpan Password Baru</button></div></div>`;
   document.body.appendChild(wrap);
   setTimeout(()=>$('#managedNewPassword')?.focus(),0);
 };
 window.submitManagedUserPasswordReset=async function(userId){
   const password=$('#managedNewPassword')?.value||'',confirmPw=$('#managedConfirmPassword')?.value||'',box=$('#managedPasswordMsg');
-  if(password.length<6){if(box)box.innerHTML=msg('Password baru minimal 6 karakter.');return;}
+  if(password.length<12){if(box)box.innerHTML=msg('Password baru minimal 12 karakter.');return;}
   if(password!==confirmPw){if(box)box.innerHTML=msg('Konfirmasi password baru tidak sama.');return;}
   try{
     await api('resetManagedUserPassword',{data:{user_id:userId,password_baru:password}});
