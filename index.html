@@ -4158,6 +4158,23 @@ window.closeInstrumentPdf=function(id){
 
 
 
+/* RC3 Upload Governance client guard — global scope.
+   Dipakai oleh upload satu dokumen dan impor paket SPJ. */
+window.SIMPEL_UPLOAD_RC3 = Object.freeze({ PDF_MAX: 50 * 1024 * 1024 });
+window._validateUploadFileRc3_ = function(f){
+  if(!f) throw new Error('Pilih file PDF terlebih dahulu.');
+  const n = String(f.name || '').toLowerCase();
+  if(!/\.pdf$/.test(n)) throw new Error('Dokumen SPJ hanya menerima file PDF.');
+  if(!Number.isFinite(Number(f.size)) || Number(f.size) < 12)
+    throw new Error('File PDF kosong atau terlalu kecil.');
+  if(Number(f.size) > window.SIMPEL_UPLOAD_RC3.PDF_MAX)
+    throw new Error('PDF maksimal 50 MB per file.');
+  const mime = String(f.type || '').toLowerCase();
+  if(mime && !['application/pdf','application/octet-stream'].includes(mime))
+    throw new Error('Tipe file browser tidak sesuai. Pilih file PDF yang benar.');
+  return true;
+};
+
 window.openImportPaketSPJ = function(){
   const periode = $('#periodeSelect')?.value || state.selectedPeriode;
   if(!periode){
@@ -4204,26 +4221,12 @@ window.openImportPaketSPJ = function(){
     $('#paketUploadBtn').disabled=false;
   };
 
-  
-/* RC3 Upload Governance client guard */
-const SIMPEL_UPLOAD_RC3 = {
-  PDF_MAX:50*1024*1024
-};
-function _validateUploadFileRc3_(f){
-  if(!f) throw new Error('Pilih file PDF terlebih dahulu.');
-  const n=String(f.name||'').toLowerCase();
-  if(!/\.pdf$/.test(n)) throw new Error('Dokumen SPJ hanya menerima file PDF.');
-  if(!f.size || f.size<12) throw new Error('File PDF kosong atau terlalu kecil.');
-  if(f.size>SIMPEL_UPLOAD_RC3.PDF_MAX) throw new Error('PDF maksimal 50 MB per file.');
-  if(f.type && ['application/pdf','application/octet-stream'].indexOf(f.type.toLowerCase())<0)
-    throw new Error('Tipe file browser tidak sesuai. Pilih file PDF yang benar.');
-}
 
 $('#paketUploadBtn').onclick=async()=>{
     const files=Array.from($('#paketFiles').files||[]);
     const selects=Array.from(document.querySelectorAll('.paket-map-select'));
     if(!files.length) return;
-    try{ files.forEach(_validateUploadFileRc3_); }catch(e){
+    try{ files.forEach(window._validateUploadFileRc3_); }catch(e){
       $('#paketMsg').innerHTML=msg(errorText(e)); return;
     }
     const mappings=selects.map(x=>x.value);
@@ -4304,7 +4307,7 @@ window.openUpload = function(idSpj, namaSpj, hasExistingDocument) {
   $('#uploadLocalForm').onsubmit = async e => {
     e.preventDefault();
     const file = $('#localFile').files[0]; if (!file) return;
-    try { _validateUploadFileRc3_(file); }
+    try { window._validateUploadFileRc3_(file); }
     catch(validationError) { $('#uploadMsg').innerHTML = msg(errorText(validationError)); return; }
     const btn = $('#uploadBtn'); btn.disabled = true; btn.textContent = 'Memproses...';
     const reader = new FileReader();
