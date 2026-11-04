@@ -2101,7 +2101,7 @@ aside.sidebar *,
 <script>
 'use strict';
 
-const V10_VERSION = 'V24.3.0-PERFORMANCE-OPTIMIZED';
+const V10_VERSION = 'V24.4.0-OCR-CORRECTION';
 
 const API_URL = 'https://script.google.com/macros/s/AKfycbyWvJXKr1QZ1zwbeJDoULTUihycj1771SsDlGFy8jnuF4i3DsEbHXlcJU48VDAg17fqDA/exec';
 
@@ -7945,6 +7945,7 @@ function renderV20BkuWorkbenchHtml_(wb, docs){
   const pdfBtn=(type,obj)=>{
     if(type==='PAJAK' && Number(obj.count||0)===0) return '<span class="badge badge-info">Tidak ada pajak</span>';
     if(!obj.document?.file_id) return '<span class="badge badge-warning">PDF belum upload</span>';
+    if(isSchool()) return `<button class="btn btn-primary btn-sm" onclick="runDerivedPdfCrossCheck('${type}','${esc(obj.document.file_id)}')">Periksa & Koreksi OCR</button>`;
     if(!isPengawas()) return '<span class="badge badge-success">PDF tersedia</span>';
     return `<button class="btn btn-light btn-sm" onclick="runDerivedPdfCrossCheck('${type}','${esc(obj.document.file_id)}')">Cross-check PDF</button>`;
   };
@@ -7962,7 +7963,7 @@ function renderV20BkuWorkbenchHtml_(wb, docs){
       <div class="stat"><small>COCOK RKAS</small><strong>${pct}%</strong><div class="muted">${fmtNum(s.rkas_cocok||0)} dari ${fmtNum(budgetCount)} transaksi belanja</div></div>
       <div class="stat"><small>PERLU REVIEW</small><strong>${fmtNum(s.jumlah_exception||0)}</strong><div class="muted">Exception prioritas</div></div>
     </div>
-    <div class="message ok" style="margin-bottom:14px"><b>Distribusi BKU yang digunakan:</b> Terima Dana BOSP, Pergeseran Uang di Bank, Bunga Bank dan Pajak Bunga → <b>Buku Bank</b>; Tarik Tunai dan transaksi BPU/pembelanjaan → <b>Buku Kas Tunai</b>; PPN/PPh/SSPD → <b>Buku Pajak</b> sekaligus mengikuti kanal transaksi asal. Pada transfer internal, Pergeseran Uang di Bank dibaca sebagai <b>keluar Bank</b> dan Tarik Tunai sebagai <b>masuk Kas Tunai</b>.<br><b>Cross-check ringan:</b> OCR PDF hanya dijalankan saat tombol <b>Cross-check PDF</b> ditekan.</div>
+    <div class="message ok" style="margin-bottom:14px"><b>Distribusi BKU yang digunakan:</b> Terima Dana BOSP, Pergeseran Uang di Bank, Bunga Bank dan Pajak Bunga → <b>Buku Bank</b>; Tarik Tunai dan transaksi BPU/pembelanjaan → <b>Buku Kas Tunai</b>; PPN/PPh/SSPD → <b>Buku Pajak</b> sekaligus mengikuti kanal transaksi asal. Pada transfer internal, Pergeseran Uang di Bank dibaca sebagai <b>keluar Bank</b> dan Tarik Tunai sebagai <b>masuk Kas Tunai</b>.<br><b>Cross-check ringan:</b> OCR PDF hanya dijalankan saat tombol <b>Cross-check PDF</b> ditekan. ${isSchool()?'<br><b>Sekolah:</b> gunakan tombol Periksa & Koreksi OCR untuk membetulkan angka yang salah terbaca. Koreksi tidak mengubah BKU Data atau PDF asli dan akan tercatat untuk pemeriksaan Pengawas.':''}</div>
     <div class="v20-ledger-grid">
       <article class="v20-ledger-card"><div class="v20-ledger-icon">🏦</div><div><small>HASIL DISTRIBUSI EXCEL BKU</small><h3>Buku Bank</h3><strong>${fmtNum(b.count||0)} baris</strong><span>Masuk ${fmtRupiah(b.masuk||0)} • Keluar ${fmtRupiah(b.keluar||0)} • Saldo ${fmtRupiah(b.saldo_akhir||0)}</span><div style="margin-top:8px">${docBadge(b.document)} ${pdfBtn('BANK',b)}</div><div id="v217PdfCmpBANK" style="margin-top:8px"></div></div></article>
       <article class="v20-ledger-card"><div class="v20-ledger-icon">💵</div><div><small>HASIL DISTRIBUSI EXCEL BKU</small><h3>Buku Kas Tunai</h3><strong>${fmtNum(c.count||0)} baris</strong><span>Masuk ${fmtRupiah(c.masuk||0)} • Keluar ${fmtRupiah(c.keluar||0)} • Saldo ${fmtRupiah(c.saldo_akhir||0)}</span><div style="margin-top:8px">${docBadge(c.document)} ${pdfBtn('CASH',c)}</div><div id="v217PdfCmpCASH" style="margin-top:8px"></div></div></article>
@@ -7993,11 +7994,64 @@ function _v217PdfCompareHtml_(r){
   if(!r)return '';
   if(r.status==='PDF_BELUM_UPLOAD')return `<div class="message warning">${esc(r.message||'PDF belum diunggah.')}</div>`;
   if(r.status==='TIDAK_BERLAKU')return `<div class="message info">${esc(r.message||'Tidak berlaku.')}</div>`;
-  const cmp=r.comparison||{}, fields=cmp.fields||[];
-  const type=r.status==='COCOK'?'ok':(r.status==='SELISIH'?'error':'warning');
-  const rows=fields.map(x=>`<tr><td>${esc(x.label)}</td><td>${fmtRupiah(x.expected||0)}</td><td>${x.readable?fmtRupiah(x.pdf||0):'<span class="badge badge-warning">Tidak terbaca</span>'}</td><td>${x.readable?fmtRupiah(x.difference||0):'-'}</td><td>${x.match?'<span class="badge badge-success">COCOK</span>':(x.readable?'<span class="badge badge-danger">SELISIH</span>':'<span class="badge badge-warning">CEK MANUAL</span>')}</td></tr>`).join('');
-  return `<div class="message ${type}" style="margin-bottom:8px"><b>${esc(r.status)}</b> — ${esc(r.message||'')}</div><div class="table-wrap"><table class="friendly-table"><thead><tr><th>Komponen</th><th>BKU Data</th><th>PDF Pembanding</th><th>Selisih</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  const cmp=r.comparison||{}, fields=cmp.fields||[], pdf=r.pdf||{}, original=r.ocr_original||pdf;
+  const type=r.correction?.status==='DIAJUKAN_SEKOLAH'?'warning':(r.status==='COCOK'?'ok':(r.status==='SELISIH'?'error':'warning'));
+  const rows=fields.map(x=>{
+    const raw=original[x.key],used=pdf[x.key];
+    return `<tr><td>${esc(x.label)}</td><td>${fmtRupiah(x.expected||0)}</td><td>${raw===null||raw===undefined?'<span class="badge badge-warning">Tidak terbaca</span>':fmtRupiah(raw)}</td><td>${used===null||used===undefined?'<span class="badge badge-warning">Tidak terbaca</span>':fmtRupiah(used)}</td><td>${x.difference===null?'-':fmtRupiah(x.difference)}</td><td>${x.match?'<span class="badge badge-success">COCOK</span>':(x.readable?'<span class="badge badge-danger">SELISIH</span>':'<span class="badge badge-warning">CEK MANUAL</span>')}</td></tr>`;
+  }).join('');
+  const correction=r.correction||null;
+  const correctionStatus=correction?.status||'';
+  const correctionStatusLabel=correctionStatus==='DISETUJUI_PENGAWAS'?'DISETUJUI PENGAWAS':correctionStatus==='DITOLAK_PENGAWAS'?'DITOLAK PENGAWAS':'MENUNGGU VERIFIKASI';
+  const correctionInfo=correction?`<div class="message warning" style="margin:8px 0"><b>Koreksi manual sekolah tercatat.</b> Status: ${esc(correctionStatusLabel)} • Pengaju: ${esc(correction.created_by||'-')} • ${esc(correction.created_at||'-')}<br>Alasan sekolah: ${esc(correction.reason||'-')}${correction.reviewed_by?`<br>Ditinjau oleh: ${esc(correction.reviewed_by)} • ${esc(correction.reviewed_at||'-')}`:''}${correction.review_note?`<br>Catatan Pengawas: ${esc(correction.review_note)}`:''}<br><small>${correctionStatus==='DISETUJUI_PENGAWAS'?'Koreksi telah diverifikasi dan digunakan pada perbandingan.':correctionStatus==='DITOLAK_PENGAWAS'?'Koreksi ditolak; perbandingan menggunakan nilai OCR asli.':'Koreksi menunggu pemeriksaan Pengawas.'}</small>${isPengawas()&&correctionStatus==='DIAJUKAN_SEKOLAH'?`<div class="toolbar" style="margin-top:8px"><button class="btn btn-primary btn-sm" onclick="reviewDerivedPdfOcrCorrection('DISETUJUI','${esc(r.book_type)}','${esc(r.document?.file_id||'')}','${esc(correction.id_koreksi)}')">Setujui Koreksi</button><button class="btn btn-light btn-sm" onclick="reviewDerivedPdfOcrCorrection('DITOLAK','${esc(r.book_type)}','${esc(r.document?.file_id||'')}','${esc(correction.id_koreksi)}')">Tolak Koreksi</button></div>`:''}</div>`:'';
+  const editor=isSchool()?`<div class="panel" style="margin-top:10px;border:1px solid #d8e2ec">
+    <b>Perbaiki angka hasil OCR</b>
+    <p class="muted" style="margin:5px 0 10px">Periksa angka pada PDF asli di sebelah kiri. Jika OCR salah membaca atau tidak menemukan angka, isi nilai yang benar di bawah ini. Angka harus berupa rupiah tanpa titik pemisah ribuan.</p>
+    <div class="form-grid" style="grid-template-columns:repeat(auto-fit,minmax(190px,1fr))">
+      ${fields.map(x=>`<div class="field"><label>${esc(x.label)} <small class="muted" style="display:block">OCR asli: ${original[x.key]===null||original[x.key]===undefined?'Tidak terbaca':fmtRupiah(original[x.key])}</small></label><input type="number" min="0" step="1" id="v217OcrEdit_${esc(r.book_type)}_${esc(x.key)}" value="${pdf[x.key]===null||pdf[x.key]===undefined?'':esc(pdf[x.key])}" placeholder="Masukkan angka rupiah"></div>`).join('')}
+    </div>
+    <div class="field" style="margin-top:8px"><label>Alasan koreksi <b style="color:#b33">*</b></label><textarea id="v217OcrReason_${esc(r.book_type)}" rows="2" maxlength="500" placeholder="Contoh: angka pada PDF terbaca Rp100, seharusnya Rp100.000 sesuai dokumen asli."></textarea></div>
+    <div class="toolbar" style="justify-content:flex-end;margin-top:8px"><button class="btn btn-primary btn-sm" onclick="saveDerivedPdfOcrCorrection('${esc(r.book_type)}','${esc(r.document?.file_id||'')}')">Simpan Koreksi OCR</button></div>
+    <div class="muted" style="margin-top:6px;font-size:.8rem">Setiap koreksi disimpan sebagai riwayat baru. OCR asli dan PDF sumber tidak ditimpa. Koreksi ditandai menunggu pemeriksaan Pengawas.</div>
+  </div>`:'';
+  return `<div class="message ${type}" style="margin-bottom:8px"><b>${esc(r.status)}</b> — ${esc(r.message||'')}</div>${correctionInfo}<div class="table-wrap"><table class="friendly-table"><thead><tr><th>Komponen</th><th>BKU Data</th><th>OCR Asli</th><th>Nilai Digunakan</th><th>Selisih</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table></div>${editor}`;
 }
+
+window.reviewDerivedPdfOcrCorrection=async function(decision,bookType,fileId,idKoreksi){
+  const wb=window.__v217Workbench||{},c=window.__pdfInteractiveContext||{};
+  const p=wb.id_periode||c.p||state.selectedPeriode||'',n=wb.npsn||c.n||state.selectedNpsn||'';
+  let note='';
+  if(decision==='DITOLAK'){
+    note=prompt('Tuliskan alasan penolakan koreksi OCR (minimal 5 karakter):','');
+    if(note===null||note.trim().length<5){toast('Alasan penolakan wajib diisi.','warning');return;}
+  }else if(!confirm('Setujui koreksi OCR dari sekolah? Nilai koreksi akan digunakan pada perbandingan.'))return;
+  try{
+    const r=await api('verifikasiKoreksiOcrBuku',{data:{decision:decision,bookType:bookType,fileId:fileId,idKoreksi:idKoreksi,idPeriode:p,npsn:n,note:note}});
+    toast(r.message||'Verifikasi koreksi OCR tersimpan.','ok',5500);
+    await runDerivedPdfCrossCheck(bookType,fileId);
+  }catch(e){toast(errorText(e),'error',7000);}
+};
+
+window.saveDerivedPdfOcrCorrection=async function(bookType,fileId){
+  const wb=window.__v217Workbench||{},c=window.__pdfInteractiveContext||{};
+  const p=wb.id_periode||c.p||state.selectedPeriode||'',n=wb.npsn||c.n||state.selectedNpsn||state.user?.npsn||'';
+  const type=String(bookType||'').toUpperCase();
+  const keys=type==='PAJAK'?['pungut','setor','saldo_pajak']:['masuk','keluar','saldo_akhir'];
+  const correctedValues={};
+  for(const key of keys){
+    const el=document.getElementById(`v217OcrEdit_${type}_${key}`);
+    if(!el||el.value===''){toast('Semua angka koreksi wajib diisi.','warning');return;}
+    correctedValues[key]=Number(el.value);
+  }
+  const reason=document.getElementById(`v217OcrReason_${type}`)?.value?.trim()||'';
+  if(reason.length<5){toast('Alasan koreksi wajib diisi minimal 5 karakter.','warning');return;}
+  if(!confirm('Simpan koreksi OCR? Nilai OCR asli dan PDF tidak akan diubah.'))return;
+  try{
+    const r=await api('simpanKoreksiOcrBuku',{data:{bookType:type,fileId:fileId,idPeriode:p,npsn:n,correctedValues:correctedValues,reason:reason}});
+    toast(r.message||'Koreksi OCR berhasil disimpan.','ok',6000);
+    await runDerivedPdfCrossCheck(type,fileId);
+  }catch(e){toast(errorText(e),'error',7000);}
+};
 
 window.runDerivedPdfCrossCheck=async function(bookType,fileId){
   const wb=window.__v217Workbench||{},c=window.__pdfInteractiveContext||{};
@@ -8007,7 +8061,8 @@ window.runDerivedPdfCrossCheck=async function(bookType,fileId){
   try{
     const r=await api('crossCheckDerivedBookPdf',{data:{bookType:type,fileId:fileId,idPeriode:p,npsn:n}});
     if(host)host.innerHTML=_v217PdfCompareHtml_(r);
-    if(r.status==='COCOK')toast('Cross-check PDF '+type+' cocok dengan BKU Data aktif.','ok',4500);
+    if(r.correction?.status==='DIAJUKAN_SEKOLAH')toast('Koreksi OCR sekolah menunggu verifikasi Pengawas.','warning',5500);
+    else if(r.status==='COCOK')toast('Cross-check PDF '+type+' cocok dengan BKU Data aktif.','ok',4500);
     else if(r.status==='SELISIH')toast('Ada selisih pada PDF '+type+'.','warning',5500);
     else toast(r.message||'Cross-check selesai.','warning',5000);
   }catch(e){
