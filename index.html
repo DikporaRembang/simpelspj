@@ -2174,7 +2174,7 @@ const SUBMENU_TUTORIALS = {
   masterSpj:{title:'Master Periodisasi & Standar',text:'DINAS menetapkan periodisasi, standar SPJ, dan referensi yang dipakai seluruh role. Sekolah dan Pengawas tidak membuat periodisasi sendiri.',flow:['Periodisasi DINAS','Standar SPJ','Workflow','Pelaksanaan'],current:0},
   sekolah:{title:'Data Sekolah',text:'Identitas sekolah menjadi kunci relasi BKU, dokumen, penugasan, pemeriksaan, dan hasil penilaian.',flow:['Identitas','Penugasan','SPJ','Hasil'],current:0},
   penugasan:{title:'Penugasan Pengawas',text:'DINAS menetapkan sekolah binaan. Pengawas memakai penugasan ini untuk pemeriksaan, temuan, rekomendasi, dan verifikasi ulang—bukan untuk memfinalisasi nilai.',flow:['Sekolah','Pengawas','Pemeriksaan','Verifikasi'],current:1},
-  transaksi:{title:'BKU Data',text:'Sekolah memilih tepat satu sumber BKU Data: Excel BKU atau PDF BKU Digital non-scan. Upload sebelum jadwal DINAS berlaku tetap tersimpan sebagai histori tetapi tidak dihitung.',flow:['Stage INPUT SPJ','BKU Data','Validasi','Snapshot Aktif'],current:1},
+  transaksi:{title:'BKU Data',text:'Sekolah memilih tepat satu sumber BKU Data: PDF BKU Digital non-scan hasil ekspor ARKAS. Upload sebelum jadwal DINAS berlaku tetap tersimpan sebagai histori tetapi tidak dihitung.',flow:['Stage INPUT SPJ','BKU Data','Validasi','Snapshot Aktif'],current:1},
   dokumenBulanan:{title:'Dokumen SPJ & BKU Resmi',text:'BKU Resmi berupa scan PDF bertanda tangan diunggah terpisah dari BKU Data. Dokumen yang diunggah sebelum jadwal DINAS berlaku tidak dihitung sebagai evidence aktif.',flow:['BKU Data','BKU Resmi & Bukti','Pemeriksaan','Tindak Lanjut'],current:1},
   pdfInteraktif:{title:'Pemeriksaan BKU & Dokumen',text:'Pengawas memeriksa transaksi kanonik, BKU Resmi, dan bukti SPJ. Workbench ini tidak membuat atau memfinalisasi Penilaian Fase 1/Fase 2.',flow:['Sekolah Tugas','BKU & Bukti','Pemeriksaan','Temuan'],current:2},
   temuan:{title:'Temuan & Rekomendasi',text:'Pengawas mencatat temuan berbasis bukti dan rekomendasi. Setelah tindak lanjut diverifikasi, hasil pemeriksaan menjadi dasar Penilaian Fase 1 Pengawas.',flow:['Bukti','Temuan','Rekomendasi','Perbaikan','Fase 1 Pengawas'],current:1},
@@ -3524,7 +3524,7 @@ function setActive(view){
           <div id="schoolHomeStatus">${loading('Menyusun status SPJ...')}</div>
         </section>
         <section class="school-quick-grid">
-          <button class="school-quick-card" onclick="loadView('transaksi')"><span>📊</span><div><strong>1. BKU Data</strong><small>Excel BKU atau PDF Digital non-scan, pilih salah satu.</small></div><b>→</b></button>
+          <button class="school-quick-card" onclick="loadView('transaksi')"><span>📊</span><div><strong>1. BKU Data</strong><small>PDF BKU Digital non-scan hasil ekspor ARKAS.</small></div><b>→</b></button>
           <button class="school-quick-card" onclick="loadView('dokumenBulanan')"><span>📁</span><div><strong>2. Bukti SPJ</strong><small>Lengkapi dokumen pendukung transaksi.</small></div><b>→</b></button>
           <button class="school-quick-card" onclick="loadView('statusSpj')"><span>✅</span><div><strong>3. Status & Hasil</strong><small>Lihat pemeriksaan, temuan, dan nilai.</small></div><b>→</b></button>
         </section>
@@ -3559,7 +3559,7 @@ function setActive(view){
         const hasBkuData=!!bkuSource.id_import;
         let action='', actionView='transaksi';
         if(!hasBkuData){
-          action='Tetapkan BKU Data: Excel BKU atau PDF Digital non-scan.';
+          action='Tetapkan BKU Data dari PDF BKU Digital.';
           actionView='transaksi';
         }else if(repair){
           action=`Ada ${repair} komponen bukti yang perlu diperbaiki.`;
@@ -4515,7 +4515,7 @@ async function renderStatus(){
 
 async function transaksiView(){
   const periods = await periodeSelect();
-  $('#mainContent').innerHTML = head('BKU Data','Pilih tepat satu sumber transaksi kanonik: Excel BKU atau PDF BKU Digital non-scan')+
+  $('#mainContent').innerHTML = head('BKU Data','Unggah PDF BKU Digital non-scan hasil ekspor ARKAS')+
     `<div class="panel"><div class="form-grid"><div class="field"><label>Periode SPJ</label>${periods}</div></div><div id="trxArea" style="margin-top:18px"></div></div>`;
 
   const sel=$('#periodeSelect');
@@ -4665,7 +4665,7 @@ async function renderTransaksi(page = 1){
         }else if(Number(importStatus?.ignored_pre_schedule||0)>0){
           trxNextAction=`<div class="school-next-action danger"><div><span class="school-eyebrow">DATA PRA-JADWAL TIDAK BERLAKU</span><strong>BKU pernah diunggah sebelum jadwal DINAS berlaku, sehingga tidak dipakai untuk penilaian.</strong><small style="display:block;margin-top:5px">Riwayat tetap tersimpan. Silakan unggah ulang BKU Data ketika tahap INPUT SPJ atau PERBAIKAN memiliki jadwal aktif untuk sekolah Anda.</small></div><button class="btn btn-primary btn-sm" onclick="openBkuDataImport()">Unggah Ulang BKU Data</button></div>`;
         }else{
-          trxNextAction=`<div class="school-next-action"><div><span class="school-eyebrow">LANGKAH PERTAMA</span><strong>Belum ada BKU Data yang ditetapkan untuk periode ini.</strong><small style="display:block;margin-top:5px">Pilih satu sumber: Excel BKU atau PDF BKU Digital non-scan. Keduanya menghasilkan transaksi kanonik yang sama.</small></div><button class="btn btn-primary btn-sm" onclick="openBkuDataImport()">Tetapkan BKU Data</button></div>`;
+          trxNextAction=`<div class="school-next-action"><div><span class="school-eyebrow">LANGKAH PERTAMA</span><strong>Belum ada BKU Data yang ditetapkan untuk periode ini.</strong><small style="display:block;margin-top:5px">Unggah PDF BKU Digital non-scan hasil ekspor ARKAS. Sistem akan mengekstrak transaksi dan merekonsiliasi setiap bulan.</small></div><button class="btn btn-primary btn-sm" onclick="openBkuDataImport()">Tetapkan BKU Data</button></div>`;
         }
       }else{
         const src=r.source||{};
@@ -4762,13 +4762,10 @@ window.openBkuDataImport=function(){
   wrap.innerHTML=`<div style="position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:1001;padding:16px">
     <div style="background:#fff;padding:28px;border-radius:24px;width:min(100%,900px);max-height:92vh;overflow:auto">
       <h3 style="margin-top:0;color:var(--primary)">Tetapkan BKU Data</h3>
-      <div class="message ok"><b>Pilih tepat satu sumber BKU Data.</b><br>Excel BKU dan PDF BKU Digital adalah alternatif. Scan PDF BKU bertanda tangan bukan sumber transaksi; unggah pada menu <b>Dokumen SPJ & BKU Resmi</b>.</div>
-      <div class="cards" style="grid-template-columns:repeat(auto-fit,minmax(260px,1fr));margin-top:16px">
-        <button class="panel" style="text-align:left;cursor:pointer;border:1px solid var(--border)" onclick="$('#bkuSourceModal').remove();openExcelImport()">
-          <small class="muted">SUMBER 1</small><h3 style="margin:6px 0">📊 Excel BKU</h3><p class="muted">File .xlsx/.xls hasil ekspor BKU ARKAS. Dibaca lokal lalu dinormalisasi.</p>
-        </button>
+      <div class="message ok"><b>Sumber BKU Data: PDF BKU Digital.</b><br>Unggah PDF digital hasil unduhan ARKAS yang memiliki text layer dan tabel transaksi. File Excel tidak digunakan pada alur unggah sekolah. PDF scan bertanda tangan tetap diunggah pada menu <b>Dokumen SPJ & BKU Resmi</b>.</div>
+      <div class="cards" style="grid-template-columns:minmax(260px,520px);margin-top:16px">
         <button class="panel" style="text-align:left;cursor:pointer;border:1px solid var(--border)" onclick="$('#bkuSourceModal').remove();openPdfBkuImport()">
-          <small class="muted">SUMBER 2</small><h3 style="margin:6px 0">📄 PDF BKU Digital</h3><p class="muted">PDF digital/non-scan dengan text layer. PDF scan akan ditolak sebagai BKU Data.</p>
+          <small class="muted">SUMBER BKU DATA</small><h3 style="margin:6px 0">📄 PDF BKU Digital</h3><p class="muted">PDF digital/non-scan hasil unduhan ARKAS. Sistem memeriksa transaksi, saldo pembuka, subtotal, dan saldo penutupan setiap bulan.</p>
         </button>
       </div>
       <div style="display:flex;justify-content:flex-end;margin-top:16px"><button class="btn btn-light" onclick="$('#bkuSourceModal').remove()">Tutup</button></div>
@@ -4791,27 +4788,65 @@ function _bkuPdfRows_(items,viewport){
     const m=_bkuPdfMatrixMultiply_(view,x.transform||[1,0,0,1,0,0]),y=Number(m[5]||0),xx=Number(m[4]||0);
     let row=rows.find(r=>Math.abs(r.y-y)<=tol);if(!row){row={y,items:[]};rows.push(row);}row.items.push({x:xx,text:_bkuPdfNorm_(x.str)});
   });
-  rows.forEach(r=>r.items.sort((a,b)=>a.x-b.x));return rows.sort((a,b)=>b.y-a.y);
+  rows.forEach(r=>r.items.sort((a,b)=>a.x-b.x));
+  // viewport.transform PDF.js sudah mengubah koordinat PDF (origin kiri-bawah)
+  // menjadi koordinat viewport (origin kiri-atas); urutan baca harus top-to-bottom.
+  return rows.sort((a,b)=>a.y-b.y);
 }
 
 function _bkuPdfLayout_(rows){
-  for(const row of rows){
+  for(let i=0;i<rows.length;i++){
+    const row=rows[i];
     const all=_bkuPdfHeaderKey_(row.items.map(x=>x.text).join(' '));
     if(!all.includes('TANGGAL')||!all.includes('URAIAN')||!all.includes('PENGELUARAN')||!all.includes('SALDO'))continue;
-    const find=(rx)=>row.items.find(x=>rx.test(_bkuPdfHeaderKey_(x.text)))?.x;
-    const xDate=find(/TANGGAL/),xUraian=find(/URAIAN/),xTerima=find(/PENERIMAAN/),xKeluar=find(/PENGELUARAN/),xSaldo=find(/SALDO/);
-    const rekeningItem=row.items.find(x=>/REKENING/.test(_bkuPdfHeaderKey_(x.text)));
-    const buktiItem=row.items.find(x=>/BUKTI/.test(_bkuPdfHeaderKey_(x.text)));
-    const kegiatanItem=row.items.find(x=>/KEGIATAN/.test(_bkuPdfHeaderKey_(x.text)));
+
+    // Header BKU ARKAS tersusun dua tingkat: sebagian label (KEGIATAN,
+    // REKENING) berada pada baris vertikal yang berdekatan. Gunakan seluruh
+    // baris header di sekitar baris utama, bukan hanya satu baris teks.
+    const nearby=rows.filter(r=>Math.abs(r.y-row.y)<=14);
+    const find=(rx)=>nearby.flatMap(r=>r.items).find(x=>rx.test(_bkuPdfHeaderKey_(x.text)))?.x;
+    const xDate=find(/TANGGAL/),xTerima=find(/PENERIMAAN/),xKeluar=find(/PENGELUARAN/),xSaldo=find(/SALDO/);
+    const xBukti=find(/BUKTI/),xKegiatan=find(/KEGIATAN/),xRekening=find(/REKENING/);
+    if([xDate,xTerima,xKeluar,xSaldo,xBukti].some(x=>x===undefined))continue;
+
+    // Judul URAIAN biasanya berada di tengah kolom yang sangat lebar.
+    // Untuk batas kolom, gunakan posisi awal teks uraian pada baris data
+    // (mis. "Saldo Bank Bulan..." atau deskripsi transaksi), bukan titik
+    // tengah label header tersebut.
+    const dataRows=rows.slice(i+1,i+35);
+    const candidates=[];
+    dataRows.forEach(r=>r.items.forEach(it=>{
+      if(it.x<=xBukti+5||it.x>=xTerima-5)return;
+      const t=_bkuPdfNorm_(it.text),u=_bkuPdfHeaderKey_(t);
+      if(!t||/^[-+]?\d+(?:[.,]\d+)?$/.test(t)||/^\d{2}[\/-]\d{2}[\/-]\d{4}$/.test(t))return;
+      if(/^(TANGGAL|KODE|KEGIATAN|REKENING|NO\.?\s*BUKTI|URAIAN|PENERIMAAN|PENGELUARAN|SALDO|[1-8])$/.test(u))return;
+      if(/^(BPU|BBU|BKU)[A-Z0-9._/-]*$/i.test(t))return;
+      if(/^\d{2}\.\d{2}\.\d{2}\.?$/.test(t)||/^\d+(?:\.\d+){2,}$/.test(t))return;
+      candidates.push(it.x);
+    }));
+    const xUraian=candidates.length?Math.min.apply(null,candidates):find(/URAIAN/);
     if([xDate,xUraian,xKeluar,xSaldo].some(x=>x===undefined))continue;
-    const cols=[['tanggal',xDate],['kode_kegiatan',kegiatanItem?.x],['kode_rekening',rekeningItem?.x],['nomor_bukti',buktiItem?.x],['uraian',xUraian],['penerimaan',xTerima],['pengeluaran',xKeluar],['saldo',xSaldo]].filter(x=>Number.isFinite(x[1])).sort((a,b)=>a[1]-b[1]);
+    const cols=[
+      ['tanggal',xDate],['kode_kegiatan',xKegiatan],['kode_rekening',xRekening],
+      ['nomor_bukti',xBukti],['uraian',xUraian],['penerimaan',xTerima],
+      ['pengeluaran',xKeluar],['saldo',xSaldo]
+    ].filter(x=>Number.isFinite(x[1])).sort((a,b)=>a[1]-b[1]);
     return cols;
   }
   return null;
 }
 function _bkuPdfAssign_(row,cols){
   const out={}; cols.forEach(c=>out[c[0]]=[]);
-  const boundaries=[]; for(let i=0;i<cols.length-1;i++)boundaries.push((cols[i][1]+cols[i+1][1])/2);
+  const boundaries=[];
+  for(let i=0;i<cols.length-1;i++){
+    const nextKey=cols[i+1][0],nextX=cols[i+1][1];
+    // Angka pada kolom BKU diratakan ke kanan. Karena itu batas penerimaan/
+    // pengeluaran dan pengeluaran/saldo mengikuti sisi kiri kolom berikutnya,
+    // dengan toleransi kecil untuk teks subtotal yang tepat di garis tabel.
+    if(nextKey==='pengeluaran')boundaries.push(nextX-4);
+    else if(nextKey==='saldo')boundaries.push(nextX-6);
+    else boundaries.push((cols[i][1]+nextX)/2);
+  }
   row.items.forEach(it=>{let idx=0;while(idx<boundaries.length&&it.x>=boundaries[idx])idx++;out[cols[idx][0]].push(it.text);});
   Object.keys(out).forEach(k=>out[k]=_bkuPdfNorm_(out[k].join(' ')));
   return out;
@@ -4820,8 +4855,49 @@ function _bkuPdfMeta_(text){
   const t=String(text||'').replace(/\s+/g,' ');
   const n=(t.match(/NPSN\s*[:\-]?\s*(\d{8})/i)||[])[1]||'';
   const y=(t.match(/TAHUN\s*[:\-]?\s*(20\d{2})/i)||[])[1]||'';
-  let nama='';const m=t.match(/NAMA\s+SEKOLAH\s*[:\-]?\s*(.{3,80}?)(?=\s+(?:NPSN|ALAMAT|TAHUN|SEMESTER|$))/i);if(m)nama=_bkuPdfNorm_(m[1]);
+  let nama='';const m=t.match(/NAMA\s+SEKOLAH\s*[:\-]?\s*(.{3,80}?)(?=\s+(?:NPSN|ALAMAT|DESA|KECAMATAN|KABUPATEN|PROVINSI|SUMBER\s+DANA|TAHUN|SEMESTER|HALAMAN|BULAN|BUKU\s+KAS\s+UMUM)\b|$)/i);if(m)nama=_bkuPdfNorm_(m[1]);
   return {npsn:n,tahun:y,nama};
+}
+
+const _BKUPDF_MONTHS_CLIENT_ = {
+  JANUARI:1,FEBRUARI:2,MARET:3,APRIL:4,MEI:5,JUNI:6,
+  JULI:7,AGUSTUS:8,SEPTEMBER:9,OKTOBER:10,NOVEMBER:11,DESEMBER:12
+};
+function _bkuPdfMonthKeyFromText_(v){
+  const m=String(v||'').match(/\bBULAN\s*[:\-]?\s*(JANUARI|FEBRUARI|MARET|APRIL|MEI|JUNI|JULI|AGUSTUS|SEPTEMBER|OKTOBER|NOVEMBER|DESEMBER)\s+TAHUN\s*[:\-]?\s*(20\d{2})\b/i);
+  if(!m)return '';
+  return `${m[2]}-${String(_BKUPDF_MONTHS_CLIENT_[m[1].toUpperCase()]||0).padStart(2,'0')}`;
+}
+function _bkuPdfMonthKeyFromClosingLine_(v){
+  const m=String(v||'').match(/\b(\d{1,2})\s+(JANUARI|FEBRUARI|MARET|APRIL|MEI|JUNI|JULI|AGUSTUS|SEPTEMBER|OKTOBER|NOVEMBER|DESEMBER)\s+(20\d{2})\b/i);
+  if(!m)return '';
+  return `${m[3]}-${String(_BKUPDF_MONTHS_CLIENT_[m[2].toUpperCase()]||0).padStart(2,'0')}`;
+}
+function _bkuPdfClosingSummary_(rows){
+  const lines=(rows||[]).map(r=>_bkuPdfNorm_((r.items||[]).map(x=>x.text).join(' ')));
+  const marker=lines.findIndex(x=>/BUKU KAS UMUM DITUTUP/i.test(x));
+  if(marker<0)return null;
+  const monthKey=_bkuPdfMonthKeyFromClosingLine_(lines[marker]);
+  const out={month_key:monthKey,book:null,bank:null,cash:null,total:null};
+  for(let i=marker+1;i<lines.length;i++){
+    const line=lines[i];
+    const m=line.match(/RP\.?\s*([0-9][0-9.,]*)/i);
+    if(!m)continue;
+    const value=_bkuNumberClient(m[1]);
+    if(/SALDO\s+BUKU\s+KAS\s+UMUM/i.test(line))out.book=value;
+    else if(/SALDO\s+KAS\s+TUNAI/i.test(line))out.cash=value;
+    else if(/SALDO\s+BANK/i.test(line))out.bank=value;
+    else if(/^\s*JUMLAH\b/i.test(line))out.total=value;
+  }
+  return out;
+}
+function _bkuPdfEnsureMonth_(map,key){
+  if(!map[key])map[key]={
+    month_key:key,opening_balance:0,opening_rows:[],running_balance:null,last_saldo:null,
+    total_penerimaan:0,total_pengeluaran:0,transaction_count:0,invalid_saldo:0,
+    dual_side_count:0,unchecked_first_rows:0,subtotal:null,closing:null
+  };
+  return map[key];
 }
 
 window.openPdfBkuImport=function(){
@@ -4841,67 +4917,188 @@ window.openPdfBkuImport=function(){
 window.parsePdfBkuDigital=async function(){
   const f=$('#pdfBkuFile')?.files?.[0],out=$('#pdfBkuPreview'),btn=$('#pdfBkuReadBtn');
   if(!f){out.innerHTML=msg('Pilih PDF BKU Digital terlebih dahulu.','warning');return;}
-  if(!/\.pdf$/i.test(f.name)){out.innerHTML=msg('File BKU Digital harus berformat PDF.','warning');return;}
-  btn.disabled=true;btn.textContent='Membaca PDF...';out.innerHTML=loading('Mengekstrak text layer, menormalkan orientasi, dan memvalidasi saldo...');
+  if(!/\.pdf$/i.test(f.name)){out.innerHTML=msg('File BKU Data harus berformat PDF.','warning');return;}
+  btn.disabled=true;btn.textContent='Membaca PDF...';out.innerHTML=loading('Mengekstrak transaksi, saldo pembuka, subtotal, dan saldo penutupan setiap bulan...');
   try{
     const lib=await ensurePdfJs(),pdf=await lib.getDocument({data:new Uint8Array(await f.arrayBuffer())}).promise;
     if(pdf.numPages>60)throw new Error('PDF BKU melebihi batas 60 halaman.');
-    let layout=null,allText='',logicalRow=0,pagesWithLayout=0;
-    const data=[];let openingBalance=0,prevSaldo=null,lastSaldo=null,totalPenerimaan=0,totalPengeluaran=0,invalidSaldo=0,dualSideCount=0;
+    let layout=null,allText='',logicalRow=0,pagesWithLayout=0,currentMonthKey='';
+    const data=[],monthMap={};
+    let totalPenerimaan=0,totalPengeluaran=0,dualSideCount=0;
     for(let p=1;p<=pdf.numPages;p++){
       const page=await pdf.getPage(p),tc=await page.getTextContent(),viewport=page.getViewport({scale:1});
       const rows=_bkuPdfRows_(tc.items||[],viewport);
-      allText+=' '+rows.map(r=>r.items.map(x=>x.text).join(' ')).join(' ');
+      const pageText=rows.map(r=>r.items.map(x=>x.text).join(' ')).join(' ');
+      allText+=' '+pageText;
+      const headerMonth=_bkuPdfMonthKeyFromText_(pageText);
+      if(headerMonth)currentMonthKey=headerMonth;
+      const closing=_bkuPdfClosingSummary_(rows);
+      if(closing&&closing.month_key){
+        const closeMonth=_bkuPdfEnsureMonth_(monthMap,closing.month_key);
+        closeMonth.closing=closing;
+        currentMonthKey=closing.month_key;
+      }
       const pageLayout=_bkuPdfLayout_(rows);if(pageLayout){layout=pageLayout;pagesWithLayout++;}
       if(!layout)continue;
       for(const row of rows){
-        const c=_bkuPdfAssign_(row,layout),tanggal=_bkuPdfDate_(c.tanggal);if(!tanggal)continue;
-        const penerimaan=_bkuNumberClient(c.penerimaan),pengeluaran=_bkuNumberClient(c.pengeluaran),saldo=_bkuNumberClient(c.saldo);
+        const c=_bkuPdfAssign_(row,layout);
+        const tanggal=_bkuPdfDate_(c.tanggal);
+        if(tanggal)currentMonthKey=tanggal.slice(0,7);
         const uraian=String(c.uraian||'').trim();
-        if(/^Saldo (Bank|Tunai) Bulan/i.test(uraian)){openingBalance+=saldo;prevSaldo=openingBalance;lastSaldo=openingBalance;continue;}
-        const nilai=Math.max(Math.abs(penerimaan),Math.abs(pengeluaran));if(!(nilai>0))continue;
-        if(penerimaan>0&&pengeluaran>0)dualSideCount++;
-        if(prevSaldo!==null&&Math.abs(prevSaldo+penerimaan-pengeluaran-saldo)>1)invalidSaldo++;
-        prevSaldo=saldo;lastSaldo=saldo;totalPenerimaan+=penerimaan;totalPengeluaran+=pengeluaran;logicalRow++;
+        if(!currentMonthKey)continue;
+        const month=_bkuPdfEnsureMonth_(monthMap,currentMonthKey);
+
+        // Baris Jumlah adalah subtotal bulan, bukan transaksi.
+        if(!tanggal){
+          if(/^(JUMLAH|TOTAL|SUBTOTAL)\b/i.test(uraian)){
+            const subtotal={
+              penerimaan:_bkuNumberClient(c.penerimaan),
+              pengeluaran:_bkuNumberClient(c.pengeluaran),
+              saldo:_bkuNumberClient(c.saldo)
+            };
+            if(month.subtotal &&
+              (Math.abs(month.subtotal.penerimaan-subtotal.penerimaan)>1 ||
+               Math.abs(month.subtotal.pengeluaran-subtotal.pengeluaran)>1 ||
+               Math.abs(month.subtotal.saldo-subtotal.saldo)>1)){
+              month.subtotal_conflict=true;
+            }
+            month.subtotal=subtotal;
+          }
+          continue;
+        }
+
+        const penerimaan=_bkuNumberClient(c.penerimaan);
+        const pengeluaran=_bkuNumberClient(c.pengeluaran);
+        const saldo=_bkuNumberClient(c.saldo);
+
+        // Saldo Bank dan Saldo Tunai adalah saldo pembuka. Nilai saldo pembuka
+        // diambil dari kolom PENERIMAAN/PENGELUARAN, bukan kolom SALDO,
+        // karena kolom SALDO pada baris kas tunai sudah berisi saldo gabungan.
+        const openingMatch=uraian.match(/^Saldo\s+(Bank|Tunai)\s+Bulan\b/i);
+        if(openingMatch){
+          if(month.running_balance===null)month.running_balance=0;
+          const expected=month.running_balance+penerimaan-pengeluaran;
+          if(Math.abs(expected-saldo)>1)month.invalid_saldo++;
+          month.running_balance=saldo;
+          month.opening_balance+=penerimaan-pengeluaran;
+          month.opening_rows.push({
+            type:openingMatch[1].toUpperCase(),
+            date:tanggal,
+            penerimaan,pengeluaran,saldo,
+            uraian,
+            source_page:p
+          });
+          month.last_saldo=saldo;
+          continue;
+        }
+
+        const nilai=Math.max(Math.abs(penerimaan),Math.abs(pengeluaran));
+        if(!(nilai>0))continue;
+        if(penerimaan>0&&pengeluaran>0){dualSideCount++;month.dual_side_count++;}
+        if(month.running_balance!==null){
+          if(Math.abs(month.running_balance+penerimaan-pengeluaran-saldo)>1)month.invalid_saldo++;
+        }else{
+          // Jangan menebak saldo awal jika baris saldo pembuka tidak tersedia.
+          month.unchecked_first_rows++;
+        }
+        month.running_balance=saldo;month.last_saldo=saldo;
+        month.total_penerimaan+=penerimaan;month.total_pengeluaran+=pengeluaran;
+        month.transaction_count++;
+        totalPenerimaan+=penerimaan;totalPengeluaran+=pengeluaran;
+        logicalRow++;
         data.push({source_row:`P${p}-R${logicalRow}`,tanggal_transaksi:tanggal,kode_kegiatan:c.kode_kegiatan||'',kode_rekening:c.kode_rekening||'',
           nomor_bukti:c.nomor_bukti||'',uraian_transaksi:uraian||'Transaksi BKU',penerimaan,pengeluaran,nilai_transaksi:nilai,saldo});
       }
     }
+
     const compact=allText.replace(/\s+/g,' ').trim();
     if(compact.length<200)throw new Error('PDF tidak memiliki text layer yang memadai. File ini kemungkinan scan atau memakai font yang tidak menyediakan pemetaan teks.');
-    if(!pagesWithLayout||!data.length)throw new Error('PDF tampak digital, tetapi teks tabel tidak dapat diekstrak secara semantik (misalnya font Type 3/custom tanpa Unicode map). Jangan impor hasil yang tidak pasti. Gunakan Excel BKU ARKAS untuk BKU Data atau unggah PDF ini sebagai BKU Resmi.');
+    if(!pagesWithLayout||!data.length)throw new Error('PDF tampak digital, tetapi struktur tabel BKU tidak dapat diekstrak secara semantik. Pastikan PDF berasal dari ekspor BKU digital ARKAS, bukan hasil scan.');
     const meta=_bkuPdfMeta_(compact);
     if(!meta.npsn)throw new Error('NPSN tidak terbaca dari PDF BKU Digital.');
     if(isSchool()&&String(meta.npsn)!==String(ownNpsn()))throw new Error(`NPSN pada PDF (${meta.npsn}) tidak sama dengan akun sekolah (${ownNpsn()}).`);
-    const balanced=lastSaldo!==null&&Math.abs(openingBalance+totalPenerimaan-totalPengeluaran-lastSaldo)<=1;
-    const months=[...new Set(data.map(x=>x.tanggal_transaksi.slice(0,7)))].sort();
-    const years=[...new Set(data.map(x=>Number(x.tanggal_transaksi.slice(0,4))))],year=Number(meta.tahun||years[0]||0);
+
+    const monthly=Object.keys(monthMap).sort().map(key=>{
+      const m=monthMap[key],openingTypes=new Set(m.opening_rows.map(x=>x.type));
+      const openingRowsValid=m.opening_rows.length>=2&&openingTypes.has('BANK')&&openingTypes.has('TUNAI');
+      const expectedSubtotalIn=m.opening_balance+m.total_penerimaan;
+      const endSaldo=m.last_saldo===null?m.opening_balance:m.last_saldo;
+      const subtotal=m.subtotal||{};
+      const subtotalInOk=m.subtotal!==null&&Math.abs(num(subtotal.penerimaan)-expectedSubtotalIn)<=1;
+      const subtotalOutOk=m.subtotal!==null&&Math.abs(num(subtotal.pengeluaran)-m.total_pengeluaran)<=1;
+      const subtotalSaldoOk=m.subtotal!==null&&Math.abs(num(subtotal.saldo)-endSaldo)<=1;
+      const subtotalOk=subtotalInOk&&subtotalOutOk&&subtotalSaldoOk&&!m.subtotal_conflict;
+      const close=m.closing||{};
+      const hasClosing=close.book!==null&&close.bank!==null&&close.cash!==null&&close.total!==null;
+      const closingBalanceOk=hasClosing&&Math.abs(num(close.book)-endSaldo)<=1&&Math.abs(num(close.total)-num(close.book))<=1;
+      const closingSplitOk=hasClosing&&Math.abs(num(close.bank)+num(close.cash)-num(close.book))<=1;
+      const continuityOk=m.invalid_saldo===0&&m.unchecked_first_rows===0;
+      const valid=openingRowsValid&&continuityOk&&subtotalOk&&hasClosing&&closingBalanceOk&&closingSplitOk;
+      const reasons=[];
+      if(!openingRowsValid)reasons.push('saldo pembuka bank/tunai tidak lengkap atau tidak konsisten');
+      if(!continuityOk)reasons.push('saldo berjalan transaksi tidak konsisten atau saldo pembuka tidak tersedia');
+      if(!m.subtotal)reasons.push('subtotal Jumlah tidak ditemukan');
+      else if(!subtotalOk)reasons.push('subtotal penerimaan/pengeluaran/saldo tidak sama dengan hasil ekstraksi');
+      if(!hasClosing)reasons.push('halaman penutupan saldo bulanan tidak ditemukan atau tidak lengkap');
+      else{
+        if(!closingBalanceOk)reasons.push('saldo penutupan tidak sama dengan saldo akhir tabel');
+        if(!closingSplitOk)reasons.push('saldo bank + saldo tunai tidak sama dengan saldo Buku Kas Umum');
+      }
+      return {
+        month_key:key,opening_balance:m.opening_balance,
+        opening_rows:m.opening_rows.map(x=>({
+          type:x.type,date:x.date,penerimaan:x.penerimaan,pengeluaran:x.pengeluaran,
+          saldo:x.saldo,uraian:x.uraian,source_page:x.source_page
+        })),
+        total_penerimaan:m.total_penerimaan,total_pengeluaran:m.total_pengeluaran,
+        transaction_count:m.transaction_count,last_saldo:endSaldo,
+        invalid_saldo_rows:m.invalid_saldo,unchecked_first_rows:m.unchecked_first_rows,
+        subtotal:m.subtotal,closing:m.closing,
+        checks:{opening_rows:openingRowsValid,continuity:continuityOk,subtotal:subtotalOk,
+          closing:hasClosing&&closingBalanceOk&&closingSplitOk},
+        valid,reasons
+      };
+    });
+    const months=monthly.map(x=>x.month_key);
+    const years=[...new Set(data.map(x=>Number(x.tanggal_transaksi.slice(0,4))))];
+    const year=Number(meta.tahun||years[0]||0);
     const yearMismatch=data.filter(x=>Number(x.tanggal_transaksi.slice(0,4))!==year).length;
     const mappingErrors=data.filter(x=>/^[-+]?\d+(?:[.,]\d+)?$/.test(x.uraian_transaksi)||x.nomor_bukti.length>24&&/\s/.test(x.nomor_bukti));
-    const canImport=balanced&&invalidSaldo===0&&dualSideCount===0&&yearMismatch===0&&mappingErrors.length===0;
+    const invalidSaldo=monthly.reduce((sum,x)=>sum+Number(x.invalid_saldo_rows||0)+Number(x.unchecked_first_rows||0),0);
+    const balanced=monthly.length>0&&monthly.every(x=>x.valid);
+    const lastMonthly=monthly.length?monthly[monthly.length-1]:null;
+    const lastSaldo=lastMonthly?lastMonthly.last_saldo:null;
+    const firstMonthly=monthly.length?monthly[0]:null;
+    const openingBalance=firstMonthly?firstMonthly.opening_balance:0;
+    const canImport=balanced&&dualSideCount===0&&yearMismatch===0&&mappingErrors.length===0;
     state.importedTransactions=data;
     state.bkuImport={fileName:f.name,sourceType:'PDF_BKU_DIGITAL',meta,canImport,
-      validation:{totalPenerimaan,totalPengeluaran,lastSaldo,openingBalance,invalidSaldo,dualSideCount,balanced,yearMismatch,mappingErrors,months,pages:pdf.numPages,pagesWithLayout,sourceRows:data.length}};
-    const issues=[...(invalidSaldo?[`${invalidSaldo} baris saldo berjalan tidak konsisten`]:[]),
+      validation:{totalPenerimaan,totalPengeluaran,lastSaldo,openingBalance,invalidSaldo,dualSideCount,balanced,
+        yearMismatch,mappingErrors,months,pages:pdf.numPages,pagesWithLayout,sourceRows:data.length,monthly}};
+    const issues=[
+      ...monthly.filter(x=>!x.valid).map(x=>`${x.month_key}: ${x.reasons.join(', ')}`),
       ...(dualSideCount?[`${dualSideCount} baris mengisi penerimaan dan pengeluaran sekaligus`]:[]),
       ...(yearMismatch?[`${yearMismatch} transaksi di luar tahun ${year}`]:[]),
-      ...(mappingErrors.length?[`${mappingErrors.length} baris terindikasi salah pemetaan`]:[]),
-      ...(!balanced?['Saldo akhir tidak seimbang']:[])];
-    out.innerHTML=(canImport?msg(`PDF BKU Digital lolos pemeriksaan dasar. ${fmtNum(data.length)} transaksi berhasil diekstrak.`,'ok'):msg('PDF terbaca, tetapi belum lolos validasi. Snapshot tidak dapat ditetapkan.','error'))+
+      ...(mappingErrors.length?[`${mappingErrors.length} baris terindikasi salah pemetaan`]:[])
+    ];
+    const monthlyHtml=`<div class="panel" style="margin-top:12px"><b>Rekonsiliasi subtotal per bulan</b><div class="table-wrap"><table class="friendly-table"><thead><tr><th>Bulan</th><th>Saldo awal</th><th>Subtotal penerimaan</th><th>Subtotal pengeluaran</th><th>Saldo akhir</th><th>Status</th></tr></thead><tbody>${monthly.map(x=>`<tr><td>${esc(x.month_key)}</td><td>${fmtRupiah(x.opening_balance)}</td><td>${fmtRupiah(x.subtotal?.penerimaan||0)}</td><td>${fmtRupiah(x.subtotal?.pengeluaran||0)}</td><td>${fmtRupiah(x.last_saldo||0)}</td><td>${x.valid?badge('LULUS','success'):badge('PERLU REVIEW','warning')}</td></tr>`).join('')}</tbody></table></div></div>`;
+    out.innerHTML=(canImport?msg(`PDF BKU Digital lolos pemeriksaan integritas. ${fmtNum(data.length)} transaksi berhasil diekstrak dan subtotal ${monthly.length} bulan telah direkonsiliasi.`,'ok'):msg('PDF terbaca, tetapi belum lolos validasi integritas bulanan. Snapshot tidak dapat ditetapkan. Periksa rincian per bulan berikut.','error'))+
       `<div class="cards" style="margin:12px 0;grid-template-columns:repeat(auto-fit,minmax(170px,1fr))">
         <div class="stat"><small>NPSN</small><strong>${esc(meta.npsn)}</strong><div class="muted">${esc(meta.nama||'-')}</div></div>
         <div class="stat"><small>TAHUN</small><strong>${esc(year||'-')}</strong><div class="muted">${esc(months.join(', '))}</div></div>
         <div class="stat"><small>TRANSAKSI</small><strong>${fmtNum(data.length)}</strong><div class="muted">${fmtNum(pdf.numPages)} halaman PDF</div></div>
         <div class="stat"><small>VALIDASI</small><strong>${canImport?'LULUS':'PERLU REVIEW'}</strong><div class="muted">${issues.length} temuan</div></div>
       </div>
+      ${monthlyHtml}
       <div class="panel"><b>Kontrol BKU PDF</b><div class="table-wrap"><table class="friendly-table"><tbody>
-        <tr><td>Total Penerimaan</td><td><b>${fmtRupiah(totalPenerimaan)}</b></td></tr><tr><td>Total Pengeluaran</td><td><b>${fmtRupiah(totalPengeluaran)}</b></td></tr>
-        <tr><td>Saldo Awal</td><td><b>${fmtRupiah(openingBalance)}</b></td></tr><tr><td>Saldo Akhir</td><td><b>${fmtRupiah(lastSaldo||0)}</b></td></tr>
-        <tr><td>Saldo berjalan</td><td>${invalidSaldo?badge(`${invalidSaldo} baris perlu review`,'warning'):badge('KONSISTEN','success')}</td></tr>
-        <tr><td>Rekonsiliasi</td><td>${balanced?badge('KONSISTEN','success'):badge('TIDAK SEIMBANG','danger')}</td></tr></tbody></table></div></div>
-      ${issues.length?`<div class="message warning"><b>Temuan validasi</b><ul>${issues.slice(0,12).map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>`:''}
+        <tr><td>Total Penerimaan Transaksi</td><td><b>${fmtRupiah(totalPenerimaan)}</b></td></tr><tr><td>Total Pengeluaran Transaksi</td><td><b>${fmtRupiah(totalPengeluaran)}</b></td></tr>
+        <tr><td>Saldo Awal Bulan Pertama</td><td><b>${fmtRupiah(openingBalance)}</b></td></tr><tr><td>Saldo Akhir Bulan Terakhir</td><td><b>${fmtRupiah(lastSaldo||0)}</b></td></tr>
+        <tr><td>Subtotal bulanan</td><td>${monthly.every(x=>x.checks.subtotal)?badge('KONSISTEN','success'):badge('PERLU REVIEW','warning')}</td></tr>
+        <tr><td>Saldo berjalan</td><td>${invalidSaldo?badge('PERLU REVIEW','warning'):badge('KONSISTEN','success')}</td></tr>
+        <tr><td>Penutupan bulanan</td><td>${monthly.every(x=>x.checks.closing)?badge('KONSISTEN','success'):badge('PERLU REVIEW','warning')}</td></tr></tbody></table></div></div>
+      ${issues.length?`<div class="message warning"><b>Temuan validasi</b><ul>${issues.slice(0,20).map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>`:''}
       <div class="table-wrap"><table class="friendly-table"><thead><tr><th>Tanggal</th><th>Kode Rekening</th><th>No. Bukti</th><th>Uraian</th><th>Penerimaan</th><th>Pengeluaran</th><th>Saldo</th></tr></thead><tbody>${data.slice(0,25).map(x=>`<tr><td>${esc(formatBkuDateClient(x.tanggal_transaksi))}</td><td><code>${esc(x.kode_rekening||'-')}</code></td><td>${esc(x.nomor_bukti||'-')}</td><td>${esc(x.uraian_transaksi)}</td><td>${fmtRupiah(x.penerimaan)}</td><td>${fmtRupiah(x.pengeluaran)}</td><td>${fmtRupiah(x.saldo)}</td></tr>`).join('')}</tbody></table></div>
-      ${canImport?`<div class="message warning"><b>Konfirmasi snapshot.</b> Satu BKU tahunan akan dipetakan otomatis sesuai periodisasi DINAS. Riwayat impor lama tetap tersimpan.</div><button class="btn btn-primary" onclick="saveImportedTransactions()">✓ Tetapkan sebagai BKU Data</button>`:''}`;
+      ${canImport?`<div class="message warning"><b>Konfirmasi snapshot.</b> BKU Digital akan dipetakan otomatis sesuai periodisasi DINAS. Subtotal dan saldo pembuka tidak dimasukkan sebagai transaksi. Riwayat impor lama tetap tersimpan.</div><button class="btn btn-primary" onclick="saveImportedTransactions()">✓ Tetapkan sebagai BKU Data</button>`:''}`;
   }catch(err){out.innerHTML=msg(errorText(err),'error');state.bkuImport=null;state.importedTransactions=[];}
   finally{btn.disabled=false;btn.textContent='Baca & Validasi PDF';}
 };
@@ -8547,7 +8744,7 @@ async function tutorialV5View(){
         <div class="stat"><small>SEKOLAH</small><strong style="font-size:1rem">Pelaksana</strong><span>BKU Data, 10 dokumen scan, perbaikan, laporan Fase 1/Fase 2 milik sendiri</span></div>
         <div class="stat"><small>PENGAWAS</small><strong style="font-size:1rem">Pemeriksa & Penilai Fase 1</strong><span>Pemeriksaan, temuan, verifikasi, Fase 1, laporan sekolah binaan</span></div>
       </div>
-      <div class="message ok" style="margin-top:14px"><b>BKU Data:</b> pilih tepat satu—Excel BKU atau PDF BKU Digital non-scan. Scan PDF bertanda tangan adalah BKU Dokumen Resmi yang diunggah terpisah.</div>
+      <div class="message ok" style="margin-top:14px"><b>BKU Data:</b> unggah PDF BKU Digital non-scan hasil ekspor ARKAS. Scan PDF bertanda tangan adalah BKU Dokumen Resmi yang diunggah terpisah.</div>
     </div>
     <div class="panel v11-tutorial" style="margin-top:14px">
       <div class="v11-tutorial-head"><div class="v11-tutorial-title"><div class="v11-tutorial-icon">📘</div><div><h3>Panduan PDF</h3><p>Dokumen panduan proyek. Bila isi PDF lama belum mengikuti RC2, gunakan aturan workflow di atas sebagai acuan aplikasi.</p></div></div><div><span id="v11PdfPageInfo">Memuat PDF...</span> · <span id="v11PdfZoomInfo">100%</span></div></div>
@@ -12513,7 +12710,7 @@ window.showAssessmentBucketFast=function(bucketId){
   const FLOWS={
     SEKOLAH:[
       {view:'jadwalTahapan',title:'Tahap Aktif DINAS',desc:'Lihat tahap yang dibuka DINAS. Sekolah tidak menentukan periodisasi atau stage sendiri.'},
-      {view:'transaksi',title:'BKU Data',desc:'Pilih tepat satu sumber: Excel BKU atau PDF BKU Digital non-scan; keduanya menjadi transaksi kanonik.'},
+      {view:'transaksi',title:'BKU Data',desc:'Unggah PDF BKU Digital non-scan hasil ekspor ARKAS; sistem merekonsiliasi subtotal dan saldo setiap bulan.'},
       {view:'dokumenBulanan',title:'Dokumen SPJ & BKU Resmi',desc:'Unggah scan PDF BKU resmi bertanda tangan dan bukti SPJ secara terpisah dari BKU Data.'},
       {view:'perbaikanSpj',title:'Perbaikan / Tindak Lanjut',desc:'Kerjakan koreksi hanya ketika tahap PERBAIKAN dibuka DINAS.'},
       {view:'hasilPenilaian',title:'Hasil Penilaian',desc:'Pantau Fase 1, Rekonsiliasi, Fase 2, dan status finalisasi DINAS.'},
