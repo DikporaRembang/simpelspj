@@ -2101,7 +2101,7 @@ aside.sidebar *,
 <script>
 'use strict';
 
-const V10_VERSION = 'V24.5.1-POSTSAVE-GUARD';
+const V10_VERSION = 'V24.5.3-BKU-PDF-PARSER';
 
 const API_URL = 'https://script.google.com/macros/s/AKfycbyWvJXKr1QZ1zwbeJDoULTUihycj1771SsDlGFy8jnuF4i3DsEbHXlcJU48VDAg17fqDA/exec';
 
@@ -4783,49 +4783,62 @@ function _bkuPdfDate_(v){
 }
 function _bkuPdfMatrixMultiply_(a,b){return [a[0]*b[0]+a[2]*b[1],a[1]*b[0]+a[3]*b[1],a[0]*b[2]+a[2]*b[3],a[1]*b[2]+a[3]*b[3],a[0]*b[4]+a[2]*b[5]+a[4],a[1]*b[4]+a[3]*b[5]+a[5]];}
 function _bkuPdfRows_(items,viewport){
-  const rows=[],tol=2.5,view=viewport&&viewport.transform?viewport.transform:[1,0,0,1,0,0];
+  const rows=[],tol=3.5,view=viewport&&viewport.transform?viewport.transform:[1,0,0,1,0,0];
   (items||[]).filter(x=>_bkuPdfNorm_(x.str)).forEach(x=>{
     const m=_bkuPdfMatrixMultiply_(view,x.transform||[1,0,0,1,0,0]),y=Number(m[5]||0),xx=Number(m[4]||0);
-    let row=rows.find(r=>Math.abs(r.y-y)<=tol);if(!row){row={y,items:[]};rows.push(row);}row.items.push({x:xx,text:_bkuPdfNorm_(x.str)});
+    // Baseline antar-font pada PDF hasil optimasi dapat sedikit berbeda.
+    // Toleransi 3.5 pt masih di bawah jarak antarbaris tabel BKU.
+    let row=rows.find(r=>Math.abs(r.y-y)<=tol);
+    if(!row){row={y,items:[]};rows.push(row);}row.items.push({x:xx,text:_bkuPdfNorm_(x.str)});
   });
   rows.forEach(r=>r.items.sort((a,b)=>a.x-b.x));
-  // viewport.transform PDF.js sudah mengubah koordinat PDF (origin kiri-bawah)
-  // menjadi koordinat viewport (origin kiri-atas); urutan baca harus top-to-bottom.
+  // Koordinat viewport PDF.js ber-origin kiri-atas; urutkan top-to-bottom.
   return rows.sort((a,b)=>a.y-b.y);
 }
 
 function _bkuPdfLayout_(rows){
+  const tokenRx={
+    tanggal:/\bTANGGAL\b/i,uraian:/\bURAIAN\b/i,penerimaan:/\bPENERIMAAN\b/i,
+    pengeluaran:/\bPENGELUARAN\b/i,saldo:/\bSALDO\b/i,bukti:/\bBUKTI\b/i,
+    kegiatan:/\bKEGIATAN\b/i,rekening:/\bREKENING\b/i
+  };
   for(let i=0;i<rows.length;i++){
     const row=rows[i];
-    const all=_bkuPdfHeaderKey_(row.items.map(x=>x.text).join(' '));
-    if(!all.includes('TANGGAL')||!all.includes('URAIAN')||!all.includes('PENGELUARAN')||!all.includes('SALDO'))continue;
+    // Header dapat dipecah PDF.js menjadi beberapa text item/baseline.
+    // Deteksi satu pita header agar tidak bergantung pada satu baris tunggal.
+    const band=rows.filter(r=>r.y>=row.y-3.5&&r.y<=row.y+16);
+    const bandText=_bkuPdfHeaderKey_(band.flatMap(r=>r.items).map(x=>x.text).join(' '));
+    if(!['TANGGAL','URAIAN','PENERIMAAN','PENGELUARAN','SALDO','BUKTI'].every(k=>bandText.includes(k)))continue;
+    const find=(rx)=>{
+      const hits=[];
+      band.forEach(r=>r.items.forEach(x=>{if(rx.test(_bkuPdfHeaderKey_(x.text)))hits.push({x:x.x,dy:Math.abs(r.y-row.y)});}));
+      hits.sort((a,b)=>a.dy-b.dy);
+      return hits.length?hits[0].x:undefined;
+    };
+    const xDate=find(tokenRx.tanggal),xTerima=find(tokenRx.penerimaan),xKeluar=find(tokenRx.pengeluaran),xSaldo=find(tokenRx.saldo);
+    const xBukti=find(tokenRx.bukti),xKegiatan=find(tokenRx.kegiatan),xRekening=find(tokenRx.rekening);
+    if([xDate,xTerima,xKeluar,xSaldo,xBukti].some(x=>!Number.isFinite(x)))continue;
 
-    // Header BKU ARKAS tersusun dua tingkat: sebagian label (KEGIATAN,
-    // REKENING) berada pada baris vertikal yang berdekatan. Gunakan seluruh
-    // baris header di sekitar baris utama, bukan hanya satu baris teks.
-    const nearby=rows.filter(r=>Math.abs(r.y-row.y)<=14);
-    const find=(rx)=>nearby.flatMap(r=>r.items).find(x=>rx.test(_bkuPdfHeaderKey_(x.text)))?.x;
-    const xDate=find(/TANGGAL/),xTerima=find(/PENERIMAAN/),xKeluar=find(/PENGELUARAN/),xSaldo=find(/SALDO/);
-    const xBukti=find(/BUKTI/),xKegiatan=find(/KEGIATAN/),xRekening=find(/REKENING/);
-    if([xDate,xTerima,xKeluar,xSaldo,xBukti].some(x=>x===undefined))continue;
-
-    // Judul URAIAN biasanya berada di tengah kolom yang sangat lebar.
-    // Untuk batas kolom, gunakan posisi awal teks uraian pada baris data
-    // (mis. "Saldo Bank Bulan..." atau deskripsi transaksi), bukan titik
-    // tengah label header tersebut.
-    const dataRows=rows.slice(i+1,i+35);
+    // Cari awal kolom URAIAN dari baris transaksi bertanggal. Hindari footer
+    // sekolah/halaman yang sebelumnya dapat masuk ke jendela pencarian.
+    const headerBottom=Math.max.apply(null,band.map(r=>r.y));
+    const dataRows=rows.filter(r=>r.y>headerBottom+1&&r.y<headerBottom+190);
+    const dateRows=dataRows.filter(r=>r.items.some(it=>/\b\d{2}[\/-]\d{2}[\/-]\d{4}\b/.test(it.text))).slice(0,10);
     const candidates=[];
-    dataRows.forEach(r=>r.items.forEach(it=>{
-      if(it.x<=xBukti+5||it.x>=xTerima-5)return;
+    dateRows.forEach(r=>r.items.forEach(it=>{
+      if(it.x<=xBukti+6||it.x>=xTerima-8)return;
       const t=_bkuPdfNorm_(it.text),u=_bkuPdfHeaderKey_(t);
       if(!t||/^[-+]?\d+(?:[.,]\d+)?$/.test(t)||/^\d{2}[\/-]\d{2}[\/-]\d{4}$/.test(t))return;
       if(/^(TANGGAL|KODE|KEGIATAN|REKENING|NO\.?\s*BUKTI|URAIAN|PENERIMAAN|PENGELUARAN|SALDO|[1-8])$/.test(u))return;
-      if(/^(BPU|BBU|BKU)[A-Z0-9._/-]*$/i.test(t))return;
+      if(/^(BPU|BBU|BKU)[A-Z0-9._\/-]*$/i.test(t))return;
       if(/^\d{2}\.\d{2}\.\d{2}\.?$/.test(t)||/^\d+(?:\.\d+){2,}$/.test(t))return;
       candidates.push(it.x);
     }));
-    const xUraian=candidates.length?Math.min.apply(null,candidates):find(/URAIAN/);
-    if([xDate,xUraian,xKeluar,xSaldo].some(x=>x===undefined))continue;
+    let xUraian=candidates.length?Math.min.apply(null,candidates):undefined;
+    // Fallback proporsional bila PDF.js tidak memecah teks uraian menjadi item.
+    if(!Number.isFinite(xUraian))xUraian=xBukti+Math.max(24,(xTerima-xBukti)*0.08);
+    if(!(xUraian>xBukti+8&&xUraian<xTerima-12))xUraian=xBukti+Math.max(24,(xTerima-xBukti)*0.08);
+
     const cols=[
       ['tanggal',xDate],['kode_kegiatan',xKegiatan],['kode_rekening',xRekening],
       ['nomor_bukti',xBukti],['uraian',xUraian],['penerimaan',xTerima],
@@ -4835,6 +4848,7 @@ function _bkuPdfLayout_(rows){
   }
   return null;
 }
+
 function _bkuPdfAssign_(row,cols){
   const out={}; cols.forEach(c=>out[c[0]]=[]);
   const boundaries=[];
@@ -4906,7 +4920,7 @@ window.openPdfBkuImport=function(){
   wrap.innerHTML=`<div style="position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:1001;padding:16px">
     <div style="background:#fff;padding:28px;border-radius:24px;width:min(100%,980px);max-height:92vh;overflow:auto">
       <h3 style="margin-top:0;color:var(--primary)">BKU Data — PDF Digital</h3>
-      <div class="message ok"><b>Hanya PDF digital/non-scan.</b> Sistem harus dapat mengekstrak teks dan kolom transaksi. Bila PDF tidak memiliki text layer, file ditolak sebagai BKU Data dan dapat diunggah sebagai BKU Dokumen Resmi.</div>
+      <div class="message ok"><b>PDF BKU Digital hasil ekspor ARKAS.</b> Sistem akan membaca text layer, mengenali kolom, lalu memeriksa transaksi, subtotal, dan saldo setiap bulan. Jika teks terbaca tetapi format tabel belum dikenali, aplikasi akan menampilkan diagnosis khusus—bukan langsung menyimpulkan PDF adalah hasil scan.</div>
       <div class="field"><label>PDF BKU Digital (.pdf) <b style="color:#b33">*</b></label><input id="pdfBkuFile" type="file" accept="application/pdf,.pdf"></div>
       <div id="pdfBkuPreview" style="margin-top:14px"></div>
       <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px"><button class="btn btn-light" onclick="$('#pdfBkuModal').remove()">Tutup</button><button class="btn btn-primary" id="pdfBkuReadBtn" onclick="parsePdfBkuDigital()">Baca & Validasi PDF</button></div>
@@ -5012,8 +5026,9 @@ window.parsePdfBkuDigital=async function(){
     }
 
     const compact=allText.replace(/\s+/g,' ').trim();
-    if(compact.length<200)throw new Error('PDF tidak memiliki text layer yang memadai. File ini kemungkinan scan atau memakai font yang tidak menyediakan pemetaan teks.');
-    if(!pagesWithLayout||!data.length)throw new Error('PDF tampak digital, tetapi struktur tabel BKU tidak dapat diekstrak secara semantik. Pastikan PDF berasal dari ekspor BKU digital ARKAS, bukan hasil scan.');
+    if(compact.length<200)throw new Error('Teks PDF tidak cukup untuk dibaca sebagai BKU Digital. File mungkin berupa scan tanpa text layer atau hasil ekspor yang rusak. Unggah sebagai BKU Dokumen Resmi bila hanya untuk arsip.');
+    if(!pagesWithLayout)throw new Error('Teks PDF berhasil dibaca, tetapi header kolom BKU (Tanggal, Uraian, Penerimaan, Pengeluaran, Saldo) belum dapat dikenali. File tidak otomatis dianggap hasil scan. Parser membutuhkan pemeriksaan format/struktur tabel.');
+    if(!data.length)throw new Error('Header kolom BKU berhasil dikenali, tetapi tidak ada baris transaksi bernilai yang berhasil dipetakan. Periksa pemetaan kolom dan text layer PDF; dokumen tidak ditetapkan sebagai snapshot.');
     const meta=_bkuPdfMeta_(compact);
     if(!meta.npsn)throw new Error('NPSN tidak terbaca dari PDF BKU Digital.');
     if(isSchool()&&String(meta.npsn)!==String(ownNpsn()))throw new Error(`NPSN pada PDF (${meta.npsn}) tidak sama dengan akun sekolah (${ownNpsn()}).`);
