@@ -4132,6 +4132,165 @@ window.openBkuTaxManualEvidence=async function(idEvidence){
 };
 
 
+
+/* ============================================================================
+ * V25.2.1-D — EVIDENCE COVERAGE UI
+ * ========================================================================== */
+window._evidenceCoverageState=null;
+
+window.openEvidenceCoveragePanel=async function(type,period,npsn){
+  const category=String(type||'').toUpperCase();
+  if(!['INVOICE','SUPPORT','PHOTO'].includes(category)){alert('Kategori bukti tidak valid.');return;}
+  const p=String(period||$('#periodeSelect')?.value||state.selectedPeriode||'');
+  const ns=String(npsn||state.selectedNpsn||state.user?.npsn||state.user?.username||'');
+  if(!p){alert('Pilih periode SPJ terlebih dahulu.');return;}
+  document.getElementById('evidenceCoverageOverlay')?.remove();
+  const overlay=document.createElement('div');
+  overlay.id='evidenceCoverageOverlay';
+  overlay.style.cssText='position:fixed;inset:0;background:rgba(15,23,42,.62);z-index:10030;display:flex;align-items:center;justify-content:center;padding:12px';
+  overlay.innerHTML=`<div style="background:var(--surface,#fff);color:var(--text,#172033);width:min(1120px,100%);max-height:94vh;overflow:auto;border-radius:18px;padding:20px;box-shadow:0 24px 70px rgba(0,0,0,.25)">
+    <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start">
+      <div><div class="muted" style="font-size:12px;font-weight:800;letter-spacing:.06em">EVIDENCE-BASED TRANSACTION COVERAGE · V25.2.1-D</div>
+      <h2 style="margin:4px 0">${category==='INVOICE'?'Invoice / Nota / Kuitansi':category==='SUPPORT'?'Bukti Pendukung Lainnya':'Foto / Dokumentasi'}</h2>
+      <div class="muted">Periode ${esc(p)} · Bukti dihubungkan ke transaksi BKU yang sudah ada</div></div>
+      <button class="btn btn-light" type="button" onclick="closeEvidenceCoveragePanel()">✕ Tutup</button>
+    </div>
+    <div id="evidenceCoverageBody" style="margin-top:16px">${loading('Memuat dokumen dan transaksi BKU...')}</div>
+  </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click',e=>{if(e.target===overlay)closeEvidenceCoveragePanel();});
+  window._evidenceCoverageState={type:category,id_periode:p,npsn:ns,role:role(),data:null,selected_id:''};
+  await refreshEvidenceCoveragePanel();
+};
+window.closeEvidenceCoveragePanel=function(){
+  document.getElementById('evidenceCoverageOverlay')?.remove();
+  window._evidenceCoverageState=null;
+};
+window.refreshEvidenceCoveragePanel=async function(){
+  const st=window._evidenceCoverageState,body=document.getElementById('evidenceCoverageBody');
+  if(!st||!body)return;
+  body.innerHTML=loading('Memuat bukti dan transaksi BKU...');
+  try{
+    const [res,build]=await Promise.all([
+      api('getEvidenceCoverageWorkbench',{idPeriode:st.id_periode,npsn:st.npsn}),
+      api('getApiBuildInfo',{})
+    ]);
+    if(build.build_id!=='V25.2.1-D_EVIDENCE_COVERAGE')throw new Error('Versi backend tidak sesuai. Diharapkan V25.2.1-D, terdeteksi '+build.build_id+'. Periksa deployment /exec.');
+    st.data=res;renderEvidenceCoveragePanel();
+  }catch(e){body.innerHTML=msg(errorText(e),'error')+`<div class="muted" style="margin-top:8px">Jika muncul "Action tidak dikenal", backend yang aktif belum memuat router V25.2.1-D. Simpan backend dan deploy versi Web App baru pada project staging yang sama.</div>`;}
+};
+window.renderEvidenceCoveragePanel=function(){
+  const st=window._evidenceCoverageState,body=document.getElementById('evidenceCoverageBody');
+  if(!st||!body||!st.data)return;
+  const d=st.data,sm=d.summary||{},school=st.role==='SEKOLAH',reviewer=st.role==='PENGAWAS';
+  const docs=(d.documents||[]).filter(x=>st.type==='INVOICE'?x.id_spj==='SPJ-06':st.type==='SUPPORT'?x.id_spj==='SPJ-07':x.id_spj==='SPJ-10');
+  const regs=(d.evidence||[]).filter(x=>x.evidence_type===st.type);
+  const available=docs.filter(x=>!regs.some(r=>r.file_id===x.file_id&&r.status_verifikasi!=='DITOLAK'));
+  const selected=regs.find(x=>x.id_evidence===st.selected_id)||null;
+  const statusColor=s=>s==='DISETUJUI'?'success':s==='DITOLAK'?'danger':s==='PERLU_PERBAIKAN'?'warning':'info';
+  const summaryHtml=st.type==='INVOICE'
+    ? `<div class="form-grid"><div class="panel"><small class="muted">Target belanja RKAS terklasifikasi</small><h3>${fmtRupiah(sm.rkas_target||0)}</h3></div><div class="panel"><small class="muted">Alokasi invoice disetujui pada Belanja RKAS</small><h3>${fmtRupiah(sm.rkas_invoice_covered||0)}</h3></div><div class="panel"><small class="muted">Belum tercakup</small><h3>${fmtRupiah(sm.rkas_invoice_uncovered||0)}</h3></div><div class="panel"><small class="muted">Cakupan</small><h3>${sm.rkas_invoice_coverage_pct==null?'Belum dapat dihitung':sm.rkas_invoice_coverage_pct+'%'}</h3></div></div>
+      ${sm.target_status!=='AVAILABLE'?`<div class="message warn">Target belanja RKAS belum tersedia karena transaksi belum terklasifikasi sebagai BELANJA_RKAS. Jangan menganggap target Rp0 sebagai tidak ada kewajiban bukti. Pengeluaran non-RKAS yang terdeteksi: ${fmtNum(sm.non_rkas_outflow_count||0)} transaksi (${fmtRupiah(sm.non_rkas_outflow_amount||0)}). Klasifikasi BKU harus diperiksa terpisah.</div>`:''}`
+    : `<div class="form-grid"><div class="panel"><small class="muted">Dokumen disetujui</small><h3>${fmtNum(st.type==='SUPPORT'?sm.support_approved_count:sm.photo_approved_count)}</h3></div><div class="panel"><small class="muted">Transaksi BKU terhubung</small><h3>${fmtNum(st.type==='SUPPORT'?sm.support_linked_transaction_count:sm.photo_linked_transaction_count)}</h3></div></div>
+      <div class="message warn">Bukti ${st.type==='SUPPORT'?'administratif':'foto'} tidak diberi nilai Rupiah. Sistem hanya menunjukkan transaksi yang didukung. Nilai transaksi BKU tidak dijumlahkan sebagai nilai dokumen.</div>`;
+  const registerForm=school?`
+    <div class="panel" style="margin-top:12px">
+      <h3 style="margin-top:0">Daftarkan dokumen yang sudah diunggah</h3>
+      <div class="muted">Unggah file terlebih dahulu pada komponen SPJ terkait. Di sini sekolah hanya mendaftarkan metadata dan menghubungkannya ke transaksi, tidak mengunggah salinan baru.</div>
+      <form id="evidenceRegisterForm" onsubmit="saveEvidenceRegistrationFromUi(event)" style="margin-top:12px">
+        <div class="field"><label>Pilih file yang sudah diunggah</label><select id="evidenceFile" required><option value="">Pilih dokumen...</option>${available.map(x=>`<option value="${esc(x.file_id)}" data-spj="${esc(x.id_spj)}">${esc(x.nama_file)} · ${esc(x.id_dokumen)}</option>`).join('')}</select></div>
+        <div class="form-grid">
+          <div class="field"><label>Jenis dokumen</label><select id="evidenceDocType" required>${(st.type==='INVOICE'?['INVOICE','NOTA','KUITANSI']:st.type==='SUPPORT'?['SURAT TUGAS','DAFTAR HADIR','BERITA ACARA','SURAT PESANAN','SSPD','DOKUMEN PENDUKUNG LAIN']:['FOTO PENERIMAAN BARANG','FOTO KEGIATAN','FOTO HASIL PEKERJAAN','FOTO KONDISI BARANG','FOTO LAINNYA']).map(x=>`<option value="${esc(x)}">${esc(x)}</option>`).join('')}</select></div>
+          <div class="field"><label>Tanggal dokumen</label><input id="evidenceDate" type="date" required></div>
+          ${st.type==='INVOICE'?`<div class="field"><label>Nomor dokumen</label><input id="evidenceNumber" required></div><div class="field"><label>Nama toko / penerbit</label><input id="evidenceIssuer"></div><div class="field"><label>Nilai total dokumen (Rp)</label><input id="evidenceAmount" type="number" min="1" step="1" required></div>`:`<div class="field"><label>Nomor dokumen (opsional)</label><input id="evidenceNumber"></div><div class="field"><label>Penerbit / sumber (opsional)</label><input id="evidenceIssuer"></div>`}
+        </div>
+        <div class="field"><label>Uraian / keterangan</label><textarea id="evidenceDescription" rows="2" required placeholder="Jelaskan isi dan fungsi dokumen"></textarea></div>
+        ${st.type==='INVOICE'?`<div class="field"><label>Alasan jika nilai dokumen tidak seluruhnya dialokasikan (opsional, wajib bila ada selisih)</label><textarea id="evidencePartialReason" rows="2"></textarea></div>`:''}
+        <div style="display:flex;justify-content:flex-end;gap:8px"><button class="btn btn-primary" type="submit">Simpan Registrasi</button></div>
+      </form>
+    </div>`:'';
+  const txOptions=(d.transactions||[]).map(x=>`<option value="${esc(x.id_transaksi)}">${esc(x.tanggal_transaksi||'-')} · ${esc(x.nomor_bukti||'Tanpa nomor')} · ${esc(x.uraian||'')} · ${fmtRupiah(x.nilai_transaksi)} · ${esc(x.jenis_belanja)}</option>`).join('');
+  const selectedPanel=selected?`
+    <div class="panel" style="margin-top:12px">
+      <div style="display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap"><div><h3 style="margin:0">${esc(selected.nama_file)}</h3><div class="muted">${esc(selected.jenis_dokumen)} · ${esc(selected.nomor_dokumen||'-')} · ${fmtRupiah(selected.nilai_dokumen||0)}</div></div><div>${badge(selected.status_verifikasi,statusColor(selected.status_verifikasi))}</div></div>
+      <p class="muted">${esc(selected.uraian||'')}</p>
+      <button class="btn btn-light btn-sm" type="button" onclick="openEvidenceCoverageFile('${esc(selected.file_id)}','${esc(selected.mime_type)}','${esc(selected.nama_file)}')">Lihat dokumen</button>
+      <h4 style="margin:14px 0 8px">Transaksi BKU yang didukung</h4>
+      <div class="table-wrap"><table class="friendly-table"><thead><tr><th>Transaksi</th><th>Nilai alokasi</th><th>Status</th><th></th></tr></thead><tbody>${(selected.allocations||[]).map(a=>`<tr><td>${esc(a.transaction?.tanggal_transaksi||'-')} · ${esc(a.transaction?.nomor_bukti||'')}<div class="muted">${esc(a.transaction?.uraian||a.id_transaksi)}</div></td><td>${selected.evidence_type==='INVOICE'?fmtRupiah(a.nilai_alokasi):'Non-moneter'}</td><td>${esc(a.transaction?.jenis_belanja||'')}</td><td>${school&&['DRAFT','PERLU_PERBAIKAN'].includes(selected.status_verifikasi)?`<button class="btn btn-light btn-sm" onclick="removeEvidenceAllocationFromUi('${esc(a.id_allocation)}')">Lepas</button>`:''}</td></tr>`).join('')||emptyRow(4,'Belum ada transaksi yang dihubungkan.')}</tbody></table></div>
+      ${school&&['DRAFT','PERLU_PERBAIKAN'].includes(selected.status_verifikasi)?`
+        <form onsubmit="addEvidenceAllocationFromUi(event)" style="margin-top:12px">
+          <div class="field"><label>Pilih transaksi pengeluaran BKU</label><select id="evidenceTransaction" required><option value="">Pilih transaksi...</option>${txOptions}</select></div>
+          ${selected.evidence_type==='INVOICE'?`<div class="field"><label>Nilai invoice yang dialokasikan ke transaksi (Rp)</label><input id="evidenceAllocationAmount" type="number" min="1" step="1" required></div>`:''}
+          <div class="field"><label>Catatan hubungan bukti dengan transaksi</label><input id="evidenceLinkNote" placeholder="Contoh: Nota pembelian barang pada transaksi ini"></div>
+          <button class="btn btn-primary" type="submit">Hubungkan Transaksi</button>
+        </form>
+        <div style="display:flex;justify-content:flex-end;margin-top:12px"><button class="btn btn-primary" type="button" onclick="submitEvidenceRegistrationFromUi('${esc(selected.id_evidence)}')">Ajukan ke Pengawas</button></div>`:''}
+      ${selected.catatan_review?`<div class="message warn" style="margin-top:10px">Catatan Pengawas: ${esc(selected.catatan_review)}</div>`:''}
+      ${reviewer&&selected.status_verifikasi==='DIAJUKAN'?`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px"><button class="btn btn-primary" onclick="reviewEvidenceRegistrationFromUi('${esc(selected.id_evidence)}','DISETUJUI')">Setujui</button><button class="btn btn-light" onclick="reviewEvidenceRegistrationFromUi('${esc(selected.id_evidence)}','PERLU_PERBAIKAN')">Minta perbaikan</button><button class="btn btn-light" onclick="reviewEvidenceRegistrationFromUi('${esc(selected.id_evidence)}','DITOLAK')">Tolak</button></div>`:''}
+    </div>`:'';
+  const registryTable=`<div class="table-wrap" style="margin-top:12px"><table class="friendly-table"><thead><tr><th>Dokumen</th><th>Tanggal</th><th>Nilai dokumen</th><th>Alokasi</th><th>Status</th><th>Aksi</th></tr></thead><tbody>${regs.map(r=>`<tr><td>${esc(r.nama_file)}<div class="muted">${esc(r.jenis_dokumen)} · ${esc(r.nomor_dokumen||'-')}</div></td><td>${esc(String(r.tanggal_dokumen||'').slice(0,10))}</td><td>${r.evidence_type==='INVOICE'?fmtRupiah(r.nilai_dokumen):'Non-moneter'}</td><td>${r.evidence_type==='INVOICE'?fmtRupiah(r.allocated_total||0):`${fmtNum((r.allocations||[]).length)} transaksi`}</td><td>${badge(r.status_verifikasi,statusColor(r.status_verifikasi))}</td><td><button class="btn btn-light btn-sm" onclick="selectEvidenceRegistration('${esc(r.id_evidence)}')">Buka</button></td></tr>`).join('')||emptyRow(6,'Belum ada dokumen yang diregistrasikan.')}</tbody></table></div>`;
+  body.innerHTML=summaryHtml+registerForm+registryTable+selectedPanel;
+  const date=document.getElementById('evidenceDate');if(date&&!date.value)date.value=st.id_periode.match(/^PER-(\d{4})-(\d{2})$/)?`${st.id_periode.slice(4,8)}-${st.id_periode.slice(9,11)}-01`:'';
+};
+window.selectEvidenceRegistration=function(idEvidence){
+  const st=window._evidenceCoverageState;if(!st)return;st.selected_id=idEvidence;renderEvidenceCoveragePanel();
+};
+window.saveEvidenceRegistrationFromUi=async function(event){
+  event.preventDefault();const st=window._evidenceCoverageState;if(!st)return;
+  const fileId=document.getElementById('evidenceFile').value;
+  const doc=st.data.documents.find(x=>x.file_id===fileId);if(!doc){alert('Pilih file dokumen yang sudah diunggah.');return;}
+  const payload={id_periode:st.id_periode,evidence_type:st.type,id_spj:doc.id_spj,file_id:fileId,
+    jenis_dokumen:document.getElementById('evidenceDocType').value,
+    nomor_dokumen:document.getElementById('evidenceNumber')?.value||'',
+    tanggal_dokumen:document.getElementById('evidenceDate').value,
+    penerbit_vendor:document.getElementById('evidenceIssuer')?.value||'',
+    nilai_dokumen:st.type==='INVOICE'?Number(document.getElementById('evidenceAmount').value||0):0,
+    uraian:document.getElementById('evidenceDescription').value.trim(),
+    alasan_alokasi_tidak_penuh:document.getElementById('evidencePartialReason')?.value||''};
+  try{
+    const res=await api('saveEvidenceRegistration',{data:payload});
+    st.selected_id=res.data.id_evidence;
+    alert('Registrasi bukti tersimpan sebagai DRAFT. Belum dihitung dalam penilaian.');
+    await refreshEvidenceCoveragePanel();
+  }catch(e){alert(errorText(e));}
+};
+window.addEvidenceAllocationFromUi=async function(event){
+  event.preventDefault();const st=window._evidenceCoverageState;if(!st?.selected_id)return;
+  const payload={id_evidence:st.selected_id,id_transaksi:document.getElementById('evidenceTransaction').value,
+    nilai_alokasi:st.type==='INVOICE'?Number(document.getElementById('evidenceAllocationAmount').value||0):0,
+    catatan_relasi:document.getElementById('evidenceLinkNote').value.trim()};
+  try{await api('saveEvidenceAllocation',{data:payload});await refreshEvidenceCoveragePanel();st.selected_id=st.selected_id;renderEvidenceCoveragePanel();}
+  catch(e){alert(errorText(e));}
+};
+window.removeEvidenceAllocationFromUi=async function(idAllocation){
+  if(!confirm('Lepaskan hubungan bukti dengan transaksi ini?'))return;
+  try{await api('removeEvidenceAllocation',{data:{id_allocation:idAllocation}});await refreshEvidenceCoveragePanel();}
+  catch(e){alert(errorText(e));}
+};
+window.submitEvidenceRegistrationFromUi=async function(idEvidence){
+  if(!confirm('Ajukan bukti dan hubungan transaksinya kepada Pengawas?'))return;
+  try{await api('submitEvidenceRegistration',{data:{id_evidence:idEvidence}});await refreshEvidenceCoveragePanel();}
+  catch(e){alert(errorText(e));}
+};
+window.reviewEvidenceRegistrationFromUi=async function(idEvidence,decision){
+  let note='';if(decision!=='DISETUJUI'){note=prompt('Tuliskan alasan perbaikan/penolakan (minimal 10 karakter):')||'';if(note.trim().length<10)return;}
+  else if(!confirm('Setujui bukti ini?'))return;
+  try{await api('reviewEvidenceRegistration',{data:{id_evidence:idEvidence,decision:decision,catatan:note}});await refreshEvidenceCoveragePanel();}
+  catch(e){alert(errorText(e));}
+};
+window.openEvidenceCoverageFile=async function(fileId,mime,name){
+  const st=window._evidenceCoverageState;if(!st)return;
+  const win=window.open('about:blank','_blank');if(!win){alert('Izinkan pop-up untuk membuka dokumen.');return;}
+  try{
+    const action=String(mime).toLowerCase()==='application/pdf'?'getDokumenPdfBase64':'getDokumenImageBase64';
+    const res=await api(action,{fileId:fileId,idPeriode:st.id_periode,npsn:st.npsn});
+    const raw=atob(res.base64),bytes=new Uint8Array(raw.length);
+    for(let i=0;i<raw.length;i++)bytes[i]=raw.charCodeAt(i);
+    const blob=new Blob([bytes],{type:mime}),url=URL.createObjectURL(blob);
+    win.location.href=url;setTimeout(()=>URL.revokeObjectURL(url),120000);
+  }catch(e){win.close();alert(errorText(e));}
+};
+
 async function renderDokumenTable(){
   const periode = $('#periodeSelect')?.value || state.selectedPeriode;
   const area = $('#dokumenArea');
@@ -4218,7 +4377,7 @@ async function renderDokumenTable(){
         const oldPdfButton=legacyPdfs.length?`<button class="btn btn-light instrument-view-pdf-btn" type="button" data-file-id="${esc(legacyPdfs[0].file_id||'')}" data-pdf-name="${esc(legacyPdfs[0].nama_file||'Dokumentasi PDF')}" data-target="${esc(viewerId)}" onclick="showInstrumentPdf(this)">Lihat PDF lama</button>`:'';
         return `<div class="doc-row instrument-doc-row" data-instrument-index="${i}">
           <div class="doc-meta"><div class="iconbox">${String(i+1).padStart(2,'0')}</div><div><strong>${esc(m.nama_spj||m.nama_dokumen||m.kode||m.id_spj)}</strong><div class="muted">${esc(m.kelompok||m.keterangan||'Dokumentasi pendukung kegiatan/transaksi')}</div>${_v222BookSummaryHtml_(m,bookSummaries,taxManual)}<div class="muted" style="margin-top:5px">${photoLine}</div>${photoNames?`<div class="muted" style="margin-top:4px">${photoNames}${photos.length>3?' • dan lainnya':''}</div>`:''}${oldPdfLine}</div></div>
-          <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;justify-content:flex-end">${badge(status,statusClass)}${photoViewerButtons}${oldPdfButton}<button class="btn btn-primary" type="button" onclick="openPhotoUploadV2454_('SPJ-10','${esc(m.nama_spj||'Foto / Dokumentasi')}',${photoBytes})">Tambah Foto</button></div>
+          <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;justify-content:flex-end">${badge(status,statusClass)}${photoViewerButtons}${oldPdfButton}<button class="btn btn-light" type="button" onclick="openEvidenceCoveragePanel('PHOTO','${esc(periode)}','${esc(summaryNpsn)}')">Hubungkan Bukti ke BKU</button><button class="btn btn-primary" type="button" onclick="openPhotoUploadV2454_('SPJ-10','${esc(m.nama_spj||'Foto / Dokumentasi')}',${photoBytes})">Tambah Foto</button></div>
         </div>${pdfReady&&legacyPdfs.length?`<div id="${esc(viewerId)}" class="instrument-pdf-inline" hidden><div class="instrument-pdf-inline-head"><div><strong>📄 ${esc(legacyPdfs[0].nama_file||'Dokumentasi PDF')}</strong><div class="muted">Pratinjau PDF dokumentasi lama</div></div><button type="button" class="btn btn-light btn-sm" onclick="closeInstrumentPdf('${esc(viewerId)}')">✕ Tutup</button></div><div class="instrument-pdf-inline-frame" data-file-id="${esc(legacyPdfs[0].file_id||'')}" data-pdf-name="${esc(legacyPdfs[0].nama_file||'Dokumentasi PDF')}"><div class="muted" style="padding:24px;text-align:center">Klik <b>Lihat PDF lama</b> untuk memuat PDF.</div></div></div>`:''}`;
       }
       return `<div class="doc-row instrument-doc-row" data-instrument-index="${i}">
@@ -4239,6 +4398,7 @@ async function renderDokumenTable(){
               data-target="${esc(viewerId)}"
               onclick="showInstrumentPdf(this)">👁️ Lihat</button>` : ''}
           ${pdfReady && isBkuOfficial && isSchool() ? `<button class="btn btn-primary" type="button" onclick="openBkuOcrWorkbenchV2502('${encodeURIComponent(d.file_id||'')}','${encodeURIComponent(d.nama_file||'BKU scan')}','${encodeURIComponent(periode)}')">🔎 Periksa & Koreksi OCR</button>` : ''}
+          ${['SPJ-06','SPJ-07'].includes(String(m.id_spj)) ? `<button class="btn btn-light" type="button" onclick="openEvidenceCoveragePanel('${m.id_spj==='SPJ-06'?'INVOICE':'SUPPORT'}','${esc(periode)}','${esc(summaryNpsn)}')">Hubungkan Bukti ke BKU</button>` : ''}
           <button class="btn ${d ? 'btn-light' : 'btn-primary'}" type="button" onclick="openUpload('${esc(m.id_spj)}','${esc(m.nama_spj || m.nama_dokumen || m.kode || m.id_spj)}',${d ? 'true' : 'false'})">${d ? 'Ganti PDF' : 'Upload PDF'}</button>
           ${allowNA ? `<button class="btn btn-light" type="button" onclick="openNaModal('${esc(m.id_spj)}','${esc(m.nama_spj || m.nama_dokumen || m.kode || m.id_spj)}')">N/A</button>` : ''}
         </div>
