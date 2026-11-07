@@ -2458,6 +2458,7 @@ async function api(action, payload={}){
   }
   const _apiElapsedMs = Math.round(((typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now()) - _apiStartedAt);
   if (_apiElapsedMs >= 1200) console.warn('[SIMPEL SPJ PERF] API lambat:', action, _apiElapsedMs + ' ms');
+  if (data && data._perf) console.info('[SIMPEL SPJ PERF DETAIL]', action, data._perf);
   return data;
 }
 async function safeApi(action,payload={},fallback=null){ try{return await api(action,payload);}catch(e){ console.error('[SIMPEL SPJ API]',action,e); if(fallback && typeof fallback==='object' && !Array.isArray(fallback)) return Object.assign({},fallback,{_error:e.message||String(e)}); return fallback; } }
