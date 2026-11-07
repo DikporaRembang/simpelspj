@@ -3952,6 +3952,7 @@ async function renderDokumenTable(){
       const allowNA = _v222AllowNa_(m,bookSummaries);
       const viewerId = `instrumentPdfViewer_${String(m.id_spj||i).replace(/[^a-zA-Z0-9_-]/g,'_')}_${i}`;
       const pdfReady = !!(d?.file_id && (String(d.mimeType||'').toLowerCase()==='application/pdf'||/\.pdf$/i.test(String(d.nama_file||''))) && String(d.status||'').toUpperCase() !== 'N/A');
+      const isBkuOfficial = /BUKU KAS UMUM|\bBKU\b/.test(_v222MasterText_(m));
       if(x.isPhotoComponent){
         const photos=x.photoDocs||[], legacyPdfs=x.legacyPdfDocs||[];
         const photoBytes=photos.reduce((sum,p)=>sum+(Number(p.ukuran_bytes)||0),0);
@@ -3982,6 +3983,7 @@ async function renderDokumenTable(){
               data-pdf-name="${esc(d.nama_file || m.nama_spj || 'Dokumen SPJ')}"
               data-target="${esc(viewerId)}"
               onclick="showInstrumentPdf(this)">👁️ Lihat</button>` : ''}
+          ${pdfReady && isBkuOfficial && isSchool() ? `<button class="btn btn-primary" type="button" onclick="openBkuOcrWorkbenchV2502('${encodeURIComponent(d.file_id||'')}','${encodeURIComponent(d.nama_file||'BKU scan')}','${encodeURIComponent(periode)}')">🔎 Periksa & Koreksi OCR</button>` : ''}
           <button class="btn ${d ? 'btn-light' : 'btn-primary'}" type="button" onclick="openUpload('${esc(m.id_spj)}','${esc(m.nama_spj || m.nama_dokumen || m.kode || m.id_spj)}',${d ? 'true' : 'false'})">${d ? 'Ganti PDF' : 'Upload PDF'}</button>
           ${allowNA ? `<button class="btn btn-light" type="button" onclick="openNaModal('${esc(m.id_spj)}','${esc(m.nama_spj || m.nama_dokumen || m.kode || m.id_spj)}')">N/A</button>` : ''}
         </div>
@@ -14465,6 +14467,183 @@ window.toggleRegistrationCompletionUI=async function(){
   else if(!confirm('Semua akun sudah siap. Nyatakan pendaftaran selesai dan lanjutkan ke tahap pendelegasian?'))return;
   try{await api('setRegistrationCompletion',{data:{tahun:r.year,completed:!completed,reason}});toast(completed?'Pendaftaran dibuka kembali.':'Pendaftaran dinyatakan selesai.','ok');await reloadUserReadiness();}catch(e){toast(errorText(e),'error');}
 };
+
+
+/* ========================================================================
+ * V25.0.2 STAGING — SCHOOL OCR WORKBENCH
+ * UI for protected PDF rendering, page OCR, editable transaction candidates,
+ * and append-only school corrections. This workflow remains non-canonical.
+ * ====================================================================== */
+const __bkuOcrWorkbenchV2502 = { fileId:'', fileName:'', period:'', draftId:'', pdf:null, pageNo:1, pageCount:0, rowsByPage:{}, ocrTextByPage:{}, canvas:null, busy:false };
+function _bkuOcrDraftKeyV2502_(fileId,period){
+  return 'simpel_bku_scan_draft_v2502_'+String(ownNpsn()||state.user?.npsn||state.user?.username||'')+'_'+String(period||'')+'_'+String(fileId||'');
+}
+function _bkuOcrParseAmountV2502_(v){
+  const x=String(v??'').replace(/[^0-9,.-]/g,'').trim();
+  if(!x) return '';
+  // BKU Indonesia: titik umumnya pemisah ribuan; koma desimal tidak dipakai untuk rupiah.
+  const digits=x.replace(/[.,]/g,'').replace(/(?!^)-/g,'');
+  return digits==='-'?'':digits;
+}
+function _bkuOcrExtractRowsV2502_(text,pageNo){
+  const out=[]; const lines=String(text||'').split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
+  lines.forEach((line,i)=>{
+    const dm=line.match(/\b(\d{1,2}[\/-]\d{1,2}[\/-]\d{4})\b/);
+    if(!dm) return;
+    const tail=line.slice((dm.index||0)+dm[0].length);
+    const nums=tail.match(/(?:Rp\.?\s*)?-?\d[\d.,]*/g)||[];
+    if(nums.length<2) return;
+    const cleaned=nums.map(_bkuOcrParseAmountV2502_).filter(x=>x!=='');
+    if(cleaned.length<2) return;
+    const firstNum=tail.search(/(?:Rp\.?\s*)?-?\d[\d.,]*/);
+    let desc=firstNum>=0?tail.slice(0,firstNum).trim():tail.trim();
+    // Remove OCR column noise from description without altering source text.
+    desc=desc.replace(/\s{2,}/g,' ').trim();
+    const proof=(desc.match(/\b(?:BPU|BBU|BKU|BPUK|BKU)\s*\d+\b/i)||[])[0]||'';
+    const row={row_key:'p'+pageNo+'_l'+(i+1),page_no:pageNo,line_no:i+1,raw_line:line,
+      tanggal:dm[1],no_bukti:proof,uraian:desc,penerimaan:cleaned.length>=3?cleaned[cleaned.length-3]:'',
+      pengeluaran:cleaned.length>=3?cleaned[cleaned.length-2]:cleaned[cleaned.length-1],
+      saldo:cleaned.length>=3?cleaned[cleaned.length-1]:'',review_required:true};
+    out.push(row);
+  });
+  return out;
+}
+function _bkuOcrCloseWorkbenchV2502_(){
+  const el=document.getElementById('bkuOcrWorkbenchV2502'); if(el)el.remove();
+  const w=__bkuOcrWorkbenchV2502; w.pdf=null; w.canvas=null; w.busy=false;
+}
+function _bkuOcrSetStatusV2502_(html){const el=document.getElementById('bkuOcrStatusV2502');if(el)el.innerHTML=html;}
+function _bkuOcrRenderPageRowsV2502_(){
+  const w=__bkuOcrWorkbenchV2502, page=w.pageNo, rows=w.rowsByPage[page]||[];
+  const body=document.getElementById('bkuOcrRowsV2502'); if(!body)return;
+  if(!rows.length){body.innerHTML='<tr><td colspan="7" class="muted" style="padding:16px">Belum ada kandidat transaksi dari OCR halaman ini. Periksa teks OCR atau tambahkan baris manual.</td></tr>';return;}
+  body.innerHTML=rows.map((r,i)=>`<tr data-row-key="${esc(r.row_key)}">
+    <td><input data-field="tanggal" value="${esc(r.tanggal||'')}" aria-label="Tanggal"></td>
+    <td><input data-field="no_bukti" value="${esc(r.no_bukti||'')}" aria-label="Nomor bukti"></td>
+    <td><textarea data-field="uraian" rows="2" aria-label="Uraian">${esc(r.uraian||'')}</textarea><small class="muted">Sumber: ${esc(r.raw_line||'')}</small></td>
+    <td><input data-field="penerimaan" inputmode="numeric" value="${esc(r.penerimaan||'')}" aria-label="Penerimaan"></td>
+    <td><input data-field="pengeluaran" inputmode="numeric" value="${esc(r.pengeluaran||'')}" aria-label="Pengeluaran"></td>
+    <td><input data-field="saldo" inputmode="numeric" value="${esc(r.saldo||'')}" aria-label="Saldo"></td>
+    <td><button class="btn btn-light btn-sm" type="button" onclick="removeBkuOcrRowV2502_('${esc(r.row_key)}')">Hapus</button></td>
+  </tr>`).join('');
+}
+window.removeBkuOcrRowV2502_=function(rowKey){const w=__bkuOcrWorkbenchV2502;w.rowsByPage[w.pageNo]=(w.rowsByPage[w.pageNo]||[]).filter(r=>r.row_key!==rowKey);_bkuOcrRenderPageRowsV2502_();};
+window.addBkuOcrRowV2502_=function(){const w=__bkuOcrWorkbenchV2502,p=w.pageNo;const rows=w.rowsByPage[p]||(w.rowsByPage[p]=[]);rows.push({row_key:'p'+p+'_manual_'+Date.now(),page_no:p,raw_line:'BARIS DITAMBAHKAN MANUAL',tanggal:'',no_bukti:'',uraian:'',penerimaan:'',pengeluaran:'',saldo:'',review_required:true});_bkuOcrRenderPageRowsV2502_();};
+function _bkuOcrReadTableEditsV2502_(){
+  const w=__bkuOcrWorkbenchV2502,p=w.pageNo,rows=w.rowsByPage[p]||[];
+  document.querySelectorAll('#bkuOcrRowsV2502 tr[data-row-key]').forEach(tr=>{
+    const row=rows.find(x=>x.row_key===tr.dataset.rowKey);if(!row)return;
+    tr.querySelectorAll('[data-field]').forEach(el=>{row[el.dataset.field]=el.value.trim();});
+  });
+  return rows;
+}
+async function _bkuOcrEnsureDraftV2502_(){
+  const w=__bkuOcrWorkbenchV2502;if(w.draftId)return w.draftId;
+  const key=_bkuOcrDraftKeyV2502_(w.fileId,w.period);let existing='';try{existing=sessionStorage.getItem(key)||'';}catch(_){}
+  if(existing){try{const r=await api('getBkuScanReviewDraft',{draftId:existing});if(r?.draft?.file_id===w.fileId&&!r.draft.sealed){
+    w.draftId=existing;
+    (r.draft.pages||[]).forEach(pg=>{const pn=Number(pg.page_no);if(!pn)return;w.ocrTextByPage[pn]=String(pg.text||'');w.rowsByPage[pn]=Array.isArray(pg.rows)?pg.rows:[];w._originalRowsByPage=w._originalRowsByPage||{};w._originalRowsByPage[pn]=w.rowsByPage[pn].map(x=>Object.assign({},x));});
+    return existing;
+  }}catch(_){}}
+  const r=await api('startBkuScanReviewDraft',{data:{id_periode:w.period,file_id:w.fileId,page_count:w.pageCount}});
+  w.draftId=r.draft_id;try{sessionStorage.setItem(key,w.draftId);}catch(_){}return w.draftId;
+}
+async function _bkuOcrLoadPdfV2502_(){
+  const w=__bkuOcrWorkbenchV2502;
+  const doc={file_id:w.fileId,nama_file:w.fileName,mimeType:'application/pdf'};
+  w.pdf=await getProtectedPdfDocument_(doc,{period:w.period,npsn:ownNpsn()});
+  w.pageCount=w.pdf.numPages;
+  if(w.pageCount>100)throw new Error('PDF BKU melebihi batas 100 halaman untuk review OCR.');
+  document.getElementById('bkuOcrPageTotalV2502').textContent=String(w.pageCount);
+  await _bkuOcrRenderCurrentPageV2502_();
+}
+async function _bkuOcrRenderCurrentPageV2502_(){
+  const w=__bkuOcrWorkbenchV2502;if(!w.pdf)return;
+  const p=w.pageNo,page=await w.pdf.getPage(p),base=page.getViewport({scale:1});
+  const scale=Math.min(1.65,1600/base.width);const vp=page.getViewport({scale});
+  const canvas=document.getElementById('bkuOcrPageCanvasV2502');if(!canvas)return;
+  canvas.width=Math.ceil(vp.width);canvas.height=Math.ceil(vp.height);
+  await page.render({canvasContext:canvas.getContext('2d'),viewport:vp}).promise;
+  document.getElementById('bkuOcrPageNowV2502').textContent=String(p);
+  const txt=document.getElementById('bkuOcrTextV2502');if(txt)txt.value=w.ocrTextByPage[p]||'';
+  _bkuOcrRenderPageRowsV2502_();
+}
+window.bkuOcrPrevPageV2502_=async function(){const w=__bkuOcrWorkbenchV2502;if(w.pageNo>1){_bkuOcrReadTableEditsV2502_();const t=document.getElementById('bkuOcrTextV2502');if(t)w.ocrTextByPage[w.pageNo]=t.value;w.pageNo--;await _bkuOcrRenderCurrentPageV2502_();}};
+window.bkuOcrNextPageV2502_=async function(){const w=__bkuOcrWorkbenchV2502;if(w.pageNo<w.pageCount){_bkuOcrReadTableEditsV2502_();const t=document.getElementById('bkuOcrTextV2502');if(t)w.ocrTextByPage[w.pageNo]=t.value;w.pageNo++;await _bkuOcrRenderCurrentPageV2502_();}};
+window.runBkuOcrCurrentPageV2502_=async function(){
+  const w=__bkuOcrWorkbenchV2502;if(w.busy)return;w.busy=true;
+  try{
+    _bkuOcrSetStatusV2502_(loading('Merender halaman dan menjalankan OCR Google Drive…'));
+    await _bkuOcrEnsureDraftV2502_();
+    const page=await w.pdf.getPage(w.pageNo),base=page.getViewport({scale:1});
+    let scale=Math.min(1.55,1500/base.width);let vp=page.getViewport({scale});
+    const c=document.createElement('canvas');c.width=Math.ceil(vp.width);c.height=Math.ceil(vp.height);
+    await page.render({canvasContext:c.getContext('2d'),viewport:vp}).promise;
+    let dataUrl=c.toDataURL('image/jpeg',0.78),b64=dataUrl.split(',')[1];
+    if(b64.length>7.8*1024*1024){scale*=0.72;vp=page.getViewport({scale});c.width=Math.ceil(vp.width);c.height=Math.ceil(vp.height);await page.render({canvasContext:c.getContext('2d'),viewport:vp}).promise;dataUrl=c.toDataURL('image/jpeg',0.68);b64=dataUrl.split(',')[1];}
+    const result=await api('ocrPdfPageImage',{data:{fileId:w.fileId,idPeriode:w.period,npsn:ownNpsn(),pageNo:w.pageNo,imageBase64:b64,mimeType:'image/jpeg'}});
+    const textOcr=String(result.text||'');w.ocrTextByPage[w.pageNo]=textOcr;
+    w.rowsByPage[w.pageNo]=_bkuOcrExtractRowsV2502_(textOcr,w.pageNo);w._originalRowsByPage=w._originalRowsByPage||{};w._originalRowsByPage[w.pageNo]=w.rowsByPage[w.pageNo].map(x=>Object.assign({},x));
+    await api('saveBkuScanOcrPage',{data:{draft_id:w.draftId,page_no:w.pageNo,ocr_text:textOcr,rows:w.rowsByPage[w.pageNo],engine:result.source||'GOOGLE_DRIVE_PAGE_OCR_V3',confidence:null}});
+    document.getElementById('bkuOcrTextV2502').value=textOcr;_bkuOcrRenderPageRowsV2502_();
+    _bkuOcrSetStatusV2502_(msg(`OCR halaman ${w.pageNo} selesai. ${w.rowsByPage[w.pageNo].length} kandidat baris transaksi ditemukan. Semua kandidat tetap wajib diperiksa sekolah.`,'ok'));
+  }catch(e){_bkuOcrSetStatusV2502_(msg(errorText(e),'error'));}finally{w.busy=false;}
+};
+window.saveBkuOcrPageEditsV2502_=async function(){
+  const w=__bkuOcrWorkbenchV2502;if(w.busy)return;w.busy=true;
+  try{
+    await _bkuOcrEnsureDraftV2502_();
+    const textEl=document.getElementById('bkuOcrTextV2502');if(textEl)w.ocrTextByPage[w.pageNo]=textEl.value;
+    const rows=_bkuOcrReadTableEditsV2502_();
+    await api('saveBkuScanOcrPage',{data:{draft_id:w.draftId,page_no:w.pageNo,ocr_text:w.ocrTextByPage[w.pageNo]||'',rows:rows,engine:'SCHOOL_REVIEW_EDIT',confidence:null}});
+    _bkuOcrSetStatusV2502_(msg('Hasil halaman dan perubahan tabel tersimpan sebagai draft review. Belum menjadi BKU kanonik.','ok'));
+  }catch(e){_bkuOcrSetStatusV2502_(msg(errorText(e),'error'));}finally{w.busy=false;}
+};
+window.saveBkuOcrCorrectionsV2502_=async function(){
+  const w=__bkuOcrWorkbenchV2502;if(w.busy)return;w.busy=true;
+  try{
+    await _bkuOcrEnsureDraftV2502_();const rows=_bkuOcrReadTableEditsV2502_();
+    const reason=String(document.getElementById('bkuOcrReasonV2502')?.value||'').trim();
+    if(!reason)throw new Error('Tuliskan alasan koreksi sebelum menyimpan perubahan.');
+    const original=(w._originalRowsByPage&&w._originalRowsByPage[w.pageNo])||[];
+    const corrections=[];
+    rows.forEach(r=>{
+      const old=original.find(x=>x.row_key===r.row_key)||{};
+      ['tanggal','no_bukti','uraian','penerimaan','pengeluaran','saldo'].forEach(field=>{
+        const before=String(old[field]??''),after=String(r[field]??'');
+        if(before!==after && !after)throw new Error('Nilai koreksi untuk '+field+' pada baris '+r.row_key+' tidak boleh kosong. Jika transaksi memang tidak memiliki nilai, isi 0 untuk kolom angka atau pertahankan nilai teks yang sesuai.');
+        if(before!==after)corrections.push({page_no:w.pageNo,row_key:r.row_key,field:field,ocr_value:before,corrected_value:after,reason:reason});
+      });
+    });
+    if(!corrections.length)throw new Error('Tidak ada perubahan dibanding hasil OCR asli. Jalankan OCR atau ubah nilai terlebih dahulu.');
+    await api('saveBkuScanOcrPage',{data:{draft_id:w.draftId,page_no:w.pageNo,ocr_text:w.ocrTextByPage[w.pageNo]||'',rows:rows,engine:'SCHOOL_REVIEW_EDIT',confidence:null}});
+    await api('saveBkuScanCorrections',{data:{draft_id:w.draftId,corrections:corrections}});
+    w._originalRowsByPage=w._originalRowsByPage||{};w._originalRowsByPage[w.pageNo]=rows.map(x=>Object.assign({},x));
+    _bkuOcrSetStatusV2502_(msg(`${corrections.length} perubahan tersimpan dalam audit trail. Rekonsiliasi ulang masih wajib dilakukan.`,'ok'));
+  }catch(e){_bkuOcrSetStatusV2502_(msg(errorText(e),'error'));}finally{w.busy=false;}
+};
+window.openBkuOcrWorkbenchV2502=async function(fileId,fileName,period){
+  if(!isSchool()){toast('Workbench OCR tahap ini hanya tersedia untuk akun sekolah.','warning');return;}
+  try{fileId=decodeURIComponent(fileId);fileName=decodeURIComponent(fileName);period=decodeURIComponent(period);}catch(_){}
+  if(!fileId||!period){toast('File BKU dan periode wajib tersedia.','error');return;}
+  _bkuOcrCloseWorkbenchV2502_();const w=__bkuOcrWorkbenchV2502;
+  Object.assign(w,{fileId:fileId,fileName:fileName,period:period,draftId:'',pdf:null,pageNo:1,pageCount:0,rowsByPage:{},ocrTextByPage:{},_originalRowsByPage:{},busy:false});
+  const wrap=document.createElement('div');wrap.id='bkuOcrWorkbenchV2502';
+  wrap.innerHTML=`<div style="position:fixed;inset:0;z-index:12000;background:rgba(10,20,35,.72);display:flex;align-items:center;justify-content:center;padding:12px">
+   <div style="background:var(--surface,#fff);color:var(--text,#172033);width:min(1500px,100%);height:min(94vh,1000px);border-radius:18px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.3)">
+    <div style="padding:16px 20px;border-bottom:1px solid var(--border,#ddd);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap"><div><h2 style="margin:0">Verifikasi OCR BKU Scan</h2><div class="muted">${esc(fileName)} · Periode ${esc(period)} · Draft staging/non-kanonik</div></div><button class="btn btn-light" onclick="_bkuOcrCloseWorkbenchV2502_()">✕ Tutup</button></div>
+    <div style="padding:10px 18px;background:var(--surface-secondary,#f5f7fa);border-bottom:1px solid var(--border,#ddd)"><div id="bkuOcrStatusV2502">${loading('Memuat PDF resmi dan menyiapkan OCR…')}</div></div>
+    <div style="padding:10px 18px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;border-bottom:1px solid var(--border,#ddd)"><button class="btn btn-light" onclick="bkuOcrPrevPageV2502_()">← Sebelumnya</button><b>Halaman <span id="bkuOcrPageNowV2502">1</span> / <span id="bkuOcrPageTotalV2502">-</span></b><button class="btn btn-light" onclick="bkuOcrNextPageV2502_()">Berikutnya →</button><span style="flex:1"></span><button class="btn btn-primary" onclick="runBkuOcrCurrentPageV2502_()">Jalankan OCR halaman ini</button><button class="btn btn-light" onclick="saveBkuOcrPageEditsV2502_()">Simpan draft halaman</button></div>
+    <div style="flex:1;min-height:0;overflow:auto;padding:14px 18px;display:grid;grid-template-columns:minmax(280px,42%) minmax(400px,58%);gap:14px">
+      <section style="min-width:0"><h3 style="margin:0 0 8px">Dokumen sumber</h3><div style="border:1px solid var(--border,#ddd);border-radius:12px;padding:8px;overflow:auto;max-height:70vh;background:#eef1f5"><canvas id="bkuOcrPageCanvasV2502" style="display:block;max-width:100%;height:auto;margin:auto;background:white"></canvas></div><div class="muted" style="margin-top:7px;font-size:12px">Gunakan halaman asli sebagai acuan. OCR tidak menggantikan pemeriksaan visual.</div></section>
+      <section style="min-width:0"><h3 style="margin:0 0 8px">Hasil OCR dan transaksi</h3><label class="muted" for="bkuOcrTextV2502">Teks OCR mentah (dapat diperiksa)</label><textarea id="bkuOcrTextV2502" rows="7" style="width:100%;font-family:monospace;font-size:12px" placeholder="Jalankan OCR untuk halaman ini…"></textarea><div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin:12px 0 6px;flex-wrap:wrap"><b>Kandidat transaksi hasil OCR</b><button class="btn btn-light btn-sm" onclick="addBkuOcrRowV2502_()">+ Tambah baris manual</button></div><div style="overflow:auto;border:1px solid var(--border,#ddd);border-radius:10px"><table class="friendly-table" style="min-width:900px;width:100%"><thead><tr><th>Tanggal</th><th>No. Bukti</th><th>Uraian</th><th>Penerimaan</th><th>Pengeluaran</th><th>Saldo</th><th>Aksi</th></tr></thead><tbody id="bkuOcrRowsV2502"><tr><td colspan="7" class="muted">Belum ada hasil OCR.</td></tr></tbody></table></div><div class="field" style="margin-top:12px"><label for="bkuOcrReasonV2502">Alasan koreksi (wajib bila menyimpan koreksi)</label><textarea id="bkuOcrReasonV2502" rows="2" placeholder="Contoh: angka pada dokumen asli terbaca 28.000, OCR membaca 28.800."></textarea></div><button class="btn btn-primary" style="margin-top:8px" onclick="saveBkuOcrCorrectionsV2502_()">Simpan koreksi & audit trail</button><div class="message warning" style="margin-top:12px">Penting: fitur ini hanya menyimpan draft OCR dan koreksi. Data belum menjadi BKU kanonik, belum menggantikan BKU Data lama, dan belum digunakan untuk penilaian.</div></section>
+    </div>
+   </div></div>`;
+  document.body.appendChild(wrap);
+  try{await _bkuOcrLoadPdfV2502_();_bkuOcrSetStatusV2502_(msg('PDF sumber berhasil dimuat. Pilih halaman lalu jalankan OCR.','ok'));}
+  catch(e){_bkuOcrSetStatusV2502_(msg(errorText(e),'error'));}
+};
+
 </script>
 <style id="v240WorkflowAndHeaderFix">
 /* V23.5 final cascade — header contrast fix promised in RKAS patch */
