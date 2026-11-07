@@ -2137,11 +2137,12 @@ window.ROLE_MENUS = {
     { id:'jadwalTahapan', label:'Tahap Aktif DINAS' },
     { group:'ALUR PEMERIKSAAN', items:[
       { id:'penugasan', label:'1. Sekolah Tugas' },
-      { id:'pdfInteraktif', label:'2. Pemeriksaan BKU & Dokumen' },
-      { id:'temuan', label:'3. Temuan & Rekomendasi' },
-      { id:'verifikasiUlang', label:'4. Verifikasi Ulang / Review' },
-      { id:'penilaianFase1', label:'5. Penilaian Fase 1 & Kirim ke DINAS' },
-      { id:'arsipPenilaianV5', label:'6. Laporan Fase 1' }
+      { id:'monitoringGlobal', label:'2. Monitoring Sekolah Binaan' },
+      { id:'pdfInteraktif', label:'3. Pemeriksaan BKU & Dokumen' },
+      { id:'temuan', label:'4. Temuan & Rekomendasi' },
+      { id:'verifikasiUlang', label:'5. Verifikasi Ulang / Review' },
+      { id:'penilaianFase1', label:'6. Penilaian Fase 1 & Kirim ke DINAS' },
+      { id:'arsipPenilaianV5', label:'7. Laporan Fase 1' }
     ]},
     { group:'PENDUKUNG', items:[
       { id:'pesan', label:'Pesan & Koordinasi' },
@@ -3800,14 +3801,15 @@ function _v222BookSummaryHtml_(m,summaries,taxManual){
   if(!summaries?.ready){
     if(profile.kind==='book' && profile.book==='tax'){
       const tm=taxManual||{}, sm=tm.summary||{}, roleNow=role();
-      const label=roleNow==='SEKOLAH'?'Kelola pajak':(roleNow==='PENGAWAS'?'Periksa pajak':'Lihat pajak');
+      const label=roleNow==='SEKOLAH'?'Kelola Data Pajak Manual':(roleNow==='PENGAWAS'?'Periksa Data Pajak Manual':'Lihat Data Pajak Manual');
       const button=['SEKOLAH','PENGAWAS','DINAS'].includes(roleNow)
         ? `<button class="btn btn-light btn-sm" type="button" onclick="openBkuTaxManualPanel('${esc($('#periodeSelect')?.value||state.selectedPeriode||'')}','${esc(state.selectedNpsn||state.user?.npsn||state.user?.username||'')}')">${label}</button>` : '';
       return `<div class="v221-book-summary v222-support-summary" data-book="tax">
         <div class="v221-book-summary-head"><span class="v221-book-source">📄 Acuan: BKU Scan Resmi</span><span class="v222-rule-badge">DATA OTOMATIS BELUM TERSEDIA</span></div>
         <div class="muted">Belum tersedia hasil pembentukan otomatis Buku Pembantu Pajak untuk periode ini. Nilai Rp0 tidak otomatis berarti nihil.</div>
         <div class="v223-tax-manual-summary" style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border,#e5e7eb)">
-          <div class="muted">${fmtNum(sm.total_records||0)} data manual · ${fmtNum(sm.approved_count||0)} disetujui · ${fmtNum(sm.pending_count||0)} menunggu</div>
+          <div class="muted">Data manual: ${fmtNum(sm.total_records||0)} transaksi · ${fmtNum(sm.approved_count||0)} disetujui · ${fmtNum(sm.pending_count||0)} menunggu pemeriksaan</div>
+          <div class="muted">Pungutan manual disetujui ${fmtRupiah(sm.approved_pungutan||0)} · Setoran manual disetujui ${fmtRupiah(sm.approved_setoran||0)}</div>
           <div style="margin-top:7px">${button}</div>
         </div>
       </div>`;
@@ -3847,11 +3849,12 @@ function _v222BookSummaryHtml_(m,summaries,taxManual){
       ${key==='tax' ? (() => {
         const tm=taxManual||{}, sm=tm.summary||{};
         const roleNow=role();
-        const label=roleNow==='SEKOLAH'?'Kelola pajak':(roleNow==='PENGAWAS'?'Periksa pajak':'Lihat pajak');
+        const label=roleNow==='SEKOLAH'?'Kelola Data Pajak Manual':(roleNow==='PENGAWAS'?'Periksa Data Pajak Manual':'Lihat Data Pajak Manual');
         const button=(roleNow==='SEKOLAH'||roleNow==='PENGAWAS'||roleNow==='DINAS')
           ? `<button class="btn btn-light btn-sm" type="button" onclick="openBkuTaxManualPanel('${esc($('#periodeSelect')?.value||state.selectedPeriode||'')}','${esc(state.selectedNpsn||state.user?.npsn||state.user?.username||'')}')">${label}</button>` : '';
         return `<div class="v223-tax-manual-summary" style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border,#e5e7eb)">
-          <div class="muted">${fmtNum(sm.total_records||0)} data manual · ${fmtNum(sm.approved_count||0)} disetujui · ${fmtNum(sm.pending_count||0)} menunggu</div>
+          <div class="muted">Data manual: ${fmtNum(sm.total_records||0)} transaksi · ${fmtNum(sm.approved_count||0)} disetujui · ${fmtNum(sm.pending_count||0)} menunggu pemeriksaan</div>
+          <div class="muted">Pungutan manual disetujui ${fmtRupiah(sm.approved_pungutan||0)} · Setoran manual disetujui ${fmtRupiah(sm.approved_setoran||0)}</div>
           <div style="margin-top:7px">${button}</div>
         </div>`;
       })() : ''}
@@ -3911,24 +3914,6 @@ function _v222LegacyNaMustBeIgnored_(m,d,summaries){
  * V25.2.1-C — UI BUKU PEMBANTU PAJAK MANUAL
  * Semua data ditampilkan terpisah dari BKU kanonik.
  * ========================================================================== */
-
-window.renderSpjEvidenceNav=function(active,period,npsn){
-  const items=[['TAX','Pajak'],['INVOICE','Invoice / Nota'],['SUPPORT','Bukti pendukung'],['PHOTO','Foto']];
-  return `<div style="display:flex;gap:6px;flex-wrap:wrap;margin:14px 0 4px;padding:8px;background:var(--surface-secondary,#f3f4f6);border-radius:12px">
-    ${items.map(([key,label])=>`<button type="button" class="btn ${active===key?'btn-primary':'btn-light'} btn-sm" onclick="switchSpjEvidenceTab('${key}','${esc(period)}','${esc(npsn||'')}')">${label}</button>`).join('')}
-  </div>`;
-};
-window.switchSpjEvidenceTab=function(tab,period,npsn){
-  const p=period||state.selectedPeriode||'';
-  const ns=npsn||state.selectedNpsn||state.user?.npsn||state.user?.username||'';
-  document.getElementById('bkuTaxManualOverlay')?.remove();
-  document.getElementById('evidenceCoverageOverlay')?.remove();
-  window._bkuTaxManualPanelState=null;
-  window._evidenceCoverageState=null;
-  if(tab==='TAX')return openBkuTaxManualPanel(p,ns);
-  return openEvidenceCoveragePanel(tab,p,ns);
-};
-
 window._bkuTaxManualPanelState = null;
 
 window.openBkuTaxManualPanel = async function(idPeriode,npsn){
@@ -3939,16 +3924,15 @@ window.openBkuTaxManualPanel = async function(idPeriode,npsn){
   overlay.style.cssText='position:fixed;inset:0;background:rgba(15,23,42,.62);z-index:10020;display:flex;align-items:center;justify-content:center;padding:14px';
   overlay.innerHTML=`<div style="background:var(--surface,#fff);color:var(--text,#172033);width:min(1040px,100%);max-height:92vh;overflow:auto;border-radius:18px;padding:20px;box-shadow:0 24px 70px rgba(0,0,0,.25)">
     <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start">
-      <div><div class="muted" style="font-size:12px;font-weight:800;letter-spacing:.06em">PENGELOLAAN PAJAK</div><h2 style="margin:4px 0">Buku Pembantu Pajak</h2><div class="muted">Periode ${esc(period)} · Data pelengkap BKU scan · tidak mengubah BKU utama</div></div>
+      <div><div class="muted" style="font-size:12px;font-weight:800;letter-spacing:.06em">MANUAL DATA COMPLETION</div><h2 style="margin:4px 0">Buku Pembantu Pajak</h2><div class="muted">Periode ${esc(period)} · Data manual terpisah dari BKU kanonik</div></div>
       <button class="btn btn-light" type="button" onclick="closeBkuTaxManualPanel()">✕ Tutup</button>
     </div>
-    ${renderSpjEvidenceNav('TAX',period,npsn||'')}
-    <div id="bkuTaxManualPanelBody" style="margin-top:12px">${loading('Memuat data pajak manual...')}</div>
+    <div id="bkuTaxManualPanelBody" style="margin-top:16px">${loading('Memuat data pajak manual...')}</div>
   </div>`;
   document.getElementById('bkuTaxManualOverlay')?.remove();
   document.body.appendChild(overlay);
   overlay.addEventListener('click',e=>{if(e.target===overlay)closeBkuTaxManualPanel();});
-  window._bkuTaxManualPanelState={id_periode:period,npsn:npsn||'',role:role(),data:[],declarations:[],summary:{},showForm:false};
+  window._bkuTaxManualPanelState={id_periode:period,npsn:npsn||'',role:role(),data:[],declarations:[],summary:{}};
   await refreshBkuTaxManualPanel();
 };
 
@@ -3976,73 +3960,57 @@ window.renderBkuTaxManualPanel=function(){
     const status=String(x.status_verifikasi||'DRAFT').toUpperCase();
     const statusColor=status==='DISETUJUI'?'success':(status==='DITOLAK'?'danger':(status==='PERLU_PERBAIKAN'?'warning':'info'));
     const amount=Number(x.nilai_pungutan||0)+Number(x.nilai_setoran||0)+Number(x.nilai_koreksi||0);
-    const evidence=(x.evidence||[]).map(ev=>`<button class="btn btn-light btn-sm" type="button" onclick="openBkuTaxManualEvidence('${esc(ev.id_evidence)}')">Lihat bukti</button>`).join(' ');
+    const evidence=(x.evidence||[]).map(ev=>`<button class="btn btn-light btn-sm" type="button" onclick="openBkuTaxManualEvidence('${esc(ev.id_evidence)}')">📎 ${esc(ev.nama_file)}</button>`).join(' ');
     const actions=school&&['DRAFT','PERLU_PERBAIKAN'].includes(status)
       ? `<button class="btn btn-light btn-sm" type="button" onclick="editBkuTaxManualDraft('${esc(x.id_pajak_manual)}')">Edit</button><button class="btn btn-primary btn-sm" type="button" onclick="submitBkuTaxManualFromUi('${esc(x.id_pajak_manual)}')">Ajukan</button>`
       : reviewer&&status==='DIAJUKAN'
-        ? `<button class="btn btn-primary btn-sm" type="button" onclick="reviewBkuTaxManualFromUi('${esc(x.id_pajak_manual)}','DISETUJUI')">Setujui</button><button class="btn btn-light btn-sm" type="button" onclick="reviewBkuTaxManualFromUi('${esc(x.id_pajak_manual)}','PERLU_PERBAIKAN')">Minta perbaikan</button><button class="btn btn-light btn-sm" type="button" onclick="reviewBkuTaxManualFromUi('${esc(x.id_pajak_manual)}','DITOLAK')">Tolak</button>`:'';
-    return `<div class="panel" style="padding:10px;margin:7px 0">
-      <div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><b>${esc(x.jenis_pajak||'Pajak')} · ${esc(x.jenis_aktivitas||'')}</b>${badge(status,statusColor)}</div>
-      <div class="muted">${esc(x.tanggal_transaksi||'-')} · ${esc(x.nomor_bukti||'Tanpa nomor')}</div>
-      <div style="margin:5px 0">${esc(x.uraian||'')}</div>
-      <b>${fmtRupiah(amount)}</b>
-      ${x.catatan_review?`<div class="message warn" style="margin-top:6px">${esc(x.catatan_review)}</div>`:''}
-      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">${evidence}${actions}</div>
-    </div>`;
+        ? `<button class="btn btn-primary btn-sm" type="button" onclick="reviewBkuTaxManualFromUi('${esc(x.id_pajak_manual)}','DISETUJUI')">Setujui</button><button class="btn btn-light btn-sm" type="button" onclick="reviewBkuTaxManualFromUi('${esc(x.id_pajak_manual)}','PERLU_PERBAIKAN')">Minta perbaikan</button><button class="btn btn-light btn-sm" type="button" onclick="reviewBkuTaxManualFromUi('${esc(x.id_pajak_manual)}','DITOLAK')">Tolak</button>`
+        : '';
+    return `<tr><td>${i+1}</td><td>${esc(x.tanggal_transaksi||'-')}</td><td>${esc(x.jenis_pajak||'-')}<div class="muted">${esc(x.jenis_aktivitas||'')}</div></td><td>${esc(x.nomor_bukti||'-')}<div class="muted">${esc(x.uraian||'')}</div></td><td style="text-align:right">${fmtRupiah(amount)}</td><td>${badge(status,statusColor)}${x.catatan_review?`<div class="muted">${esc(x.catatan_review)}</div>`:''}<div style="margin-top:5px">${evidence}</div></td><td><div style="display:flex;gap:5px;flex-wrap:wrap">${actions}</div></td></tr>`;
   }).join('');
   const declaration=(st.declarations||[])[0];
-  const declarationHtml=declaration?`<div class="message ${declaration.status==='NIHIL_DIVERIFIKASI'?'ok':'warn'}" style="margin-top:10px"><b>Pernyataan nihil:</b> ${esc(declaration.status)} · ${esc(declaration.alasan||'')}${reviewer&&declaration.status==='NIHIL_DIAJUKAN'?`<div style="display:flex;gap:8px;margin-top:8px"><button class="btn btn-primary btn-sm" onclick="reviewBkuTaxNihilFromUi('${esc(declaration.id_declaration)}','NIHIL_DIVERIFIKASI')">Verifikasi nihil</button><button class="btn btn-light btn-sm" onclick="reviewBkuTaxNihilFromUi('${esc(declaration.id_declaration)}','PERLU_PERBAIKAN')">Minta perbaikan</button></div>`:''}</div>`:'';
+  const declarationHtml=declaration?`<div class="message ${declaration.status==='NIHIL_DIVERIFIKASI'?'ok':'warn'}" style="margin-top:10px"><b>Pernyataan nihil:</b> ${esc(declaration.status)}<br>${esc(declaration.alasan||'')}${reviewer&&declaration.status==='NIHIL_DIAJUKAN'?`<div style="display:flex;gap:8px;margin-top:8px"><button class="btn btn-primary btn-sm" onclick="reviewBkuTaxNihilFromUi('${esc(declaration.id_declaration)}','NIHIL_DIVERIFIKASI')">Verifikasi nihil</button><button class="btn btn-light btn-sm" onclick="reviewBkuTaxNihilFromUi('${esc(declaration.id_declaration)}','PERLU_PERBAIKAN')">Minta perbaikan</button></div>`:''}</div>`:'';
   const form=school?`
-    <div id="taxManualFormWrap" class="panel" style="display:${st.showForm?'block':'none'};margin:10px 0">
-      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><b>Tambah data pajak</b><button class="btn btn-light btn-sm" type="button" onclick="toggleTaxManualForm(false)">Tutup</button></div>
-      <form id="bkuTaxManualForm" onsubmit="saveBkuTaxManualDraftFromUi(event)" style="margin-top:10px">
+    <div class="panel" style="margin-top:14px">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><h3 style="margin:0">Tambah transaksi pajak manual</h3><span class="muted">Simpan sebagai draft sebelum diajukan</span></div>
+      <form id="bkuTaxManualForm" onsubmit="saveBkuTaxManualDraftFromUi(event)" style="margin-top:12px">
         <input type="hidden" id="taxManualId" value="">
         <div class="form-grid">
-          <div class="field"><label>Tanggal</label><input id="taxManualDate" type="date" required></div>
+          <div class="field"><label>Tanggal transaksi</label><input id="taxManualDate" type="date" required></div>
           <div class="field"><label>Jenis pajak</label><select id="taxManualType" required><option value="PPN">PPN</option><option value="PPh 21">PPh Pasal 21</option><option value="PPh 22">PPh Pasal 22</option><option value="PPh 23">PPh Pasal 23</option><option value="PPh Final">PPh Final</option><option value="SSPD">Pajak Daerah / SSPD</option><option value="LAINNYA">Pajak lainnya</option></select></div>
-          <div class="field"><label>Aktivitas</label><select id="taxManualActivity" required><option value="PUNGUT">Pungut / penerimaan</option><option value="SETOR">Setor / pembayaran</option><option value="KOREKSI">Koreksi</option></select></div>
+          <div class="field"><label>Aktivitas</label><select id="taxManualActivity" required><option value="PUNGUT">Pemungutan / Penerimaan (PUNGUT)</option><option value="SETOR">Penyetoran / Pembayaran (SETOR)</option><option value="KOREKSI">Pengembalian / Koreksi (KOREKSI)</option></select></div>
           <div class="field"><label>Nomor bukti</label><input id="taxManualProof" required placeholder="Contoh: SSP-001"></div>
-          <div class="field"><label>Nilai (Rp)</label><input id="taxManualAmount" type="number" min="1" step="1" required></div>
-          <div class="field" id="taxCorrectionField" style="display:none"><label>Arah koreksi</label><select id="taxManualCorrection"><option value="">Pilih...</option><option value="TAMBAH_SALDO">Menambah saldo</option><option value="KURANGI_SALDO">Mengurangi saldo</option></select></div>
+          <div class="field"><label>Nilai transaksi (Rp)</label><input id="taxManualAmount" type="number" min="1" step="1" required placeholder="Masukkan nominal"></div>
+          <div class="field"><label>Arah koreksi (khusus KOREKSI)</label><select id="taxManualCorrection"><option value="">Tidak berlaku</option><option value="TAMBAH_SALDO">Menambah saldo</option><option value="KURANGI_SALDO">Mengurangi saldo</option></select></div>
         </div>
-        <div class="field"><label>Uraian</label><textarea id="taxManualDescription" rows="2" required placeholder="Contoh: Penyetoran PPN"></textarea></div>
-        <details style="margin:8px 0"><summary style="cursor:pointer;font-weight:600">Informasi tambahan (opsional)</summary>
-          <div class="field" style="margin-top:8px"><label>Referensi BKU</label><input id="taxManualBkuRef" placeholder="Halaman / baris transaksi"></div>
-          <div class="field"><label>Alasan pengisian manual</label><textarea id="taxManualReason" rows="2" required minlength="10" placeholder="Mengapa transaksi belum terbaca?"></textarea></div>
-          <div class="field"><label>Alasan jika belum ada bukti</label><textarea id="taxManualNoEvidence" rows="2" placeholder="Isi bila mengajukan tanpa lampiran"></textarea></div>
-          <div class="field"><label>Lampiran bukti (PDF/JPG/PNG, maks. 10 MB)</label><input id="taxManualFile" type="file" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"></div>
-        </details>
+        <div class="field"><label>Uraian transaksi</label><textarea id="taxManualDescription" rows="2" required placeholder="Jelaskan transaksi pajak"></textarea></div>
+        <div class="field"><label>Referensi BKU (opsional)</label><input id="taxManualBkuRef" placeholder="Contoh: halaman 20 / baris transaksi"></div>
+        <div class="field"><label>Alasan pengisian manual</label><textarea id="taxManualReason" rows="2" required minlength="10" placeholder="Mengapa transaksi perlu ditambahkan secara manual?"></textarea></div>
+        <div class="field"><label>Alasan jika belum ada bukti (opsional)</label><textarea id="taxManualNoEvidence" rows="2" placeholder="Wajib diisi jika akan mengajukan tanpa file bukti"></textarea></div>
+        <div class="field"><label>Bukti pendukung (PDF/JPG/PNG, maksimal 10 MB per file)</label><input id="taxManualFile" type="file" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"></div>
         <div id="taxManualWarning" class="message warn" style="display:none;margin:8px 0"></div>
-        <div style="display:flex;justify-content:flex-end;gap:8px"><button class="btn btn-light" type="button" onclick="resetBkuTaxManualForm()">Kosongkan</button><button class="btn btn-primary" type="submit">Simpan</button></div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap"><button class="btn btn-light" type="button" onclick="resetBkuTaxManualForm()">Kosongkan</button><button class="btn btn-primary" type="submit">Simpan Draft</button></div>
       </form>
     </div>
-    <div style="display:flex;justify-content:flex-end;margin-top:8px"><button class="btn btn-light btn-sm" type="button" onclick="submitBkuTaxNihilFromUi()">Ajukan pernyataan nihil</button></div>`:'';
+    <div style="display:flex;justify-content:flex-end;margin-top:10px"><button class="btn btn-light btn-sm" type="button" onclick="submitBkuTaxNihilFromUi()">Ajukan Pernyataan Nihil</button></div>`:'';
   body.innerHTML=`
-    <div class="message info" style="margin:0 0 10px">Data pajak manual melengkapi pembacaan BKU scan. Data ini terpisah dan tidak mengubah BKU kanonik.</div>
-    <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center;padding:8px 0;border-bottom:1px solid var(--border,#e5e7eb)">
-      <span><b>${fmtNum(sm.total_records||0)}</b> data</span>
-      <span><b>${fmtNum(sm.approved_count||0)}</b> disetujui</span>
-      <span><b>${fmtNum(sm.pending_count||0)}</b> menunggu</span>
-      <span>Pungutan ${fmtRupiah(sm.approved_pungutan||0)}</span>
-      <span>Setoran ${fmtRupiah(sm.approved_setoran||0)}</span>
+    <div class="form-grid" style="margin-bottom:12px">
+      <div class="panel"><small class="muted">Transaksi manual</small><h2 style="margin:5px 0">${fmtNum(sm.total_records||0)}</h2></div>
+      <div class="panel"><small class="muted">Disetujui Pengawas</small><h2 style="margin:5px 0">${fmtNum(sm.approved_count||0)}</h2></div>
+      <div class="panel"><small class="muted">Menunggu / perbaikan</small><h2 style="margin:5px 0">${fmtNum(sm.pending_count||0)}</h2></div>
+      <div class="panel"><small class="muted">Pungutan / Setoran disetujui</small><strong>${fmtRupiah(sm.approved_pungutan||0)} / ${fmtRupiah(sm.approved_setoran||0)}</strong></div>
     </div>
-    ${school?`<div style="display:flex;justify-content:flex-end;margin:10px 0"><button class="btn btn-primary" type="button" onclick="toggleTaxManualForm(true)">+ Tambah data pajak</button></div>`:''}
-    ${form}
-    <div style="margin-top:12px"><b>Data pajak yang dicatat</b>${rows||`<div class="panel muted" style="padding:14px;margin-top:8px">Belum ada data pajak manual.</div>`}</div>
-    ${declarationHtml}`;
+    <div class="message warn">Data pada panel ini adalah data manual pendukung. Data tidak mengubah BKU kanonik, snapshot historis, atau nilai penilaian otomatis.</div>
+    <div class="table-wrap" style="margin-top:12px"><table class="friendly-table"><thead><tr><th>No.</th><th>Tanggal</th><th>Jenis</th><th>Bukti / Uraian</th><th>Nilai</th><th>Status / Lampiran</th><th>Aksi</th></tr></thead><tbody>${rows||emptyRow(7,'Belum ada transaksi pajak manual.')}</tbody></table></div>
+    ${declarationHtml}${form}
+  `;
   if(school){
     const date=document.getElementById('taxManualDate');
     if(date&&!date.value)date.value=st.id_periode.match(/^PER-(\d{4})-(\d{2})$/)?`${st.id_periode.slice(4,8)}-${st.id_periode.slice(9,11)}-01`:'';
     ['taxManualActivity','taxManualDescription'].forEach(id=>document.getElementById(id)?.addEventListener('input',updateBkuTaxManualWarning));
-    document.getElementById('taxManualActivity')?.addEventListener('change',()=>{
-      document.getElementById('taxCorrectionField').style.display=document.getElementById('taxManualActivity').value==='KOREKSI'?'block':'none';
-      updateBkuTaxManualWarning();
-    });
-    if(document.getElementById('taxManualActivity')?.value==='KOREKSI')document.getElementById('taxCorrectionField').style.display='block';
+    document.getElementById('taxManualActivity')?.addEventListener('change',updateBkuTaxManualWarning);
+    document.getElementById('taxManualDescription')?.addEventListener('input',updateBkuTaxManualWarning);
   }
-};
-window.toggleTaxManualForm=function(show){
-  const st=window._bkuTaxManualPanelState;if(!st)return;st.showForm=!!show;renderBkuTaxManualPanel();
 };
 
 window.updateBkuTaxManualWarning=function(){
@@ -4065,7 +4033,6 @@ window.resetBkuTaxManualForm=function(){
 window.editBkuTaxManualDraft=function(idManual){
   const st=window._bkuTaxManualPanelState,rec=(st?.data||[]).find(x=>x.id_pajak_manual===idManual);
   if(!rec)return;
-  st.showForm=true;renderBkuTaxManualPanel();
   document.getElementById('taxManualId').value=rec.id_pajak_manual;
   document.getElementById('taxManualDate').value=String(rec.tanggal_transaksi||'').slice(0,10);
   document.getElementById('taxManualType').value=rec.jenis_pajak||'PPN';
@@ -4077,7 +4044,6 @@ window.editBkuTaxManualDraft=function(idManual){
   document.getElementById('taxManualBkuRef').value=rec.referensi_bku||'';
   document.getElementById('taxManualReason').value=rec.alasan_manual||'';
   document.getElementById('taxManualNoEvidence').value=rec.alasan_tanpa_bukti||'';
-  document.getElementById('taxCorrectionField').style.display=rec.jenis_aktivitas==='KOREKSI'?'block':'none';
   updateBkuTaxManualWarning();
   document.getElementById('bkuTaxManualForm')?.scrollIntoView({behavior:'smooth',block:'start'});
 };
@@ -4118,8 +4084,7 @@ window.saveBkuTaxManualDraftFromUi=async function(event){
       await api('uploadBkuTaxManualEvidence',{data:{id_pajak_manual:idManual,nama_file:file.name,mime_type:inferredMime,base64:base64}});
       document.getElementById('taxManualFile').value='';
     }
-    alert('Data pajak tersimpan sebagai draft. Belum masuk penilaian.');
-    st.showForm=false;
+    alert('Draft Buku Pembantu Pajak berhasil disimpan. Data belum masuk penilaian.');
     await refreshBkuTaxManualPanel();
   }catch(e){alert(errorText(e));}
 };
@@ -4186,17 +4151,16 @@ window.openEvidenceCoveragePanel=async function(type,period,npsn){
   overlay.style.cssText='position:fixed;inset:0;background:rgba(15,23,42,.62);z-index:10030;display:flex;align-items:center;justify-content:center;padding:12px';
   overlay.innerHTML=`<div style="background:var(--surface,#fff);color:var(--text,#172033);width:min(1120px,100%);max-height:94vh;overflow:auto;border-radius:18px;padding:20px;box-shadow:0 24px 70px rgba(0,0,0,.25)">
     <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start">
-      <div><div class="muted" style="font-size:12px;font-weight:800;letter-spacing:.06em">PENGELOLAAN BUKTI SPJ · V25.2.1-E</div>
+      <div><div class="muted" style="font-size:12px;font-weight:800;letter-spacing:.06em">EVIDENCE-BASED TRANSACTION COVERAGE · V25.2.1-D</div>
       <h2 style="margin:4px 0">${category==='INVOICE'?'Invoice / Nota / Kuitansi':category==='SUPPORT'?'Bukti Pendukung Lainnya':'Foto / Dokumentasi'}</h2>
       <div class="muted">Periode ${esc(p)} · Bukti dihubungkan ke transaksi BKU yang sudah ada</div></div>
       <button class="btn btn-light" type="button" onclick="closeEvidenceCoveragePanel()">✕ Tutup</button>
     </div>
-    ${renderSpjEvidenceNav(category,p,ns)}
-    <div id="evidenceCoverageBody" style="margin-top:12px">${loading('Memuat dokumen dan transaksi BKU...')}</div>
+    <div id="evidenceCoverageBody" style="margin-top:16px">${loading('Memuat dokumen dan transaksi BKU...')}</div>
   </div>`;
   document.body.appendChild(overlay);
   overlay.addEventListener('click',e=>{if(e.target===overlay)closeEvidenceCoveragePanel();});
-  window._evidenceCoverageState={type:category,id_periode:p,npsn:ns,role:role(),data:null,selected_id:'',showForm:false};
+  window._evidenceCoverageState={type:category,id_periode:p,npsn:ns,role:role(),data:null,selected_id:''};
   await refreshEvidenceCoveragePanel();
 };
 window.closeEvidenceCoveragePanel=function(){
@@ -4212,7 +4176,7 @@ window.refreshEvidenceCoveragePanel=async function(){
       api('getEvidenceCoverageWorkbench',{idPeriode:st.id_periode,npsn:st.npsn}),
       api('getApiBuildInfo',{})
     ]);
-    if(build.build_id!=='V25.2.1-E_SIMPLIFIED_UX')throw new Error('Versi backend tidak sesuai. Diharapkan V25.2.1-D, terdeteksi '+build.build_id+'. Periksa deployment /exec.');
+    if(build.build_id!=='V25.2.1-F_MONITORING_STABILITY')throw new Error('Versi backend tidak sesuai. Diharapkan V25.2.1-F, terdeteksi '+build.build_id+'. Periksa deployment /exec.');
     st.data=res;renderEvidenceCoveragePanel();
   }catch(e){body.innerHTML=msg(errorText(e),'error')+`<div class="muted" style="margin-top:8px">Jika muncul "Action tidak dikenal", backend yang aktif belum memuat router V25.2.1-D. Simpan backend dan deploy versi Web App baru pada project staging yang sama.</div>`;}
 };
@@ -4225,85 +4189,50 @@ window.renderEvidenceCoveragePanel=function(){
   const available=docs.filter(x=>!regs.some(r=>r.file_id===x.file_id&&r.status_verifikasi!=='DITOLAK'));
   const selected=regs.find(x=>x.id_evidence===st.selected_id)||null;
   const statusColor=s=>s==='DISETUJUI'?'success':s==='DITOLAK'?'danger':s==='PERLU_PERBAIKAN'?'warning':'info';
-  const title=st.type==='INVOICE'?'Invoice / Nota / Kuitansi':st.type==='SUPPORT'?'Bukti Pendukung Lainnya':'Foto / Dokumentasi';
   const summaryHtml=st.type==='INVOICE'
-    ? `<div class="message ${sm.target_status==='AVAILABLE'?'info':'warn'}" style="margin:8px 0 12px">
-        <b>Cakupan bukti belanja:</b> ${sm.rkas_invoice_coverage_pct==null?'Belum dapat dihitung':sm.rkas_invoice_coverage_pct+'%'}
-        <span style="margin-left:8px">· Bukti disetujui ${fmtRupiah(sm.rkas_invoice_covered||0)}</span>
-        ${sm.target_status==='AVAILABLE'?` dari target ${fmtRupiah(sm.rkas_target||0)}`:`<div style="margin-top:4px">Target belum tersedia karena klasifikasi belanja RKAS belum terkonfirmasi. Nilai Rp0 tidak berarti tidak ada kewajiban bukti.</div>`}
-      </div>`
-    : `<div class="muted" style="margin:8px 0 12px">Bukti ini tidak diberi nilai Rupiah. Sistem mencatat dokumen yang disetujui dan transaksi BKU yang didukung.</div>`;
+    ? `<div class="form-grid"><div class="panel"><small class="muted">Target belanja RKAS terklasifikasi</small><h3>${fmtRupiah(sm.rkas_target||0)}</h3></div><div class="panel"><small class="muted">Alokasi invoice disetujui pada Belanja RKAS</small><h3>${fmtRupiah(sm.rkas_invoice_covered||0)}</h3></div><div class="panel"><small class="muted">Belum tercakup</small><h3>${fmtRupiah(sm.rkas_invoice_uncovered||0)}</h3></div><div class="panel"><small class="muted">Cakupan</small><h3>${sm.rkas_invoice_coverage_pct==null?'Belum dapat dihitung':sm.rkas_invoice_coverage_pct+'%'}</h3></div></div>
+      ${sm.target_status!=='AVAILABLE'?`<div class="message warn">Target belanja RKAS belum tersedia karena transaksi belum terklasifikasi sebagai BELANJA_RKAS. Jangan menganggap target Rp0 sebagai tidak ada kewajiban bukti. Pengeluaran non-RKAS yang terdeteksi: ${fmtNum(sm.non_rkas_outflow_count||0)} transaksi (${fmtRupiah(sm.non_rkas_outflow_amount||0)}). Klasifikasi BKU harus diperiksa terpisah.</div>`:''}`
+    : `<div class="form-grid"><div class="panel"><small class="muted">Dokumen disetujui</small><h3>${fmtNum(st.type==='SUPPORT'?sm.support_approved_count:sm.photo_approved_count)}</h3></div><div class="panel"><small class="muted">Transaksi BKU terhubung</small><h3>${fmtNum(st.type==='SUPPORT'?sm.support_linked_transaction_count:sm.photo_linked_transaction_count)}</h3></div></div>
+      <div class="message warn">Bukti ${st.type==='SUPPORT'?'administratif':'foto'} tidak diberi nilai Rupiah. Sistem hanya menunjukkan transaksi yang didukung. Nilai transaksi BKU tidak dijumlahkan sebagai nilai dokumen.</div>`;
   const registerForm=school?`
-    <div id="evidenceRegisterWrap" class="panel" style="display:${st.showForm?'block':'none'};margin:10px 0">
-      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
-        <b>Tambah bukti</b><button class="btn btn-light btn-sm" type="button" onclick="toggleEvidenceRegisterForm(false)">Tutup</button>
-      </div>
-      <div class="muted" style="margin:5px 0 10px">Pilih file yang sudah diunggah pada komponen SPJ. Tidak perlu mengunggah ulang.</div>
-      <form id="evidenceRegisterForm" onsubmit="saveEvidenceRegistrationFromUi(event)">
-        <div class="field"><label>File dokumen</label><select id="evidenceFile" required><option value="">Pilih dokumen...</option>${available.map(x=>`<option value="${esc(x.file_id)}">${esc(x.nama_file)}</option>`).join('')}</select></div>
+    <div class="panel" style="margin-top:12px">
+      <h3 style="margin-top:0">Daftarkan dokumen yang sudah diunggah</h3>
+      <div class="muted">Unggah file terlebih dahulu pada komponen SPJ terkait. Di sini sekolah hanya mendaftarkan metadata dan menghubungkannya ke transaksi, tidak mengunggah salinan baru.</div>
+      <form id="evidenceRegisterForm" onsubmit="saveEvidenceRegistrationFromUi(event)" style="margin-top:12px">
+        <div class="field"><label>Pilih file yang sudah diunggah</label><select id="evidenceFile" required><option value="">Pilih dokumen...</option>${available.map(x=>`<option value="${esc(x.file_id)}" data-spj="${esc(x.id_spj)}">${esc(x.nama_file)} · ${esc(x.id_dokumen)}</option>`).join('')}</select></div>
         <div class="form-grid">
-          <div class="field"><label>Jenis</label><select id="evidenceDocType" required>${(st.type==='INVOICE'?['INVOICE','NOTA','KUITANSI']:st.type==='SUPPORT'?['SURAT TUGAS','DAFTAR HADIR','BERITA ACARA','SURAT PESANAN','SSPD','DOKUMEN PENDUKUNG LAIN']:['FOTO PENERIMAAN BARANG','FOTO KEGIATAN','FOTO HASIL PEKERJAAN','FOTO KONDISI BARANG','FOTO LAINNYA']).map(x=>`<option value="${esc(x)}">${esc(x)}</option>`).join('')}</select></div>
-          <div class="field"><label>Tanggal</label><input id="evidenceDate" type="date" required></div>
-          ${st.type==='INVOICE'?`<div class="field"><label>Nomor dokumen</label><input id="evidenceNumber" required></div><div class="field"><label>Nilai dokumen (Rp)</label><input id="evidenceAmount" type="number" min="1" step="1" required></div>`:`<div class="field"><label>Nomor dokumen (opsional)</label><input id="evidenceNumber"></div>`}
-          ${st.type==='INVOICE'?`<div class="field"><label>Toko / penerbit (opsional)</label><input id="evidenceIssuer"></div>`:''}
+          <div class="field"><label>Jenis dokumen</label><select id="evidenceDocType" required>${(st.type==='INVOICE'?['INVOICE','NOTA','KUITANSI']:st.type==='SUPPORT'?['SURAT TUGAS','DAFTAR HADIR','BERITA ACARA','SURAT PESANAN','SSPD','DOKUMEN PENDUKUNG LAIN']:['FOTO PENERIMAAN BARANG','FOTO KEGIATAN','FOTO HASIL PEKERJAAN','FOTO KONDISI BARANG','FOTO LAINNYA']).map(x=>`<option value="${esc(x)}">${esc(x)}</option>`).join('')}</select></div>
+          <div class="field"><label>Tanggal dokumen</label><input id="evidenceDate" type="date" required></div>
+          ${st.type==='INVOICE'?`<div class="field"><label>Nomor dokumen</label><input id="evidenceNumber" required></div><div class="field"><label>Nama toko / penerbit</label><input id="evidenceIssuer"></div><div class="field"><label>Nilai total dokumen (Rp)</label><input id="evidenceAmount" type="number" min="1" step="1" required></div>`:`<div class="field"><label>Nomor dokumen (opsional)</label><input id="evidenceNumber"></div><div class="field"><label>Penerbit / sumber (opsional)</label><input id="evidenceIssuer"></div>`}
         </div>
-        <div class="field"><label>Keterangan singkat</label><textarea id="evidenceDescription" rows="2" required placeholder="Jelaskan isi bukti ini"></textarea></div>
-        ${st.type==='INVOICE'?`<div class="field"><label>Alasan jika nilai tidak seluruhnya dialokasikan (isi bila ada selisih)</label><textarea id="evidencePartialReason" rows="2"></textarea></div>`:''}
-        <div style="display:flex;justify-content:flex-end"><button class="btn btn-primary" type="submit">Simpan</button></div>
+        <div class="field"><label>Uraian / keterangan</label><textarea id="evidenceDescription" rows="2" required placeholder="Jelaskan isi dan fungsi dokumen"></textarea></div>
+        ${st.type==='INVOICE'?`<div class="field"><label>Alasan jika nilai dokumen tidak seluruhnya dialokasikan (opsional, wajib bila ada selisih)</label><textarea id="evidencePartialReason" rows="2"></textarea></div>`:''}
+        <div style="display:flex;justify-content:flex-end;gap:8px"><button class="btn btn-primary" type="submit">Simpan Registrasi</button></div>
       </form>
     </div>`:'';
-  const txOptions=(d.transactions||[]).map(x=>`<option value="${esc(x.id_transaksi)}">${esc(x.tanggal_transaksi||'-')} · ${esc(x.nomor_bukti||'Tanpa nomor')} · ${esc(x.uraian||'')} · ${fmtRupiah(x.nilai_transaksi)}</option>`).join('');
+  const txOptions=(d.transactions||[]).map(x=>`<option value="${esc(x.id_transaksi)}">${esc(x.tanggal_transaksi||'-')} · ${esc(x.nomor_bukti||'Tanpa nomor')} · ${esc(x.uraian||'')} · ${fmtRupiah(x.nilai_transaksi)} · ${esc(x.jenis_belanja)}</option>`).join('');
   const selectedPanel=selected?`
-    <div class="panel" style="margin-top:10px">
-      <div style="display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap">
-        <div><b>${esc(selected.nama_file)}</b><div class="muted">${esc(selected.jenis_dokumen)} · ${esc(selected.nomor_dokumen||'-')}</div></div>
-        ${badge(selected.status_verifikasi,statusColor(selected.status_verifikasi))}
-      </div>
-      <div class="muted" style="margin:6px 0">${esc(selected.uraian||'')}</div>
-      ${selected.evidence_type==='INVOICE'?`<b>Nilai dokumen: ${fmtRupiah(selected.nilai_dokumen||0)}</b><div class="muted">Sudah dialokasikan: ${fmtRupiah(selected.allocated_total||0)}</div>`:''}
-      <button class="btn btn-light btn-sm" style="margin-top:8px" type="button" onclick="openEvidenceCoverageFile('${esc(selected.file_id)}','${esc(selected.mime_type)}','${esc(selected.nama_file)}')">Lihat dokumen</button>
-      <div style="margin-top:12px"><b>Transaksi yang didukung</b></div>
-      ${(selected.allocations||[]).map(a=>`<div style="padding:8px 0;border-bottom:1px solid var(--border,#e5e7eb)">
-        <div><b>${esc(a.transaction?.nomor_bukti||'Transaksi BKU')}</b> · ${esc(a.transaction?.tanggal_transaksi||'-')}</div>
-        <div class="muted">${esc(a.transaction?.uraian||a.id_transaksi)}</div>
-        <div style="display:flex;justify-content:space-between;align-items:center"><span>${selected.evidence_type==='INVOICE'?fmtRupiah(a.nilai_alokasi):'Bukti nonmoneter'}</span>
-        ${school&&['DRAFT','PERLU_PERBAIKAN'].includes(selected.status_verifikasi)?`<button class="btn btn-light btn-sm" onclick="removeEvidenceAllocationFromUi('${esc(a.id_allocation)}')">Lepas</button>`:''}</div>
-      </div>`).join('')||`<div class="muted" style="padding:8px 0">Belum ada transaksi yang dihubungkan.</div>`}
+    <div class="panel" style="margin-top:12px">
+      <div style="display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap"><div><h3 style="margin:0">${esc(selected.nama_file)}</h3><div class="muted">${esc(selected.jenis_dokumen)} · ${esc(selected.nomor_dokumen||'-')} · ${fmtRupiah(selected.nilai_dokumen||0)}</div></div><div>${badge(selected.status_verifikasi,statusColor(selected.status_verifikasi))}</div></div>
+      <p class="muted">${esc(selected.uraian||'')}</p>
+      <button class="btn btn-light btn-sm" type="button" onclick="openEvidenceCoverageFile('${esc(selected.file_id)}','${esc(selected.mime_type)}','${esc(selected.nama_file)}')">Lihat dokumen</button>
+      <h4 style="margin:14px 0 8px">Transaksi BKU yang didukung</h4>
+      <div class="table-wrap"><table class="friendly-table"><thead><tr><th>Transaksi</th><th>Nilai alokasi</th><th>Status</th><th></th></tr></thead><tbody>${(selected.allocations||[]).map(a=>`<tr><td>${esc(a.transaction?.tanggal_transaksi||'-')} · ${esc(a.transaction?.nomor_bukti||'')}<div class="muted">${esc(a.transaction?.uraian||a.id_transaksi)}</div></td><td>${selected.evidence_type==='INVOICE'?fmtRupiah(a.nilai_alokasi):'Non-moneter'}</td><td>${esc(a.transaction?.jenis_belanja||'')}</td><td>${school&&['DRAFT','PERLU_PERBAIKAN'].includes(selected.status_verifikasi)?`<button class="btn btn-light btn-sm" onclick="removeEvidenceAllocationFromUi('${esc(a.id_allocation)}')">Lepas</button>`:''}</td></tr>`).join('')||emptyRow(4,'Belum ada transaksi yang dihubungkan.')}</tbody></table></div>
       ${school&&['DRAFT','PERLU_PERBAIKAN'].includes(selected.status_verifikasi)?`
         <form onsubmit="addEvidenceAllocationFromUi(event)" style="margin-top:12px">
-          <div class="field"><label>Pilih transaksi BKU</label><select id="evidenceTransaction" required><option value="">Pilih transaksi...</option>${txOptions}</select></div>
-          ${selected.evidence_type==='INVOICE'?`<div class="field"><label>Nilai yang didukung (Rp)</label><input id="evidenceAllocationAmount" type="number" min="1" step="1" required></div>`:''}
-          <div class="field"><label>Keterangan (opsional)</label><input id="evidenceLinkNote" placeholder="Hubungan bukti dengan transaksi"></div>
-          <button class="btn btn-light" type="submit">Hubungkan transaksi</button>
+          <div class="field"><label>Pilih transaksi pengeluaran BKU</label><select id="evidenceTransaction" required><option value="">Pilih transaksi...</option>${txOptions}</select></div>
+          ${selected.evidence_type==='INVOICE'?`<div class="field"><label>Nilai invoice yang dialokasikan ke transaksi (Rp)</label><input id="evidenceAllocationAmount" type="number" min="1" step="1" required></div>`:''}
+          <div class="field"><label>Catatan hubungan bukti dengan transaksi</label><input id="evidenceLinkNote" placeholder="Contoh: Nota pembelian barang pada transaksi ini"></div>
+          <button class="btn btn-primary" type="submit">Hubungkan Transaksi</button>
         </form>
         <div style="display:flex;justify-content:flex-end;margin-top:12px"><button class="btn btn-primary" type="button" onclick="submitEvidenceRegistrationFromUi('${esc(selected.id_evidence)}')">Ajukan ke Pengawas</button></div>`:''}
       ${selected.catatan_review?`<div class="message warn" style="margin-top:10px">Catatan Pengawas: ${esc(selected.catatan_review)}</div>`:''}
       ${reviewer&&selected.status_verifikasi==='DIAJUKAN'?`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px"><button class="btn btn-primary" onclick="reviewEvidenceRegistrationFromUi('${esc(selected.id_evidence)}','DISETUJUI')">Setujui</button><button class="btn btn-light" onclick="reviewEvidenceRegistrationFromUi('${esc(selected.id_evidence)}','PERLU_PERBAIKAN')">Minta perbaikan</button><button class="btn btn-light" onclick="reviewEvidenceRegistrationFromUi('${esc(selected.id_evidence)}','DITOLAK')">Tolak</button></div>`:''}
     </div>`:'';
-  const registry=regs.map(r=>`<div class="panel" style="padding:10px;margin:7px 0">
-    <div style="display:flex;justify-content:space-between;gap:8px;align-items:center">
-      <div style="min-width:0"><b>${esc(r.nama_file)}</b><div class="muted">${esc(r.jenis_dokumen)} · ${esc(String(r.tanggal_dokumen||'').slice(0,10))}</div></div>
-      ${badge(r.status_verifikasi,statusColor(r.status_verifikasi))}
-    </div>
-    <div class="muted" style="margin-top:5px">${r.evidence_type==='INVOICE'?`Nilai ${fmtRupiah(r.nilai_dokumen||0)} · Dialokasikan ${fmtRupiah(r.allocated_total||0)}`:`${fmtNum((r.allocations||[]).length)} transaksi terhubung`}</div>
-    <div style="text-align:right;margin-top:5px"><button class="btn btn-light btn-sm" onclick="selectEvidenceRegistration('${esc(r.id_evidence)}')">Lihat / kelola</button></div>
-  </div>`).join('');
-  const dateDefault=st.id_periode.match(/^PER-(\d{4})-(\d{2})$/)?`${st.id_periode.slice(4,8)}-${st.id_periode.slice(9,11)}-01`:'';
-  body.innerHTML=`
-    ${summaryHtml}
-    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin:10px 0">
-      <div><b>${regs.length} bukti terdaftar</b><div class="muted">Pilih bukti untuk menghubungkannya dengan transaksi BKU.</div></div>
-      ${school?`<button class="btn btn-primary" type="button" onclick="toggleEvidenceRegisterForm(true)">+ Tambah bukti</button>`:''}
-    </div>
-    ${registerForm}
-    ${registry||`<div class="panel muted" style="padding:16px;text-align:center">Belum ada bukti yang didaftarkan.</div>`}
-    ${selectedPanel}`;
-  const date=document.getElementById('evidenceDate');if(date&&!date.value)date.value=dateDefault;
+  const registryTable=`<div class="table-wrap" style="margin-top:12px"><table class="friendly-table"><thead><tr><th>Dokumen</th><th>Tanggal</th><th>Nilai dokumen</th><th>Alokasi</th><th>Status</th><th>Aksi</th></tr></thead><tbody>${regs.map(r=>`<tr><td>${esc(r.nama_file)}<div class="muted">${esc(r.jenis_dokumen)} · ${esc(r.nomor_dokumen||'-')}</div></td><td>${esc(String(r.tanggal_dokumen||'').slice(0,10))}</td><td>${r.evidence_type==='INVOICE'?fmtRupiah(r.nilai_dokumen):'Non-moneter'}</td><td>${r.evidence_type==='INVOICE'?fmtRupiah(r.allocated_total||0):`${fmtNum((r.allocations||[]).length)} transaksi`}</td><td>${badge(r.status_verifikasi,statusColor(r.status_verifikasi))}</td><td><button class="btn btn-light btn-sm" onclick="selectEvidenceRegistration('${esc(r.id_evidence)}')">Buka</button></td></tr>`).join('')||emptyRow(6,'Belum ada dokumen yang diregistrasikan.')}</tbody></table></div>`;
+  body.innerHTML=summaryHtml+registerForm+registryTable+selectedPanel;
+  const date=document.getElementById('evidenceDate');if(date&&!date.value)date.value=st.id_periode.match(/^PER-(\d{4})-(\d{2})$/)?`${st.id_periode.slice(4,8)}-${st.id_periode.slice(9,11)}-01`:'';
 };
-window.toggleEvidenceRegisterForm=function(show){
-  const st=window._evidenceCoverageState;if(!st)return;st.showForm=!!show;renderEvidenceCoveragePanel();
-};
-
 window.selectEvidenceRegistration=function(idEvidence){
   const st=window._evidenceCoverageState;if(!st)return;st.selected_id=idEvidence;renderEvidenceCoveragePanel();
 };
@@ -4322,8 +4251,7 @@ window.saveEvidenceRegistrationFromUi=async function(event){
   try{
     const res=await api('saveEvidenceRegistration',{data:payload});
     st.selected_id=res.data.id_evidence;
-    st.showForm=false;
-    alert('Bukti tersimpan sebagai draft. Belum dihitung dalam penilaian sampai disetujui Pengawas.');
+    alert('Registrasi bukti tersimpan sebagai DRAFT. Belum dihitung dalam penilaian.');
     await refreshEvidenceCoveragePanel();
   }catch(e){alert(errorText(e));}
 };
@@ -4450,7 +4378,7 @@ async function renderDokumenTable(){
         const oldPdfButton=legacyPdfs.length?`<button class="btn btn-light instrument-view-pdf-btn" type="button" data-file-id="${esc(legacyPdfs[0].file_id||'')}" data-pdf-name="${esc(legacyPdfs[0].nama_file||'Dokumentasi PDF')}" data-target="${esc(viewerId)}" onclick="showInstrumentPdf(this)">Lihat PDF lama</button>`:'';
         return `<div class="doc-row instrument-doc-row" data-instrument-index="${i}">
           <div class="doc-meta"><div class="iconbox">${String(i+1).padStart(2,'0')}</div><div><strong>${esc(m.nama_spj||m.nama_dokumen||m.kode||m.id_spj)}</strong><div class="muted">${esc(m.kelompok||m.keterangan||'Dokumentasi pendukung kegiatan/transaksi')}</div>${_v222BookSummaryHtml_(m,bookSummaries,taxManual)}<div class="muted" style="margin-top:5px">${photoLine}</div>${photoNames?`<div class="muted" style="margin-top:4px">${photoNames}${photos.length>3?' • dan lainnya':''}</div>`:''}${oldPdfLine}</div></div>
-          <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;justify-content:flex-end">${badge(status,statusClass)}${photoViewerButtons}${oldPdfButton}<button class="btn btn-light" type="button" onclick="openEvidenceCoveragePanel('PHOTO','${esc(periode)}','${esc(summaryNpsn)}')">Kelola bukti</button><button class="btn btn-primary" type="button" onclick="openPhotoUploadV2454_('SPJ-10','${esc(m.nama_spj||'Foto / Dokumentasi')}',${photoBytes})">Tambah Foto</button></div>
+          <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;justify-content:flex-end">${badge(status,statusClass)}${photoViewerButtons}${oldPdfButton}<button class="btn btn-light" type="button" onclick="openEvidenceCoveragePanel('PHOTO','${esc(periode)}','${esc(summaryNpsn)}')">Hubungkan Bukti ke BKU</button><button class="btn btn-primary" type="button" onclick="openPhotoUploadV2454_('SPJ-10','${esc(m.nama_spj||'Foto / Dokumentasi')}',${photoBytes})">Tambah Foto</button></div>
         </div>${pdfReady&&legacyPdfs.length?`<div id="${esc(viewerId)}" class="instrument-pdf-inline" hidden><div class="instrument-pdf-inline-head"><div><strong>📄 ${esc(legacyPdfs[0].nama_file||'Dokumentasi PDF')}</strong><div class="muted">Pratinjau PDF dokumentasi lama</div></div><button type="button" class="btn btn-light btn-sm" onclick="closeInstrumentPdf('${esc(viewerId)}')">✕ Tutup</button></div><div class="instrument-pdf-inline-frame" data-file-id="${esc(legacyPdfs[0].file_id||'')}" data-pdf-name="${esc(legacyPdfs[0].nama_file||'Dokumentasi PDF')}"><div class="muted" style="padding:24px;text-align:center">Klik <b>Lihat PDF lama</b> untuk memuat PDF.</div></div></div>`:''}`;
       }
       return `<div class="doc-row instrument-doc-row" data-instrument-index="${i}">
@@ -4471,7 +4399,7 @@ async function renderDokumenTable(){
               data-target="${esc(viewerId)}"
               onclick="showInstrumentPdf(this)">👁️ Lihat</button>` : ''}
           ${pdfReady && isBkuOfficial && isSchool() ? `<button class="btn btn-primary" type="button" onclick="openBkuOcrWorkbenchV2502('${encodeURIComponent(d.file_id||'')}','${encodeURIComponent(d.nama_file||'BKU scan')}','${encodeURIComponent(periode)}')">🔎 Periksa & Koreksi OCR</button>` : ''}
-          ${['SPJ-06','SPJ-07'].includes(String(m.id_spj)) ? `<button class="btn btn-light" type="button" onclick="openEvidenceCoveragePanel('${m.id_spj==='SPJ-06'?'INVOICE':'SUPPORT'}','${esc(periode)}','${esc(summaryNpsn)}')">Kelola bukti</button>` : ''}
+          ${['SPJ-06','SPJ-07'].includes(String(m.id_spj)) ? `<button class="btn btn-light" type="button" onclick="openEvidenceCoveragePanel('${m.id_spj==='SPJ-06'?'INVOICE':'SUPPORT'}','${esc(periode)}','${esc(summaryNpsn)}')">Hubungkan Bukti ke BKU</button>` : ''}
           <button class="btn ${d ? 'btn-light' : 'btn-primary'}" type="button" onclick="openUpload('${esc(m.id_spj)}','${esc(m.nama_spj || m.nama_dokumen || m.kode || m.id_spj)}',${d ? 'true' : 'false'})">${d ? 'Ganti PDF' : 'Upload PDF'}</button>
           ${allowNA ? `<button class="btn btn-light" type="button" onclick="openNaModal('${esc(m.id_spj)}','${esc(m.nama_spj || m.nama_dokumen || m.kode || m.id_spj)}')">N/A</button>` : ''}
         </div>
@@ -8657,7 +8585,7 @@ function clearSensitiveFrontendCaches_(reason){
       '_cachedDinasSekolah','_cachedGlobalMon','_cachedGlobalMonGlobal',
       '_cachedPaguSekolah','_cachedPenugasan','_cachedPenugasanGlobal',
       '_cachedRekapPaguGlobal','_currentDinasRkasList','_globalSearchRows',
-      '_monState','_paguRkasMeta','_pengawasPhase1Summary','_pengawasReadinessRows',
+      '_paguRkasMeta','_pengawasPhase1Summary','_pengawasReadinessRows',
       '_pengawasReadinessSummary','_pengawasReadinessFilter','_rc2Fase1DinasAssignments','_rc2Fase1DinasGroupRows',
       '_rc2Fase2Assignments','_rc2Fase2GroupRows','_rc2RekonAssignments',
       '_rc2RekonGroupRows','_renderedDinasRkasList','_reportSchoolsRc2',
@@ -11473,7 +11401,14 @@ async function renderMonitoringGlobalView() {
   const c = $('#mainContent');
   if(!c) return;
   
-  c.innerHTML = head('Monitoring Global Pagu & SPJ', 'Pemantauan realisasi anggaran dan kelengkapan dokumen SPJ satuan pendidikan') +
+  const monState = window.ensureGlobalMonState_();
+  monState.currentPage = 1;
+  const pengawasView = isPengawas();
+  const pageTitle = pengawasView ? 'Monitoring Sekolah Binaan' : 'Monitoring Global Pagu & SPJ';
+  const pageDescription = pengawasView
+    ? 'Pantau kelengkapan dan status SPJ sekolah yang menjadi penugasan aktif Anda.'
+    : 'Pemantauan realisasi anggaran dan kelengkapan dokumen SPJ satuan pendidikan.';
+  c.innerHTML = head(pageTitle, pageDescription) +
     `<div class="toolbar">
        <input id="searchGlobalMon" placeholder="🔍 Cari berdasarkan nama sekolah, NPSN, atau kecamatan..." style="max-width:350px" oninput="filterGlobalMon(this.value)">
      </div>
@@ -11494,19 +11429,29 @@ async function renderMonitoringGlobalView() {
   }
 }
 
-// State internal untuk Pagination Monitoring Global
-window._monState = {
-  currentPage: 1,
-  pageSize: 25 // Default 25 data per halaman
+// State pagination Monitoring Global. Ini hanya state UI, bukan data sensitif.
+window.ensureGlobalMonState_ = function(){
+  if(!window._monState || typeof window._monState !== 'object'){
+    window._monState = { currentPage: 1, pageSize: 25 };
+  }
+  const page = Number(window._monState.currentPage);
+  const size = Number(window._monState.pageSize);
+  window._monState.currentPage = Number.isFinite(page) && page >= 1 ? Math.floor(page) : 1;
+  window._monState.pageSize = Number.isFinite(size) && size >= 1 ? Math.floor(size) : 25;
+  return window._monState;
 };
+window._monState = { currentPage: 1, pageSize: 25 };
 
 // 1. Fungsi Utama Render Tabel Monitoring Global dengan Kontrol Filter, Sorting, & Pagination
 window.renderGlobalMonTable = function(dataList) {
   const container = $('#globalMonContent');
   if(!container) return;
-  
-  if(!dataList || dataList.length === 0) {
-    container.innerHTML = msg('Belum ada data monitoring yang tersedia.');
+  const monState = window.ensureGlobalMonState_();
+  if(!Array.isArray(dataList) || dataList.length === 0) {
+    const emptyText = isPengawas()
+      ? 'Belum ada sekolah dengan penugasan aktif untuk akun Pengawas ini.'
+      : 'Belum ada data monitoring yang tersedia.';
+    container.innerHTML = msg(emptyText);
     return;
   }
 
@@ -11586,19 +11531,20 @@ window.renderGlobalMonTable = function(dataList) {
     <!-- TOMBOL NAVIGASI HALAMAN (PAGINATION) -->
     <div id="paginationControls" style="display:flex; justify-content:center; align-items:center; gap:12px; margin-top:16px;"></div>`;
 
-  window._monState.currentPage = 1;
+  monState.currentPage = 1;
   applyGlobalMonFilterAndSort();
 };
 
 // 2. Reset ke halaman 1 saat filter atau limit diubah
 window.resetPageAndFilter = function() {
-  window._monState.currentPage = 1;
+  window.ensureGlobalMonState_().currentPage = 1;
   applyGlobalMonFilterAndSort();
 };
 
 // 3. Logika Gabungan Filter (Pencarian & Kecamatan), Sorting, & Pagination
 window.applyGlobalMonFilterAndSort = function() {
-  const rawData = window._cachedGlobalMon || [];
+  const monState = window.ensureGlobalMonState_();
+  const rawData = Array.isArray(window._cachedGlobalMon) ? window._cachedGlobalMon : [];
   const searchInput = $('#searchGlobalMon');
   const query = searchInput ? searchInput.value.toLowerCase() : '';
   const selectedKec = $('#filterKecamatan') ? $('#filterKecamatan').value : '';
@@ -11641,13 +11587,13 @@ window.applyGlobalMonFilterAndSort = function() {
   if (pageSizeVal !== 'all') {
     const limit = parseInt(pageSizeVal) || 25;
     totalPages = Math.ceil(totalData / limit) || 1;
-    if (window._monState.currentPage > totalPages) window._monState.currentPage = totalPages;
-    if (window._monState.currentPage < 1) window._monState.currentPage = 1;
+    if (monState.currentPage > totalPages) monState.currentPage = totalPages;
+    if (monState.currentPage < 1) monState.currentPage = 1;
 
-    const startIdx = (window._monState.currentPage - 1) * limit;
+    const startIdx = (monState.currentPage - 1) * limit;
     paginatedResult = result.slice(startIdx, startIdx + limit);
   } else {
-    window._monState.currentPage = 1;
+    monState.currentPage = 1;
   }
 
   // D. Render Baris Tabel
@@ -11657,12 +11603,12 @@ window.applyGlobalMonFilterAndSort = function() {
   const pagControls = $('#paginationControls');
 
   if(body) {
-    const startIndexOffset = pageSizeVal === 'all' ? 0 : (window._monState.currentPage - 1) * (parseInt(pageSizeVal) || 25);
+    const startIndexOffset = pageSizeVal === 'all' ? 0 : (monState.currentPage - 1) * (parseInt(pageSizeVal) || 25);
     body.innerHTML = generateGlobalMonRows(paginatedResult, startIndexOffset);
   }
   if(countLabel) countLabel.innerText = result.length;
   if(pagInfo && pageSizeVal !== 'all') {
-    pagInfo.innerText = `Halaman ${window._monState.currentPage} dari ${totalPages}`;
+    pagInfo.innerText = `Halaman ${monState.currentPage} dari ${totalPages}`;
   } else if(pagInfo) {
     pagInfo.innerText = 'Menampilkan seluruh data';
   }
@@ -11673,16 +11619,18 @@ window.applyGlobalMonFilterAndSort = function() {
       pagControls.innerHTML = '';
     } else {
       pagControls.innerHTML = `
-        <button class="btn btn-light btn-sm" ${window._monState.currentPage === 1 ? 'disabled' : ''} onclick="changeMonPage(-1)">← Sebelumnya</button>
-        <span style="font-size:0.9rem; font-weight:600;">Hal ${window._monState.currentPage} / ${totalPages}</span>
-        <button class="btn btn-light btn-sm" ${window._monState.currentPage === totalPages ? 'disabled' : ''} onclick="changeMonPage(1)">Selanjutnya →</button>`;
+        <button class="btn btn-light btn-sm" ${monState.currentPage === 1 ? 'disabled' : ''} onclick="changeMonPage(-1)">← Sebelumnya</button>
+        <span style="font-size:0.9rem; font-weight:600;">Hal ${monState.currentPage} / ${totalPages}</span>
+        <button class="btn btn-light btn-sm" ${monState.currentPage === totalPages ? 'disabled' : ''} onclick="changeMonPage(1)">Selanjutnya →</button>`;
     }
   }
 };
 
 // 4. Fungsi Navigasi Halaman
 window.changeMonPage = function(direction) {
-  window._monState.currentPage += direction;
+  const monState = window.ensureGlobalMonState_();
+  const delta = Number(direction) || 0;
+  monState.currentPage = Math.max(1, monState.currentPage + Math.trunc(delta));
   applyGlobalMonFilterAndSort();
 };
 
@@ -13441,6 +13389,7 @@ window.showAssessmentBucketFast=function(bucketId){
     PENGAWAS:[
       {view:'jadwalTahapan',title:'Tahap Aktif DINAS',desc:'Pemeriksaan hanya berjalan ketika stage yang relevan dibuka DINAS.'},
       {view:'penugasan',title:'Sekolah Tugas',desc:'Pilih sekolah binaan sesuai penugasan aktif.'},
+      {view:'monitoringGlobal',title:'Monitoring Sekolah Binaan',desc:'Pantau status SPJ sekolah yang menjadi penugasan aktif Anda.'},
       {view:'pdfInteraktif',title:'Pemeriksaan BKU & Dokumen',desc:'Periksa transaksi kanonik, BKU resmi, dan bukti SPJ tanpa mengambil alih penilaian DINAS.'},
       {view:'temuan',title:'Temuan & Rekomendasi',desc:'Catat temuan berbasis bukti dan rekomendasi tindak lanjut.'},
       {view:'verifikasiUlang',title:'Verifikasi Ulang / Review',desc:'Verifikasi hasil perbaikan sebelum Penilaian Fase 1.'},
