@@ -4189,7 +4189,7 @@ window.refreshEvidenceCoveragePanel=async function(){
       api('getEvidenceCoverageWorkbench',{idPeriode:st.id_periode,npsn:st.npsn}),
       api('getApiBuildInfo',{})
     ]);
-    if(build.build_id!=='V25.2.3.1_TAX_OCR_MULTI_FORMAT')throw new Error('Versi backend tidak sesuai. Diharapkan V25.2.2 Tahap 2, terdeteksi '+build.build_id+'. Periksa deployment /exec.');
+    if(build.build_id!=='V25.2.3.2_PDF_MIME_VALIDATION_FIX')throw new Error('Versi backend tidak sesuai. Diharapkan V25.2.2 Tahap 2, terdeteksi '+build.build_id+'. Periksa deployment /exec.');
     st.data=res;renderEvidenceCoveragePanel();
   }catch(e){body.innerHTML=msg(errorText(e),'error')+`<div class="muted" style="margin-top:8px">Jika muncul "Action tidak dikenal", backend /exec yang aktif belum memuat router V25.2.3. Perbarui kode.gs, simpan, deploy New version pada deployment staging yang sama, dan pastikan API_URL frontend menunjuk ke URL /exec tersebut.</div>`;}
 };
@@ -16217,8 +16217,8 @@ window.refreshTaxReconciliationPanelV2523=async function(){
       api('getTaxReconciliationWorkbench',{idPeriode:st.id_periode,npsn:st.npsn}),
       api('getApiBuildInfo',{})
     ]);
-    if(build.build_id!=='V25.2.3.1_TAX_OCR_MULTI_FORMAT')
-      throw new Error('Versi backend tidak sesuai. Diharapkan V25.2.3.1_TAX_OCR_MULTI_FORMAT, terdeteksi '+(build.build_id||'tidak terbaca')+'. Pastikan kode.gs dan index.html berasal dari paket yang sama, lalu deploy New version pada project staging yang sama.');
+    if(build.build_id!=='V25.2.3.2_PDF_MIME_VALIDATION_FIX')
+      throw new Error('Versi backend tidak sesuai. Diharapkan V25.2.3.2_PDF_MIME_VALIDATION_FIX, terdeteksi '+(build.build_id||'tidak terbaca')+'. Pastikan kode.gs dan index.html berasal dari paket yang sama, lalu deploy New version pada project staging yang sama.');
     st.data=data;renderTaxReconciliationPanelV2523();
   }catch(e){
     body.innerHTML=msg(errorText(e),'error')+`<div class="muted" style="margin-top:8px">Jika muncul "Action tidak dikenal", backend /exec yang aktif belum memuat router V25.2.3. Perbarui kode.gs, simpan, deploy New version pada deployment staging yang sama, dan pastikan API_URL frontend menunjuk ke URL /exec tersebut.</div>`;
