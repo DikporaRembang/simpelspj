@@ -4189,7 +4189,7 @@ window.refreshEvidenceCoveragePanel=async function(){
       api('getEvidenceCoverageWorkbench',{idPeriode:st.id_periode,npsn:st.npsn}),
       api('getApiBuildInfo',{})
     ]);
-    if(build.build_id!=='V25.2.3_TAX_RECON_BKU_LINK')throw new Error('Versi backend tidak sesuai. Diharapkan V25.2.2 Tahap 2, terdeteksi '+build.build_id+'. Periksa deployment /exec.');
+    if(build.build_id!=='V25.2.3.1_TAX_OCR_MULTI_FORMAT')throw new Error('Versi backend tidak sesuai. Diharapkan V25.2.2 Tahap 2, terdeteksi '+build.build_id+'. Periksa deployment /exec.');
     st.data=res;renderEvidenceCoveragePanel();
   }catch(e){body.innerHTML=msg(errorText(e),'error')+`<div class="muted" style="margin-top:8px">Jika muncul "Action tidak dikenal", backend /exec yang aktif belum memuat router V25.2.3. Perbarui kode.gs, simpan, deploy New version pada deployment staging yang sama, dan pastikan API_URL frontend menunjuk ke URL /exec tersebut.</div>`;}
 };
@@ -16217,8 +16217,8 @@ window.refreshTaxReconciliationPanelV2523=async function(){
       api('getTaxReconciliationWorkbench',{idPeriode:st.id_periode,npsn:st.npsn}),
       api('getApiBuildInfo',{})
     ]);
-    if(build.build_id!=='V25.2.3_TAX_RECON_BKU_LINK')
-      throw new Error('Versi backend tidak sesuai. Diharapkan V25.2.3_TAX_RECON_BKU_LINK, terdeteksi '+(build.build_id||'tidak terbaca')+'. Pastikan kode.gs dan index.html berasal dari paket yang sama, lalu deploy New version pada project staging yang sama.');
+    if(build.build_id!=='V25.2.3.1_TAX_OCR_MULTI_FORMAT')
+      throw new Error('Versi backend tidak sesuai. Diharapkan V25.2.3.1_TAX_OCR_MULTI_FORMAT, terdeteksi '+(build.build_id||'tidak terbaca')+'. Pastikan kode.gs dan index.html berasal dari paket yang sama, lalu deploy New version pada project staging yang sama.');
     st.data=data;renderTaxReconciliationPanelV2523();
   }catch(e){
     body.innerHTML=msg(errorText(e),'error')+`<div class="muted" style="margin-top:8px">Jika muncul "Action tidak dikenal", backend /exec yang aktif belum memuat router V25.2.3. Perbarui kode.gs, simpan, deploy New version pada deployment staging yang sama, dan pastikan API_URL frontend menunjuk ke URL /exec tersebut.</div>`;
@@ -16258,6 +16258,18 @@ window.renderTaxReconciliationPanelV2523=function(){
     <div class="muted" style="margin-top:8px">Indikator ini menjadi dasar pemeriksaan. Skor berbobot resmi tidak diubah otomatis pada build ini agar tidak mengubah formula penilaian SPJ yang sudah berlaku tanpa pemetaan master indikator.</div>
   </div>`;
   const ocr=st.ocr;
+  const ocrItems=ocr&&ocr.parsed&&Array.isArray(ocr.parsed.items)?ocr.parsed.items:[];
+  const ocrItemsHtml=ocrItems.length?`<div class="panel" style="margin-top:10px;padding:10px">
+    <b>Rincian yang dikenali OCR (${fmtNum(ocrItems.length)} baris/bukti)</b>
+    <div class="muted">Nominal dokumen merupakan agregat bukti unik. Periksa rincian berikut sebelum menyimpan.</div>
+    <div class="table-wrap" style="max-height:230px;overflow:auto;margin-top:8px"><table class="friendly-table">
+      <thead><tr><th>Jenis</th><th>Tanggal</th><th>Referensi</th><th>Nominal</th></tr></thead>
+      <tbody>${ocrItems.slice(0,20).map(x=>`<tr><td>${esc(x.tax_type||x.kind||'-')}</td><td>${esc(x.date||x.month||'-')}</td><td>${esc(x.billing_code||x.ntpn||x.receipt_number||'-')}</td><td>${x.amount==null?'<span class="muted">Belum terbaca</span>':fmtRupiah(x.amount)}</td></tr>`).join('')}</tbody>
+    </table></div>
+    ${ocrItems.length>20?`<div class="muted">Menampilkan 20 dari ${fmtNum(ocrItems.length)} rincian. Seluruh rincian tetap disimpan sebagai metadata OCR.</div>`:''}
+  </div>`:'';
+  const ocrPartialHtml=ocr&&ocr.parsed&&ocr.parsed.amount==null&&ocr.parsed.partial_amount!=null?`<div class="message warn" style="margin-top:8px">Subtotal parsial yang terbaca: <b>${fmtRupiah(ocr.parsed.partial_amount)}</b>. Nilai ini belum dianggap total dokumen karena masih ada rincian yang belum terbaca.</div>`:'';
+  const ocrWarningsHtml=ocr&&ocr.parsed&&ocr.parsed.warnings&&ocr.parsed.warnings.length?`<div class="message warn" style="margin-top:8px"><b>Catatan OCR:</b><ul>${ocr.parsed.warnings.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>`:'';
   const ocrHtml=ocr?`<div class="panel" style="margin-top:12px">
     <h3 style="margin-top:0">Periksa hasil OCR — ${esc(ocr.source_type)}</h3>
     <div class="message warn">Hasil OCR belum menjadi data terverifikasi. Bandingkan dengan PDF asli dan koreksi bila perlu. ${source==='BUKU_PAJAK'?'Buku Pajak hanya digunakan sebagai referensi pungutan yang tercatat melalui SIPLAH; bukan total seluruh pungutan sekolah.':''}</div>
@@ -16266,6 +16278,10 @@ window.renderTaxReconciliationPanelV2523=function(){
       <input type="hidden" id="taxOcrSpj" value="${esc(ocr.id_spj)}">
       <input type="hidden" id="taxOcrAmountRaw" value="${ocr.parsed.amount==null?'':esc(ocr.parsed.amount)}">
       <input type="hidden" id="taxOcrAmountLabel" value="${esc(ocr.parsed.amount_label||'')}">
+      <input type="hidden" id="taxOcrPartialAmount" value="${ocr.parsed.partial_amount==null?'':esc(ocr.parsed.partial_amount)}">
+      <input type="hidden" id="taxOcrDocumentKind" value="${esc(ocr.parsed.document_kind||'')}">
+      <input type="hidden" id="taxOcrParserVersion" value="${esc(ocr.parsed.parser_version||'')}">
+      <input type="hidden" id="taxOcrItems" value="${esc(JSON.stringify(ocr.parsed.items||[]))}">
       <input type="hidden" id="taxOcrSource" value="${esc(ocr.source||'GOOGLE_DRIVE_OCR_V3')}">
       <div class="form-grid">
         <div class="field"><label>${amountLabel}</label><input id="taxOcrVerifiedAmount" type="number" min="1" step="1" required value="${ocr.parsed.amount==null?'':esc(ocr.parsed.amount)}" placeholder="Periksa/isi nominal"></div>
@@ -16278,6 +16294,9 @@ window.renderTaxReconciliationPanelV2523=function(){
       <div class="field"><label>Catatan verifikasi sekolah</label><textarea id="taxOcrNote" rows="2" placeholder="Catat koreksi atau keterangan jika diperlukan"></textarea></div>
       <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap"><button class="btn btn-light" type="button" onclick="window._taxReconV2523State.ocr=null;renderTaxReconciliationPanelV2523()">Batal</button><button class="btn btn-primary" type="submit">Simpan Verifikasi OCR</button></div>
     </form>
+    ${ocrItemsHtml}
+    ${ocrPartialHtml}
+    ${ocrWarningsHtml}
     <details style="margin-top:10px"><summary>Lihat teks hasil OCR untuk pemeriksaan</summary><pre style="white-space:pre-wrap;max-height:220px;overflow:auto">${esc(ocr.ocr_text||'')}</pre></details>
   </div>`:'';
   const evidenceHtml=evidences.length?`<div class="table-wrap" style="margin-top:12px"><table class="friendly-table"><thead><tr><th>Dokumen</th><th>Status</th><th>${dir==='PUNGUT'?'Pungutan':'Setoran'}</th><th>Dialokasikan</th><th>Sisa belum dialokasikan</th><th></th></tr></thead><tbody>
@@ -16318,6 +16337,10 @@ window.saveTaxOcrV2523=async function(event){
   const payload={id_periode:st.id_periode,npsn:st.npsn,id_spj:o.id_spj,file_id:o.file_id,
     ocr_source:o.source,ocr_amount:document.getElementById('taxOcrAmountRaw').value,
     ocr_amount_label:document.getElementById('taxOcrAmountLabel').value,
+    ocr_partial_amount:document.getElementById('taxOcrPartialAmount').value,
+    ocr_document_kind:document.getElementById('taxOcrDocumentKind').value,
+    ocr_parser_version:document.getElementById('taxOcrParserVersion').value,
+    ocr_items_json:document.getElementById('taxOcrItems').value,
     verified_amount:Number(document.getElementById('taxOcrVerifiedAmount').value),
     verified_document_date:document.getElementById('taxOcrDate').value,
     verified_document_number:document.getElementById('taxOcrNumber').value,
