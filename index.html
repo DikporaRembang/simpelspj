@@ -4164,7 +4164,7 @@ window.openEvidenceCoveragePanel=async function(type,period,npsn){
   overlay.style.cssText='position:fixed;inset:0;background:rgba(15,23,42,.62);z-index:10030;display:flex;align-items:center;justify-content:center;padding:12px';
   overlay.innerHTML=`<div style="background:var(--surface,#fff);color:var(--text,#172033);width:min(1120px,100%);max-height:94vh;overflow:auto;border-radius:18px;padding:20px;box-shadow:0 24px 70px rgba(0,0,0,.25)">
     <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start">
-      <div><div class="muted" style="font-size:12px;font-weight:800;letter-spacing:.06em">EVIDENCE-BASED TRANSACTION COVERAGE · V25.2.3</div>
+      <div><div class="muted" style="font-size:12px;font-weight:800;letter-spacing:.06em">EVIDENCE-BASED TRANSACTION COVERAGE · V25.2.3.3</div>
       <h2 style="margin:4px 0">${category==='INVOICE'?'Invoice / Nota / Kuitansi':category==='SUPPORT'?'Bukti Pendukung Lainnya':'Foto / Dokumentasi'}</h2>
       <div class="muted">Periode ${esc(p)} · Bukti dihubungkan ke transaksi BKU yang sudah ada</div></div>
       <button class="btn btn-light" type="button" onclick="closeEvidenceCoveragePanel()">✕ Tutup</button>
@@ -4189,9 +4189,9 @@ window.refreshEvidenceCoveragePanel=async function(){
       api('getEvidenceCoverageWorkbench',{idPeriode:st.id_periode,npsn:st.npsn}),
       api('getApiBuildInfo',{})
     ]);
-    if(build.build_id!=='V25.2.3.2_PDF_MIME_VALIDATION_FIX')throw new Error('Versi backend tidak sesuai. Diharapkan V25.2.2 Tahap 2, terdeteksi '+build.build_id+'. Periksa deployment /exec.');
+    if(build.build_id!=='V25.2.3.3_EVIDENCE_OCR_NPSN_FIX')throw new Error('Versi backend tidak sesuai. Diharapkan V25.2.3.3_EVIDENCE_OCR_NPSN_FIX, terdeteksi '+build.build_id+'. Periksa deployment /exec.');
     st.data=res;renderEvidenceCoveragePanel();
-  }catch(e){body.innerHTML=msg(errorText(e),'error')+`<div class="muted" style="margin-top:8px">Jika muncul "Action tidak dikenal", backend /exec yang aktif belum memuat router V25.2.3. Perbarui kode.gs, simpan, deploy New version pada deployment staging yang sama, dan pastikan API_URL frontend menunjuk ke URL /exec tersebut.</div>`;}
+  }catch(e){body.innerHTML=msg(errorText(e),'error')+`<div class="muted" style="margin-top:8px">Jika muncul "Action tidak dikenal", backend /exec yang aktif belum memuat router V25.2.3.3. Perbarui kode.gs, simpan, deploy New version pada deployment staging yang sama, dan pastikan API_URL frontend menunjuk ke URL /exec tersebut.</div>`;}
 };
 window.renderEvidenceCoveragePanel=function(){
   const st=window._evidenceCoverageState,body=document.getElementById('evidenceCoverageBody');
@@ -4212,7 +4212,9 @@ window.renderEvidenceCoveragePanel=function(){
       <h3 style="margin-top:0">Daftarkan dokumen yang sudah diunggah</h3>
       <div class="muted">Unggah file terlebih dahulu pada komponen SPJ terkait. Di sini sekolah hanya mendaftarkan metadata dan menghubungkannya ke transaksi, tidak mengunggah salinan baru.</div>
       <form id="evidenceRegisterForm" onsubmit="saveEvidenceRegistrationFromUi(event)" style="margin-top:12px">
-        <div class="field"><label>Pilih file yang sudah diunggah</label><select id="evidenceFile" required><option value="">Pilih dokumen...</option>${available.map(x=>`<option value="${esc(x.file_id)}" data-spj="${esc(x.id_spj)}">${esc(x.nama_file)} · ${esc(x.id_dokumen)}</option>`).join('')}</select></div>
+        <div class="field"><label>Pilih file yang sudah diunggah</label><select id="evidenceFile" required><option value="">Pilih dokumen...</option>${available.map(x=>`<option value="${esc(x.file_id)}" data-spj="${esc(x.id_spj)}">${esc(x.nama_file)} · ${esc(x.id_dokumen)}</option>`).join('')}</select>
+          ${st.type==='INVOICE'?`<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px"><button class="btn btn-light btn-sm" type="button" onclick="runEvidenceInvoiceOcrFromUi()">Baca OCR Invoice / Nota / Kuitansi</button><span class="muted" style="font-size:12px">Hasil OCR hanya mengisi saran; sekolah tetap memeriksa dan mengoreksi.</span></div><div id="evidenceOcrResult" style="margin-top:8px"></div>`:''}
+        </div>
         <div class="form-grid">
           <div class="field"><label>Jenis dokumen</label><select id="evidenceDocType" required>${(st.type==='INVOICE'?['INVOICE','NOTA','KUITANSI']:st.type==='SUPPORT'?['SURAT TUGAS','DAFTAR HADIR','BERITA ACARA','SURAT PESANAN','SSPD','DOKUMEN PENDUKUNG LAIN']:['FOTO PENERIMAAN BARANG','FOTO KEGIATAN','FOTO HASIL PEKERJAAN','FOTO KONDISI BARANG','FOTO LAINNYA']).map(x=>`<option value="${esc(x)}">${esc(x)}</option>`).join('')}</select></div>
           <div class="field"><label>Tanggal dokumen</label><input id="evidenceDate" type="date" required></div>
@@ -4249,6 +4251,48 @@ window.renderEvidenceCoveragePanel=function(){
 window.selectEvidenceRegistration=function(idEvidence){
   const st=window._evidenceCoverageState;if(!st)return;st.selected_id=idEvidence;renderEvidenceCoveragePanel();
 };
+window.runEvidenceInvoiceOcrFromUi=async function(){
+  const st=window._evidenceCoverageState;
+  if(!st||st.type!=='INVOICE')return;
+  const fileId=document.getElementById('evidenceFile')?.value||'';
+  const doc=(st.data?.documents||[]).find(x=>x.file_id===fileId);
+  const resultBox=document.getElementById('evidenceOcrResult');
+  if(!fileId||!doc){alert('Pilih dokumen invoice/nota/kuitansi SPJ-06 terlebih dahulu.');return;}
+  if(doc.id_spj!=='SPJ-06'){alert('OCR ini hanya untuk dokumen Invoice/Nota/Kuitansi pada SPJ-06.');return;}
+  if(resultBox)resultBox.innerHTML=msg('Sedang membaca PDF dengan OCR Google Drive...','info');
+  try{
+    const res=await api('ocrEvidenceInvoiceDocument',{
+      fileId:fileId,idPeriode:st.id_periode,npsn:st.npsn,idSpj:doc.id_spj
+    });
+    const p=res.parsed||{};
+    if(p.document_kind&&document.getElementById('evidenceDocType'))
+      document.getElementById('evidenceDocType').value=p.document_kind;
+    if(p.document_date&&document.getElementById('evidenceDate'))
+      document.getElementById('evidenceDate').value=p.document_date;
+    if(p.document_number&&document.getElementById('evidenceNumber'))
+      document.getElementById('evidenceNumber').value=p.document_number;
+    if(p.issuer&&document.getElementById('evidenceIssuer'))
+      document.getElementById('evidenceIssuer').value=p.issuer;
+    if(p.amount!==null&&p.amount!==undefined&&document.getElementById('evidenceAmount'))
+      document.getElementById('evidenceAmount').value=p.amount;
+    if(p.description&&document.getElementById('evidenceDescription'))
+      document.getElementById('evidenceDescription').value=p.description;
+    st.invoice_ocr=res;
+    const warnings=(p.warnings||[]).map(x=>`<li>${esc(x)}</li>`).join('');
+    if(resultBox)resultBox.innerHTML=`
+      <div class="message ${warnings?'warn':'info'}">
+        <b>OCR selesai.</b> Periksa seluruh isian terhadap PDF asli sebelum menyimpan.
+        ${warnings?`<ul style="margin:6px 0 0 18px">${warnings}</ul>`:'Tidak ada peringatan parser; hasil tetap memerlukan verifikasi sekolah.'}
+      </div>
+      <details style="margin-top:8px"><summary style="cursor:pointer;font-weight:700">Lihat teks OCR asli (${fmtNum(res.characters||0)} karakter)</summary>
+        <pre style="white-space:pre-wrap;max-height:240px;overflow:auto;background:var(--surface-2,#f5f6f8);padding:10px;border-radius:8px;font-size:12px">${esc(res.ocr_text||'')}</pre>
+      </details>`;
+  }catch(e){
+    if(resultBox)resultBox.innerHTML=msg(errorText(e),'error');
+    else alert(errorText(e));
+  }
+};
+
 window.saveEvidenceRegistrationFromUi=async function(event){
   event.preventDefault();const st=window._evidenceCoverageState;if(!st)return;
   const fileId=document.getElementById('evidenceFile').value;
@@ -16217,11 +16261,11 @@ window.refreshTaxReconciliationPanelV2523=async function(){
       api('getTaxReconciliationWorkbench',{idPeriode:st.id_periode,npsn:st.npsn}),
       api('getApiBuildInfo',{})
     ]);
-    if(build.build_id!=='V25.2.3.2_PDF_MIME_VALIDATION_FIX')
-      throw new Error('Versi backend tidak sesuai. Diharapkan V25.2.3.2_PDF_MIME_VALIDATION_FIX, terdeteksi '+(build.build_id||'tidak terbaca')+'. Pastikan kode.gs dan index.html berasal dari paket yang sama, lalu deploy New version pada project staging yang sama.');
+    if(build.build_id!=='V25.2.3.3_EVIDENCE_OCR_NPSN_FIX')
+      throw new Error('Versi backend tidak sesuai. Diharapkan V25.2.3.3_EVIDENCE_OCR_NPSN_FIX, terdeteksi '+(build.build_id||'tidak terbaca')+'. Pastikan kode.gs dan index.html berasal dari paket yang sama, lalu deploy New version pada project staging yang sama.');
     st.data=data;renderTaxReconciliationPanelV2523();
   }catch(e){
-    body.innerHTML=msg(errorText(e),'error')+`<div class="muted" style="margin-top:8px">Jika muncul "Action tidak dikenal", backend /exec yang aktif belum memuat router V25.2.3. Perbarui kode.gs, simpan, deploy New version pada deployment staging yang sama, dan pastikan API_URL frontend menunjuk ke URL /exec tersebut.</div>`;
+    body.innerHTML=msg(errorText(e),'error')+`<div class="muted" style="margin-top:8px">Jika muncul "Action tidak dikenal", backend /exec yang aktif belum memuat router V25.2.3.3. Perbarui kode.gs, simpan, deploy New version pada deployment staging yang sama, dan pastikan API_URL frontend menunjuk ke URL /exec tersebut.</div>`;
   }
 };
 window.renderTaxReconciliationPanelV2523=function(){
