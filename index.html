@@ -4415,12 +4415,13 @@ async function renderDokumenTable(){
     }
 
     // Rendering menggunakan .map().join('') agar browser hanya melakukan DOM reflow 1 kali
-    const rows = groups.map((x,i) => {
+    const rowHtml = groups.map((x,i) => {
       const m=x.m, d=x.d;
       const status = d ? String(d.status || d.status_verifikasi || 'SUDAH_UPLOAD').toUpperCase() : 'BELUM_UPLOAD';
       const statusClass = status === 'SUDAH_UPLOAD' || status === 'SELESAI_DINILAI' ? 'success' :
                           status === 'N/A' ? 'warning' :
                           status === 'PERLU_PERBAIKAN' ? 'danger' : 'info';
+      const statusLabel = ({'SUDAH_UPLOAD':'Sudah diunggah','SELESAI_DINILAI':'Selesai diperiksa','PERLU_PERBAIKAN':'Perlu diperbaiki','BELUM_UPLOAD':'Belum diunggah','N/A':'Tidak diperlukan'})[status] || status.replace(/_/g,' ').toLowerCase();
       const allowNA = _v222AllowNa_(m,bookSummaries);
       const viewerId = `instrumentPdfViewer_${String(m.id_spj||i).replace(/[^a-zA-Z0-9_-]/g,'_')}_${i}`;
       const pdfReady = !!(d?.file_id && (String(d.mimeType||'').toLowerCase()==='application/pdf'||/\.pdf$/i.test(String(d.nama_file||''))) && String(d.status||'').toUpperCase() !== 'N/A');
@@ -4434,8 +4435,8 @@ async function renderDokumenTable(){
         const oldPdfLine=legacyPdfs.length?`<div class="muted" style="margin-top:5px">PDF dokumentasi lama: ${legacyPdfs.length} berkas</div>`:'';
         const oldPdfButton=legacyPdfs.length?`<button class="btn btn-light instrument-view-pdf-btn" type="button" data-file-id="${esc(legacyPdfs[0].file_id||'')}" data-pdf-name="${esc(legacyPdfs[0].nama_file||'Dokumentasi PDF')}" data-target="${esc(viewerId)}" onclick="showInstrumentPdf(this)">Lihat PDF lama</button>`:'';
         return `<div class="doc-row instrument-doc-row" data-instrument-index="${i}">
-          <div class="doc-meta"><div class="iconbox">${String(i+1).padStart(2,'0')}</div><div><strong>${esc(m.nama_spj||m.nama_dokumen||m.kode||m.id_spj)}</strong><div class="muted">${esc(m.kelompok||m.keterangan||'Dokumentasi pendukung kegiatan/transaksi')}</div>${_v222BookSummaryHtml_(m,bookSummaries,taxManual)}<div class="muted" style="margin-top:5px">${photoLine}</div>${photoNames?`<div class="muted" style="margin-top:4px">${photoNames}${photos.length>3?' • dan lainnya':''}</div>`:''}${oldPdfLine}</div></div>
-          <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;justify-content:flex-end">${badge(status,statusClass)}${photoViewerButtons}${oldPdfButton}<button class="btn btn-light" type="button" onclick="openEvidenceCoveragePanel('PHOTO','${esc(periode)}','${esc(summaryNpsn)}')">Hubungkan Bukti ke BKU</button><button class="btn btn-primary" type="button" onclick="openPhotoUploadV2454_('SPJ-10','${esc(m.nama_spj||'Foto / Dokumentasi')}',${photoBytes})">Tambah Foto</button></div>
+          <div class="doc-meta"><div class="iconbox">${String(i+1).padStart(2,'0')}</div><div><strong>${esc(m.nama_spj||m.nama_dokumen||m.kode||m.id_spj)}</strong><div class="muted">${esc(m.kelompok||m.keterangan||'Dokumentasi pendukung kegiatan/transaksi')}</div><details class="spj-advanced-detail"><summary>Detail data dan pencocokan</summary><div class="spj-advanced-body">${_v222BookSummaryHtml_(m,bookSummaries,taxManual)}</div></details><div class="muted" style="margin-top:5px">${photoLine}</div>${photoNames?`<div class="muted" style="margin-top:4px">${photoNames}${photos.length>3?' • dan lainnya':''}</div>`:''}${oldPdfLine}</div></div>
+          <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;justify-content:flex-end">${badge(statusLabel,statusClass)}${photoViewerButtons}${oldPdfButton}<button class="btn btn-light" type="button" onclick="openEvidenceCoveragePanel('PHOTO','${esc(periode)}','${esc(summaryNpsn)}')">Periksa bukti</button><button class="btn btn-primary" type="button" onclick="openPhotoUploadV2454_('SPJ-10','${esc(m.nama_spj||'Foto / Dokumentasi')}',${photoBytes})">Tambah Foto</button></div>
         </div>${pdfReady&&legacyPdfs.length?`<div id="${esc(viewerId)}" class="instrument-pdf-inline" hidden><div class="instrument-pdf-inline-head"><div><strong>📄 ${esc(legacyPdfs[0].nama_file||'Dokumentasi PDF')}</strong><div class="muted">Pratinjau PDF dokumentasi lama</div></div><button type="button" class="btn btn-light btn-sm" onclick="closeInstrumentPdf('${esc(viewerId)}')">✕ Tutup</button></div><div class="instrument-pdf-inline-frame" data-file-id="${esc(legacyPdfs[0].file_id||'')}" data-pdf-name="${esc(legacyPdfs[0].nama_file||'Dokumentasi PDF')}"><div class="muted" style="padding:24px;text-align:center">Klik <b>Lihat PDF lama</b> untuk memuat PDF.</div></div></div>`:''}`;
       }
       return `<div class="doc-row instrument-doc-row" data-instrument-index="${i}">
@@ -4444,21 +4445,21 @@ async function renderDokumenTable(){
           <div>
             <strong>${esc(m.nama_spj || m.nama_dokumen || m.kode || m.id_spj)}</strong>
             <div class="muted">${esc(m.kelompok || m.keterangan || 'Dokumen SPJ')} ${m.wajib ? '· Wajib: '+esc(m.wajib) : ''}</div>
-            ${_v222BookSummaryHtml_(m,bookSummaries,taxManual)}
+            <details class="spj-advanced-detail"><summary>Detail data dan pencocokan</summary><div class="spj-advanced-body">${_v222BookSummaryHtml_(m,bookSummaries,taxManual)}</div></details>
             ${d?.nama_file ? `<div class="muted" style="margin-top:5px">📄 ${esc(d.nama_file)}</div>` : ''}
           </div>
         </div>
         <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;justify-content:flex-end">
-          ${badge(status,statusClass)}
+          ${badge(statusLabel,statusClass)}
           ${pdfReady ? `<button class="btn btn-light instrument-view-pdf-btn" type="button"
               data-file-id="${esc(d.file_id||'')}"
               data-pdf-name="${esc(d.nama_file || m.nama_spj || 'Dokumen SPJ')}"
               data-target="${esc(viewerId)}"
-              onclick="showInstrumentPdf(this)">👁️ Lihat</button>` : ''}
-          ${pdfReady && isBkuOfficial && isSchool() ? `<button class="btn btn-primary" type="button" onclick="openBkuOcrWorkbenchV2502('${encodeURIComponent(d.file_id||'')}','${encodeURIComponent(d.nama_file||'BKU scan')}','${encodeURIComponent(periode)}')">🔎 Periksa & Koreksi OCR</button>` : ''}
-          ${['SPJ-06','SPJ-07'].includes(String(m.id_spj)) ? `<button class="btn btn-light" type="button" onclick="openEvidenceCoveragePanel('${m.id_spj==='SPJ-06'?'INVOICE':'SUPPORT'}','${esc(periode)}','${esc(summaryNpsn)}')">Hubungkan Bukti ke BKU</button>` : ''}
-          ${['SPJ-04','SPJ-08','SPJ-09'].includes(String(m.id_spj)) ? `<button class="btn btn-light" type="button" onclick="openTaxReconciliationPanelV2523('${esc(m.id_spj)}','${esc(periode)}','${esc(summaryNpsn)}')">OCR & Hubungkan Pajak ke BKU</button>` : ''}
-          <button class="btn ${d ? 'btn-light' : 'btn-primary'}" type="button" onclick="openUpload('${esc(m.id_spj)}','${esc(m.nama_spj || m.nama_dokumen || m.kode || m.id_spj)}',${d ? 'true' : 'false'})">${d ? 'Ganti PDF' : 'Upload PDF'}</button>
+              onclick="showInstrumentPdf(this)">👁️ Lihat file</button>` : ''}
+          ${pdfReady && isBkuOfficial && isSchool() ? `<button class="btn btn-primary" type="button" onclick="openBkuOcrWorkbenchV2502('${encodeURIComponent(d.file_id||'')}','${encodeURIComponent(d.nama_file||'BKU scan')}','${encodeURIComponent(periode)}')">Periksa BKU</button>` : ''}
+          ${['SPJ-06','SPJ-07'].includes(String(m.id_spj)) ? `<button class="btn btn-light" type="button" onclick="openEvidenceCoveragePanel('${m.id_spj==='SPJ-06'?'INVOICE':'SUPPORT'}','${esc(periode)}','${esc(summaryNpsn)}')">Periksa bukti</button>` : ''}
+          ${['SPJ-04','SPJ-08','SPJ-09'].includes(String(m.id_spj)) ? `<button class="btn btn-light" type="button" onclick="openTaxReconciliationPanelV2523('${esc(m.id_spj)}','${esc(periode)}','${esc(summaryNpsn)}')">Periksa pajak</button>` : ''}
+          <button class="btn ${d ? 'btn-light' : 'btn-primary'}" type="button" onclick="openUpload('${esc(m.id_spj)}','${esc(m.nama_spj || m.nama_dokumen || m.kode || m.id_spj)}',${d ? 'true' : 'false'})">${d ? 'Ganti dokumen' : 'Unggah dokumen'}</button>
           ${allowNA ? `<button class="btn btn-light" type="button" onclick="openNaModal('${esc(m.id_spj)}','${esc(m.nama_spj || m.nama_dokumen || m.kode || m.id_spj)}')">N/A</button>` : ''}
         </div>
       </div>
@@ -4472,7 +4473,42 @@ async function renderDokumenTable(){
         </div>
         <div class="instrument-pdf-inline-frame" data-file-id="${esc(d.file_id||'')}" data-pdf-name="${esc(d.nama_file || m.nama_spj || 'Dokumen SPJ')}"><div class="muted" style="padding:24px;text-align:center">Klik <b>Lihat</b> untuk memuat PDF secara aman.</div></div>
       </div>` : ''}`;
+    });
+
+    const rows = rowHtml.join('');
+    const classifySpjGroup_ = (m) => {
+      const id=String(m.id_spj||'').toUpperCase();
+      const name=String(m.nama_spj||m.nama_dokumen||m.kelompok||m.keterangan||'').toLowerCase();
+      if(/pajak|ssp|ppn|pph/.test(name) || ['SPJ-04','SPJ-08','SPJ-09'].includes(id)) return 'Perpajakan';
+      if(/invoice|nota|kuitansi|bukti transaksi|pendukung/.test(name) || ['SPJ-06','SPJ-07'].includes(id)) return 'Bukti transaksi';
+      if(/foto|dokumentasi/.test(name) || id==='SPJ-10') return 'Dokumentasi';
+      if(/bku|rekening|kas umum|kas tunai/.test(name)) return 'BKU dan rekening';
+      return 'Dokumen lainnya';
+    };
+    const categoryOrder=['BKU dan rekening','Bukti transaksi','Perpajakan','Dokumentasi','Dokumen lainnya'];
+    const categoryMap=Object.create(null);
+    groups.forEach((x,i)=>{
+      const key=classifySpjGroup_(x.m);
+      if(!categoryMap[key])categoryMap[key]=[];
+      categoryMap[key].push({item:x,index:i});
+    });
+    const categoryHtml=categoryOrder.filter(k=>categoryMap[k]?.length).map((key,idx)=>{
+      const entries=categoryMap[key];
+      const uploadedCount=entries.filter(z=>z.item.d && String(z.item.d.status||'').toUpperCase()!=='N/A').length;
+      const naCount=entries.filter(z=>String(z.item.d?.status||'').toUpperCase()==='N/A').length;
+      const issueCount=entries.filter(z=>!z.item.d || upper(z.item.d.status||'')==='PERLU_PERBAIKAN').length;
+      const stateText=issueCount?`${issueCount} perlu tindakan`:`${uploadedCount+naCount} tersedia`;
+      const stateClass=issueCount?'warning':'success';
+      return `<details class="spj-category" ${idx===0?'open':''}>
+        <summary class="spj-category-summary">
+          <span class="spj-category-title">${esc(key)}</span>
+          <span class="spj-category-meta">${uploadedCount+naCount}/${entries.length} · ${esc(stateText)}</span>
+          <span class="spj-category-chevron">⌄</span>
+        </summary>
+        <div class="spj-category-content">${entries.map(z=>rowHtml[z.index]).join('')}</div>
+      </details>`;
     }).join('');
+
 
     area.innerHTML = `
       <div class="school-next-action ${nextActionDanger?'danger':''}" style="margin-top:0;margin-bottom:12px">
@@ -4481,22 +4517,22 @@ async function renderDokumenTable(){
       <div class="panel" style="margin-top:0">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap">
           <div>
-            <h3 style="margin:0">Alur Dokumen SPJ</h3>
-            <div class="muted" style="margin-top:4px"><b>Sepuluh jenis dokumen pada halaman ini adalah basis 10 instrumen nilai SPJ semester.</b> BKU Data aktif dipakai sebagai sumber angka/cross-check, sedangkan RKAS hanya referensi anggaran dan tidak menjadi instrumen skor.</div>
-            <div class="muted">PDF digunakan untuk dokumen SPJ; khusus SPJ-10 sekolah dapat mengunggah banyak foto JPG/PNG. Dokumen bukti tidak membentuk transaksi baru.</div>
+            <h3 style="margin:0">Ringkasan dokumen SPJ</h3>
+            <div class="muted" style="margin-top:4px">Unggah dokumen yang diminta. Sistem akan membantu membaca dan mencocokkan data dengan transaksi BKU.</div>
+            <div class="muted">Dokumen lama tetap tersimpan. Jika ada data yang perlu diperiksa, sistem akan menampilkannya di sini.</div>
           </div>
-          <div style="text-align:right"><strong>${done}/${total}</strong><div class="muted">komponen tersedia</div></div>
+          <div style="text-align:right"><strong>${done}/${total}</strong><div class="muted">dokumen tersedia</div></div>
         </div>
         <div class="progress" style="margin-top:12px"><i style="width:${pct}%"></i></div>
-        <div class="muted" style="margin-top:8px">${pct}% lengkap · ${uploaded} terunggah${na ? ` · ${na} N/A` : ''}</div>
+        <div class="muted" style="margin-top:8px">${pct}% tersedia · ${uploaded} diunggah${na ? ` · ${na} tidak diperlukan` : ''}</div>
       </div>
       <div class="panel">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px">
-          <h3 style="margin:0">Dokumen SPJ ${total ? `(${total} komponen)` : ''}</h3>
+          <h3 style="margin:0">Dokumen yang perlu disiapkan</h3>
           <div class="v242-document-actions"><span class="muted">PDF untuk dokumen SPJ · SPJ-10 menerima banyak foto JPG/PNG (maks. 200 MB)</span>${isSchool()?`<button class="btn btn-light btn-sm" type="button" onclick="state.selectedPeriode=$('#periodeSelect')?.value||state.selectedPeriode;loadView('pdfInteraktif')">Buka viewer terpadu →</button>`:''}</div>
         </div>
         <div class="instrument-document-list">
-          ${rows || msg('Master SPJ belum tersedia.')}
+          ${categoryHtml || msg('Master SPJ belum tersedia.')}
         </div>
       </div>`;
   }catch(e){
@@ -16100,6 +16136,30 @@ body[data-role="DINAS"] .v241-recap-control{padding:20px!important}.v241-recap-c
 body[data-role="SEKOLAH"] .pdf-interactive-grid aside .v11-assessment-form,body[data-role="SEKOLAH"] .pdf-interactive-grid aside .v11-assessment-actions{display:none!important}
 @media(max-width:900px){.v242-pdf-stage{height:66vh;min-height:430px;padding:12px}.v242-pdf-toolbar{justify-content:space-between!important;padding:7px 8px!important;gap:6px!important}.v242-pdf-toolbar .v239-pdf-hint{display:none!important}.v242-pdf-context{width:100%;justify-content:space-between}.v242-pdf-context select{flex:1 1 240px}}
 @media(max-width:600px){.v242-tutorial-head{padding:18px 16px;flex-direction:column}.v242-pdf-stage{height:62vh;min-height:390px;padding:7px}.v242-pdf-toolbar .v239-pdf-toolbar-divider{display:none!important}.v242-page-pill{padding:0 6px}.v242-page-pill .v239-pdf-page-label{display:none}.v242-document-actions{width:100%;justify-content:flex-start}.v242-document-actions .btn{width:100%}.v242-pdf-context{align-items:stretch;flex-direction:column}.v242-pdf-context select{width:100%;min-width:0}}
+
+/* SIMPEL SPJ V25.2.4.2 — simplified school document workflow */
+.spj-category{border:1px solid var(--border,#d9dee7);border-radius:13px;margin:10px 0;background:var(--surface,#fff);overflow:hidden}
+.spj-category-summary{list-style:none;display:flex;align-items:center;gap:10px;padding:14px 15px;cursor:pointer;min-height:54px}
+.spj-category-summary::-webkit-details-marker{display:none}
+.spj-category-title{font-weight:750;flex:1;min-width:0}
+.spj-category-meta{font-size:12px;color:var(--muted,#667085);white-space:nowrap}
+.spj-category-chevron{font-size:18px;color:var(--muted,#667085);transition:transform .15s}
+.spj-category[open] .spj-category-chevron{transform:rotate(180deg)}
+.spj-category-content{padding:0 10px 10px}
+.spj-category-content .instrument-doc-row{border-top:1px solid var(--border,#e5e7eb);padding:13px 5px;gap:12px}
+.spj-advanced-detail{margin-top:8px;border-top:1px dashed var(--border,#d9dee7);padding-top:7px}
+.spj-advanced-detail>summary{cursor:pointer;font-size:12px;font-weight:650;color:var(--muted,#667085);padding:5px 0}
+.spj-advanced-body{padding-top:8px}
+.spj-category-content .v221-book-summary{margin-top:8px}
+@media(max-width:640px){
+ .spj-category-summary{padding:13px 12px;gap:7px}
+ .spj-category-meta{font-size:11px;white-space:normal;text-align:right;max-width:42%}
+ .spj-category-content{padding:0 8px 8px}
+ .spj-category-content .instrument-doc-row{display:flex;flex-direction:column;align-items:stretch}
+ .spj-category-content .instrument-doc-row>div:last-child{justify-content:flex-start!important;width:100%}
+ .spj-category-content .instrument-doc-row button{min-height:40px}
+ .spj-advanced-detail{width:100%}
+}
 </style>
 
 
