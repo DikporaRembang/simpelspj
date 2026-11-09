@@ -16506,8 +16506,8 @@ window.refreshTaxReconciliationPanelV2523=async function(){
       api('getTaxReconciliationWorkbench',{idPeriode:st.id_periode,npsn:st.npsn}),
       api('getApiBuildInfo',{})
     ]);
-    if(build.build_id!== 'V25.2.4.5_AUTO_TAX_EXTRACTION_POSTING')
-      throw new Error('Versi backend belum sesuai. Diharapkan V25.2.4.5_AUTO_TAX_EXTRACTION_POSTING, terdeteksi '+(build.build_id||'tidak terbaca')+'. Pastikan kode.gs dan index.html berasal dari paket yang sama dan deploy New version pada staging.');
+    if(build.build_id!== 'V25.2.4.6_OCR_ROW_EDIT_DELETE')
+      throw new Error('Versi backend belum sesuai. Diharapkan V25.2.4.6_OCR_ROW_EDIT_DELETE, terdeteksi '+(build.build_id||'tidak terbaca')+'. Pastikan kode.gs dan index.html berasal dari paket yang sama dan deploy New version pada staging.');
     st.data=data;
     renderTaxReconciliationPanelV2523();
 
@@ -16528,6 +16528,58 @@ window.refreshTaxReconciliationPanelV2523=async function(){
     body.innerHTML=msg(errorText(e),'error')+`<div class="muted" style="margin-top:8px">Periksa apakah backend dan frontend V25.2.4.5 sudah dipasang pada deployment staging yang sama.</div>`;
   }
 };
+
+window.editTaxOcrItemV2546=function(index){
+  const st=window._taxReconV2523State;if(!st||!st.ocr)return;
+  st.ocrEditingItemIndex=Number(index);
+  renderTaxReconciliationPanelV2523();
+};
+window.cancelEditTaxOcrItemV2546=function(){
+  const st=window._taxReconV2523State;if(!st)return;
+  st.ocrEditingItemIndex=null;
+  renderTaxReconciliationPanelV2523();
+};
+window.saveEditTaxOcrItemV2546=function(index){
+  const st=window._taxReconV2523State;if(!st||!st.ocr||!st.ocr.parsed)return;
+  const items=st.ocr.parsed.items||[],i=Number(index),item=items[i];
+  if(!item||item._deleted_by_school)return;
+  const get=id=>document.getElementById(id);
+  const type=get('taxOcrRowType_'+i)?.value.trim()||'';
+  const date=get('taxOcrRowDate_'+i)?.value.trim()||'';
+  const reference=get('taxOcrRowRef_'+i)?.value.trim()||'';
+  const rawAmount=get('taxOcrRowAmount_'+i)?.value.trim()||'';
+  const amount=rawAmount===''?null:Number(rawAmount);
+  if(rawAmount!==''&&(!Number.isFinite(amount)||amount<0)){
+    alert('Nominal harus berupa angka Rupiah nol atau lebih.');return;
+  }
+  const before={tax_type:item.tax_type||item.kind||'',date:item.date||item.month||'',
+    reference:item.billing_code||item.ntpn||item.receipt_number||'',amount:item.amount==null?null:item.amount};
+  if(!item._original_ocr)item._original_ocr=JSON.parse(JSON.stringify(before));
+  item.tax_type=type;item.kind=type;item.date=date;item.month=date;
+  item.billing_code=reference;
+  if(Object.prototype.hasOwnProperty.call(item,'ntpn'))item.ntpn=reference;
+  if(Object.prototype.hasOwnProperty.call(item,'receipt_number'))item.receipt_number=reference;
+  item.amount=amount;
+  item.verification_status='MANUALLY_CORRECTED';
+  item._manual_correction={before:before,after:{tax_type:type,date:date,reference:reference,amount:amount},
+    corrected_at:new Date().toISOString(),corrected_by:'SEKOLAH'};
+  st.ocrEditingItemIndex=null;
+  renderTaxReconciliationPanelV2523();
+};
+window.deleteTaxOcrItemV2546=function(index){
+  const st=window._taxReconV2523State;if(!st||!st.ocr||!st.ocr.parsed)return;
+  const items=st.ocr.parsed.items||[],i=Number(index),item=items[i];
+  if(!item||item._deleted_by_school)return;
+  const label=(item.tax_type||item.kind||'Rincian')+' · '+(item.date||item.month||'tanggal tidak terbaca');
+  if(!confirm('Keluarkan rincian ini dari hasil OCR yang akan diverifikasi?\n\n'+label+
+    '\n\nTeks OCR asli tetap disimpan sebagai jejak audit.'))return;
+  item._deleted_by_school=true;
+  item._deleted_at=new Date().toISOString();
+  item._delete_note='Dikeluarkan sekolah dari rincian OCR sebelum verifikasi.';
+  st.ocrEditingItemIndex=null;
+  renderTaxReconciliationPanelV2523();
+};
+
 window.renderTaxReconciliationPanelV2523=function(){
   const st=window._taxReconV2523State,body=document.getElementById('taxReconV2523Body');
   if(!st||!body||!st.data)return;
@@ -16582,14 +16634,43 @@ window.renderTaxReconciliationPanelV2523=function(){
   </div>`;
   const ocr=st.ocr;
   const ocrItems=ocr&&ocr.parsed&&Array.isArray(ocr.parsed.items)?ocr.parsed.items:[];
+  const activeOcrItems=ocrItems.map((item,index)=>({item:item,index:index})).filter(x=>!x.item._deleted_by_school);
+  const deletedOcrItemCount=ocrItems.length-activeOcrItems.length;
+  const editingOcrItemIndex=Number.isInteger(st.ocrEditingItemIndex)?st.ocrEditingItemIndex:-1;
   const ocrItemsHtml=ocrItems.length?`<div class="panel" style="margin-top:10px;padding:10px">
-    <b>Rincian yang dikenali OCR (${fmtNum(ocrItems.length)} baris/bukti)</b>
-    <div class="muted">Nominal dokumen merupakan agregat bukti unik. Periksa rincian berikut sebelum menyimpan.</div>
-    <div class="table-wrap" style="max-height:230px;overflow:auto;margin-top:8px"><table class="friendly-table">
-      <thead><tr><th>Jenis</th><th>Tanggal</th><th>Referensi</th><th>Nominal</th></tr></thead>
-      <tbody>${ocrItems.slice(0,20).map(x=>`<tr><td>${esc(x.tax_type||x.kind||'-')}</td><td>${esc(x.date||x.month||'-')}</td><td>${esc(x.billing_code||x.ntpn||x.receipt_number||'-')}</td><td>${x.amount!=null?fmtRupiah(x.amount):(x.candidate_amount!=null||x.words_amount!=null||x.balance_delta!=null?`<span class="muted">Perlu konfirmasi</span><div class="muted">OCR: ${x.candidate_amount==null?'-':fmtRupiah(x.candidate_amount)} · Perubahan saldo: ${x.balance_delta==null?'-':fmtRupiah(x.balance_delta)} · Terbilang: ${x.words_amount==null?'-':fmtRupiah(x.words_amount)}</div>`:'<span class="muted">Belum terbaca</span>')}</td></tr>`).join('')}</tbody>
+    <b>Rincian yang dikenali OCR (${fmtNum(activeOcrItems.length)} baris aktif/bukti)</b>
+    <div class="muted">Periksa setiap rincian. Gunakan Edit untuk memperbaiki jenis, tanggal, referensi, atau nominal. Gunakan Hapus untuk mengeluarkan baris yang bukan transaksi/bukti yang benar.</div>
+    <div class="muted" style="margin-top:4px">Perubahan akan ikut tersimpan saat sekolah menekan <b>Simpan Verifikasi OCR</b>. Penghapusan hanya mengecualikan baris dari hasil verifikasi; teks OCR asli tetap disimpan sebagai jejak audit.</div>
+    <div class="table-wrap" style="max-height:340px;overflow:auto;margin-top:8px"><table class="friendly-table" style="min-width:850px">
+      <thead><tr><th>Jenis</th><th>Tanggal</th><th>Referensi</th><th>Nominal</th><th style="text-align:right;min-width:150px">Aksi</th></tr></thead>
+      <tbody>${activeOcrItems.map(({item:x,index:i})=>{
+        if(editingOcrItemIndex===i)return `<tr>
+          <td><input id="taxOcrRowType_${i}" value="${esc(x.tax_type||x.kind||'')}" aria-label="Jenis pajak baris ${i+1}" style="min-width:110px;width:100%"></td>
+          <td><input id="taxOcrRowDate_${i}" value="${esc(x.date||x.month||'')}" aria-label="Tanggal baris ${i+1}" placeholder="YYYY-MM-DD" style="min-width:115px;width:100%"></td>
+          <td><input id="taxOcrRowRef_${i}" value="${esc(x.billing_code||x.ntpn||x.receipt_number||'')}" aria-label="Referensi baris ${i+1}" style="min-width:130px;width:100%"></td>
+          <td><input id="taxOcrRowAmount_${i}" type="number" min="0" step="1" value="${x.amount==null?'':esc(x.amount)}" aria-label="Nominal baris ${i+1}" placeholder="Isi nominal" style="min-width:120px;width:100%"></td>
+          <td><div style="display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap">
+            <button class="btn btn-primary btn-sm" type="button" onclick="saveEditTaxOcrItemV2546(${i})">Simpan</button>
+            <button class="btn btn-light btn-sm" type="button" onclick="cancelEditTaxOcrItemV2546()">Batal</button>
+          </div></td>
+        </tr>`;
+        const amountCell=x.amount!=null?fmtRupiah(x.amount):
+          (x.candidate_amount!=null||x.words_amount!=null||x.balance_delta!=null?
+            `<span class="muted">Perlu konfirmasi</span><div class="muted">OCR: ${x.candidate_amount==null?'-':fmtRupiah(x.candidate_amount)} · Perubahan saldo: ${x.balance_delta==null?'-':fmtRupiah(x.balance_delta)} · Terbilang: ${x.words_amount==null?'-':fmtRupiah(x.words_amount)}</div>`:
+            '<span class="muted">Belum terbaca</span>');
+        return `<tr>
+          <td>${esc(x.tax_type||x.kind||'-')}</td>
+          <td>${esc(x.date||x.month||'-')}</td>
+          <td>${esc(x.billing_code||x.ntpn||x.receipt_number||'-')}</td>
+          <td>${amountCell}</td>
+          <td><div style="display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap">
+            <button class="btn btn-light btn-sm" type="button" onclick="editTaxOcrItemV2546(${i})">Edit</button>
+            <button class="btn btn-light btn-sm" style="color:#b42318" type="button" onclick="deleteTaxOcrItemV2546(${i})">Hapus</button>
+          </div></td>
+        </tr>`;
+      }).join('')||'<tr><td colspan="5" class="muted" style="text-align:center;padding:16px">Semua rincian telah dikeluarkan dari hasil verifikasi. Teks OCR asli tetap tersimpan.</td></tr>'}</tbody>
     </table></div>
-    ${ocrItems.length>20?`<div class="muted">Menampilkan 20 dari ${fmtNum(ocrItems.length)} rincian. Seluruh rincian tetap disimpan sebagai metadata OCR.</div>`:''}
+    ${deletedOcrItemCount?`<div class="muted" style="margin-top:6px">${fmtNum(deletedOcrItemCount)} baris dikeluarkan dari hasil verifikasi; metadata OCR asli tetap dipertahankan.</div>`:''}
   </div>`:'';
   const ocrPartialHtml=ocr&&ocr.parsed&&ocr.parsed.amount==null&&ocr.parsed.partial_amount!=null?`<div class="message warn" style="margin-top:8px">Subtotal parsial yang terbaca: <b>${fmtRupiah(ocr.parsed.partial_amount)}</b>. Nilai ini belum dianggap total dokumen karena masih ada rincian yang belum terbaca.</div>`:'';
   const ocrWarningsHtml=ocr&&ocr.parsed&&ocr.parsed.warnings&&ocr.parsed.warnings.length?`<div class="message warn" style="margin-top:8px"><b>Catatan OCR:</b><ul>${ocr.parsed.warnings.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>`:'';
@@ -16753,7 +16834,7 @@ window.editTaxOcrDraftV2545=function(id){
       ntpn:String(rec.verified_ntpn||'')
     }
   };
-  st.selected_id='';
+  st.selected_id='';st.ocrEditingItemIndex=null;
   renderTaxReconciliationPanelV2523();
 };
 
