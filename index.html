@@ -4189,7 +4189,7 @@ window.refreshEvidenceCoveragePanel=async function(){
       api('getEvidenceCoverageWorkbench',{idPeriode:st.id_periode,npsn:st.npsn}),
       api('getApiBuildInfo',{})
     ]);
-    if(build.build_id!=='V25.2.3.3_EVIDENCE_OCR_NPSN_FIX')throw new Error('Versi backend tidak sesuai. Diharapkan V25.2.3.3_EVIDENCE_OCR_NPSN_FIX, terdeteksi '+build.build_id+'. Periksa deployment /exec.');
+    if(build.build_id!=='V25.2.4.0_GROUPED_MONITORING_BASELINE')throw new Error('Versi backend tidak sesuai. Diharapkan V25.2.4.0_GROUPED_MONITORING_BASELINE, terdeteksi '+build.build_id+'. Periksa deployment /exec.');
     st.data=res;renderEvidenceCoveragePanel();
   }catch(e){body.innerHTML=msg(errorText(e),'error')+`<div class="muted" style="margin-top:8px">Jika muncul "Action tidak dikenal", backend /exec yang aktif belum memuat router V25.2.3.3. Perbarui kode.gs, simpan, deploy New version pada deployment staging yang sama, dan pastikan API_URL frontend menunjuk ke URL /exec tersebut.</div>`;}
 };
@@ -11477,6 +11477,7 @@ async function renderMonitoringGlobalView() {
     if (!window._cachedGlobalMonGlobal) {
       const res = await api('getRekapMonitoringGlobal');
       window._cachedGlobalMonGlobal = res.data || [];
+      window._cachedGlobalMonGlobalGroups = res.pengawas_groups || [];
     }
     
     window._cachedGlobalMon = window._cachedGlobalMonGlobal;
@@ -11514,8 +11515,28 @@ window.renderGlobalMonTable = function(dataList) {
   }
 
   const kecatList = [...new Set(dataList.map(x => x.kecamatan || '-'))].sort();
+  const pengawasGroups = (window._cachedGlobalMonGlobalGroups && Array.isArray(window._cachedGlobalMonGlobalGroups))
+    ? window._cachedGlobalMonGlobalGroups
+    : Object.values(dataList.reduce((acc,x)=>{
+        const k=x.id_pengawas||'BELUM_DITUGASKAN';
+        if(!acc[k])acc[k]={id_pengawas:k,nama_pengawas:x.nama_pengawas||'Belum ditugaskan',jumlah_sekolah:0,sudah_dinilai:0,belum_dinilai:0};
+        acc[k].jumlah_sekolah++;
+        if(x.status_penilaian==='SELESAI_DINILAI')acc[k].sudah_dinilai++;else acc[k].belum_dinilai++;
+        return acc;
+      },{}));
 
   container.innerHTML = `
+    ${isDinas() ? `<div class="panel" style="margin-bottom:16px">
+      <div style="font-weight:800;margin-bottom:10px">Ringkasan Sekolah Berdasarkan Pengawas</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px">
+        ${pengawasGroups.map(g=>`<div class="panel" style="margin:0;padding:12px;border:1px solid var(--border,#ddd)">
+          <div style="font-weight:750">${esc(g.nama_pengawas)}</div>
+          <div style="font-size:1.35rem;font-weight:800;margin:5px 0">${fmtNum(g.jumlah_sekolah)} <small class="muted" style="font-size:12px">sekolah</small></div>
+          <div class="muted" style="font-size:12px">${fmtNum(g.sudah_dinilai)} selesai dinilai · ${fmtNum(g.belum_dinilai)} belum selesai</div>
+        </div>`).join('')}
+      </div>
+    </div>` : ''}
+
     <!-- PANEL KONTROL FILTER, SORTING, & LIMIT -->
     <div class="panel" style="background:var(--card-bg,#f8f9fa); padding:14px; margin-bottom:16px; border-radius:8px;">
       <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:center; justify-content:space-between;">
@@ -11528,6 +11549,14 @@ window.renderGlobalMonTable = function(dataList) {
             ${kecatList.map(k => `<option value="${k}">${k}</option>`).join('')}
           </select>
         </div>
+
+        ${isDinas() ? `<div style="display:flex;gap:8px;align-items:center;flex:1;min-width:200px">
+          <label style="font-size:13px;font-weight:600;white-space:nowrap">Pengawas:</label>
+          <select id="filterPengawasGlobalMon" class="form-control" onchange="resetPageAndFilter()" style="width:100%">
+            <option value="">-- Semua Pengawas --</option>
+            ${pengawasGroups.map(g=>`<option value="${esc(g.id_pengawas)}">${esc(g.nama_pengawas)}</option>`).join('')}
+          </select>
+        </div>` : ''}
 
         <!-- Sorting Data -->
         <div style="display:flex; gap:8px; align-items:center; flex:1; min-width:200px;">
@@ -11573,6 +11602,7 @@ window.renderGlobalMonTable = function(dataList) {
           <tr>
             <th style="text-align:center; width:50px;">No</th>
             <th>NPSN</th>
+            <th>Pengawas</th>
             <th>Nama Sekolah & Alamat</th>
             <th>Total Pagu (RKAS)</th>
             <th>Total Realisasi</th>
@@ -11606,6 +11636,7 @@ window.applyGlobalMonFilterAndSort = function() {
   const searchInput = $('#searchGlobalMon');
   const query = searchInput ? searchInput.value.toLowerCase() : '';
   const selectedKec = $('#filterKecamatan') ? $('#filterKecamatan').value : '';
+  const selectedPengawas = $('#filterPengawasGlobalMon') ? $('#filterPengawasGlobalMon').value : '';
   const sortMode = $('#sortGlobalMon') ? $('#sortGlobalMon').value : 'nama_asc';
   const pageSizeVal = $('#pageSizeGlobalMon') ? $('#pageSizeGlobalMon').value : '25';
 
@@ -11616,7 +11647,8 @@ window.applyGlobalMonFilterAndSort = function() {
                       String(x.kecamatan).toLowerCase().includes(query) ||
                       String(x.alamat_lengkap).toLowerCase().includes(query);
     const matchKec = !selectedKec || String(x.kecamatan) === selectedKec;
-    return matchText && matchKec;
+    const matchPengawas = !selectedPengawas || String(x.id_pengawas||'BELUM_DITUGASKAN') === selectedPengawas;
+    return matchText && matchKec && matchPengawas;
   });
 
   // B. Sorting Data
@@ -11695,11 +11727,12 @@ window.changeMonPage = function(direction) {
 // Generator monitoring global dipertahankan satu definisi saja.
 // 5. Generator Baris Tabel dengan Nomor Urut yang Menyesuaikan Halaman
 function generateGlobalMonRows(list, offset = 0) {
-  if(!list || list.length === 0) return emptyRow(7, 'Tidak ada data yang cocok dengan filter.');
+  if(!list || list.length === 0) return emptyRow(8, 'Tidak ada data yang cocok dengan filter.');
   return list.map((x, idx) => `
     <tr>
       <td style="text-align:center">${offset + idx + 1}</td>
       <td><b>${esc(x.npsn)}</b></td>
+      <td>${esc(x.nama_pengawas || 'Belum ditugaskan')}</td>
       <td>
         <b>${esc(x.nama_sekolah)}</b><br>
         <small class="muted">📍 ${esc(x.alamat_lengkap)} (Kec. ${esc(x.kecamatan)})</small>
@@ -16261,8 +16294,8 @@ window.refreshTaxReconciliationPanelV2523=async function(){
       api('getTaxReconciliationWorkbench',{idPeriode:st.id_periode,npsn:st.npsn}),
       api('getApiBuildInfo',{})
     ]);
-    if(build.build_id!=='V25.2.3.3_EVIDENCE_OCR_NPSN_FIX')
-      throw new Error('Versi backend tidak sesuai. Diharapkan V25.2.3.3_EVIDENCE_OCR_NPSN_FIX, terdeteksi '+(build.build_id||'tidak terbaca')+'. Pastikan kode.gs dan index.html berasal dari paket yang sama, lalu deploy New version pada project staging yang sama.');
+    if(build.build_id!=='V25.2.4.0_GROUPED_MONITORING_BASELINE')
+      throw new Error('Versi backend tidak sesuai. Diharapkan V25.2.4.0_GROUPED_MONITORING_BASELINE, terdeteksi '+(build.build_id||'tidak terbaca')+'. Pastikan kode.gs dan index.html berasal dari paket yang sama, lalu deploy New version pada project staging yang sama.');
     st.data=data;renderTaxReconciliationPanelV2523();
   }catch(e){
     body.innerHTML=msg(errorText(e),'error')+`<div class="muted" style="margin-top:8px">Jika muncul "Action tidak dikenal", backend /exec yang aktif belum memuat router V25.2.3.3. Perbarui kode.gs, simpan, deploy New version pada deployment staging yang sama, dan pastikan API_URL frontend menunjuk ke URL /exec tersebut.</div>`;
