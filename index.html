@@ -4189,7 +4189,7 @@ window.refreshEvidenceCoveragePanel=async function(){
       api('getEvidenceCoverageWorkbench',{idPeriode:st.id_periode,npsn:st.npsn}),
       api('getApiBuildInfo',{})
     ]);
-    if(build.build_id!=='V25.2.4.0_GROUPED_MONITORING_BASELINE')throw new Error('Versi backend tidak sesuai. Diharapkan V25.2.4.0_GROUPED_MONITORING_BASELINE, terdeteksi '+build.build_id+'. Periksa deployment /exec.');
+    if(build.build_id!=='V25.2.4.1_UNIFIED_PERIOD_MONITORING')throw new Error('Versi backend tidak sesuai. Diharapkan V25.2.4.1_UNIFIED_PERIOD_MONITORING, terdeteksi '+build.build_id+'. Periksa deployment /exec.');
     st.data=res;renderEvidenceCoveragePanel();
   }catch(e){body.innerHTML=msg(errorText(e),'error')+`<div class="muted" style="margin-top:8px">Jika muncul "Action tidak dikenal", backend /exec yang aktif belum memuat router V25.2.3.3. Perbarui kode.gs, simpan, deploy New version pada deployment staging yang sama, dan pastikan API_URL frontend menunjuk ke URL /exec tersebut.</div>`;}
 };
@@ -11458,35 +11458,147 @@ window._cachedGlobalMonGlobal = null;
 async function renderMonitoringGlobalView() {
   const c = $('#mainContent');
   if(!c) return;
-  
+
   const monState = window.ensureGlobalMonState_();
   monState.currentPage = 1;
   const pengawasView = isPengawas();
-  const pageTitle = pengawasView ? 'Monitoring Sekolah Binaan' : 'Monitoring Global Pagu & SPJ';
+  const pageTitle = pengawasView ? 'Monitoring Sekolah Binaan' : (isDinas() ? 'Monitoring Sekolah' : 'Monitoring SPJ Sekolah');
   const pageDescription = pengawasView
-    ? 'Pantau kelengkapan dan status SPJ sekolah yang menjadi penugasan aktif Anda.'
-    : 'Pemantauan realisasi anggaran dan kelengkapan dokumen SPJ satuan pendidikan.';
+    ? 'Pantau kelengkapan dan tahapan pemeriksaan seluruh sekolah binaan Anda.'
+    : (isDinas()
+      ? 'Pantau posisi sekolah berdasarkan kelompok Pengawas dan progres pada periode terpilih.'
+      : 'Pantau kelengkapan administrasi SPJ sekolah pada periode terpilih.');
+
   c.innerHTML = head(pageTitle, pageDescription) +
-    `<div class="toolbar">
-       <input id="searchGlobalMon" placeholder="🔍 Cari berdasarkan nama sekolah, NPSN, atau kecamatan..." style="max-width:350px" oninput="filterGlobalMon(this.value)">
+    `<div class="toolbar" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+       <input id="searchGlobalMon" placeholder="🔍 Cari nama sekolah, NPSN, kecamatan..." style="max-width:350px" oninput="filterGlobalMon(this.value)">
+       <div style="display:flex;gap:8px;align-items:center">
+         <label for="monitoringPeriodSelect" style="font-weight:650">Periode:</label>
+         <select id="monitoringPeriodSelect" class="form-control" style="min-width:190px" onchange="refreshMonitoringProgressPeriod(this.value)">
+           <option value="">Memuat periode...</option>
+         </select>
+       </div>
+       <button class="btn btn-light btn-sm" type="button" onclick="refreshMonitoringProgressPeriod($('#monitoringPeriodSelect')?.value,true)">↻ Muat ulang</button>
      </div>
-     <div class="panel" id="globalMonContent">${loading('Memuat data monitoring global...')}</div>`;
-     
+     <div class="panel" id="globalMonContent">${loading('Memuat data monitoring...')}</div>`;
+
   try {
-    // OPTIMASI: Gunakan cache memori lokal jika sudah ada untuk menghindari request ganda
-    if (!window._cachedGlobalMonGlobal) {
+    const periods = await ensurePeriodeMaster();
+    const select = $('#monitoringPeriodSelect');
+    const available = Array.isArray(periods) ? periods : [];
+    if(select){
+      select.innerHTML = available.map(x=>`<option value="${esc(x.id_periode)}">${esc(x.nama_periode||x.id_periode)}${x.tahun?' · '+esc(x.tahun):''}</option>`).join('');
+      if(!available.length) select.innerHTML = '<option value="">Belum ada periode</option>';
+    }
+    if(!window._cachedGlobalMonGlobal){
       const res = await api('getRekapMonitoringGlobal');
       window._cachedGlobalMonGlobal = res.data || [];
       window._cachedGlobalMonGlobalGroups = res.pengawas_groups || [];
     }
-    
     window._cachedGlobalMon = window._cachedGlobalMonGlobal;
-    renderGlobalMonTable(window._cachedGlobalMon);
+
+    let period = String(state.selectedPeriode || (available[0] && available[0].id_periode) || '');
+    if(period && !available.some(x=>String(x.id_periode)===period)) period=String((available[0]||{}).id_periode||'');
+    if(period) state.selectedPeriode=period;
+    if(select) select.value=period;
+
+    if(period){
+      await refreshMonitoringProgressPeriod(period,false);
+    }else{
+      window._monitoringReadinessByNpsn = {};
+      window._monitoringReadinessPeriod = '';
+      renderGlobalMonTable(window._cachedGlobalMon);
+    }
   } catch(e) {
     const contentBox = $('#globalMonContent');
     if(contentBox) contentBox.innerHTML = msg(errorText(e));
   }
 }
+
+window.refreshMonitoringProgressPeriod = async function(period,forceRefresh){
+  const p=String(period||'');
+  if(!p){
+    window._monitoringReadinessByNpsn={};
+    window._monitoringReadinessPeriod='';
+    window._cachedGlobalMon=window._cachedGlobalMonGlobal||[];
+    renderGlobalMonTable(window._cachedGlobalMon);
+    return;
+  }
+  state.selectedPeriode=p;
+  const area=$('#globalMonContent');
+  if(area)area.innerHTML=loading('Menghitung progres administrasi dan pemeriksaan periode...');
+  try{
+    if(!window._cachedGlobalMonGlobal){
+      const base=await api('getRekapMonitoringGlobal');
+      window._cachedGlobalMonGlobal=base.data||[];
+      window._cachedGlobalMonGlobalGroups=base.pengawas_groups||[];
+    }
+    const matrix=await api('getAssessmentReadinessMatrix',{idPeriode:p});
+    const readinessRows=Array.isArray(matrix.data)?matrix.data:[];
+    const byNpsn=Object.create(null);
+    readinessRows.forEach(x=>{const n=String(x.npsn||'').replace(/\D/g,'');if(n)byNpsn[n]=x;});
+    window._monitoringReadinessByNpsn=byNpsn;
+    window._monitoringReadinessPeriod=p;
+    window._monitoringReadinessSummary=matrix.summary||{};
+    window._monitoringActiveStage=matrix.active_stage||'';
+    window._cachedGlobalMon=(window._cachedGlobalMonGlobal||[]).map(x=>{
+      const n=String(x.npsn||'').replace(/\D/g,'');
+      const r=byNpsn[n]||null;
+      const docsRequired=Number(r?.documents_required||10);
+      const docsComplete=Number(r?.documents_complete_count||0);
+      const bkuReady=!!r?.bku_ready;
+      const completedUnits=Math.min(docsRequired,docsComplete)+(bkuReady?1:0);
+      const totalUnits=docsRequired+1;
+      const pct=Math.round(totalUnits?completedUnits/totalUnits*100:0);
+      let label='Belum siap';
+      if(r){
+        if(r.final_done)label='Selesai';
+        else if(r.phase2_done)label='Fase 2 selesai';
+        else if(r.ready_for_phase2)label='Siap Fase 2';
+        else if(r.phase1_approved)label='Fase 1 disetujui';
+        else if(r.phase1_submitted)label='Menunggu Dinas';
+        else if(r.phase1_state==='PERLU_REVISI')label='Perlu revisi';
+        else if(r.phase1_state==='SEDANG_DINILAI')label='Sedang dinilai';
+        else if(r.data_complete)label='Siap dinilai';
+        else if(r.bku_ready||docsComplete>0)label='Sedang dilengkapi';
+      }
+      return Object.assign({},x,{
+        progress_pct:pct,
+        progress_label:label,
+        progress_docs_complete:docsComplete,
+        progress_docs_required:docsRequired,
+        progress_bku_ready:bkuReady,
+        progress_phase1_state:r?.phase1_state||'BELUM_SIAP',
+        progress_phase1_approved:!!r?.phase1_approved,
+        progress_phase2_done:!!r?.phase2_done,
+        progress_final_done:!!r?.final_done,
+        progress_blockers:r?.blockers||[],
+        progress_readiness:r
+      });
+    });
+    window._cachedGlobalMonGlobalGroups=buildMonitoringPeriodGroups_(window._cachedGlobalMon);
+    window._cachedGlobalMon=window._cachedGlobalMon;
+    renderGlobalMonTable(window._cachedGlobalMon);
+  }catch(e){
+    if(area)area.innerHTML=msg('Gagal menghitung progres periode: '+errorText(e));
+  }
+};
+
+window.buildMonitoringPeriodGroups_ = function(rows){
+  const map=Object.create(null);
+  (rows||[]).forEach(x=>{
+    const key=x.id_pengawas||'BELUM_DITUGASKAN';
+    if(!map[key])map[key]={id_pengawas:key,nama_pengawas:x.nama_pengawas||'Belum ditugaskan',jumlah_sekolah:0,rata_progres:0,total_progres:0,siap_dinilai:0,menunggu_dinas:0,perlu_revisi:0,selesai:0,belum_lengkap:0};
+    const g=map[key];g.jumlah_sekolah++;g.total_progres+=Number(x.progress_pct||0);
+    if(x.progress_label==='Siap dinilai')g.siap_dinilai++;
+    if(x.progress_label==='Menunggu Dinas')g.menunggu_dinas++;
+    if(x.progress_label==='Perlu revisi')g.perlu_revisi++;
+    if(x.progress_label==='Selesai')g.selesai++;
+    if(Number(x.progress_pct||0)<100)g.belum_lengkap++;
+  });
+  return Object.keys(map).map(k=>{const g=map[k];g.rata_progres=g.jumlah_sekolah?Math.round(g.total_progres/g.jumlah_sekolah):0;return g;})
+    .sort((a,b)=>a.nama_pengawas.localeCompare(b.nama_pengawas,'id'));
+};
 
 // State pagination Monitoring Global. Ini hanya state UI, bukan data sensitif.
 window.ensureGlobalMonState_ = function(){
@@ -11525,14 +11637,30 @@ window.renderGlobalMonTable = function(dataList) {
         return acc;
       },{}));
 
+  const progressRows=dataList.filter(x=>x.progress_readiness);
+  const avgProgress=progressRows.length?Math.round(progressRows.reduce((a,x)=>a+Number(x.progress_pct||0),0)/progressRows.length):0;
+  const readyCount=progressRows.filter(x=>x.progress_label==='Siap dinilai').length;
+  const submittedCount=progressRows.filter(x=>x.progress_label==='Menunggu Dinas').length;
+  const finalCount=progressRows.filter(x=>x.progress_label==='Selesai').length;
   container.innerHTML = `
+    <div class="panel" style="margin-bottom:14px">
+      <div style="font-weight:800;margin-bottom:10px">Progres Periode ${esc(window._monitoringReadinessPeriod||'-')}</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:10px">
+        <div><div class="muted" style="font-size:12px">Rata-rata kelengkapan</div><div style="font-size:1.5rem;font-weight:800">${avgProgress}%</div></div>
+        <div><div class="muted" style="font-size:12px">Siap dinilai</div><div style="font-size:1.5rem;font-weight:800">${readyCount}</div></div>
+        <div><div class="muted" style="font-size:12px">Menunggu Dinas</div><div style="font-size:1.5rem;font-weight:800">${submittedCount}</div></div>
+        <div><div class="muted" style="font-size:12px">Selesai final</div><div style="font-size:1.5rem;font-weight:800">${finalCount}</div></div>
+      </div>
+      <small class="muted">Kelengkapan dihitung dari 10 komponen dokumen dan kesiapan BKU. Tahap pemeriksaan ditampilkan terpisah.</small>
+    </div>
     ${isDinas() ? `<div class="panel" style="margin-bottom:16px">
       <div style="font-weight:800;margin-bottom:10px">Ringkasan Sekolah Berdasarkan Pengawas</div>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px">
         ${pengawasGroups.map(g=>`<div class="panel" style="margin:0;padding:12px;border:1px solid var(--border,#ddd)">
           <div style="font-weight:750">${esc(g.nama_pengawas)}</div>
           <div style="font-size:1.35rem;font-weight:800;margin:5px 0">${fmtNum(g.jumlah_sekolah)} <small class="muted" style="font-size:12px">sekolah</small></div>
-          <div class="muted" style="font-size:12px">${fmtNum(g.sudah_dinilai)} selesai dinilai · ${fmtNum(g.belum_dinilai)} belum selesai</div>
+          <div style="height:7px;background:var(--border,#e5e7eb);border-radius:99px;overflow:hidden;margin:7px 0"><div style="height:100%;width:${Number(g.rata_progres||0)}%;background:var(--success,#16a34a)"></div></div>
+          <div class="muted" style="font-size:12px">Rata-rata progres ${Number(g.rata_progres||0)}% · ${fmtNum(g.siap_dinilai||0)} siap dinilai · ${fmtNum(g.perlu_revisi||0)} perlu revisi</div>
         </div>`).join('')}
       </div>
     </div>` : ''}
@@ -11607,6 +11735,8 @@ window.renderGlobalMonTable = function(dataList) {
             <th>Total Pagu (RKAS)</th>
             <th>Total Realisasi</th>
             <th style="text-align:center;">Dokumen SPJ</th>
+            <th style="text-align:center;">Progres Periode</th>
+            <th style="text-align:center;">Tahap Proses</th>
             <th style="text-align:center;">Status Penilaian</th>
           </tr>
         </thead>
@@ -11727,7 +11857,7 @@ window.changeMonPage = function(direction) {
 // Generator monitoring global dipertahankan satu definisi saja.
 // 5. Generator Baris Tabel dengan Nomor Urut yang Menyesuaikan Halaman
 function generateGlobalMonRows(list, offset = 0) {
-  if(!list || list.length === 0) return emptyRow(8, 'Tidak ada data yang cocok dengan filter.');
+  if(!list || list.length === 0) return emptyRow(10, 'Tidak ada data yang cocok dengan filter.');
   return list.map((x, idx) => `
     <tr>
       <td style="text-align:center">${offset + idx + 1}</td>
@@ -11740,6 +11870,8 @@ function generateGlobalMonRows(list, offset = 0) {
       <td><b>${fmtRupiah(x.total_pagu)}</b></td>
       <td style="color:var(--success);font-weight:600">${fmtRupiah(x.total_realisasi)}</td>
       <td style="text-align:center">${badge(x.jumlah_dokumen_spj > 0 ? `${x.jumlah_dokumen_spj} File` : 'Belum', x.jumlah_dokumen_spj > 0 ? 'success' : 'warning')}</td>
+      <td style="min-width:125px;text-align:center"><b>${x.progress_readiness?Number(x.progress_pct||0)+'%':'-'}</b>${x.progress_readiness?`<div style="height:6px;background:var(--border,#e5e7eb);border-radius:99px;overflow:hidden;margin-top:5px"><div style="height:100%;width:${Number(x.progress_pct||0)}%;background:var(--success,#16a34a)"></div></div>`:''}</td>
+      <td style="text-align:center">${x.progress_readiness?badge(esc(x.progress_label),x.progress_final_done?'success':(x.progress_label==='Perlu revisi'?'warning':'info')):badge('Pilih periode','secondary')}</td>
       <td style="text-align:center">${badge(x.status_penilaian, x.status_penilaian === 'SELESAI_DINILAI' ? 'success' : 'info')}</td>
     </tr>`).join('');
 }
@@ -11759,7 +11891,7 @@ window.exportGlobalMonExcel = async function(){
       return;
     }
     const wb = XLSX.utils.table_to_book(tbl, {sheet: "Monitoring Global SPJ"});
-    XLSX.writeFile(wb, `Laporan_Monitoring_Global_SPJ_${state.user?.role || 'Dinas'}.xlsx`);
+    XLSX.writeFile(wb, `Laporan_Monitoring_SPJ_${window._monitoringReadinessPeriod||'SemuaPeriode'}_${state.user?.role || 'Dinas'}.xlsx`);
   } catch(e) {
     alert('Gagal mengunduh file Excel: ' + e.message);
   }
@@ -16294,8 +16426,8 @@ window.refreshTaxReconciliationPanelV2523=async function(){
       api('getTaxReconciliationWorkbench',{idPeriode:st.id_periode,npsn:st.npsn}),
       api('getApiBuildInfo',{})
     ]);
-    if(build.build_id!=='V25.2.4.0_GROUPED_MONITORING_BASELINE')
-      throw new Error('Versi backend tidak sesuai. Diharapkan V25.2.4.0_GROUPED_MONITORING_BASELINE, terdeteksi '+(build.build_id||'tidak terbaca')+'. Pastikan kode.gs dan index.html berasal dari paket yang sama, lalu deploy New version pada project staging yang sama.');
+    if(build.build_id!=='V25.2.4.1_UNIFIED_PERIOD_MONITORING')
+      throw new Error('Versi backend tidak sesuai. Diharapkan V25.2.4.1_UNIFIED_PERIOD_MONITORING, terdeteksi '+(build.build_id||'tidak terbaca')+'. Pastikan kode.gs dan index.html berasal dari paket yang sama, lalu deploy New version pada project staging yang sama.');
     st.data=data;renderTaxReconciliationPanelV2523();
   }catch(e){
     body.innerHTML=msg(errorText(e),'error')+`<div class="muted" style="margin-top:8px">Jika muncul "Action tidak dikenal", backend /exec yang aktif belum memuat router V25.2.3.3. Perbarui kode.gs, simpan, deploy New version pada deployment staging yang sama, dan pastikan API_URL frontend menunjuk ke URL /exec tersebut.</div>`;
