@@ -16481,7 +16481,7 @@ window.openTaxReconciliationPanelV2523 = async function(idSpj,period,npsn){
   overlay.style.cssText='position:fixed;inset:0;background:rgba(15,23,42,.66);z-index:10040;display:flex;align-items:center;justify-content:center;padding:12px';
   overlay.innerHTML=`<div style="background:var(--surface,#fff);color:var(--text,#172033);width:min(1180px,100%);max-height:94vh;overflow:auto;border-radius:18px;padding:20px;box-shadow:0 24px 70px rgba(0,0,0,.25)">
     <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start">
-      <div><div class="muted" style="font-size:12px;font-weight:800;letter-spacing:.06em">SIMPEL SPJ · V25.2.4.4 DOCUMENT-AWARE TAX OCR</div>
+      <div><div class="muted" style="font-size:12px;font-weight:800;letter-spacing:.06em">SIMPEL SPJ · V25.2.4.5 AUTO TAX EXTRACTION & POSTING</div>
       <h2 style="margin:4px 0">${title}</h2><div class="muted">Periode ${esc(p)} · ${spj==='SPJ-04'?'Buku Pajak dibaca sebagai referensi pungutan SIPLAH; tidak dicocokkan langsung dengan BKU.':'SSP dibaca sebagai bukti setoran dan dicocokkan dengan transaksi pembayaran BKU.'}</div></div>
       <button class="btn btn-light" type="button" onclick="closeTaxReconciliationPanelV2523()">✕ Tutup</button>
     </div>
@@ -16506,8 +16506,8 @@ window.refreshTaxReconciliationPanelV2523=async function(){
       api('getTaxReconciliationWorkbench',{idPeriode:st.id_periode,npsn:st.npsn}),
       api('getApiBuildInfo',{})
     ]);
-    if(build.build_id!== 'V25.2.4.4_DOCUMENT_AWARE_TAX_OCR')
-      throw new Error('Versi backend belum sesuai. Diharapkan V25.2.4.4_DOCUMENT_AWARE_TAX_OCR, terdeteksi '+(build.build_id||'tidak terbaca')+'. Pastikan kode.gs dan index.html berasal dari paket yang sama dan deploy New version pada staging.');
+    if(build.build_id!== 'V25.2.4.5_AUTO_TAX_EXTRACTION_POSTING')
+      throw new Error('Versi backend belum sesuai. Diharapkan V25.2.4.5_AUTO_TAX_EXTRACTION_POSTING, terdeteksi '+(build.build_id||'tidak terbaca')+'. Pastikan kode.gs dan index.html berasal dari paket yang sama dan deploy New version pada staging.');
     st.data=data;
     renderTaxReconciliationPanelV2523();
 
@@ -16525,7 +16525,7 @@ window.refreshTaxReconciliationPanelV2523=async function(){
       }
     }
   }catch(e){
-    body.innerHTML=msg(errorText(e),'error')+`<div class="muted" style="margin-top:8px">Periksa apakah backend dan frontend V25.2.4.4 sudah dipasang pada deployment staging yang sama.</div>`;
+    body.innerHTML=msg(errorText(e),'error')+`<div class="muted" style="margin-top:8px">Periksa apakah backend dan frontend V25.2.4.5 sudah dipasang pada deployment staging yang sama.</div>`;
   }
 };
 window.renderTaxReconciliationPanelV2523=function(){
@@ -16535,22 +16535,34 @@ window.renderTaxReconciliationPanelV2523=function(){
   const source=st.id_spj==='SPJ-04'?'BUKU_PAJAK':st.id_spj==='SPJ-08'?'SSP_PUSAT':'SSP_DAERAH';
   const dir=source==='BUKU_PAJAK'?'PUNGUT':'SETOR';
   const evidences=(d.evidence||[]).filter(x=>x.source_type===source);
+  const verifiedEvidences=evidences.filter(x=>String(x.status)==='VERIFIED_BY_SCHOOL');
+  const draftEvidences=evidences.filter(x=>String(x.status)==='OCR_DRAFT');
   const selected=evidences.find(x=>x.id_tax_evidence===st.selected_id)||null;
   const amountLabel=dir==='PUNGUT'?'Nilai pungutan (Rp)':'Nilai setoran (Rp)';
   const formatDate=x=>x?String(x).slice(0,10):'-';
   const docsHtml=docs.length?docs.map(x=>{
     const evidence=(d.evidence||[]).find(v=>String(v.file_id||'')===String(x.file_id||''));
     const failed=st.ocrErrors&&st.ocrErrors[String(x.file_id||'')];
-    const stateLabel=evidence?'Hasil sudah dikonfirmasi sekolah':failed?'Pembacaan perlu dicoba ulang':'Menunggu / sedang dibaca otomatis';
+    const isVerified=!!evidence&&String(evidence.status)==='VERIFIED_BY_SCHOOL';
+    const isDraft=!!evidence&&String(evidence.status)==='OCR_DRAFT';
+    const isCurrent=!!st.ocr&&String(st.ocr.file_id||'')===String(x.file_id||'');
+    const isRunning=!!st.ocrRunning&&String(st.ocrRunningFile||'')===String(x.file_id||'');
+    const stateLabel=isVerified?'Sudah diverifikasi sekolah':
+      isDraft?'OCR selesai. Hasil tersimpan otomatis dan menunggu pemeriksaan sekolah.':
+      isCurrent?'OCR selesai. Periksa rincian hasil pembacaan di bawah.':
+      isRunning?'Sedang membaca dokumen. Mohon tunggu hingga proses selesai.':
+      failed?'Pembacaan gagal. Sekolah dapat mencoba kembali.':'OCR akan berjalan otomatis. Mohon tunggu setelah panel dibuka.';
     const retry=failed&&st.role==='SEKOLAH'?`<button class="btn btn-light btn-sm" type="button" onclick="runTaxOcrV2523('${esc(x.file_id)}','${esc(x.id_spj)}',false)">Coba lagi</button>`:'';
+    const review=isDraft&&st.role==='SEKOLAH'?`<button class="btn btn-primary btn-sm" type="button" onclick="editTaxOcrDraftV2545('${esc(evidence.id_tax_evidence)}')">Periksa hasil OCR</button>`:'';
+    const statusBadge=isVerified?badge('Diverifikasi','success'):isDraft?badge('Draft OCR','warning'):failed?badge('Perlu dicoba ulang','warning'):isRunning?badge('Sedang diproses','info'):badge('Otomatis','info');
     return `<div class="panel" style="display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-top:8px">
-      <div><b>${esc(x.nama_file||'Dokumen PDF')}</b><div class="muted">${esc(stateLabel)}${failed?` · ${esc(failed)}`:''}</div></div>
-      ${retry||badge(evidence?'Dikonfirmasi':failed?'Perlu dicoba ulang':'Otomatis',evidence?'success':failed?'warning':'info')}
+      <div style="min-width:220px;flex:1"><b>${esc(x.nama_file||'Dokumen PDF')}</b><div class="muted">${esc(stateLabel)}${failed?` · ${esc(failed)}`:''}</div></div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">${review}${retry}${statusBadge}</div>
     </div>`;
   }).join(''):'<div class="message warn">Belum ada PDF untuk komponen ini. Unggah PDF terlebih dahulu pada dokumen SPJ terkait.</div>';
   const summaryHtml=source==='BUKU_PAJAK'?`<div class="form-grid">
     <div class="panel"><small class="muted">Pungutan yang terbaca dari Buku Pajak</small><h3>${fmtRupiah(sm.buku_pajak_ocr_pungut||0)}</h3><div class="muted">Referensi SIPLAH/Arkas + Manual sesuai cakupan dokumen; bukan total seluruh pungutan sekolah.</div></div>
-    <div class="panel"><small class="muted">Dokumen Buku Pajak terverifikasi</small><h3>${fmtNum(evidences.length)}</h3><div class="muted">Hanya hasil OCR yang sudah dikonfirmasi sekolah.</div></div>
+    <div class="panel"><small class="muted">Dokumen Buku Pajak terverifikasi</small><h3>${fmtNum(verifiedEvidences.length)}</h3><div class="muted">Hanya hasil OCR yang sudah dikonfirmasi sekolah.</div></div>
   </div>`:`<div class="form-grid">
     <div class="panel"><small class="muted">Setoran pada BKU</small><h3>${fmtRupiah(sm.bku_setor||0)}</h3></div>
     <div class="panel"><small class="muted">OCR SSP Pusat · setoran</small><h3>${fmtRupiah(sm.ssp_pusat_ocr_setor||0)}</h3></div>
@@ -16583,8 +16595,12 @@ window.renderTaxReconciliationPanelV2523=function(){
   const ocrWarningsHtml=ocr&&ocr.parsed&&ocr.parsed.warnings&&ocr.parsed.warnings.length?`<div class="message warn" style="margin-top:8px"><b>Catatan OCR:</b><ul>${ocr.parsed.warnings.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>`:'';
   const ocrHtml=ocr?`<div class="panel" style="margin-top:12px">
     <h3 style="margin-top:0">Periksa hasil OCR — ${esc(ocr.source_type)}</h3>
-    <div class="message warn">Hasil OCR belum menjadi data terverifikasi. Bandingkan dengan PDF asli dan koreksi bila perlu. ${source==='BUKU_PAJAK'?'Buku Pajak hanya digunakan sebagai referensi pungutan yang tercatat melalui SIPLAH; bukan total seluruh pungutan sekolah.':''}</div>
+    ${ocr.draft_save&&ocr.draft_save.saved?`<div class="message success"><b>Hasil OCR sudah tersimpan otomatis.</b> ${fmtNum(ocr.draft_save.item_count||0)} rincian terdeteksi; ${fmtNum(ocr.draft_save.stored_item_count==null?ocr.draft_save.item_count:ocr.draft_save.stored_item_count)} rincian disimpan sebagai draft. Sekolah tidak perlu mengetik ulang data yang sudah terbaca. Silakan periksa rincian yang belum terbaca sebelum melakukan verifikasi.</div>`:
+      ocr.draft_save&&ocr.draft_save.status==='ALREADY_VERIFIED'?`<div class="message info">Dokumen ini sudah memiliki hasil verifikasi sekolah. Hasil OCR baru tidak menimpa data yang telah diverifikasi.</div>`:
+      ocr.draft_save&&ocr.draft_save.saved===false?`<div class="message warn"><b>OCR selesai, tetapi draft belum tersimpan otomatis.</b> ${esc(ocr.draft_save.message||'Silakan simpan hasil pemeriksaan secara manual dan hubungi administrator bila masalah berulang.')}</div>`:''}
+    <div class="message warn">Hasil OCR ini masih berstatus draft dan belum menjadi data terverifikasi. Bandingkan dengan PDF asli dan koreksi bila perlu. ${source==='BUKU_PAJAK'?'Buku Pajak hanya digunakan sebagai referensi pungutan yang tercatat melalui SIPLAH; bukan total seluruh pungutan sekolah.':''}</div>
     <form onsubmit="saveTaxOcrV2523(event)">
+      <input type="hidden" id="taxOcrEvidenceId" value="${esc((ocr.draft_save&&ocr.draft_save.id_tax_evidence)||ocr.id_tax_evidence||'')}">
       <input type="hidden" id="taxOcrFileId" value="${esc(ocr.file_id)}">
       <input type="hidden" id="taxOcrSpj" value="${esc(ocr.id_spj)}">
       <input type="hidden" id="taxOcrAmountRaw" value="${ocr.parsed.amount==null?'':esc(ocr.parsed.amount)}">
@@ -16594,6 +16610,8 @@ window.renderTaxReconciliationPanelV2523=function(){
       <input type="hidden" id="taxOcrParserVersion" value="${esc(ocr.parsed.parser_version||'')}">
       <input type="hidden" id="taxOcrItems" value="${esc(JSON.stringify(ocr.parsed.items||[]))}">
       <input type="hidden" id="taxOcrSource" value="${esc(ocr.source||'GOOGLE_DRIVE_OCR_V3')}">
+      <input type="hidden" id="taxOcrText" value="${esc(ocr.ocr_text||'')}">
+      <input type="hidden" id="taxOcrWarnings" value="${esc(JSON.stringify(ocr.parsed.warnings||[]))}">
       <div class="form-grid">
         <div class="field"><label>${amountLabel}</label><input id="taxOcrVerifiedAmount" type="number" min="1" step="1" required value="${ocr.parsed.amount==null?'':esc(ocr.parsed.amount)}" placeholder="Periksa/isi nominal"></div>
         <div class="field"><label>Tanggal dokumen</label><input id="taxOcrDate" type="date" value="${esc(ocr.parsed.document_date||'')}"></div>
@@ -16611,8 +16629,15 @@ window.renderTaxReconciliationPanelV2523=function(){
     <details style="margin-top:10px"><summary>Lihat teks hasil OCR untuk pemeriksaan</summary><pre style="white-space:pre-wrap;max-height:220px;overflow:auto">${esc(ocr.ocr_text||'')}</pre></details>
   </div>`:'';
   const evidenceHtml=evidences.length?`<div class="table-wrap" style="margin-top:12px"><table class="friendly-table"><thead><tr><th>Dokumen</th><th>Status</th><th>${dir==='PUNGUT'?'Pungutan':'Setoran'}</th><th>${dir==='PUNGUT'?'Referensi':'Terkait BKU'}</th><th>Sisa</th><th></th></tr></thead><tbody>
-    ${evidences.map(x=>`<tr><td>${esc(x.nama_file||'PDF')}<div class="muted">${esc(x.verified_document_number||'-')} · ${esc(formatDate(x.verified_document_date))}</div></td><td>${badge(x.status==='VERIFIED_BY_SCHOOL'?'DIVERIFIKASI SEKOLAH':'DRAFT','success')}</td><td>${fmtRupiah(x.verified_amount||0)}</td><td>${source==='BUKU_PAJAK'?'Referensi SIPLAH':fmtRupiah(x.allocated_total||0)}</td><td>${source==='BUKU_PAJAK'?'—':fmtRupiah(x.unallocated_amount||0)}</td><td><button class="btn btn-light btn-sm" type="button" onclick="selectTaxEvidenceV2523('${esc(x.id_tax_evidence)}')">Pilih</button></td></tr>`).join('')}
-  </tbody></table></div>`:'<div class="message info" style="margin-top:12px">Belum ada dokumen OCR yang diverifikasi sekolah.</div>';
+    ${evidences.map(x=>{
+      const isVerified=String(x.status)==='VERIFIED_BY_SCHOOL';
+      const isDraft=String(x.status)==='OCR_DRAFT';
+      const amount=isVerified?fmtRupiah(x.verified_amount||0):(x.ocr_partial_amount!==''&&x.ocr_partial_amount!=null?`<span class="muted">Subtotal sementara</span><br>${fmtRupiah(x.ocr_partial_amount)}`:'Belum terbaca');
+      const status=isVerified?badge('DIVERIFIKASI SEKOLAH','success'):isDraft?badge('TERSIMPAN · PERLU DITINJAU','warning'):badge('DRAFT','secondary');
+      const action=isDraft?`<button class="btn btn-primary btn-sm" type="button" onclick="editTaxOcrDraftV2545('${esc(x.id_tax_evidence)}')">Periksa OCR</button>`:`<button class="btn btn-light btn-sm" type="button" onclick="selectTaxEvidenceV2523('${esc(x.id_tax_evidence)}')">Pilih</button>`;
+      return `<tr><td>${esc(x.nama_file||'PDF')}<div class="muted">${esc(x.verified_document_number||'-')} · ${esc(formatDate(x.verified_document_date))}</div></td><td>${status}</td><td>${amount}</td><td>${source==='BUKU_PAJAK'?'Referensi SIPLAH':fmtRupiah(x.allocated_total||0)}</td><td>${source==='BUKU_PAJAK'?'—':fmtRupiah(x.unallocated_amount||0)}</td><td>${action}</td></tr>`;
+    }).join('')}
+  </tbody></table></div>`:'<div class="message info" style="margin-top:12px">Belum ada hasil OCR tersimpan. Dokumen akan dibaca otomatis saat panel dibuka.</div>';
   const candidateTx=source==='BUKU_PAJAK'?[]:(d.transactions||[]).filter(x=>x.tax_direction===dir&&(source==='SSP_PUSAT'?x.tax_class==='PUSAT':x.tax_class==='DAERAH'));
   const allocHtml=source==='BUKU_PAJAK'?'':selected?`<details class="panel" style="margin-top:12px"><summary style="cursor:pointer;font-weight:700">Pencocokan manual dengan BKU (hanya jika diperlukan)</summary>
     <div style="padding-top:12px">
@@ -16638,10 +16663,29 @@ window.renderTaxReconciliationPanelV2523=function(){
 };
 window.runTaxOcrV2523=async function(fileId,idSpj,isAutomatic){
   const st=window._taxReconV2523State;if(!st)return;
+  if(st.ocrRunning)return;
   const fid=String(fileId||'');st.ocrErrors=st.ocrErrors||{};
-  delete st.ocrErrors[fid];
-  const body=document.getElementById('taxReconV2523Body');
-  if(body)body.insertAdjacentHTML('afterbegin',`<div class="message info">Sistem sedang membaca dokumen. Mohon tunggu...</div>`);
+  delete st.ocrErrors[fid];st.ocrRunning=true;st.ocrRunningFile=fid;
+  const body=document.getElementById('taxReconV2523Body'),started=Date.now();
+  if(st.ocrWaitTimer){clearInterval(st.ocrWaitTimer);st.ocrWaitTimer=null;}
+  if(body){
+    const title=idSpj==='SPJ-04'?'Buku Pembantu Pajak':idSpj==='SPJ-08'?'SSP Pajak Pusat':'SSP Pajak Daerah';
+    body.insertAdjacentHTML('afterbegin',`<div id="taxOcrWaitV2545" role="status" aria-live="polite" style="border:1px solid #b8d7f5;background:#eff7ff;border-radius:12px;padding:18px;margin:0 0 14px">
+      <div style="display:flex;align-items:center;gap:10px"><span style="font-size:24px">⏳</span><div><b style="font-size:16px;color:#17456d">SIMPEL SPJ sedang membaca ${title}</b><div style="color:#35536e;margin-top:4px">Proses OCR berjalan otomatis. Mohon tunggu sampai hasil pembacaan selesai.</div></div></div>
+      <progress style="width:100%;height:10px;margin:14px 0 8px" aria-label="Pembacaan dokumen sedang berlangsung"></progress>
+      <div id="taxOcrElapsedV2545" style="font-weight:600;color:#17456d">Waktu proses: 0 detik</div>
+      <div id="taxOcrWaitHintV2545" style="font-size:13px;color:#35536e;margin-top:6px">Dokumen beberapa halaman dapat memerlukan beberapa puluh detik. Tetap buka halaman ini.</div>
+      <div style="font-size:12px;color:#526b80;margin-top:8px">Jangan menutup jendela, memuat ulang halaman, atau menekan tombol baca berulang kali. Sistem akan menampilkan hasil atau pesan jika terjadi kendala.</div>
+    </div>`);
+    st.ocrWaitTimer=setInterval(function(){
+      const elapsed=Math.floor((Date.now()-started)/1000);
+      const counter=document.getElementById('taxOcrElapsedV2545');
+      const hint=document.getElementById('taxOcrWaitHintV2545');
+      if(counter)counter.textContent='Waktu proses: '+elapsed+' detik';
+      if(hint&&elapsed>=45)hint.textContent='Dokumen masih diproses. Mohon tetap menunggu dan jangan mengulang pembacaan; PDF scan berhalaman banyak dapat membutuhkan waktu lebih lama.';
+      else if(hint&&elapsed>=20)hint.textContent='Pembacaan masih berlangsung. Sistem sedang mengambil teks dan mengenali rincian dokumen.';
+    },1000);
+  }
   try{
     const res=await api('ocrTaxEvidenceDocument',{fileId:fid,idPeriode:st.id_periode,npsn:st.npsn,idSpj:idSpj});
     st.ocr=res;st.selected_id='';renderTaxReconciliationPanelV2523();
@@ -16649,18 +16693,24 @@ window.runTaxOcrV2523=async function(fileId,idSpj,isAutomatic){
     st.ocrErrors[fid]=errorText(e);
     await refreshTaxReconciliationPanelV2523();
     if(!isAutomatic)alert(errorText(e));
+  }finally{
+    if(st.ocrWaitTimer){clearInterval(st.ocrWaitTimer);st.ocrWaitTimer=null;}
+    st.ocrRunning=false;st.ocrRunningFile='';
+    document.getElementById('taxOcrWaitV2545')?.remove();
   }
 };
 window.saveTaxOcrV2523=async function(event){
   event.preventDefault();const st=window._taxReconV2523State;if(!st?.ocr)return;
   const o=st.ocr;
-  const payload={id_periode:st.id_periode,npsn:st.npsn,id_spj:o.id_spj,file_id:o.file_id,
+  const payload={id_tax_evidence:document.getElementById('taxOcrEvidenceId')?.value||o.id_tax_evidence||'',id_periode:st.id_periode,npsn:st.npsn,id_spj:o.id_spj,file_id:o.file_id,
     ocr_source:o.source,ocr_amount:document.getElementById('taxOcrAmountRaw').value,
     ocr_amount_label:document.getElementById('taxOcrAmountLabel').value,
     ocr_partial_amount:document.getElementById('taxOcrPartialAmount').value,
     ocr_document_kind:document.getElementById('taxOcrDocumentKind').value,
     ocr_parser_version:document.getElementById('taxOcrParserVersion').value,
     ocr_items_json:document.getElementById('taxOcrItems').value,
+    ocr_text:document.getElementById('taxOcrText')?.value||o.ocr_text||'',
+    ocr_warnings:document.getElementById('taxOcrWarnings')?.value||JSON.stringify(o.parsed.warnings||[]),
     verified_amount:Number(document.getElementById('taxOcrVerifiedAmount').value),
     verified_document_date:document.getElementById('taxOcrDate').value,
     verified_document_number:document.getElementById('taxOcrNumber').value,
@@ -16679,6 +16729,34 @@ window.saveTaxOcrV2523=async function(event){
     else alert('Hasil OCR tersimpan dan dikonfirmasi. Data BKU tidak diubah.');
   }catch(e){alert(errorText(e));}
 };
+
+window.editTaxOcrDraftV2545=function(id){
+  const st=window._taxReconV2523State;if(!st||!st.data)return;
+  const rec=(st.data.evidence||[]).find(x=>String(x.id_tax_evidence)===String(id));
+  if(!rec||String(rec.status)!=='OCR_DRAFT'){alert('Draft OCR tidak ditemukan atau sudah diverifikasi.');return;}
+  let items=[],warnings=[];
+  try{items=JSON.parse(String(rec.ocr_items_json||'[]'));if(!Array.isArray(items))items=[];}catch(_){items=[];}
+  try{warnings=JSON.parse(String(rec.ocr_warnings||'[]'));if(!Array.isArray(warnings))warnings=[];}catch(_){warnings=[];}
+  const asNullable=v=>(v===null||v===''||v===undefined)?null:Number(v);
+  st.ocr={
+    success:true,file_id:String(rec.file_id||''),id_spj:String(rec.id_spj||st.id_spj),
+    id_tax_evidence:String(rec.id_tax_evidence||''),source_type:String(rec.source_type||''),
+    source:String(rec.ocr_source||'GOOGLE_DRIVE_OCR_V3'),ocr_text:String(rec.ocr_text||''),
+    draft_save:{saved:true,status:'OCR_DRAFT',id_tax_evidence:String(rec.id_tax_evidence||''),item_count:Number(rec.ocr_item_count||items.length)},
+    parsed:{
+      amount:asNullable(rec.ocr_amount),amount_label:String(rec.ocr_amount_label||''),
+      partial_amount:asNullable(rec.ocr_partial_amount),document_kind:String(rec.ocr_document_kind||''),
+      parser_version:String(rec.ocr_parser_version||''),items:items,warnings:warnings,
+      document_date:String(rec.verified_document_date||''),
+      document_number:String(rec.verified_document_number||''),
+      tax_type:String(rec.verified_tax_type||''),masa_pajak:String(rec.verified_masa_pajak||''),
+      ntpn:String(rec.verified_ntpn||'')
+    }
+  };
+  st.selected_id='';
+  renderTaxReconciliationPanelV2523();
+};
+
 window.selectTaxEvidenceV2523=function(id){const st=window._taxReconV2523State;if(!st)return;st.selected_id=id;st.ocr=null;renderTaxReconciliationPanelV2523();};
 window.addTaxAllocationV2523=async function(event){
   event.preventDefault();const st=window._taxReconV2523State;if(!st?.selected_id)return;
