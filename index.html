@@ -16481,8 +16481,8 @@ window.openTaxReconciliationPanelV2523 = async function(idSpj,period,npsn){
   overlay.style.cssText='position:fixed;inset:0;background:rgba(15,23,42,.66);z-index:10040;display:flex;align-items:center;justify-content:center;padding:12px';
   overlay.innerHTML=`<div style="background:var(--surface,#fff);color:var(--text,#172033);width:min(1180px,100%);max-height:94vh;overflow:auto;border-radius:18px;padding:20px;box-shadow:0 24px 70px rgba(0,0,0,.25)">
     <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start">
-      <div><div class="muted" style="font-size:12px;font-weight:800;letter-spacing:.06em">SIMPEL SPJ · V25.2.4.3 TAX RECONCILIATION</div>
-      <h2 style="margin:4px 0">${title}</h2><div class="muted">Periode ${esc(p)} · Nominal dokumen diverifikasi sekolah dan ditautkan ke transaksi BKU.</div></div>
+      <div><div class="muted" style="font-size:12px;font-weight:800;letter-spacing:.06em">SIMPEL SPJ · V25.2.4.4 DOCUMENT-AWARE TAX OCR</div>
+      <h2 style="margin:4px 0">${title}</h2><div class="muted">Periode ${esc(p)} · ${spj==='SPJ-04'?'Buku Pajak dibaca sebagai referensi pungutan SIPLAH; tidak dicocokkan langsung dengan BKU.':'SSP dibaca sebagai bukti setoran dan dicocokkan dengan transaksi pembayaran BKU.'}</div></div>
       <button class="btn btn-light" type="button" onclick="closeTaxReconciliationPanelV2523()">✕ Tutup</button>
     </div>
     <div id="taxReconV2523Body" style="margin-top:16px">${loading('Memuat data pajak dan transaksi BKU...')}</div>
@@ -16506,8 +16506,8 @@ window.refreshTaxReconciliationPanelV2523=async function(){
       api('getTaxReconciliationWorkbench',{idPeriode:st.id_periode,npsn:st.npsn}),
       api('getApiBuildInfo',{})
     ]);
-    if(build.build_id!== 'V25.2.4.3_SIMPLIFIED_SCHOOL_AUTO_TAX')
-      throw new Error('Versi backend belum sesuai. Diharapkan V25.2.4.3_SIMPLIFIED_SCHOOL_AUTO_TAX, terdeteksi '+(build.build_id||'tidak terbaca')+'. Pastikan kode.gs dan index.html berasal dari paket yang sama dan deploy New version pada staging.');
+    if(build.build_id!== 'V25.2.4.4_DOCUMENT_AWARE_TAX_OCR')
+      throw new Error('Versi backend belum sesuai. Diharapkan V25.2.4.4_DOCUMENT_AWARE_TAX_OCR, terdeteksi '+(build.build_id||'tidak terbaca')+'. Pastikan kode.gs dan index.html berasal dari paket yang sama dan deploy New version pada staging.');
     st.data=data;
     renderTaxReconciliationPanelV2523();
 
@@ -16525,7 +16525,7 @@ window.refreshTaxReconciliationPanelV2523=async function(){
       }
     }
   }catch(e){
-    body.innerHTML=msg(errorText(e),'error')+`<div class="muted" style="margin-top:8px">Periksa apakah backend dan frontend V25.2.4.3 sudah dipasang pada deployment staging yang sama.</div>`;
+    body.innerHTML=msg(errorText(e),'error')+`<div class="muted" style="margin-top:8px">Periksa apakah backend dan frontend V25.2.4.4 sudah dipasang pada deployment staging yang sama.</div>`;
   }
 };
 window.renderTaxReconciliationPanelV2523=function(){
@@ -16548,16 +16548,17 @@ window.renderTaxReconciliationPanelV2523=function(){
       ${retry||badge(evidence?'Dikonfirmasi':failed?'Perlu dicoba ulang':'Otomatis',evidence?'success':failed?'warning':'info')}
     </div>`;
   }).join(''):'<div class="message warn">Belum ada PDF untuk komponen ini. Unggah PDF terlebih dahulu pada dokumen SPJ terkait.</div>';
-  const summaryHtml=`<div class="form-grid">
-    <div class="panel"><small class="muted">Pungutan pada BKU</small><h3>${fmtRupiah(sm.bku_pungut||0)}</h3></div>
+  const summaryHtml=source==='BUKU_PAJAK'?`<div class="form-grid">
+    <div class="panel"><small class="muted">Pungutan yang terbaca dari Buku Pajak</small><h3>${fmtRupiah(sm.buku_pajak_ocr_pungut||0)}</h3><div class="muted">Referensi SIPLAH/Arkas + Manual sesuai cakupan dokumen; bukan total seluruh pungutan sekolah.</div></div>
+    <div class="panel"><small class="muted">Dokumen Buku Pajak terverifikasi</small><h3>${fmtNum(evidences.length)}</h3><div class="muted">Hanya hasil OCR yang sudah dikonfirmasi sekolah.</div></div>
+  </div>`:`<div class="form-grid">
     <div class="panel"><small class="muted">Setoran pada BKU</small><h3>${fmtRupiah(sm.bku_setor||0)}</h3></div>
-    <div class="panel"><small class="muted">OCR Buku Pajak · pungutan</small><h3>${fmtRupiah(sm.buku_pajak_ocr_pungut||0)}</h3></div>
     <div class="panel"><small class="muted">OCR SSP Pusat · setoran</small><h3>${fmtRupiah(sm.ssp_pusat_ocr_setor||0)}</h3></div>
     <div class="panel"><small class="muted">OCR SSP Daerah · setoran</small><h3>${fmtRupiah(sm.ssp_daerah_ocr_setor||0)}</h3></div>
     <div class="panel"><small class="muted">Transaksi belum terklasifikasi</small><h3>${fmtNum(sm.unclassified_transaction_count||0)}</h3></div>
   </div>`;
   const a=sm.assessment||{},tr=a.transaction_traceability||{},dv=a.document_verification||{},cr=a.collection_review||{},pr=a.payment_review||{},ar=a.audit_review||{};
-  const assessmentHtml=`<div class="panel" style="margin-top:12px"><h3 style="margin-top:0">Aspek penilaian administrasi pajak</h3>
+  const assessmentHtml=source==='BUKU_PAJAK'?'':`<div class="panel" style="margin-top:12px"><h3 style="margin-top:0">Aspek penilaian administrasi pajak</h3>
     <div class="table-wrap"><table class="friendly-table"><thead><tr><th>Aspek</th><th>Indikator yang diperiksa</th><th>Hasil saat ini</th></tr></thead><tbody>
       <tr><td><b>1. Keterlacakan setoran BKU</b></td><td>Transaksi pembayaran pajak yang cocok dengan SSP</td><td>${fmtNum(tr.linked_setoran_transactions||0)} dari ${fmtNum(tr.total_setoran_transactions||0)} transaksi setoran</td></tr>
       <tr><td><b>2. Validitas bukti</b></td><td>Dokumen pajak yang sudah diperiksa dan dikonfirmasi sekolah</td><td>${fmtNum(dv.verified_tax_documents||0)} dari ${fmtNum(dv.uploaded_tax_documents||0)} dokumen</td></tr>
@@ -16574,7 +16575,7 @@ window.renderTaxReconciliationPanelV2523=function(){
     <div class="muted">Nominal dokumen merupakan agregat bukti unik. Periksa rincian berikut sebelum menyimpan.</div>
     <div class="table-wrap" style="max-height:230px;overflow:auto;margin-top:8px"><table class="friendly-table">
       <thead><tr><th>Jenis</th><th>Tanggal</th><th>Referensi</th><th>Nominal</th></tr></thead>
-      <tbody>${ocrItems.slice(0,20).map(x=>`<tr><td>${esc(x.tax_type||x.kind||'-')}</td><td>${esc(x.date||x.month||'-')}</td><td>${esc(x.billing_code||x.ntpn||x.receipt_number||'-')}</td><td>${x.amount==null?'<span class="muted">Belum terbaca</span>':fmtRupiah(x.amount)}</td></tr>`).join('')}</tbody>
+      <tbody>${ocrItems.slice(0,20).map(x=>`<tr><td>${esc(x.tax_type||x.kind||'-')}</td><td>${esc(x.date||x.month||'-')}</td><td>${esc(x.billing_code||x.ntpn||x.receipt_number||'-')}</td><td>${x.amount!=null?fmtRupiah(x.amount):(x.candidate_amount!=null||x.words_amount!=null||x.balance_delta!=null?`<span class="muted">Perlu konfirmasi</span><div class="muted">OCR: ${x.candidate_amount==null?'-':fmtRupiah(x.candidate_amount)} · Perubahan saldo: ${x.balance_delta==null?'-':fmtRupiah(x.balance_delta)} · Terbilang: ${x.words_amount==null?'-':fmtRupiah(x.words_amount)}</div>`:'<span class="muted">Belum terbaca</span>')}</td></tr>`).join('')}</tbody>
     </table></div>
     ${ocrItems.length>20?`<div class="muted">Menampilkan 20 dari ${fmtNum(ocrItems.length)} rincian. Seluruh rincian tetap disimpan sebagai metadata OCR.</div>`:''}
   </div>`:'';
@@ -16612,8 +16613,8 @@ window.renderTaxReconciliationPanelV2523=function(){
   const evidenceHtml=evidences.length?`<div class="table-wrap" style="margin-top:12px"><table class="friendly-table"><thead><tr><th>Dokumen</th><th>Status</th><th>${dir==='PUNGUT'?'Pungutan':'Setoran'}</th><th>${dir==='PUNGUT'?'Referensi':'Terkait BKU'}</th><th>Sisa</th><th></th></tr></thead><tbody>
     ${evidences.map(x=>`<tr><td>${esc(x.nama_file||'PDF')}<div class="muted">${esc(x.verified_document_number||'-')} · ${esc(formatDate(x.verified_document_date))}</div></td><td>${badge(x.status==='VERIFIED_BY_SCHOOL'?'DIVERIFIKASI SEKOLAH':'DRAFT','success')}</td><td>${fmtRupiah(x.verified_amount||0)}</td><td>${source==='BUKU_PAJAK'?'Referensi SIPLAH':fmtRupiah(x.allocated_total||0)}</td><td>${source==='BUKU_PAJAK'?'—':fmtRupiah(x.unallocated_amount||0)}</td><td><button class="btn btn-light btn-sm" type="button" onclick="selectTaxEvidenceV2523('${esc(x.id_tax_evidence)}')">Pilih</button></td></tr>`).join('')}
   </tbody></table></div>`:'<div class="message info" style="margin-top:12px">Belum ada dokumen OCR yang diverifikasi sekolah.</div>';
-  const candidateTx=(d.transactions||[]).filter(x=>x.tax_direction===dir&&(source==='BUKU_PAJAK'||(source==='SSP_PUSAT'?x.tax_class==='PUSAT':x.tax_class==='DAERAH')));
-  const allocHtml=selected&&source==='BUKU_PAJAK'?`<div class="message info" style="margin-top:12px">Buku Pembantu Pajak hanya menjadi referensi nilai pungutan SIPLAH. Dokumen ini tidak diperlakukan sebagai bukti setoran SSP dan tidak perlu dialokasikan sebagai pembayaran.</div>`:selected?`<details class="panel" style="margin-top:12px"><summary style="cursor:pointer;font-weight:700">Pencocokan manual dengan BKU (hanya jika diperlukan)</summary>
+  const candidateTx=source==='BUKU_PAJAK'?[]:(d.transactions||[]).filter(x=>x.tax_direction===dir&&(source==='SSP_PUSAT'?x.tax_class==='PUSAT':x.tax_class==='DAERAH'));
+  const allocHtml=source==='BUKU_PAJAK'?'':selected?`<details class="panel" style="margin-top:12px"><summary style="cursor:pointer;font-weight:700">Pencocokan manual dengan BKU (hanya jika diperlukan)</summary>
     <div style="padding-top:12px">
     <h3 style="margin-top:0">Hubungan bukti dengan transaksi BKU</h3>
     <div class="muted">${esc(selected.nama_file)} · Nominal terverifikasi ${fmtRupiah(selected.verified_amount||0)} · Sisa belum dialokasikan ${fmtRupiah(selected.unallocated_amount||0)}</div>
@@ -16633,7 +16634,7 @@ window.renderTaxReconciliationPanelV2523=function(){
     ${ocrHtml}
     <div class="panel" style="margin-top:12px"><h3 style="margin-top:0">Hasil verifikasi dokumen</h3>${evidenceHtml}</div>
     ${allocHtml}
-    <div class="muted" style="margin-top:12px">Transaksi BKU tetap menjadi sumber transaksi utama. OCR dan alokasi bukti tidak membuat atau mengubah transaksi BKU. ${candidateTx.some(x=>x.needs_class_review)?'Ada transaksi dengan klasifikasi pajak yang perlu diperiksa sebelum penilaian final.':''}</div>`;
+    <div class="muted" style="margin-top:12px">${source==='BUKU_PAJAK'?'Buku Pembantu Pajak merupakan referensi pungutan SIPLAH. Dokumen ini tidak membentuk transaksi BKU dan tidak dialokasikan sebagai setoran.':'SSP merupakan bukti pembayaran. Pencocokan dengan transaksi setoran BKU tidak membuat atau mengubah transaksi BKU.'} ${source!=='BUKU_PAJAK'&&candidateTx.some(x=>x.needs_class_review)?'Ada transaksi dengan klasifikasi pajak yang perlu diperiksa sebelum penilaian final.':''}</div>`;
 };
 window.runTaxOcrV2523=async function(fileId,idSpj,isAutomatic){
   const st=window._taxReconV2523State;if(!st)return;
