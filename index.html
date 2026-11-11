@@ -2204,9 +2204,9 @@ body[data-role] .content .spj-simple-details pre{white-space:pre-wrap;max-height
 <script>
 'use strict';
 
-const V10_VERSION = 'V25.2.4.14-RC4.4.2-WORKFLOW-RUNTIME-HOTFIX';
+const V10_VERSION = 'V25.2.4.14-RC4.4.5-AUDIT-BUGFIX';
 
-const FRONTEND_BUILD_ID = 'V25.2.4.14_RC4.4.2_WORKFLOW_RUNTIME_HOTFIX';
+const FRONTEND_BUILD_ID = 'V25.2.4.14_RC4.4.5_AUDIT_BUGFIX';
   const API_URL = 'https://script.google.com/macros/s/AKfycbyWvJXKr1QZ1zwbeJDoULTUihycj1771SsDlGFy8jnuF4i3DsEbHXlcJU48VDAg17fqDA/exec';
 
 
@@ -8675,7 +8675,6 @@ async function crosscheckView(){
 }
 
 window.runCrossCheck = async function(){
-  // Prevent repeated clicks while the same UI request is still running.
   if(window.__spjCrossCheckRunning) return;
   const p = $('#periodeSelect')?.value;
   const n = isSchool() ? ownNpsn() : $('#npsnSelect')?.value;
@@ -8689,47 +8688,75 @@ window.runCrossCheck = async function(){
   if(!btn || !out) return;
 
   window.__spjCrossCheckRunning = true;
-  const originalLabel = btn.textContent.trim() || 'Mulai Pemeriksaan SPJ';
+  const originalLabel = 'Mulai Pemeriksaan SPJ';
+  let outcomeUncertain = false;
   btn.disabled = true;
   btn.setAttribute('aria-busy','true');
-  btn.innerHTML = '⏳ Pemeriksaan sedang berjalan…';
+  btn.textContent = '⏳ Pemeriksaan sedang berjalan…';
   btn.classList.add('is-loading');
   state.selectedPeriode = p;
-  state.selectedNpsp = n;
+  state.selectedNpsn = n;
 
-  // Indeterminate progress only: do not invent percentages while the server is processing.
   out.innerHTML = `
     <div class="panel" style="margin-top:12px;border-left:4px solid var(--primary)" role="status" aria-live="polite">
-      <b>Permintaan pemeriksaan diterima</b>
+      <b>Permintaan pemeriksaan sedang diproses</b>
       <ol style="margin:10px 0 0;padding-left:20px">
         <li>Memvalidasi periode dan sekolah <span class="badge badge-success">Selesai</span></li>
         <li>Menjalankan pemeriksaan pada server <span class="badge badge-info">Sedang diproses</span></li>
-        <li>Menyiapkan ringkasan hasil <span class="muted">Menunggu</span></li>
+        <li>Menyimpan dan menyiapkan ringkasan <span class="muted">Menunggu</span></li>
       </ol>
-      <p class="muted" style="margin:10px 0 0">Mohon tunggu. Jangan menekan tombol berulang kali atau menutup halaman sampai hasil ditampilkan.</p>
+      <p class="muted" style="margin:10px 0 0">Mohon tunggu. Jangan menekan tombol berulang kali atau menutup halaman.</p>
     </div>`;
 
   try {
     const r = await api('jalankanCrossCheckSPJ', { idPeriode: p, npsn: n });
-    out.innerHTML = `
-      <div class="panel" style="margin-top:12px;border-left:4px solid var(--success)" role="status">
-        <b>Pemeriksaan SPJ selesai</b>
-        <p style="margin:8px 0">Jumlah temuan baru: <b>${fmtNum(r.jumlah_baru || r.count || 0)}</b></p>
-        <p class="muted" style="margin:0">Pemeriksaan selesai diproses server. Buka menu Temuan & Verifikasi untuk melihat rincian.</p>
-      </div>`;
+    if(!r || r.success !== true) throw new Error('Server tidak memberikan konfirmasi penyelesaian pemeriksaan.');
+
+    const count = fmtNum(r.jumlah_baru || 0);
+    if(r.partial){
+      const errors = Array.isArray(r.check_errors) ? r.check_errors : [];
+      const errorRows = errors.slice(0,10).map(x =>
+        `<li>Pemeriksaan bagian ${esc(x.check_index || '-')} : ${esc(x.message || 'Gagal diproses')}</li>`
+      ).join('');
+      out.innerHTML = `
+        <div class="panel" style="margin-top:12px;border-left:4px solid var(--warning)" role="alert">
+          <b>Pemeriksaan selesai sebagian — perlu ditindaklanjuti</b>
+          <p style="margin:8px 0">Temuan baru tersimpan: <b>${count}</b>. Pemeriksaan yang gagal: <b>${fmtNum(r.jumlah_pemeriksaan_gagal || errors.length)}</b>.</p>
+          ${errorRows ? `<details><summary>Lihat bagian yang gagal</summary><ol>${errorRows}</ol></details>` : ''}
+          <p class="muted" style="margin:8px 0 0">Jangan langsung mengulang seluruh pemeriksaan. Buka Temuan & Verifikasi dan periksa hasil yang sudah tersimpan terlebih dahulu.</p>
+        </div>`;
+    } else {
+      out.innerHTML = `
+        <div class="panel" style="margin-top:12px;border-left:4px solid var(--success)" role="status">
+          <b>Pemeriksaan SPJ selesai</b>
+          <p style="margin:8px 0">Temuan baru: <b>${count}</b></p>
+          <p class="muted" style="margin:0">Buka menu Temuan & Verifikasi untuk melihat rincian hasil.</p>
+        </div>`;
+    }
   } catch(e) {
+    outcomeUncertain = !!(e && e.code === 'NETWORK_FETCH_FAILED');
     out.innerHTML = `
       <div class="alert alert-danger" role="alert" style="margin-top:12px">
-        <b>Pemeriksaan belum berhasil diselesaikan.</b>
+        <b>${outcomeUncertain ? 'Status pemeriksaan belum dapat dipastikan.' : 'Pemeriksaan belum berhasil diselesaikan.'}</b>
         <p style="margin:6px 0">${esc(errorText(e))}</p>
-        <p class="muted" style="margin:0">Periksa koneksi dan status backend. Jangan mengulangi proses sebelum status permintaan sebelumnya dipastikan.</p>
+        <p class="muted" style="margin:0">${outcomeUncertain
+          ? 'Server mungkin masih memproses permintaan. Jangan langsung menjalankan ulang. Buka Temuan & Verifikasi atau muat ulang halaman untuk memeriksa hasil terlebih dahulu.'
+          : 'Periksa pesan kesalahan dan status dokumen sebelum mencoba kembali.'}</p>
+        <button type="button" class="btn btn-light btn-sm" style="margin-top:10px" onclick="loadView('temuan')">Periksa Temuan</button>
       </div>`;
   } finally {
     window.__spjCrossCheckRunning = false;
-    btn.disabled = false;
     btn.removeAttribute('aria-busy');
     btn.classList.remove('is-loading');
-    btn.textContent = originalLabel;
+    if(outcomeUncertain){
+      // Keep the submit action disabled in this page until the user checks
+      // persisted findings; a reload resets the page guard after reconciliation.
+      btn.disabled = true;
+      btn.textContent = 'Status belum dipastikan — periksa hasil dahulu';
+    } else {
+      btn.disabled = false;
+      btn.textContent = originalLabel;
+    }
   }
 };
 
