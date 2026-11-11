@@ -2204,9 +2204,9 @@ body[data-role] .content .spj-simple-details pre{white-space:pre-wrap;max-height
 <script>
 'use strict';
 
-const V10_VERSION = 'V25.2.4.14-RC4.4.5-AUDIT-BUGFIX';
+const V10_VERSION = 'V25.2.4.14-RC4.4.6-HISTORICAL-DATA-READ-FIX';
 
-const FRONTEND_BUILD_ID = 'V25.2.4.14_RC4.4.5_AUDIT_BUGFIX';
+const FRONTEND_BUILD_ID = 'V25.2.4.14_RC4.4.6_HISTORICAL_DATA_READ_FIX';
   const API_URL = 'https://script.google.com/macros/s/AKfycbyWvJXKr1QZ1zwbeJDoULTUihycj1771SsDlGFy8jnuF4i3DsEbHXlcJU48VDAg17fqDA/exec';
 
 
@@ -11941,12 +11941,8 @@ async function renderMonitoringGlobalView() {
       select.innerHTML = available.map(x=>`<option value="${esc(x.id_periode)}">${esc(x.nama_periode||x.id_periode)}${x.tahun?' · '+esc(x.tahun):''}${cfgActive?' · Aktif':''}</option>`).join('');
       if(!available.length) select.innerHTML = '<option value="">Belum ada periode</option>';
     }
-    if(!window._cachedGlobalMonGlobal){
-      const res = await api('getRekapMonitoringGlobal',{idPeriode:cfgActive});
-      window._cachedGlobalMonGlobal = res.data || [];
-      window._cachedGlobalMonGlobalGroups = res.pengawas_groups || [];
-    }
-    window._cachedGlobalMon = window._cachedGlobalMonGlobal;
+    // Base monitoring is period-scoped; do not reuse rows from another period.
+    window._cachedGlobalMon = window._cachedGlobalMonGlobal || [];
 
     let period = String(state.selectedPeriode || (available[0] && available[0].id_periode) || '');
     if(period && !available.some(x=>String(x.id_periode)===period)) period=String((available[0]||{}).id_periode||'');
@@ -11971,7 +11967,7 @@ window.refreshMonitoringProgressPeriod = async function(period,forceRefresh){
   if(!p){
     window._monitoringReadinessByNpsn={};
     window._monitoringReadinessPeriod='';
-    window._cachedGlobalMon=window._cachedGlobalMonGlobal||[];
+    window._cachedGlobalMon=[];
     renderGlobalMonTable(window._cachedGlobalMon);
     return;
   }
@@ -11979,10 +11975,11 @@ window.refreshMonitoringProgressPeriod = async function(period,forceRefresh){
   const area=$('#globalMonContent');
   if(area)area.innerHTML=loading('Menghitung progres administrasi dan pemeriksaan periode...');
   try{
-    if(!window._cachedGlobalMonGlobal){
+    if(forceRefresh || window._cachedGlobalMonPeriod !== p || !window._cachedGlobalMonGlobal){
       const base=await api('getRekapMonitoringGlobal',{idPeriode:p});
       window._cachedGlobalMonGlobal=base.data||[];
       window._cachedGlobalMonGlobalGroups=base.pengawas_groups||[];
+      window._cachedGlobalMonPeriod=p;
     }
     const matrix=await api('getAssessmentReadinessMatrix',{idPeriode:p});
     const readinessRows=Array.isArray(matrix.data)?matrix.data:[];
