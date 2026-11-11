@@ -4074,7 +4074,7 @@ window.renderBkuTaxManualPanel=function(){
   const st=window._bkuTaxManualPanelState,body=document.getElementById('bkuTaxManualPanelBody');
   if(!st||!body)return;
   const school=st.role==='SEKOLAH',reviewer=st.role==='PENGAWAS',sm=st.summary||{};
-  const rows=(Array.isArray(st.data)?st.data:[]).filter(Boolean).map((x,i)=>{
+  const rows=(st.data||[]).map((x,i)=>{
     const status=String(x.status_verifikasi||'DRAFT').toUpperCase();
     const statusColor=status==='DISETUJUI'?'success':(status==='DITOLAK'?'danger':(status==='PERLU_PERBAIKAN'?'warning':'info'));
     const amount=Number(x.nilai_pungutan||0)+Number(x.nilai_setoran||0)+Number(x.nilai_koreksi||0);
@@ -4304,9 +4304,7 @@ window.renderEvidenceCoveragePanel=function(){
   const d=st.data,sm=d.summary||{},school=st.role==='SEKOLAH',reviewer=st.role==='PENGAWAS';
   const docs=(d.documents||[]).filter(x=>st.type==='INVOICE'?x.id_spj==='SPJ-06':st.type==='SUPPORT'?x.id_spj==='SPJ-07':x.id_spj==='SPJ-10');
   const regs=(d.evidence||[]).filter(x=>x.evidence_type===st.type);
-  const safeDocs=(Array.isArray(docs)?docs:[]).filter(Boolean);
-  const safeRegs=(Array.isArray(regs)?regs:[]).filter(Boolean);
-  const available=safeDocs.filter(x=>!safeRegs.some(r=>r.file_id===x.file_id&&r.status_verifikasi!=='DITOLAK'));
+  const available=docs.filter(x=>!regs.some(r=>r.file_id===x.file_id&&r.status_verifikasi!=='DITOLAK'));
   const selected=regs.find(x=>x.id_evidence===st.selected_id)||null;
   const statusColor=s=>s==='DISETUJUI'?'success':s==='DITOLAK'?'danger':s==='PERLU_PERBAIKAN'?'warning':'info';
   const summaryHtml=st.type==='INVOICE'
@@ -4351,7 +4349,7 @@ window.renderEvidenceCoveragePanel=function(){
       ${selected.catatan_review?`<div class="message warn" style="margin-top:10px">Catatan Pengawas: ${esc(selected.catatan_review)}</div>`:''}
       ${reviewer&&selected.status_verifikasi==='DIAJUKAN'?`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px"><button class="btn btn-primary" onclick="reviewEvidenceRegistrationFromUi('${esc(selected.id_evidence)}','DISETUJUI')">Setujui</button><button class="btn btn-light" onclick="reviewEvidenceRegistrationFromUi('${esc(selected.id_evidence)}','PERLU_PERBAIKAN')">Minta perbaikan</button><button class="btn btn-light" onclick="reviewEvidenceRegistrationFromUi('${esc(selected.id_evidence)}','DITOLAK')">Tolak</button></div>`:''}
     </div>`:'';
-  const registryTable=`<div class="table-wrap" style="margin-top:12px"><table class="friendly-table"><thead><tr><th>Dokumen</th><th>Tanggal</th><th>Nilai dokumen</th><th>Alokasi</th><th>Status</th><th>Aksi</th></tr></thead><tbody>${safeRegs.map(r=>`<tr><td>${esc(r.nama_file)}<div class="muted">${esc(r.jenis_dokumen)} · ${esc(r.nomor_dokumen||'-')}</div></td><td>${esc(String(r.tanggal_dokumen||'').slice(0,10))}</td><td>${r.evidence_type==='INVOICE'?fmtRupiah(r.nilai_dokumen):'Non-moneter'}</td><td>${r.evidence_type==='INVOICE'?fmtRupiah(r.allocated_total||0):`${fmtNum((r.allocations||[]).length)} transaksi`}</td><td>${badge(r.status_verifikasi,statusColor(r.status_verifikasi))}</td><td><button class="btn btn-light btn-sm" onclick="selectEvidenceRegistration('${esc(r.id_evidence)}')">Buka</button></td></tr>`).join('')||emptyRow(6,'Belum ada dokumen yang diregistrasikan.')}</tbody></table></div>`;
+  const registryTable=`<div class="table-wrap" style="margin-top:12px"><table class="friendly-table"><thead><tr><th>Dokumen</th><th>Tanggal</th><th>Nilai dokumen</th><th>Alokasi</th><th>Status</th><th>Aksi</th></tr></thead><tbody>${regs.map(r=>`<tr><td>${esc(r.nama_file)}<div class="muted">${esc(r.jenis_dokumen)} · ${esc(r.nomor_dokumen||'-')}</div></td><td>${esc(String(r.tanggal_dokumen||'').slice(0,10))}</td><td>${r.evidence_type==='INVOICE'?fmtRupiah(r.nilai_dokumen):'Non-moneter'}</td><td>${r.evidence_type==='INVOICE'?fmtRupiah(r.allocated_total||0):`${fmtNum((r.allocations||[]).length)} transaksi`}</td><td>${badge(r.status_verifikasi,statusColor(r.status_verifikasi))}</td><td><button class="btn btn-light btn-sm" onclick="selectEvidenceRegistration('${esc(r.id_evidence)}')">Buka</button></td></tr>`).join('')||emptyRow(6,'Belum ada dokumen yang diregistrasikan.')}</tbody></table></div>`;
   body.innerHTML=summaryHtml+registerForm+registryTable+selectedPanel;
   const date=document.getElementById('evidenceDate');if(date&&!date.value)date.value=st.id_periode.match(/^PER-(\d{4})-(\d{2})$/)?`${st.id_periode.slice(4,8)}-${st.id_periode.slice(9,11)}-01`:'';
   const invoiceFile=document.getElementById('evidenceFile');
@@ -11555,16 +11553,14 @@ window.bukaPenilaianUntukKajiUlang=async function(idAsesmen){
 function renderAssessment(a, indicators, indicatorResp){
   indicatorResp=indicatorResp||{};
   const interactiveBtn=`<button class="btn btn-light" onclick="loadView('pdfInteraktif')">📄 Buka PDF & Penilaian Interaktif</button>`;
-  const safeIndicators=(Array.isArray(indicators)?indicators:[]).filter(Boolean);
-  const invalidIndicatorRows=Array.isArray(indicators)?indicators.length-safeIndicators.length:0;
-  const applicable=safeIndicators.filter(x=>x.berlaku!==false);
+  const applicable=indicators.filter(x=>x.berlaku!==false);
   const totalWeight=applicable.reduce((s,x)=>s+Math.max(0,Number(x.bobot_efektif??x.bobot)||0),0);
   const earned=applicable.reduce((s,x)=>s+((Number(x.skor)||0)/4)*Math.max(0,Number(x.bobot_efektif??x.bobot)||0),0);
   const preview=Number((totalWeight>0?(earned/totalWeight)*100:0).toFixed(2));
   const pendingValue=Number(indicatorResp.pending_value_verifications||0);
   const bkuReady=indicatorResp.bku_ready!==false;
-  const done=safeIndicators.filter(x=>String(x.sumber_penilaian||'').toUpperCase()==='KOREKSI_MANUAL').length;
-  const rows=safeIndicators.map(d=>{
+  const done=indicators.filter(x=>String(x.sumber_penilaian||'').toUpperCase()==='KOREKSI_MANUAL').length;
+  const rows=indicators.map(d=>{
     const manual=String(d.sumber_penilaian||'').toUpperCase()==='KOREKSI_MANUAL';
     const pending=Number(d.temuan_belum_verifikasi||0);
     const na=d.berlaku===false;
@@ -17006,7 +17002,7 @@ window.renderTaxReconciliationPanelV2523=function(){
     <p class="muted">Indikator pemeriksaan ini tidak mengubah skor berbobot resmi.</p>
   </details>`;
 
-  const sipInvoices=(Array.isArray(unified.siplah?.invoices)?unified.siplah.invoices:[]).filter(Boolean);
+  const sipInvoices=unified.siplah?.invoices||[];
   const sipEditing=sipInvoices.find(x=>String(x.id_tax_evidence)===String(st.siplahEditingId||''));
   const sipRows=sipInvoices.map(x=>{
     const paid=x.status_pajak==='DIBAYAR_DAN_PAJAK_DITANGANI_PPMSE';
