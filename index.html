@@ -4950,20 +4950,18 @@ window._smartUploadFileV248_ = async function(file,idSpj,periode,onProgress,uplo
   const fingerprint=[npsn,periode,idSpj,targetType,targetRecordId,file.name,file.size,file.lastModified||0,mime].join('|');
   let idempotencyKey=window.__spjUploadIdemV248[fingerprint]||'';
   if(!idempotencyKey){
-    // Fingerprint deterministik lintas tab/perangkat untuk mencegah file identik
-    // diproses dua kali akibat klik berulang atau retry.
+    // Hash the complete file. Sampling only the first/last 64 KB can collide
+    // when two files share metadata and boundary bytes but differ in the middle.
     try{
-      const first=new Uint8Array(await file.slice(0,65536).arrayBuffer());
-      const last=new Uint8Array(await file.slice(Math.max(0,file.size-65536),file.size).arrayBuffer());
-      const metaBytes=new TextEncoder().encode(fingerprint);
-      const combined=new Uint8Array(metaBytes.length+first.length+last.length);
-      combined.set(metaBytes,0);combined.set(first,metaBytes.length);combined.set(last,metaBytes.length+first.length);
-      const digest=await crypto.subtle.digest('SHA-256',combined);
+      if(!window.crypto||!crypto.subtle)throw new Error('WebCrypto tidak tersedia.');
+      const fullBytes=await file.arrayBuffer();
+      const digest=await crypto.subtle.digest('SHA-256',fullBytes);
       idempotencyKey='sha256-'+Array.from(new Uint8Array(digest)).map(x=>x.toString(16).padStart(2,'0')).join('');
     }catch(e){
-      let h=2166136261,s=fingerprint+'|'+String(file.size);
-      for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}
-      idempotencyKey='fnv-'+(h>>>0).toString(16)+'-'+btoa(unescape(encodeURIComponent(s))).slice(0,48);
+      // Safe fallback: unique key avoids mixing different file contents.
+      // Resume across reload is not guaranteed in browsers without WebCrypto.
+      idempotencyKey='upload-'+(window.crypto&&crypto.randomUUID?crypto.randomUUID():
+        Date.now().toString(36)+'-'+Math.random().toString(36).slice(2)+'-'+Math.random().toString(36).slice(2));
     }
     window.__spjUploadIdemV248[fingerprint]=idempotencyKey;
   }
@@ -7787,8 +7785,8 @@ function renderWorkflowPage(r){
     const x=resolved[id]||{},meta=workflowPhaseMeta(x.phase||x.state),row=x.row||{};
     let dates='Jendela tanggal opsional belum diatur';
     if(row.mulai_utama) dates=`${fmtWorkflowDate(row.mulai_utama)} – ${fmtWorkflowDate(row.selesai_utama)}`+(row.selesai_toleransi?` · toleransi ${fmtWorkflowDate(row.selesai_toleransi)}`:'');
-    const isActive=id===activeStage;
-    const btn=isDinas()&&!isActive?`<button class="btn btn-light btn-sm" onclick="setWorkflowActiveStageUi('${id}')">Aktifkan tahap</button>`:'';
+    const isActive=String(x.state||'LOCKED')==='ACTIVE';
+    const btn=isDinas()?`<button class="btn ${isActive?'btn-light':'btn-primary'} btn-sm" onclick="setWorkflowStageActivationUi('${id}',${isActive?'false':'true'})">${isActive?'Nonaktifkan tahap':'Aktifkan tahap'}</button>`:'';
     return `<article class="workflow-stage-card ${meta.cls}"><div class="workflow-stage-top"><small>${String(idx+1).padStart(2,'0')} • ${esc(id.replaceAll('_',' '))}</small><span class="workflow-status ${meta.cls}">${esc(meta.label)}</span></div><h3>${esc(label)}</h3><p>${esc(desc)}</p><div class="workflow-stage-date">${esc(dates)}</div>${row.target_type?`<div class="workflow-stage-target">${esc(workflowTargetLabel(row))}</div>`:''}${btn?`<div style="margin-top:10px">${btn}</div>`:''}</article>`;
   }).join('');
   const activeLabel=WORKFLOW_STAGE_UI.find(x=>x[0]===activeStage)?.[1]||activeStage;
@@ -7808,23 +7806,20 @@ function renderWorkflowPage(r){
     <section class="panel workflow-lock-card ${lock.locked?'locked':'open'}"><div><small>PENUGASAN PENGAWAS</small><h3>${lock.locked?'🔒 Penugasan dikunci':'🔓 Penugasan belum dikunci'}</h3><p>${esc(lock.reason||'Kunci penugasan menjadi kontrol tambahan selama tahap Persiapan.')}</p></div><button class="btn ${lock.locked?'btn-light':'btn-primary'}" onclick="toggleDelegationLockFromWorkflow(${lock.locked?'false':'true'})">${lock.locked?'Buka Kunci':'Kunci Penugasan'}</button></section>`;
 }
 
-window.setWorkflowActiveStageUi=async function(stage){
-  const current=String(window._workflowOverview?.active_stage||'').toUpperCase();
-  if(stage===current)return;
-  const reason=prompt(`Aktifkan tahap ${stage}?
+window.setWorkflowStageActivationUi=async function(stage,enabled){
+  const action=enabled?'mengaktifkan':'menonaktifkan';
+  const reason=prompt(`${enabled?'Aktifkan':'Nonaktifkan'} tahap ${stage}?
 
-Masukkan alasan/catatan perubahan tahap:`, '');
+Tahap lain tidak akan berubah. Masukkan alasan perubahan (minimal 10 karakter):`,'');
   if(reason===null)return;
   try{
-    await api('setWorkflowActiveStage',{stage,reason:reason.trim()});
-    toast(`Tahap ${stage} sekarang ACTIVE.`,'ok');
+    await api('setWorkflowStageActivation',{stage,enabled:enabled,reason:reason.trim(),tahun:Number(window._workflowSelectedYear||new Date().getFullYear())});
+    toast(`Tahap ${stage} ${enabled?'ACTIVE':'LOCKED'}. Tahap lain tetap seperti semula.`,'ok');
     await jadwalTahapanView();
   }catch(e){toast(errorText(e),'error',5000);}
-}
-
-window.saveWorkflowActiveYear=async function(){
-  const y=Number($('#workflowActiveYear')?.value); if(!y)return;
-  try{ await api('setWorkflowActiveYear',{tahun:y}); window._workflowSelectedYear=y; toast('Tahun operasional diperbarui.','ok'); await jadwalTahapanView(); }catch(e){toast(errorText(e),'error');}
+};
+window.setWorkflowActiveStageUi=async function(stage){
+  return window.setWorkflowStageActivationUi(stage,true);
 };
 function workflowTargetOptionText(t){
   const labels={
