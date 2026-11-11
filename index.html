@@ -1,5 +1,3 @@
-
-
 <!-- SIMPEL SPJ V9 FRONTEND: login mechanism intentionally preserved unchanged. -->
 <!DOCTYPE html>
 
@@ -4696,7 +4694,7 @@ async function renderDokumenTable(){
     const categoryHtml=categoryOrder.filter(k=>categoryMap[k]?.length).map((key,idx)=>{
       const entries=categoryMap[key];
       const uploadedCount=entries.filter(z=>z.item.d && z.item.d.assessment_eligible!==false && String(z.item.d.status||z.item.d.status_verifikasi||'').toUpperCase()!=='N/A').length;
-      const naCount=entries.filter(z=>String(z.item.d?.status||z.item.d.status_verifikasi||'').toUpperCase()==='N/A' && z.item.d.assessment_eligible!==false).length;
+      const naCount=entries.filter(z=>{const d=z.item?.d;return !!d && String(d.status||d.status_verifikasi||'').toUpperCase()==='N/A' && d.assessment_eligible!==false;}).length;
       const archiveCount=entries.filter(z=>z.item.d && z.item.d.assessment_eligible===false && !!z.item.d.file_id).length;
       const issueCount=entries.filter(z=>!z.item.d || z.item.d.assessment_eligible===false || upper(z.item.d.status||z.item.d.status_verifikasi||'')==='PERLU_PERBAIKAN').length;
       const stateText=archiveCount?`${archiveCount} arsip perlu konfirmasi`:(issueCount?`${issueCount} perlu tindakan`:`${uploadedCount+naCount} tersedia`);
