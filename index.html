@@ -8662,33 +8662,74 @@ async function crosscheckView(){
         ${schoolOptions}
       </div>
       <div class="toolbar">
-        <button class="btn btn-primary" onclick="runCrossCheck()">Jalankan Cross-check</button>
+        <button id="runCrossCheckBtn" class="btn btn-primary" type="button" onclick="runCrossCheck()">
+          Mulai Pemeriksaan SPJ
+        </button>
       </div>
-      <div id="crossResult"></div>
+      <div id="crossResult" aria-live="polite">
+        ${msg('Pilih periode dan sekolah, kemudian tekan Mulai Pemeriksaan SPJ. Proses dan hasilnya akan ditampilkan di sini.','info')}
+      </div>
     </div>`;
 
   $('#periodeSelect').value = state.selectedPeriode;
 }
 
 window.runCrossCheck = async function(){
-  const p = $('#periodeSelect').value;
+  // Prevent repeated clicks while the same UI request is still running.
+  if(window.__spjCrossCheckRunning) return;
+  const p = $('#periodeSelect')?.value;
   const n = isSchool() ? ownNpsn() : $('#npsnSelect')?.value;
-  
+  const btn = $('#runCrossCheckBtn');
+  const out = $('#crossResult');
+
   if(!p || !n){
-    toast('Periode dan sekolah wajib dipilih terlebih dahulu.', 'warning');
+    toast('Pilih periode dan sekolah terlebih dahulu.', 'warning');
     return;
   }
-  
+  if(!btn || !out) return;
+
+  window.__spjCrossCheckRunning = true;
+  const originalLabel = btn.textContent.trim() || 'Mulai Pemeriksaan SPJ';
+  btn.disabled = true;
+  btn.setAttribute('aria-busy','true');
+  btn.innerHTML = '⏳ Pemeriksaan sedang berjalan…';
+  btn.classList.add('is-loading');
   state.selectedPeriode = p;
-  state.selectedNpsn = n;
-  const out = $('#crossResult'); 
-  out.innerHTML = loading('Menjalankan pemeriksaan cross-check...');
-  
+  state.selectedNpsp = n;
+
+  // Indeterminate progress only: do not invent percentages while the server is processing.
+  out.innerHTML = `
+    <div class="panel" style="margin-top:12px;border-left:4px solid var(--primary)" role="status" aria-live="polite">
+      <b>Permintaan pemeriksaan diterima</b>
+      <ol style="margin:10px 0 0;padding-left:20px">
+        <li>Memvalidasi periode dan sekolah <span class="badge badge-success">Selesai</span></li>
+        <li>Menjalankan pemeriksaan pada server <span class="badge badge-info">Sedang diproses</span></li>
+        <li>Menyiapkan ringkasan hasil <span class="muted">Menunggu</span></li>
+      </ol>
+      <p class="muted" style="margin:10px 0 0">Mohon tunggu. Jangan menekan tombol berulang kali atau menutup halaman sampai hasil ditampilkan.</p>
+    </div>`;
+
   try {
     const r = await api('jalankanCrossCheckSPJ', { idPeriode: p, npsn: n });
-    out.innerHTML = msg(`Cross-check selesai. ${fmtNum(r.jumlah_baru || r.count || 0)} temuan baru berhasil diidentifikasi.`, 'ok');
+    out.innerHTML = `
+      <div class="panel" style="margin-top:12px;border-left:4px solid var(--success)" role="status">
+        <b>Pemeriksaan SPJ selesai</b>
+        <p style="margin:8px 0">Jumlah temuan baru: <b>${fmtNum(r.jumlah_baru || r.count || 0)}</b></p>
+        <p class="muted" style="margin:0">Pemeriksaan selesai diproses server. Buka menu Temuan & Verifikasi untuk melihat rincian.</p>
+      </div>`;
   } catch(e) {
-    out.innerHTML = msg(errorText(e));
+    out.innerHTML = `
+      <div class="alert alert-danger" role="alert" style="margin-top:12px">
+        <b>Pemeriksaan belum berhasil diselesaikan.</b>
+        <p style="margin:6px 0">${esc(errorText(e))}</p>
+        <p class="muted" style="margin:0">Periksa koneksi dan status backend. Jangan mengulangi proses sebelum status permintaan sebelumnya dipastikan.</p>
+      </div>`;
+  } finally {
+    window.__spjCrossCheckRunning = false;
+    btn.disabled = false;
+    btn.removeAttribute('aria-busy');
+    btn.classList.remove('is-loading');
+    btn.textContent = originalLabel;
   }
 };
 
