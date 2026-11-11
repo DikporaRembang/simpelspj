@@ -3799,12 +3799,14 @@ async function periodeSelect(id = 'periodeSelect', required = true, defaultMode 
   cachedPeriodeList = Array.isArray(res?.data) ? res.data : [];
   const configuredFrequency = String(res?.frekuensi || '').toUpperCase();
   const configuredYear = Number(res?.tahun || new Date().getFullYear());
-  const periods = cachedPeriodeList.filter(p =>
+  const activePeriodId=String(res?.periode_aktif||'');
+  let periods = cachedPeriodeList.filter(p =>
     Number(p.tahun) === configuredYear &&
     (!configuredFrequency || String(p.frekuensi || '').toUpperCase() === configuredFrequency)
   );
+  if(activePeriodId)periods=periods.filter(p=>String(p.id_periode)===activePeriodId);
   const label = configuredFrequency === 'BULANAN' ? 'Bulanan' : configuredFrequency === 'TRIWULANAN' ? 'Triwulanan' : configuredFrequency === 'SEMESTERAN' ? 'Semesteran' : configuredFrequency === 'TAHUNAN' ? 'Tahunan' : 'Belum dikonfigurasi';
-  const optionsHtml = periods.map(p => `<option value="${esc(p.id_periode)}">${esc(p.nama_periode || p.id_periode)}</option>`).join('');
+  const optionsHtml = periods.map(p => `<option value="${esc(p.id_periode)}">${esc(p.nama_periode || p.id_periode)}${activePeriodId?' · Periode aktif':''}</option>`).join('');
   return `
     <div>
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
@@ -3813,7 +3815,7 @@ async function periodeSelect(id = 'periodeSelect', required = true, defaultMode 
       </div>
       <select id="${id}" ${required ? 'required' : ''}>
         <option value="">-- Pilih Periode --</option>
-        ${optionsHtml || '<option value="" disabled>DINAS belum menentukan frekuensi penilaian</option>'}
+        ${optionsHtml || '<option value="" disabled>DINAS belum menentukan periode aktif penilaian</option>'}
       </select>
     </div>`;
 }
@@ -4105,7 +4107,7 @@ window.renderBkuTaxManualPanel=function(){
         <div class="field"><label>Referensi BKU (opsional)</label><input id="taxManualBkuRef" placeholder="Contoh: halaman 20 / baris transaksi"></div>
         <div class="field"><label>Alasan pengisian manual</label><textarea id="taxManualReason" rows="2" required minlength="10" placeholder="Mengapa transaksi perlu ditambahkan secara manual?"></textarea></div>
         <div class="field"><label>Alasan jika belum ada bukti (opsional)</label><textarea id="taxManualNoEvidence" rows="2" placeholder="Wajib diisi jika akan mengajukan tanpa file bukti"></textarea></div>
-        <div class="field"><label>Bukti pendukung (PDF/JPG/PNG, maksimal 10 MB per file)</label><input id="taxManualFile" type="file" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"></div>
+        <div class="field"><label>Bukti pendukung (PDF/JPG/PNG, maksimal 10 MB per file)</label><input id="taxManualFile" type="file" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"><div id="bkuTaxManualUploadProgress"></div></div>
         <div id="taxManualWarning" class="message warn" style="display:none;margin:8px 0"></div>
         <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap"><button class="btn btn-light" type="button" onclick="resetBkuTaxManualForm()">Kosongkan</button><button class="btn btn-primary" type="submit">Simpan Draft</button></div>
       </form>
@@ -4193,13 +4195,12 @@ window.saveBkuTaxManualDraftFromUi=async function(event){
     document.getElementById('taxManualId').value=idManual;
     const file=document.getElementById('taxManualFile')?.files?.[0];
     if(file){
-      if(file.size>10*1024*1024)throw new Error('Bukti pajak maksimal 10 MB per file.');
-      const base64=await new Promise((resolve,reject)=>{
-        const reader=new FileReader();reader.onload=()=>resolve(String(reader.result||'').split(',')[1]||'');reader.onerror=()=>reject(new Error('File gagal dibaca.'));
-        reader.readAsDataURL(file);
-      });
-      const inferredMime=file.type||(/\.pdf$/i.test(file.name)?'application/pdf':(/\.png$/i.test(file.name)?'image/png':'image/jpeg'));
-      await api('uploadBkuTaxManualEvidence',{data:{id_pajak_manual:idManual,nama_file:file.name,mime_type:inferredMime,base64:base64}});
+      const progressBox=document.getElementById('bkuTaxManualUploadProgress');
+      if(progressBox)progressBox.innerHTML='<div class="message info">SIMPEL SPJ sedang mengunggah lampiran pajak secara bertahap. Mohon tunggu dan jangan menekan tombol berulang kali.</div><progress id="bkuTaxManualUploadBar" max=100 value=0 style="width:100%"></progress><small id="bkuTaxManualUploadText">Menyiapkan unggahan...</small>';
+      await window._smartUploadFileV248_(file,'TAX_MANUAL_EVIDENCE',st.id_periode,p=>{
+        const bar=document.getElementById('bkuTaxManualUploadBar'),txt=document.getElementById('bkuTaxManualUploadText');
+        if(bar)bar.value=p.percent||0;if(txt)txt.textContent=p.message||'Memproses...';
+      },{target_type:'TAX_MANUAL_EVIDENCE',target_record_id:idManual});
       document.getElementById('taxManualFile').value='';
     }
     alert('Draft Buku Pembantu Pajak berhasil disimpan. Data belum masuk penilaian.');
@@ -4241,11 +4242,12 @@ window.reviewBkuTaxNihilFromUi=async function(idDeclaration,decision){
 window.openBkuTaxManualEvidence=async function(idEvidence){
   const st=window._bkuTaxManualPanelState;if(!st)return;
   try{
-    const res=await api('getBkuTaxManualEvidenceBase64',{idEvidence:idEvidence,idPeriode:st.id_periode,npsn:st.npsn});
-    const raw=atob(res.base64),bytes=new Uint8Array(raw.length);
-    for(let i=0;i<raw.length;i++)bytes[i]=raw.charCodeAt(i);
-    const blob=new Blob([bytes],{type:res.mime_type}),url=URL.createObjectURL(blob);
-    const a=document.createElement('a');a.href=url;a.target='_blank';a.rel='noopener';a.download=res.nama_file||'bukti-pajak';document.body.appendChild(a);a.click();a.remove();
+    const first=await api('getBkuTaxManualEvidenceChunk',{data:{id_evidence:idEvidence,id_periode:st.id_periode,npsn:st.npsn,offset:0}});
+    const parts=[first.base64||''];let offset=Number(first.next_offset)||0,total=Number(first.total_bytes)||0;
+    while(offset<total){const part=await api('getBkuTaxManualEvidenceChunk',{data:{id_evidence:idEvidence,id_periode:st.id_periode,npsn:st.npsn,offset:offset}});parts.push(part.base64||'');offset=Number(part.next_offset)||total;}
+    const chunks=parts.map(b64=>{const raw=atob(b64),a=new Uint8Array(raw.length);for(let i=0;i<raw.length;i++)a[i]=raw.charCodeAt(i);return a;});
+    const blob=new Blob(chunks,{type:first.mime_type}),url=URL.createObjectURL(blob);
+    const a=document.createElement('a');a.href=url;a.target='_blank';a.rel='noopener';a.download=first.nama_file||'bukti-pajak';document.body.appendChild(a);a.click();a.remove();
     setTimeout(()=>URL.revokeObjectURL(url),60000);
   }catch(e){alert(errorText(e));}
 };
@@ -4294,9 +4296,9 @@ window.refreshEvidenceCoveragePanel=async function(){
       api('getEvidenceCoverageWorkbench',{idPeriode:st.id_periode,npsn:st.npsn}),
       api('getApiBuildInfo',{})
     ]);
-    if(build.build_id!=='V25.2.4.10_CANONICAL_BKU_PERIOD_DATE_DUPLICATE_FIX')throw new Error('Versi backend tidak sesuai. Diharapkan V25.2.4.10_CANONICAL_BKU_PERIOD_DATE_DUPLICATE_FIX, terdeteksi '+build.build_id+'. Periksa deployment /exec.');
+    if(build.build_id!=='V25.2.4.12_UNIFIED_PERIOD_TAX_EVIDENCE')throw new Error('Versi backend tidak sesuai. Diharapkan V25.2.4.12_UNIFIED_PERIOD_TAX_EVIDENCE, terdeteksi '+build.build_id+'. Periksa deployment /exec.');
     st.data=res;renderEvidenceCoveragePanel();
-  }catch(e){body.innerHTML=msg(errorText(e),'error')+`<div class="muted" style="margin-top:8px">Jika muncul "Action tidak dikenal", backend /exec yang aktif belum memuat router V25.2.4.10. Perbarui kode.gs dan index.html dari paket yang sama, simpan, deploy New version pada deployment staging yang sama, dan pastikan API_URL frontend menunjuk ke URL /exec tersebut.</div>`;}
+  }catch(e){body.innerHTML=msg(errorText(e),'error')+`<div class="muted" style="margin-top:8px">Jika muncul "Action tidak dikenal", backend /exec yang aktif belum memuat router V25.2.4.12. Perbarui kode.gs dan index.html dari paket yang sama, simpan, deploy New version pada deployment staging yang sama, dan pastikan API_URL frontend menunjuk ke URL /exec tersebut.</div>`;}
 };
 window.renderEvidenceCoveragePanel=function(){
   const st=window._evidenceCoverageState,body=document.getElementById('evidenceCoverageBody');
@@ -4318,12 +4320,12 @@ window.renderEvidenceCoveragePanel=function(){
       <div class="muted">Unggah file terlebih dahulu pada komponen SPJ terkait. Di sini sekolah hanya mendaftarkan metadata dan menghubungkannya ke transaksi, tidak mengunggah salinan baru.</div>
       <form id="evidenceRegisterForm" onsubmit="saveEvidenceRegistrationFromUi(event)" style="margin-top:12px">
         <div class="field"><label>Pilih file yang sudah diunggah</label><select id="evidenceFile" required><option value="">Pilih dokumen...</option>${available.map(x=>`<option value="${esc(x.file_id)}" data-spj="${esc(x.id_spj)}">${esc(x.nama_file)} · ${esc(x.id_dokumen)}</option>`).join('')}</select>
-          ${st.type==='INVOICE'?`<div id="evidenceOcrResult" class="spj-invoice-ocr-state" role="status" aria-live="polite" style="margin-top:8px"><span class="muted">Pilih file. Sistem akan membaca dokumen otomatis.</span></div>`:''}
+          <div id="evidenceOcrResult" class="spj-invoice-ocr-state" role="status" aria-live="polite" style="margin-top:8px"><span class="muted">Pilih file. Sistem akan membaca dokumen otomatis.</span></div>
         </div>
         <div class="form-grid">
           <div class="field"><label>Jenis dokumen</label><select id="evidenceDocType" required>${(st.type==='INVOICE'?['INVOICE','NOTA','KUITANSI']:st.type==='SUPPORT'?['SURAT TUGAS','DAFTAR HADIR','BERITA ACARA','SURAT PESANAN','SSPD','DOKUMEN PENDUKUNG LAIN']:['FOTO PENERIMAAN BARANG','FOTO KEGIATAN','FOTO HASIL PEKERJAAN','FOTO KONDISI BARANG','FOTO LAINNYA']).map(x=>`<option value="${esc(x)}">${esc(x)}</option>`).join('')}</select></div>
           <div class="field"><label>Tanggal dokumen</label><input id="evidenceDate" type="date" required></div>
-          ${st.type==='INVOICE'?`<div class="field"><label>Nomor dokumen</label><input id="evidenceNumber" required></div><div class="field"><label>Nama toko / penerbit</label><input id="evidenceIssuer"></div><div class="field"><label>Nilai total dokumen (Rp)</label><input id="evidenceAmount" type="number" min="1" step="1" required></div>`:`<div class="field"><label>Nomor dokumen (opsional)</label><input id="evidenceNumber"></div><div class="field"><label>Penerbit / sumber (opsional)</label><input id="evidenceIssuer"></div>`}
+          ${st.type==='INVOICE'?`<div class="field"><label>Nomor dokumen</label><input id="evidenceNumber" required></div><div class="field"><label>Nama toko / penerbit</label><input id="evidenceIssuer"></div><div class="field"><label>Nilai total dokumen (Rp)</label><input id="evidenceAmount" type="number" min="1" step="1" required></div><div id="evidenceSiplahTaxFields" class="panel" style="display:none;grid-column:1/-1"><b>Rincian pajak SIPLah</b><p class="muted">Periksa nilai PPN dan PPh 22 pada invoice asli. Nilai ini tidak otomatis dianggap benar hanya karena OCR berhasil.</p><div class="form-grid"><div class="field"><label>PPN (Rp)</label><input id="evidenceSiplahPpn" type="number" min="0" step="1"></div><div class="field"><label>PPh Pasal 22 (Rp)</label><input id="evidenceSiplahPph22" type="number" min="0" step="1"></div></div><label style="display:flex;gap:8px;align-items:flex-start"><input id="evidenceConfirmSiplahTax" type="checkbox" style="width:auto;margin-top:3px"><span>Saya sudah membandingkan dan mengonfirmasi rincian PPN/PPh 22 dengan invoice asli.</span></label></div>`:`<div class="field"><label>Nomor dokumen (opsional)</label><input id="evidenceNumber"></div><div class="field"><label>Penerbit / sumber (opsional)</label><input id="evidenceIssuer"></div>`}
         </div>
         <div class="field"><label>Uraian / keterangan</label><textarea id="evidenceDescription" rows="2" required placeholder="Jelaskan isi dan fungsi dokumen"></textarea></div>
         ${st.type==='INVOICE'?`<div class="field"><label>Alasan jika nilai dokumen tidak seluruhnya dialokasikan (opsional, wajib bila ada selisih)</label><textarea id="evidencePartialReason" rows="2"></textarea></div>`:''}
@@ -4353,18 +4355,20 @@ window.renderEvidenceCoveragePanel=function(){
   body.innerHTML=summaryHtml+registerForm+registryTable+selectedPanel;
   const date=document.getElementById('evidenceDate');if(date&&!date.value)date.value=st.id_periode.match(/^PER-(\d{4})-(\d{2})$/)?`${st.id_periode.slice(4,8)}-${st.id_periode.slice(9,11)}-01`:'';
   const invoiceFile=document.getElementById('evidenceFile');
-  if(invoiceFile&&school&&st.type==='INVOICE'&&!invoiceFile.dataset.ocrAutoBound){
+  if(invoiceFile&&school&&!invoiceFile.dataset.ocrAutoBound){
     invoiceFile.dataset.ocrAutoBound='1';
     invoiceFile.addEventListener('change',function(){
       st.invoice_ocr=null;
-      ['evidenceNumber','evidenceIssuer','evidenceAmount','evidenceDescription'].forEach(id=>{
+      ['evidenceNumber','evidenceIssuer','evidenceAmount','evidenceDescription','evidenceSiplahPpn','evidenceSiplahPph22'].forEach(id=>{
         const el=document.getElementById(id);if(el)el.value='';
       });
+      const taxFields=document.getElementById('evidenceSiplahTaxFields');if(taxFields)taxFields.style.display='none';
+      const taxConfirm=document.getElementById('evidenceConfirmSiplahTax');if(taxConfirm)taxConfirm.checked=false;
       const dateField=document.getElementById('evidenceDate');
       if(dateField)dateField.value=st.id_periode.match(/^PER-(\d{4})-(\d{2})$/)?`${st.id_periode.slice(4,8)}-${st.id_periode.slice(9,11)}-01`:'';
       const result=document.getElementById('evidenceOcrResult');
       if(result)result.innerHTML='<span class="muted">File dipilih. Pembacaan OCR akan dimulai otomatis.</span>';
-      if(this.value)runEvidenceInvoiceOcrFromUi();
+      if(this.value){if(st.type==='INVOICE')runEvidenceInvoiceOcrFromUi();else runEvidenceSupportOcrFromUi();}
     });
   }
 };
@@ -4404,7 +4408,7 @@ window.runEvidenceInvoiceOcrFromUi=async function(){
     if(p.document_date&&document.getElementById('evidenceDate'))
       document.getElementById('evidenceDate').value=p.document_date;
     if(p.document_number&&document.getElementById('evidenceNumber'))
-      document.getElementById('evidenceNumber').value=p.document_number;
+      document.getElementById('evidenceNumber').value=p.batch_detected?('KOMPILASI SIPLAH · '+fmtNum(p.invoice_count)+' INVOICE'):p.document_number;
     if(p.issuer&&document.getElementById('evidenceIssuer'))
       document.getElementById('evidenceIssuer').value=p.issuer;
     if(p.amount!==null&&p.amount!==undefined&&document.getElementById('evidenceAmount'))
@@ -4413,9 +4417,16 @@ window.runEvidenceInvoiceOcrFromUi=async function(){
       document.getElementById('evidenceDescription').value=p.description;
     st.invoice_ocr=res;
     const warnings=(p.warnings||[]).map(x=>`<li>${esc(x)}</li>`).join('');
+    const taxFields=document.getElementById('evidenceSiplahTaxFields');
+    if(taxFields){taxFields.style.display=p.siplah_detected?'block':'none';
+      const ppn=document.getElementById('evidenceSiplahPpn'),pph=document.getElementById('evidenceSiplahPph22');
+      if(ppn)ppn.value=p.tax_components?.ppn==null?'':p.tax_components.ppn;
+      if(pph)pph.value=p.tax_components?.pph22==null?'':p.tax_components.pph22;}
+    const taxHint=p.siplah_detected?`<div class="message info"><b>Invoice SIPLah terdeteksi.</b> ${p.batch_detected?fmtNum(p.invoice_count)+' invoice terdeteksi dalam satu PDF. Setiap invoice disimpan sebagai draft terpisah. ':' '}PPN terbaca ${p.tax_components?.ppn==null?'belum terbaca':fmtRupiah(p.tax_components.ppn)} dan PPh 22 ${p.tax_components?.pph22==null?'belum terbaca':fmtRupiah(p.tax_components.pph22)}. ${p.batch_detected?'Periksa setiap invoice pada ringkasan perpajakan.':'Periksa rincian di formulir sebelum konfirmasi.'} Pembayaran tetap harus dicocokkan dengan BKU.</div>`:'';
     if(resultBox)resultBox.innerHTML=`<div class="spj-invoice-ocr-done">
       <b>Hasil pembacaan sudah diisikan ke formulir.</b>
       <span>${warnings?'Periksa bagian yang ditandai sebelum menyimpan.':'Periksa kembali isian terhadap PDF asli.'}</span>
+      ${taxHint}
       ${warnings?`<details><summary>Bagian yang perlu diperiksa (${p.warnings.length})</summary><ul>${warnings}</ul></details>`:''}
       <details><summary>Lihat teks OCR sumber</summary><pre>${esc(res.ocr_text||'')}</pre></details>
     </div>`;
@@ -4428,6 +4439,18 @@ window.runEvidenceInvoiceOcrFromUi=async function(){
   }
 };
 
+window.runEvidenceSupportOcrFromUi=async function(){
+  const st=window._evidenceCoverageState;if(!st||st.type==='INVOICE'||st.ocrRunning)return;
+  const fileId=document.getElementById('evidenceFile')?.value||'',doc=(st.data?.documents||[]).find(x=>x.file_id===fileId);
+  const box=document.getElementById('evidenceOcrResult');if(!fileId||!doc)return;
+  st.ocrRunning=true;if(box)box.innerHTML='<div class="message info">SIMPEL SPJ sedang membaca dokumen per halaman. Mohon tunggu dan jangan mengulang proses.</div><progress style="width:100%"></progress>';
+  try{
+    const action=st.type==='PHOTO'?'ocrEvidencePhotoDocument':'ocrEvidenceSupportDocument';
+    const res=await api(action,{fileId:fileId,idPeriode:st.id_periode,npsn:st.npsn});st.last_support_ocr=res;
+    if(box)box.innerHTML=`<div class="message ${res.characters?'ok':'warn'}">Pembacaan selesai: ${fmtNum(res.page_count||0)} halaman · ${fmtNum(res.characters||0)} karakter. ${res.characters?'Teks sumber tersimpan sebagai indeks OCR.':'Foto tetap dapat digunakan sebagai bukti visual meskipun tidak memiliki teks terbaca.'}</div><details><summary>Lihat hasil OCR per halaman</summary>${(res.pages||[]).map(x=>`<div style="margin:8px 0"><b>Halaman ${x.page}</b><pre style="white-space:pre-wrap">${esc(x.preview||'(tidak ada teks)')}</pre></div>`).join('')}</details>`;
+  }catch(e){if(box)box.innerHTML=msg('Pembacaan belum berhasil: '+errorText(e)+' Dokumen tetap tersimpan; sekolah dapat mencoba lagi.','warning');}
+  finally{st.ocrRunning=false;}
+};
 window.saveEvidenceRegistrationFromUi=async function(event){
   event.preventDefault();const st=window._evidenceCoverageState;if(!st)return;
   const fileId=document.getElementById('evidenceFile').value;
@@ -4443,7 +4466,22 @@ window.saveEvidenceRegistrationFromUi=async function(event){
   try{
     const res=await api('saveEvidenceRegistration',{data:payload});
     st.selected_id=res.data.id_evidence;
-    alert('Registrasi bukti tersimpan sebagai DRAFT. Belum dihitung dalam penilaian.');
+    const invoiceParsed=st.invoice_ocr&&st.invoice_ocr.parsed||{};
+    const draftTax=st.invoice_ocr&&st.invoice_ocr.siplah_draft||{};
+    let taxConfirmed=false;
+    if(invoiceParsed.siplah_detected&&!invoiceParsed.batch_detected&&draftTax.id_tax_evidence&&document.getElementById('evidenceConfirmSiplahTax')?.checked){
+      await api('saveSiplahInvoiceTaxReview',{data:{id_tax_evidence:draftTax.id_tax_evidence,id_periode:st.id_periode,file_id:fileId,
+        verified_amount:Number(document.getElementById('evidenceAmount').value||0),
+        verified_document_number:document.getElementById('evidenceNumber')?.value||'',
+        verified_document_date:document.getElementById('evidenceDate').value,
+        verified_vendor:document.getElementById('evidenceIssuer')?.value||'',
+        verified_ppn_amount:Number(document.getElementById('evidenceSiplahPpn')?.value||0),
+        verified_pph22_amount:Number(document.getElementById('evidenceSiplahPph22')?.value||0),
+        verified_order_number:invoiceParsed.order_number||'',verified_payment_date:invoiceParsed.payment_date||'',
+        review_note:'Dikonfirmasi sekolah setelah membandingkan rincian pajak dengan invoice asli.'}});
+      taxConfirmed=true;
+    }
+    alert('Registrasi bukti tersimpan sebagai DRAFT.'+(invoiceParsed.siplah_detected?(invoiceParsed.batch_detected?' '+fmtNum(invoiceParsed.invoice_count)+' invoice SIPLah disimpan sebagai draft pajak terpisah. Periksa masing-masing invoice pada ringkasan perpajakan.':(taxConfirmed?' Rincian pajak SIPLah sudah dikonfirmasi; status pembayaran tetap menunggu pencocokan BKU.':' Draft pajak SIPLah tetap menunggu pemeriksaan rincian PPN/PPh 22.')):''));
     await refreshEvidenceCoveragePanel();
   }catch(e){alert(errorText(e));}
 };
@@ -4540,7 +4578,7 @@ async function renderDokumenTable(){
     const groups = masters.map(m => {
       const componentDocs=docs
         .filter(x => _spjComponentIdentityUiV2547_(x.id_spj) === _spjComponentIdentityUiV2547_(m.kode_spj||m.id_spj) && String(x.status||x.status_verifikasi||'').toUpperCase() !== 'NONAKTIF')
-        .sort((a,b)=>(Number(b.versi)||0)-(Number(a.versi)||0));
+        .sort((a,b)=>(Number(b.assessment_eligible===true)-Number(a.assessment_eligible===true)) || ((Number(b.versi)||0)-(Number(a.versi)||0)));
       const isPhotoComponent=String(m.id_spj)==='SPJ-10';
       const photoDocs=isPhotoComponent?componentDocs.filter(x=>/^image\/(jpeg|png)$/i.test(String(x.mimeType||''))):[];
       const legacyPdfDocs=isPhotoComponent?componentDocs.filter(x=>String(x.mimeType||'').toLowerCase()==='application/pdf'||/\.pdf$/i.test(String(x.nama_file||''))):[];
@@ -4550,17 +4588,22 @@ async function renderDokumenTable(){
       return {m,d,isPhotoComponent,photoDocs,legacyPdfDocs};
     });
 
-    const uploaded = groups.filter(x => x.d && String(x.d.status||'').toUpperCase() !== 'N/A').length;
-    const na = groups.filter(x => String(x.d?.status||'').toUpperCase() === 'N/A').length;
+    const archivedGroups = groups.filter(x => x.d && x.d.assessment_eligible===false && !!x.d.file_id);
+    const uploaded = groups.filter(x => x.d && x.d.assessment_eligible!==false && String(x.d.status||x.d.status_verifikasi||'').toUpperCase() !== 'N/A').length;
+    const na = groups.filter(x => String(x.d?.status||x.d?.status_verifikasi||'').toUpperCase() === 'N/A' && x.d.assessment_eligible!==false).length;
     const total = groups.length;
     const done = uploaded + na;
     const pct = total ? Math.round(done / total * 100) : 0;
-    const repairGroups = groups.filter(x => upper(x.d?.status||'') === 'PERLU_PERBAIKAN');
-    const missingGroups = groups.filter(x => !x.d);
+    const repairGroups = groups.filter(x => x.d?.assessment_eligible!==false && upper(x.d?.status||x.d?.status_verifikasi||'') === 'PERLU_PERBAIKAN');
+    const missingGroups = groups.filter(x => !x.d || x.d.assessment_eligible===false);
     let nextActionText = 'Dokumen SPJ periode ini sudah lengkap. Pantau Status & Hasil untuk melihat proses pemeriksaan berikutnya.';
     let nextActionButton = `<button class="btn btn-primary btn-sm" type="button" onclick="loadView('statusSpj')">Lihat Status →</button>`;
     let nextActionDanger = false;
-    if(repairGroups.length){
+    if(archivedGroups.length){
+      nextActionText = `${archivedGroups.length} dokumen lama ditemukan kembali. File tetap dapat dibuka sebagai arsip, tetapi belum dihitung untuk penilaian periode ini. Unggah ulang hanya komponen yang diminta pada jadwal aktif.`;
+      nextActionButton = '';
+      nextActionDanger = false;
+    }else if(repairGroups.length){
       const names=repairGroups.slice(0,2).map(x=>x.m.nama_spj||x.m.nama_dokumen||x.m.kode||x.m.id_spj).join(', ');
       nextActionText = `${repairGroups.length} komponen perlu diperbaiki${names ? ': '+names : ''}. Buka komponen terkait dan unggah revisinya.`;
       nextActionButton = '';
@@ -4574,11 +4617,12 @@ async function renderDokumenTable(){
     // Rendering menggunakan .map().join('') agar browser hanya melakukan DOM reflow 1 kali
     const rowHtml = groups.map((x,i) => {
       const m=x.m, d=x.d;
-      const status = d ? String(d.status || d.status_verifikasi || 'SUDAH_UPLOAD').toUpperCase() : 'BELUM_UPLOAD';
+      const isLegacyArchive=!!(d && d.assessment_eligible===false && d.file_id);
+      const status = isLegacyArchive ? 'ARSIP_HISTORIS' : (d ? String(d.status || d.status_verifikasi || 'SUDAH_UPLOAD').toUpperCase() : 'BELUM_UPLOAD');
       const statusClass = status === 'SUDAH_UPLOAD' || status === 'SELESAI_DINILAI' ? 'success' :
-                          status === 'N/A' ? 'warning' :
+                          status === 'N/A' || status === 'ARSIP_HISTORIS' ? 'warning' :
                           status === 'PERLU_PERBAIKAN' ? 'danger' : 'info';
-      const statusLabel = ({'SUDAH_UPLOAD':'Sudah diunggah','SELESAI_DINILAI':'Selesai diperiksa','PERLU_PERBAIKAN':'Perlu diperbaiki','BELUM_UPLOAD':'Belum diunggah','N/A':'Tidak diperlukan'})[status] || status.replace(/_/g,' ').toLowerCase();
+      const statusLabel = ({'SUDAH_UPLOAD':'Sudah diunggah','SELESAI_DINILAI':'Selesai diperiksa','PERLU_PERBAIKAN':'Perlu diperbaiki','BELUM_UPLOAD':'Belum diunggah','N/A':'Tidak diperlukan','ARSIP_HISTORIS':'Arsip historis · perlu konfirmasi ulang'})[status] || status.replace(/_/g,' ').toLowerCase();
       const allowNA = _v222AllowNa_(m,bookSummaries);
       const viewerId = `instrumentPdfViewer_${String(m.id_spj||i).replace(/[^a-zA-Z0-9_-]/g,'_')}_${i}`;
       const pdfReady = !!(d?.file_id && (String(d.mimeType||'').toLowerCase()==='application/pdf'||/\.pdf$/i.test(String(d.nama_file||''))) && String(d.status||'').toUpperCase() !== 'N/A');
@@ -4616,7 +4660,7 @@ async function renderDokumenTable(){
           ${pdfReady && isBkuOfficial && isSchool() ? `<button class="btn btn-primary" type="button" onclick="openBkuOcrWorkbenchV2502('${encodeURIComponent(d.file_id||'')}','${encodeURIComponent(d.nama_file||'BKU scan')}','${encodeURIComponent(periode)}')">Periksa BKU</button>` : ''}
           ${['SPJ-06','SPJ-07'].includes(String(m.id_spj)) ? `<button class="btn btn-light" type="button" onclick="openEvidenceCoveragePanel('${m.id_spj==='SPJ-06'?'INVOICE':'SUPPORT'}','${esc(periode)}','${esc(summaryNpsn)}')">Periksa bukti</button>` : ''}
           ${['SPJ-04','SPJ-08','SPJ-09'].includes(String(m.id_spj)) ? `<button class="btn btn-light" type="button" onclick="openTaxReconciliationPanelV2523('${esc(m.id_spj)}','${esc(periode)}','${esc(summaryNpsn)}')">Lihat status pajak</button>` : ''}
-          <button class="btn ${d ? 'btn-light' : 'btn-primary'}" type="button" onclick="openUpload('${esc(m.id_spj)}','${esc(m.nama_spj || m.nama_dokumen || m.kode || m.id_spj)}',${d ? 'true' : 'false'})">${d ? 'Ganti dokumen' : 'Unggah dokumen'}</button>
+          <button class="btn ${d ? 'btn-light' : 'btn-primary'}" type="button" onclick="openUpload('${esc(m.id_spj)}','${esc(m.nama_spj || m.nama_dokumen || m.kode || m.id_spj)}',${d ? 'true' : 'false'})">${isLegacyArchive ? 'Unggah ulang untuk penilaian' : (d ? 'Ganti dokumen' : 'Unggah dokumen')}</button>
           ${allowNA ? `<button class="btn btn-light" type="button" onclick="openNaModal('${esc(m.id_spj)}','${esc(m.nama_spj || m.nama_dokumen || m.kode || m.id_spj)}')">N/A</button>` : ''}
         </div>
       </div>
@@ -4651,10 +4695,11 @@ async function renderDokumenTable(){
     });
     const categoryHtml=categoryOrder.filter(k=>categoryMap[k]?.length).map((key,idx)=>{
       const entries=categoryMap[key];
-      const uploadedCount=entries.filter(z=>z.item.d && String(z.item.d.status||'').toUpperCase()!=='N/A').length;
-      const naCount=entries.filter(z=>String(z.item.d?.status||'').toUpperCase()==='N/A').length;
-      const issueCount=entries.filter(z=>!z.item.d || upper(z.item.d.status||'')==='PERLU_PERBAIKAN').length;
-      const stateText=issueCount?`${issueCount} perlu tindakan`:`${uploadedCount+naCount} tersedia`;
+      const uploadedCount=entries.filter(z=>z.item.d && z.item.d.assessment_eligible!==false && String(z.item.d.status||z.item.d.status_verifikasi||'').toUpperCase()!=='N/A').length;
+      const naCount=entries.filter(z=>String(z.item.d?.status||z.item.d.status_verifikasi||'').toUpperCase()==='N/A' && z.item.d.assessment_eligible!==false).length;
+      const archiveCount=entries.filter(z=>z.item.d && z.item.d.assessment_eligible===false && !!z.item.d.file_id).length;
+      const issueCount=entries.filter(z=>!z.item.d || z.item.d.assessment_eligible===false || upper(z.item.d.status||z.item.d.status_verifikasi||'')==='PERLU_PERBAIKAN').length;
+      const stateText=archiveCount?`${archiveCount} arsip perlu konfirmasi`:(issueCount?`${issueCount} perlu tindakan`:`${uploadedCount+naCount} tersedia`);
       const stateClass=issueCount?'warning':'success';
       return `<details class="spj-category" ${idx===0?'open':''}>
         <summary class="spj-category-summary">
@@ -4683,6 +4728,7 @@ async function renderDokumenTable(){
         <div class="progress" style="margin-top:12px"><i style="width:${pct}%"></i></div>
         <div class="muted" style="margin-top:8px">${pct}% tersedia · ${uploaded} diunggah${na ? ` · ${na} tidak diperlukan` : ''}</div>
       </div>
+      ${archivedGroups.length?`<div class="message warn"><b>${archivedGroups.length} dokumen lama ditemukan dan tetap dapat dibuka.</b><br>Dokumen tersebut disimpan sebagai arsip dan tidak otomatis dihitung dalam penilaian periode aktif. Unggah ulang hanya komponen yang perlu dinilai pada jadwal berjalan.</div>`:''}
       <div class="panel">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px">
           <h3 style="margin:0">Dokumen yang perlu disiapkan</h3>
@@ -4895,13 +4941,15 @@ window._readUploadChunkBase64V248_ = function(blob){
     reader.readAsDataURL(blob);
   });
 };
-window._smartUploadFileV248_ = async function(file,idSpj,periode,onProgress){
+window._smartUploadFileV248_ = async function(file,idSpj,periode,onProgress,uploadOptions){
+  uploadOptions=uploadOptions||{};
+  const targetType=String(uploadOptions.target_type||'SPJ_DOCUMENT'),targetRecordId=String(uploadOptions.target_record_id||'');
   const isPdf=/\.pdf$/i.test(file.name),mime=isPdf?'application/pdf':((String(file.type||'').toLowerCase()==='image/png'||/\.png$/i.test(file.name))?'image/png':'image/jpeg');
   if(isPdf)window._validateUploadFileRc3_(file);else window._validateSpjPhotoFileV2454_(file);
-  if(!isPdf&&String(idSpj)!=='SPJ-10')throw new Error('Foto JPG/PNG hanya dapat diunggah pada komponen Foto/Dokumentasi.');
+  if(!isPdf&&String(idSpj)!=='SPJ-10'&&targetType!=='TAX_MANUAL_EVIDENCE')throw new Error('Foto JPG/PNG hanya dapat diunggah pada komponen Foto/Dokumentasi atau lampiran pajak manual.');
   const npsn=String(state.user?.npsn||state.user?.username||'');
   window.__spjUploadIdemV248=window.__spjUploadIdemV248||{};
-  const fingerprint=[npsn,periode,idSpj,file.name,file.size,file.lastModified||0,mime].join('|');
+  const fingerprint=[npsn,periode,idSpj,targetType,targetRecordId,file.name,file.size,file.lastModified||0,mime].join('|');
   let idempotencyKey=window.__spjUploadIdemV248[fingerprint]||'';
   if(!idempotencyKey){
     // Fingerprint deterministik lintas tab/perangkat untuk mencegah file identik
@@ -4929,7 +4977,7 @@ window._smartUploadFileV248_ = async function(file,idSpj,periode,onProgress){
   };
   report('PREPARING',0,file.size,'Menyiapkan unggahan aman...');
   const begin=await api('beginSpjUpload',{data:{
-    id_periode:periode,id_spj:idSpj,nama_file:file.name,mimeType:mime,
+    id_periode:periode,id_spj:idSpj,target_type:targetType,target_record_id:targetRecordId,nama_file:file.name,mimeType:mime,
     size_bytes:file.size,idempotency_key:idempotencyKey
   }});
   if(begin.status==='COMPLETE'){
@@ -4964,7 +5012,7 @@ window._smartUploadFileV248_ = async function(file,idSpj,periode,onProgress){
   // Jika respons terakhir hilang setelah Drive menyelesaikan file, begin dengan key yang sama
   // akan mengambil hasil final tanpa membuat file kedua.
   const resumed=await api('beginSpjUpload',{data:{
-    id_periode:periode,id_spj:idSpj,nama_file:file.name,mimeType:mime,
+    id_periode:periode,id_spj:idSpj,target_type:targetType,target_record_id:targetRecordId,nama_file:file.name,mimeType:mime,
     size_bytes:file.size,idempotency_key:idempotencyKey
   }});
   if(resumed.status==='COMPLETE'){
@@ -8718,6 +8766,7 @@ async function masterSpjView(){
   const spj = await ensureMasters() || [];
   const inds = indRes.data || [], pers = perRes.data || [];
   const freq = String(cfg.frekuensi || perRes.frekuensi || '').toUpperCase();
+  const activePeriodId = String(cfg.periode_aktif || perRes.periode_aktif || '');
   const rawYear = Number(cfg.tahun || perRes.tahun || new Date().getFullYear());
   const year = rawYear>=2000&&rawYear<=2100 ? Math.floor(rawYear) : new Date().getFullYear();
   const freqLabel = freq === 'BULANAN' ? 'Bulanan' : freq === 'TRIWULANAN' ? 'Triwulanan' : freq === 'SEMESTERAN' ? 'Semesteran' : freq === 'TAHUNAN' ? 'Tahunan' : 'Belum dipilih';
@@ -8769,6 +8818,7 @@ async function masterSpjView(){
       <div class="toolbar"><button class="btn btn-primary" id="btnSimpanFrekuensi">✓ Terapkan Frekuensi</button></div>
       <div id="freqConfigMsg"></div>
     </div>` +
+    `<div class="panel" style="border-left:4px solid var(--success)"><h3 class="section-title" style="margin-top:0">Periode Penilaian Aktif</h3><p class="muted">Pilih satu periode yang sedang dinilai. Dokumen dan transaksi di periode lain tetap tersimpan sebagai arsip, tetapi tidak masuk perhitungan penilaian aktif.</p><div class="form-grid"><div class="field"><label>Periode aktif</label><select id="cfgActiveAssessmentPeriod"><option value="">-- Pilih periode aktif --</option>${activePeriods.map(x=>`<option value="${esc(x.id_periode)}" ${String(x.id_periode)===activePeriodId?'selected':''}>${esc(x.nama_periode||x.id_periode)}</option>`).join('')}</select></div><div class="field" style="display:flex;align-items:end"><button class="btn btn-primary" id="btnSaveActiveAssessmentPeriod" type="button">Tetapkan Periode Aktif</button></div></div><div id="activePeriodConfigMsg">${activePeriodId?`<span class="badge badge-success">Aktif: ${esc(activePeriods.find(x=>String(x.id_periode)===activePeriodId)?.nama_periode||activePeriodId)}</span>`:'<span class="badge badge-warning">Belum ada periode aktif yang dikunci</span>'}</div></div>` +
     `<div class="panel"><h3 class="section-title" style="margin-top:0">Periode Otomatis (${activePeriods.length})</h3><div class="muted" style="margin-bottom:10px">Sistem membuat ${freq === 'BULANAN' ? '12 periode bulanan' : freq === 'TRIWULANAN' ? '4 periode triwulanan' : freq === 'SEMESTERAN' ? '2 periode semesteran' : freq === 'TAHUNAN' ? '1 periode tahunan' : 'periode sesuai pilihan'} tanpa input tanggal manual.</div><div class="table-wrap"><table class="friendly-table"><thead><tr><th>Nama</th><th>Tahun</th><th>Frekuensi</th><th>Mulai</th><th>Selesai</th><th>Status</th></tr></thead><tbody>${perRows}</tbody></table></div></div>` +
     `<div class="panel"><h3 class="section-title" style="margin-top:0">Standar Pemeriksaan Otomatis</h3><p class="muted">Indikator bawaan Risk Engine tampil otomatis. DINAS tidak perlu membuat indikator atau rule satu per satu; bobot yang ditampilkan sebagai DINAMIS dihitung ulang berdasarkan data pemeriksaan.</p><div class="table-wrap"><table class="friendly-table"><thead><tr><th>Kode</th><th>Indikator</th><th>Komponen</th><th>Bobot</th><th>Status</th></tr></thead><tbody>${indRows}</tbody></table></div></div>` +
     `<div class="panel"><h3 class="section-title" style="margin-top:0">Master SPJ Sistem</h3><div class="table-wrap"><table class="friendly-table"><thead><tr><th>Kode</th><th>Nama</th><th>Urutan</th><th>Status</th></tr></thead><tbody>${spjRows}</tbody></table></div></div>`;
@@ -8784,6 +8834,15 @@ async function masterSpjView(){
     } catch(e) { 
       out.innerHTML = msg(errorText(e), 'error'); 
     }
+  };
+  const activeBtn=$('#btnSaveActiveAssessmentPeriod');
+  if(activeBtn)activeBtn.onclick=async()=>{
+    const idPeriode=$('#cfgActiveAssessmentPeriod')?.value||'',out=$('#activePeriodConfigMsg');
+    if(!idPeriode){if(out)out.innerHTML=msg('Pilih periode yang akan dinilai.','warning');return;}
+    activeBtn.disabled=true;activeBtn.textContent='Menyimpan...';
+    try{const r=await api('simpanPeriodeAktifPenilaianSPJ',{data:{id_periode:idPeriode}});toast(r.message||'Periode aktif ditetapkan.','ok',3500);await masterSpjView();}
+    catch(e){if(out)out.innerHTML=msg(errorText(e),'error');}
+    finally{activeBtn.disabled=false;activeBtn.textContent='Tetapkan Periode Aktif';}
   };
 }
 
@@ -11813,13 +11872,15 @@ async function renderMonitoringGlobalView() {
   try {
     const periods = await ensurePeriodeMaster();
     const select = $('#monitoringPeriodSelect');
-    const available = Array.isArray(periods) ? periods : [];
+    let available = Array.isArray(periods) ? periods : [];
+    const cfgActive=(await safeApi('getFrekuensiPenilaianSPJ',{},{})).periode_aktif||'';
+    if(cfgActive)available=available.filter(x=>String(x.id_periode)===String(cfgActive));
     if(select){
-      select.innerHTML = available.map(x=>`<option value="${esc(x.id_periode)}">${esc(x.nama_periode||x.id_periode)}${x.tahun?' · '+esc(x.tahun):''}</option>`).join('');
+      select.innerHTML = available.map(x=>`<option value="${esc(x.id_periode)}">${esc(x.nama_periode||x.id_periode)}${x.tahun?' · '+esc(x.tahun):''}${cfgActive?' · Aktif':''}</option>`).join('');
       if(!available.length) select.innerHTML = '<option value="">Belum ada periode</option>';
     }
     if(!window._cachedGlobalMonGlobal){
-      const res = await api('getRekapMonitoringGlobal');
+      const res = await api('getRekapMonitoringGlobal',{idPeriode:cfgActive});
       window._cachedGlobalMonGlobal = res.data || [];
       window._cachedGlobalMonGlobalGroups = res.pengawas_groups || [];
     }
@@ -11857,7 +11918,7 @@ window.refreshMonitoringProgressPeriod = async function(period,forceRefresh){
   if(area)area.innerHTML=loading('Menghitung progres administrasi dan pemeriksaan periode...');
   try{
     if(!window._cachedGlobalMonGlobal){
-      const base=await api('getRekapMonitoringGlobal');
+      const base=await api('getRekapMonitoringGlobal',{idPeriode:p});
       window._cachedGlobalMonGlobal=base.data||[];
       window._cachedGlobalMonGlobalGroups=base.pengawas_groups||[];
     }
@@ -16794,8 +16855,8 @@ window.refreshTaxReconciliationPanelV2523=async function(){
       api('getTaxReconciliationWorkbench',{idPeriode:st.id_periode,npsn:st.npsn}),
       api('getApiBuildInfo',{})
     ]);
-    if(build.build_id!== 'V25.2.4.10_CANONICAL_BKU_PERIOD_DATE_DUPLICATE_FIX')
-      throw new Error('Versi backend belum sesuai. Diharapkan V25.2.4.10_CANONICAL_BKU_PERIOD_DATE_DUPLICATE_FIX, terdeteksi '+(build.build_id||'tidak terbaca')+'. Pastikan kode.gs dan index.html berasal dari paket yang sama dan deploy New version pada staging.');
+    if(build.build_id!== 'V25.2.4.12_UNIFIED_PERIOD_TAX_EVIDENCE')
+      throw new Error('Versi backend belum sesuai. Diharapkan V25.2.4.12_UNIFIED_PERIOD_TAX_EVIDENCE, terdeteksi '+(build.build_id||'tidak terbaca')+'. Pastikan kode.gs dan index.html berasal dari paket yang sama dan deploy New version pada staging.');
     st.data=data;
     renderTaxReconciliationPanelV2523();
 
@@ -16813,7 +16874,7 @@ window.refreshTaxReconciliationPanelV2523=async function(){
       }
     }
   }catch(e){
-    body.innerHTML=msg(errorText(e),'error')+`<div class="muted" style="margin-top:8px">Periksa apakah backend dan frontend V25.2.4.10 sudah dipasang pada deployment staging yang sama.</div>`;
+    body.innerHTML=msg(errorText(e),'error')+`<div class="muted" style="margin-top:8px">Periksa apakah backend dan frontend V25.2.4.12 sudah dipasang pada deployment staging yang sama.</div>`;
   }
 };
 
@@ -16868,11 +16929,31 @@ window.deleteTaxOcrItemV2546=function(index){
   renderTaxReconciliationPanelV2523();
 };
 
+window.editSiplahInvoiceDraftV2512=function(idEvidence){
+  const st=window._taxReconV2523State;if(!st||!st.data)return;
+  const row=(st.data.unified_assessment?.siplah?.invoices||[]).find(x=>String(x.id_tax_evidence)===String(idEvidence));
+  if(!row)return;st.siplahEditingId=String(idEvidence);renderTaxReconciliationPanelV2523();
+};
+window.cancelSiplahInvoiceDraftV2512=function(){const st=window._taxReconV2523State;if(!st)return;st.siplahEditingId='';renderTaxReconciliationPanelV2523();};
+window.saveSiplahInvoiceDraftV2512=async function(event){
+  event.preventDefault();const st=window._taxReconV2523State;if(!st||!st.siplahEditingId)return;
+  const get=id=>document.getElementById(id),rec=(st.data.evidence||[]).find(x=>String(x.id_tax_evidence)===st.siplahEditingId);
+  if(!rec){alert('Draft invoice SIPLah tidak ditemukan.');return;}
+  const payload={id_tax_evidence:st.siplahEditingId,id_periode:st.id_periode,npsn:st.npsn,file_id:rec.file_id,
+    verified_amount:Number(get('sipReviewAmount')?.value||0),verified_document_number:get('sipReviewNumber')?.value||'',
+    verified_document_date:get('sipReviewDate')?.value||'',verified_vendor:get('sipReviewVendor')?.value||'',
+    verified_ppn_amount:Number(get('sipReviewPpn')?.value||0),verified_pph22_amount:Number(get('sipReviewPph22')?.value||0),
+    verified_order_number:get('sipReviewOrder')?.value||'',verified_payment_date:get('sipReviewPaymentDate')?.value||'',
+    review_note:'Rincian pajak invoice SIPLah diperiksa sekolah terhadap PDF asli.'};
+  try{await api('saveSiplahInvoiceTaxReview',{data:payload});st.siplahEditingId='';await refreshTaxReconciliationPanelV2523();}
+  catch(e){alert(errorText(e));}
+};
 window.renderTaxReconciliationPanelV2523=function(){
   const st=window._taxReconV2523State,body=document.getElementById('taxReconV2523Body');
   if(!st||!body||!st.data)return;
   const d=st.data,sm=d.summary||{},docs=(d.documents||[]).filter(x=>x.id_spj===st.id_spj);
   const source=st.id_spj==='SPJ-04'?'BUKU_PAJAK':st.id_spj==='SPJ-08'?'SSP_PUSAT':'SSP_DAERAH';
+  const unified=d.unified_assessment||{},siplahSummary=unified.siplah?.summary||{},manualSummary=unified.pajak_manual?.summary||{};
   const dir=source==='BUKU_PAJAK'?'PUNGUT':'SETOR';
   const evidences=(d.evidence||[]).filter(x=>x.source_type===source);
   const verifiedEvidences=evidences.filter(x=>String(x.status)==='VERIFIED_BY_SCHOOL');
@@ -16923,6 +17004,19 @@ window.renderTaxReconciliationPanelV2523=function(){
     <p class="muted">Indikator pemeriksaan ini tidak mengubah skor berbobot resmi.</p>
   </details>`;
 
+  const sipInvoices=unified.siplah?.invoices||[];
+  const sipEditing=sipInvoices.find(x=>String(x.id_tax_evidence)===String(st.siplahEditingId||''));
+  const sipRows=sipInvoices.map(x=>{
+    const paid=x.status_pajak==='DIBAYAR_DAN_PAJAK_DITANGANI_PPMSE';
+    const verified=x.status_verifikasi==='VERIFIED_BY_SCHOOL';
+    const status=paid?badge('Dibayar · PPMSE','success'):verified?badge('Menunggu cocok BKU','warning'):badge('Perlu diperiksa','secondary');
+    const pages=x.source_page_start?`Hal. ${x.source_page_start}${x.source_page_end&&x.source_page_end!==x.source_page_start?'-'+x.source_page_end:''}`:'-';
+    const action=st.role==='SEKOLAH'&&!verified?`<button class="btn btn-light btn-sm" type="button" onclick="editSiplahInvoiceDraftV2512('${esc(x.id_tax_evidence)}')">Periksa</button>`:'';
+    return `<tr><td>${esc(x.nomor_invoice||'-')}<small class="muted">${esc(pages)}</small></td><td>${esc(x.tanggal_invoice||'-')}</td><td>${fmtRupiah(x.total_invoice||0)}</td><td>${fmtRupiah(x.ppn||0)}</td><td>${fmtRupiah(x.pph22||0)}</td><td>${status}</td><td>${action}</td></tr>`;
+  }).join('');
+  const sipEditor=sipEditing?`<form class="panel" onsubmit="saveSiplahInvoiceDraftV2512(event)" style="margin-top:10px"><b>Periksa rincian invoice SIPLah</b><div class="muted">${esc(sipEditing.nama_file||'PDF')} · ${esc(sipEditing.nomor_invoice||'')} · halaman ${fmtNum(sipEditing.source_page_start||0)}-${fmtNum(sipEditing.source_page_end||0)}</div><div class="spj-simple-form-grid"><div class="field"><label>Nomor invoice</label><input id="sipReviewNumber" required value="${esc(sipEditing.nomor_invoice||'')}"></div><div class="field"><label>Tanggal invoice</label><input id="sipReviewDate" type="date" required value="${esc(sipEditing.tanggal_invoice||'')}"></div><div class="field"><label>Nama penyedia</label><input id="sipReviewVendor" value="${esc(sipEditing.vendor||'')}"></div><div class="field"><label>Total invoice (Rp)</label><input id="sipReviewAmount" type="number" min="1" required value="${esc(sipEditing.total_invoice||0)}"></div><div class="field"><label>PPN (Rp)</label><input id="sipReviewPpn" type="number" min="0" value="${esc(sipEditing.ppn||0)}"></div><div class="field"><label>PPh 22 (Rp)</label><input id="sipReviewPph22" type="number" min="0" value="${esc(sipEditing.pph22||0)}"></div><div class="field"><label>Nomor pesanan</label><input id="sipReviewOrder" value="${esc(sipEditing.order_number||'')}"></div><div class="field"><label>Tanggal pembayaran</label><input id="sipReviewPaymentDate" type="date" value="${esc(sipEditing.payment_date||'')}"></div></div><div class="spj-simple-form-actions"><button class="btn btn-light" type="button" onclick="cancelSiplahInvoiceDraftV2512()">Batal</button><button class="btn btn-primary" type="submit">Konfirmasi rincian pajak</button></div></form>`:'';
+  const unifiedTaxHtml=`<div class="panel" style="margin:10px 0"><b>Ringkasan perpajakan terintegrasi</b><div class="form-grid" style="margin-top:8px"><div><small class="muted">Invoice SIPLah ditangani PPMSE</small><h3>${fmtNum(siplahSummary.paid_handled_count||0)} / ${fmtNum(siplahSummary.invoice_count||0)}</h3></div><div><small class="muted">Pajak manual dipungut</small><h3>${fmtRupiah(manualSummary.pungut_total||0)}</h3></div><div><small class="muted">Setoran SSP teralokasi</small><h3>${fmtRupiah(manualSummary.linked_to_ssp_total||0)}</h3></div><div><small class="muted">Sisa pungutan manual (indikator agregat)</small><h3>${fmtRupiah(manualSummary.outstanding_reference_total||0)}</h3></div></div><details class="spj-simple-details"><summary>Rincian invoice SIPLah (${fmtNum(sipInvoices.length)})</summary><div class="table-wrap"><table class="friendly-table"><thead><tr><th>Invoice / halaman</th><th>Tanggal</th><th>Total</th><th>PPN</th><th>PPh 22</th><th>Status</th><th>Aksi</th></tr></thead><tbody>${sipRows||'<tr><td colspan="7" class="muted">Belum ada invoice SIPLah terdaftar.</td></tr>'}</tbody></table></div></details>${sipEditor}<small class="muted">Pajak SIPLah ditandai ditangani PPMSE setelah invoice dikonfirmasi dan pembayaran cocok dengan BKU. SSP sekolah tidak diminta untuk komponen yang ditangani PPMSE. Pungutan manual dan SSP direkonsiliasi terpisah. Ringkasan ini tidak mengubah formula skor resmi.</small></div>`;
+  const periodBanner=d.assessment_period?.lock_enabled&&!d.assessment_period?.is_active?`<div class="message warn">Periode ini merupakan arsip. Periode penilaian aktif yang ditetapkan Dinas adalah ${esc(d.assessment_period.active_period_id||'')}; data periode ini tidak masuk penilaian aktif.</div>`:'';
   const ocr=st.ocr;
   const ocrItems=ocr&&ocr.parsed&&Array.isArray(ocr.parsed.items)?ocr.parsed.items:[];
   const activeOcrItems=ocrItems.map((item,index)=>({item:item,index:index})).filter(x=>!x.item._deleted_by_school);
@@ -17011,7 +17105,7 @@ window.renderTaxReconciliationPanelV2523=function(){
     <p class="muted">Sisa SSP yang belum dialokasikan bukan kesalahan otomatis. Setoran dapat mencakup transaksi lain atau periode lain.</p>
   </details>`:'';
 
-  body.innerHTML=`${summaryHtml}
+  body.innerHTML=`${periodBanner}${unifiedTaxHtml}${summaryHtml}
     ${assessmentHtml}
     <section class="spj-simple-section"><div class="spj-simple-section-head"><h3>Dokumen</h3><span>${fmtNum(docs.length)} file</span></div>${docsHtml}</section>
     ${ocrHtml}
