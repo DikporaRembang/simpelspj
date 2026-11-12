@@ -4967,8 +4967,7 @@ window._smartUploadFileV248_ = async function(file,idSpj,periode,onProgress,uplo
   // Recompute a deterministic content+context key on every invocation.
   // Do not cache by name/size/lastModified alone: different files can share
   // those metadata and must never inherit the previous file's upload session.
-  // Declare the progress reporter BEFORE the first use. A const declared later
-  // is in the temporal dead zone and throws "Cannot access 'report' before initialization".
+  // Declare report before first use; otherwise const is in its temporal dead zone.
   const report=(stage,uploaded,total,message)=>{
     if(typeof onProgress==='function')onProgress({
       stage:stage,uploaded_bytes:uploaded,total_bytes:total,
@@ -8486,15 +8485,21 @@ function renderDinasCenterTable(listSekolah, listPenugasan){
 }
 
 window.openPeringatanModal = function(targetId, targetName) {
-  const wrap = document.createElement('div'); wrap.id = 'warningModal';
-  wrap.innerHTML = `<div style="position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:999;padding:16px"><div style="background:#fff;padding:28px;border-radius:24px;width:min(100%,500px);box-shadow:0 20px 40px rgba(0,0,0,.2)"><h3 style="margin-top:0;color:var(--primary)">Kirim Pesan Resmi ke ${esc(targetName)}</h3><form id="warningForm"><div class="field"><label>Subjek</label><input id="warnSubject" required placeholder="Contoh: Segera Unggah Berkas SPJ"></div><div class="field"><label>Isi Pesan</label><textarea id="warnContent" rows="4" required placeholder="Tuliskan instruksi..."></textarea></div><div id="warnMsg"></div><div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px"><button type="button" class="btn btn-light" onclick="$('#warningModal').remove()">Batal</button><button class="btn btn-primary">Kirim</button></div></form></div></div>`;
+  const wrap = document.createElement('div'); wrap.id = 'warningModal'; wrap.dataset.requestKey=window._newMessageRequestKeyV1_();
+  wrap.innerHTML = `<div style="position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:999;padding:16px"><div style="background:#fff;padding:28px;border-radius:24px;width:min(100%,500px);box-shadow:0 20px 40px rgba(0,0,0,.2)"><h3 style="margin-top:0;color:var(--primary)">Kirim Pesan Resmi ke ${esc(targetName)}</h3><form id="warningForm"><div class="field"><label>Subjek</label><input id="warnSubject" required maxlength="180" placeholder="Contoh: Segera Unggah Berkas SPJ"></div><div class="field"><label>Isi Pesan</label><textarea id="warnContent" rows="4" maxlength="5000" required placeholder="Tuliskan instruksi..."></textarea></div><div id="warnMsg" aria-live="polite"></div><div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px"><button type="button" class="btn btn-light" onclick="if($('#warningModal')?.dataset.sending==='1'){toast('Pesan sedang dikirim. Tunggu respons.','warning');return;}$('#warningModal').remove()">Batal</button><button id="warnSendBtn" type="submit" class="btn btn-primary">Kirim</button></div></form></div></div>`;
   document.body.appendChild(wrap);
   $('#warningForm').onsubmit = async e => {
-    e.preventDefault();
+    e.preventDefault(); if(wrap.dataset.sending==='1')return;
+    const subject=$('#warnSubject').value.trim(),content=$('#warnContent').value.trim();
+    if(!subject||!content){e.currentTarget.reportValidity();return;}
+    const btn=$('#warnSendBtn');wrap.dataset.sending='1';btn.disabled=true;btn.textContent='Mengirim...';
     try {
-      await api('kirimPesan', { data: { tujuan: targetId, subjek: $('#warnSubject').value.trim(), isi_pesan: $('#warnContent').value.trim(), kategori: 'TEGURAN' } });
-      toast('Pesan berhasil dikirim.','ok'); $('#warningModal').remove();
-    } catch(err) { $('#warnMsg').innerHTML = msg(errorText(err)); }
+      await api('kirimPesan', { data: { tujuan: targetId, subjek: subject, isi_pesan: content, kategori: 'TEGURAN', idempotency_key: wrap.dataset.requestKey } });
+      toast('Pesan berhasil dikirim.','ok'); wrap.remove();
+    } catch(err) {
+      wrap.dataset.sending='0';btn.disabled=false;btn.textContent='Kirim Ulang';
+      $('#warnMsg').innerHTML = msg(errorText(err))+'<div class="muted">Kirim ulang dari jendela ini untuk menghindari pesan ganda.</div>';
+    }
   };
 };
 
@@ -8578,6 +8583,13 @@ async function loadPesanData(){
 }
 window.loadMorePesan=async function(){_pesanLimit=Math.min(500,_pesanLimit+150);await loadPesanData();};
 
+window._newMessageRequestKeyV1_=function(){
+  try{
+    if(window.crypto&&typeof window.crypto.randomUUID==='function')return 'MSGREQ-'+window.crypto.randomUUID();
+  }catch(e){}
+  return 'MSGREQ-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2)+'-'+Math.random().toString(36).slice(2);
+};
+
 window.openKirimPesanModal=async function(){
   let options=[];
   try{ const r=await api('getOpsiPenerimaPesan'); options=r.data||[]; }
@@ -8585,19 +8597,48 @@ window.openKirimPesanModal=async function(){
   if(!options.length){toast('Belum ada penerima aktif yang dapat dihubungi.','warning');return;}
   const groups={}; options.forEach(o=>{const g=o.group||'PENERIMA';(groups[g]||(groups[g]=[])).push(o);});
   const optionHtml=Object.keys(groups).map(g=>`<optgroup label="${esc(g)}">${groups[g].map(o=>`<option value="${esc(o.value)}">${esc(o.label)}</option>`).join('')}</optgroup>`).join('');
-  const wrap=document.createElement('div');wrap.id='pesanModal';
-  wrap.innerHTML=`<div class="msg-modal-backdrop"><div class="msg-modal"><div class="msg-modal-head"><div><small>PESAN BARU</small><h3>Kirim koordinasi resmi</h3></div><button class="msg-close" type="button" onclick="$('#pesanModal').remove()">×</button></div><form id="formKirimPesan"><div class="field"><label>Penerima</label><select id="pesanTujuan" required><option value="">Pilih penerima...</option>${optionHtml}</select></div><div class="field"><label>Subjek</label><input id="pesanSubjek" maxlength="180" required placeholder="Tuliskan subjek yang jelas"></div><div class="field"><label>Isi Pesan</label><textarea id="pesanIsi" maxlength="5000" rows="5" required placeholder="Tuliskan pesan atau instruksi secara ringkas..."></textarea></div><div id="pesanModalMsg"></div><div class="msg-modal-actions"><button type="button" class="btn btn-light" onclick="$('#pesanModal').remove()">Batal</button><button class="btn btn-primary">Kirim Pesan</button></div></form></div></div>`;
+  const wrap=document.createElement('div');wrap.id='pesanModal';wrap.dataset.requestKey=window._newMessageRequestKeyV1_();
+  wrap.innerHTML=`<div class="msg-modal-backdrop"><div class="msg-modal"><div class="msg-modal-head"><div><small>PESAN BARU</small><h3>Kirim koordinasi resmi</h3></div><button class="msg-close" type="button" onclick="if($('#pesanModal')?.dataset.sending==='1'){toast('Pesan sedang dikirim. Tunggu respons agar tidak terjadi duplikasi.','warning');return;}$('#pesanModal').remove()">×</button></div><form id="formKirimPesan"><div class="field"><label>Penerima</label><select id="pesanTujuan" required><option value="">Pilih penerima...</option>${optionHtml}</select></div><div class="field"><label>Subjek</label><input id="pesanSubjek" maxlength="180" required placeholder="Tuliskan subjek yang jelas"></div><div class="field"><label>Isi Pesan</label><textarea id="pesanIsi" maxlength="5000" rows="5" required placeholder="Tuliskan pesan atau instruksi secara ringkas..."></textarea></div><div id="pesanModalMsg" aria-live="polite"></div><div class="msg-modal-actions"><button type="button" class="btn btn-light" onclick="if($('#pesanModal')?.dataset.sending==='1'){toast('Pesan sedang dikirim. Tunggu respons agar tidak terjadi duplikasi.','warning');return;}$('#pesanModal').remove()">Batal</button><button id="pesanSendBtn" class="btn btn-primary" type="submit">Kirim Pesan</button></div></form></div></div>`;
   document.body.appendChild(wrap);
-  $('#formKirimPesan').onsubmit=async e=>{e.preventDefault();try{const r=await api('kirimPesan',{data:{tujuan:$('#pesanTujuan').value,subjek:$('#pesanSubjek').value.trim(),isi_pesan:$('#pesanIsi').value.trim(),kategori:isSchool()?'FEEDBACK':'INFORMASI'}});toast(r.message||'Pesan berhasil dikirim.','ok');$('#pesanModal').remove();_pesanBox='SENT';$$('.msg-tab').forEach(x=>x.classList.toggle('active',x.dataset.msgbox==='SENT'));await loadPesanData();}catch(err){$('#pesanModalMsg').innerHTML=msg(errorText(err));}};
+  $('#formKirimPesan').onsubmit=async e=>{
+    e.preventDefault();
+    if(wrap.dataset.sending==='1')return;
+    const btn=$('#pesanSendBtn'),form=$('#formKirimPesan');
+    const payload={tujuan:$('#pesanTujuan').value,subjek:$('#pesanSubjek').value.trim(),isi_pesan:$('#pesanIsi').value.trim(),kategori:isSchool()?'FEEDBACK':'INFORMASI',idempotency_key:wrap.dataset.requestKey};
+    if(!payload.tujuan||!payload.subjek||!payload.isi_pesan){form.reportValidity();return;}
+    wrap.dataset.sending='1';btn.disabled=true;btn.textContent='Mengirim...';
+    $('#pesanModalMsg').innerHTML='<div class="message info">Mengirim pesan. Jangan tutup jendela ini sampai ada konfirmasi.</div>';
+    try{
+      const r=await api('kirimPesan',{data:payload});
+      toast(r.message||'Pesan berhasil dikirim.','ok');
+      wrap.remove();_pesanBox='SENT';$$('.msg-tab').forEach(x=>x.classList.toggle('active',x.dataset.msgbox==='SENT'));
+      await loadPesanData();
+    }catch(err){
+      wrap.dataset.sending='0';btn.disabled=false;btn.textContent='Kirim Ulang';
+      $('#pesanModalMsg').innerHTML=msg(errorText(err))+'<div class="muted">Jika koneksi terputus setelah pesan tersimpan, gunakan tombol Kirim Ulang. Sistem akan mengenali permintaan yang sama dan tidak membuat pesan ganda.</div>';
+    }
+  };
 };
 
 window.openBalasPesanModal=async function(idPesan,pengirimAsal,subjekAsal=''){
   try{ if(idPesan) await api('updateStatusPesan',{id_pesan:idPesan,status_baca:'DIBACA'}); }catch(e){ console.warn(e); }
   updateUnreadMessageBadge();
-  const wrap=document.createElement('div');wrap.id='balasModal';
-  wrap.innerHTML=`<div class="msg-modal-backdrop"><div class="msg-modal"><div class="msg-modal-head"><div><small>BALAS PESAN</small><h3>${esc(subjekAsal||'Koordinasi')}</h3></div><button class="msg-close" type="button" onclick="$('#balasModal').remove()">×</button></div><form id="formBalasPesan"><div class="field"><label>Isi Balasan</label><textarea id="balasIsi" maxlength="5000" rows="5" required placeholder="Tuliskan balasan..."></textarea></div><div id="balasMsg"></div><div class="msg-modal-actions"><button type="button" class="btn btn-light" onclick="$('#balasModal').remove()">Batal</button><button class="btn btn-primary">Kirim & Selesaikan</button></div></form></div></div>`;
+  const wrap=document.createElement('div');wrap.id='balasModal';wrap.dataset.requestKey=window._newMessageRequestKeyV1_();
+  wrap.innerHTML=`<div class="msg-modal-backdrop"><div class="msg-modal"><div class="msg-modal-head"><div><small>BALAS PESAN</small><h3>${esc(subjekAsal||'Koordinasi')}</h3></div><button class="msg-close" type="button" onclick="if($('#balasModal')?.dataset.sending==='1'){toast('Balasan sedang dikirim. Tunggu respons agar tidak terjadi duplikasi.','warning');return;}$('#balasModal').remove()">×</button></div><form id="formBalasPesan"><div class="field"><label>Isi Balasan</label><textarea id="balasIsi" maxlength="5000" rows="5" required placeholder="Tuliskan balasan..."></textarea></div><div id="balasMsg" aria-live="polite"></div><div class="msg-modal-actions"><button type="button" class="btn btn-light" onclick="if($('#balasModal')?.dataset.sending==='1'){toast('Balasan sedang dikirim. Tunggu respons agar tidak terjadi duplikasi.','warning');return;}$('#balasModal').remove()">Batal</button><button id="balasSendBtn" class="btn btn-primary" type="submit">Kirim & Selesaikan</button></div></form></div></div>`;
   document.body.appendChild(wrap);
-  $('#formBalasPesan').onsubmit=async e=>{e.preventDefault();const isi=$('#balasIsi').value.trim();if(!isi)return;try{await api('kirimPesan',{data:{tujuan:pengirimAsal,subjek:'Re: '+String(subjekAsal||'Koordinasi').replace(/^Re:\s*/i,''),isi_pesan:isi,kategori:'BALASAN'}});if(idPesan)await api('updateStatusPesan',{id_pesan:idPesan,status_baca:'SELESAI'});toast('Balasan terkirim dan pesan diselesaikan.','ok');$('#balasModal').remove();await loadPesanData();}catch(err){$('#balasMsg').innerHTML=msg(errorText(err));}};
+  $('#formBalasPesan').onsubmit=async e=>{
+    e.preventDefault();if(wrap.dataset.sending==='1')return;
+    const isi=$('#balasIsi').value.trim();if(!isi){$('#balasIsi').reportValidity();return;}
+    const btn=$('#balasSendBtn');wrap.dataset.sending='1';btn.disabled=true;btn.textContent='Mengirim...';
+    try{
+      await api('kirimPesan',{data:{tujuan:pengirimAsal,subjek:'Re: '+String(subjekAsal||'Koordinasi').replace(/^Re:\s*/i,''),isi_pesan:isi,kategori:'BALASAN',idempotency_key:wrap.dataset.requestKey}});
+      if(idPesan)await api('updateStatusPesan',{id_pesan:idPesan,status_baca:'SELESAI'});
+      toast('Balasan terkirim dan pesan diselesaikan.','ok');wrap.remove();await loadPesanData();
+    }catch(err){
+      wrap.dataset.sending='0';btn.disabled=false;btn.textContent='Kirim Ulang';
+      $('#balasMsg').innerHTML=msg(errorText(err))+'<div class="muted">Kirim ulang dari jendela ini untuk melanjutkan permintaan yang sama tanpa membuat balasan ganda.</div>';
+    }
+  };
 };
 
 window.tutupNotifikasiPesan=async function(idPesan){
