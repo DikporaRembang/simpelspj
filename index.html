@@ -2520,12 +2520,18 @@ async function api(action, payload={}){
   const body = { action, ...payload };
   if(state.token) body.token = state.token;
 
+  const serializedBody=JSON.stringify(body);
+  if(serializedBody.length>2400000){
+    const sizeError=new Error('Permintaan terlalu besar. Sistem mengirim dokumen dalam potongan unggahan; muat ulang proses dan coba kembali.');
+    sizeError.code='REQUEST_BODY_TOO_LARGE';
+    throw sizeError;
+  }
   let response;
   try{
     response = await fetch(API_URL, {
       method:'POST',
       headers:{'Content-Type':'text/plain;charset=utf-8'},
-      body:JSON.stringify(body),
+      body:serializedBody,
       redirect:'follow'
     });
   }catch(networkErr){
@@ -2711,57 +2717,85 @@ function authView(notice=''){
     </main>`;
 }
 
-function initSecureCaptcha(){
-  const bind = ()=>{
-    const logo=document.getElementById('secureCaptchaLogo');
-    const input=document.getElementById('captchaInput');
-    const status=document.getElementById('secureCaptchaStatus');
-    if(!logo || !input || !status) return false;
 
-    logo.onclick=()=>{
-      input.value='verified';
-      logo.classList.add('checked');
-      logo.setAttribute('aria-pressed','true');
-      status.textContent='Verifikasi berhasil';
-      const action=logo.querySelector('.secure-check-action');
-      if(action) action.textContent='Terverifikasi';
-    };
-    return true;
-  };
-
-  if(!bind()){
-    setTimeout(bind,300);
+async function startServerLoginChallengeQA25_(button){
+  const input=document.getElementById('captchaInput');
+  const status=document.getElementById('secureCaptchaStatus');
+  const action=button?.querySelector('.secure-check-action');
+  if(!input||!status)return;
+  input.value='';
+  state.loginChallengeQA25=null;
+  button.disabled=true;
+  button.classList.remove('checked');
+  button.setAttribute('aria-pressed','false');
+  status.textContent='Menyiapkan verifikasi keamanan...';
+  if(action)action.textContent='Memproses';
+  try{
+    if(!window.crypto?.subtle||!window.TextEncoder)throw new Error('Browser tidak mendukung verifikasi keamanan. Gunakan browser terbaru.');
+    const challenge=await api('getLoginChallenge',{});
+    if(!challenge?.challenge_id||!challenge?.nonce||!Number.isInteger(Number(challenge.difficulty)))
+      throw new Error('Server tidak memberikan tantangan keamanan yang valid.');
+    const encoder=new TextEncoder();
+    const difficulty=Math.max(1,Math.min(6,Number(challenge.difficulty)));
+    const maxAttempts=1500000;
+    let proofCounter=-1;
+    status.textContent='Memverifikasi keamanan perangkat...';
+    for(let counter=0;counter<maxAttempts;counter++){
+      const bytes=await window.crypto.subtle.digest('SHA-256',encoder.encode(challenge.nonce+':'+counter));
+      const view=new Uint8Array(bytes);
+      let valid=true;
+      for(let j=0;j<Math.floor(difficulty/2);j++)if(view[j]!==0){valid=false;break;}
+      if(valid&&difficulty%2===1&&(view[Math.floor(difficulty/2)]&0xF0)!==0)valid=false;
+      if(valid){proofCounter=counter;break;}
+      if(counter>0&&counter%50000===0)await new Promise(resolve=>setTimeout(resolve,0));
+    }
+    if(proofCounter<0)throw new Error('Verifikasi keamanan tidak selesai. Silakan coba kembali.');
+    state.loginChallengeQA25={challenge_id:challenge.challenge_id,proof_counter:String(proofCounter)};
+    input.value='verified';
+    button.classList.add('checked');
+    button.setAttribute('aria-pressed','true');
+    status.textContent='Verifikasi keamanan berhasil';
+    if(action)action.textContent='Terverifikasi';
+  }catch(err){
+    input.value='';
+    state.loginChallengeQA25=null;
+    status.textContent=errorText(err);
+    if(action)action.textContent='Ulangi';
+  }finally{
+    button.disabled=false;
   }
 }
 
-// Fallback event delegation agar tetap aktif walaupun form login dirender ulang.
+function initSecureCaptcha(){
+  // No client-only "verified" flag is trusted. The click starts a server-issued
+  // one-time challenge and a browser proof-of-work checked again by Apps Script.
+}
 document.addEventListener('click',function(e){
-  const logo=e.target.closest('#secureCaptchaLogo');
-  if(!logo) return;
-  const input=document.getElementById('captchaInput');
-  const status=document.getElementById('secureCaptchaStatus');
-  if(input && status){
-    input.value='verified';
-    logo.classList.add('checked');
-    logo.setAttribute('aria-pressed','true');
-    status.textContent='Verifikasi berhasil';
-    const action=logo.querySelector('.secure-check-action');
-    if(action) action.textContent='Terverifikasi';
-  }
+  const button=e.target.closest('#secureCaptchaLogo');
+  if(!button)return;
+  e.preventDefault();
+  startServerLoginChallengeQA25_(button);
 });
-
 initSecureCaptcha();
 
 async function doLogin(e){
   e.preventDefault();
-  if($('#captchaInput').value !== 'verified'){
+  if($('#captchaInput').value !== 'verified' || !state.loginChallengeQA25){
     $('#authMsg').innerHTML=msg('Lakukan verifikasi keamanan terlebih dahulu.');
     $('#captchaInput').value='';
     document.getElementById('secureCaptchaLogo')?.focus();
     return;
   }
   try{
-    const r=await api('login',{username:$('#username').value.trim(),password:$('#password').value});
+    const proof=state.loginChallengeQA25;
+    state.loginChallengeQA25=null;
+    $('#captchaInput').value='';
+    const r=await api('login',{
+      username:$('#username').value.trim(),
+      password:$('#password').value,
+      challenge_id:proof.challenge_id,
+      proof_counter:proof.proof_counter
+    });
     clearSensitiveFrontendCaches_('login-transition');
     state.token=r.token; state.user=r.user || {};
     if(isSchool() && !state.user.npsn && /^\\d{8}$/.test(String(state.user.username||''))){
@@ -4991,15 +5025,15 @@ window._smartUploadFileV248_ = async function(file,idSpj,periode,onProgress,uplo
   // Recompute a deterministic content+context key on every invocation.
   // Do not cache by name/size/lastModified alone: different files can share
   // those metadata and must never inherit the previous file's upload session.
-  const idempotencyKey=await window._hashUploadFileChunkedV248_(file,(done,total)=>{
-    report('HASHING',0,file.size,`Menyiapkan identitas file: ${done}/${total} bagian...`);
-  });
   const report=(stage,uploaded,total,message)=>{
     if(typeof onProgress==='function')onProgress({
       stage:stage,uploaded_bytes:uploaded,total_bytes:total,
       percent:total?Math.min(100,uploaded/total*100):0,message:message||''
     });
   };
+  const idempotencyKey=await window._hashUploadFileChunkedV248_(file,(done,total)=>{
+    report('HASHING',0,file.size,`Menyiapkan identitas file: ${done}/${total} bagian...`);
+  });
   report('PREPARING',0,file.size,'Menyiapkan unggahan aman...');
   const begin=await api('beginSpjUpload',{data:{
     id_periode:periode,id_spj:idSpj,target_type:targetType,target_record_id:targetRecordId,nama_file:file.name,mimeType:mime,
@@ -5135,7 +5169,16 @@ window.showSpjPhotoV2454_ = async function(fileId,namaFile,periode){
   const wrap=document.createElement('div');wrap.id='modalSpjPhotoPreviewV2454';
   wrap.innerHTML=`<div style="position:fixed;inset:0;background:rgba(0,0,0,.78);display:flex;align-items:center;justify-content:center;z-index:1100;padding:16px"><div style="background:#fff;padding:16px;border-radius:16px;width:min(100%,1000px);max-height:94vh;overflow:auto"><div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px"><b>${esc(namaFile||'Foto')}</b><button class="btn btn-light" id="photoPreviewCloseV2454">Tutup</button></div><div id="photoPreviewContentV2454" style="text-align:center">${loading('Memuat foto secara aman...')}</div></div></div>`;
   document.body.appendChild(wrap);$('#photoPreviewCloseV2454').onclick=()=>wrap.remove();
-  try{const r=await api('getDokumenImageBase64',{fileId,idPeriode:periode,npsn});$('#photoPreviewContentV2454').innerHTML=`<img src="data:${esc(r.mimeType)};base64,${r.base64}" alt="${esc(r.nama_file||namaFile||'Foto dokumentasi')}" style="max-width:100%;max-height:78vh;object-fit:contain;border-radius:8px">`;}
+  try{
+    const r=await api('getDokumenImageBase64',{fileId,idPeriode:periode,npsn});
+    const imageMime=String(r.mimeType||'').toLowerCase();
+    const imageBase64=String(r.base64||'');
+    if(!['image/jpeg','image/jpg','image/png','image/gif','image/webp'].includes(imageMime))
+      throw new Error('Format gambar tidak didukung untuk pratinjau.');
+    if(!imageBase64||imageBase64.length>15000000||!/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(imageBase64))
+      throw new Error('Data gambar tidak valid atau melebihi batas pratinjau.');
+    $('#photoPreviewContentV2454').innerHTML=`<img src="data:${esc(imageMime)};base64,${esc(imageBase64)}" alt="${esc(r.nama_file||namaFile||'Foto dokumentasi')}" style="max-width:100%;max-height:78vh;object-fit:contain;border-radius:8px">`;
+  }
   catch(err){$('#photoPreviewContentV2454').innerHTML=msg(errorText(err));}
 };
 
@@ -8513,16 +8556,29 @@ function renderDinasCenterTable(listSekolah, listPenugasan){
     </div>`;
 }
 
+
+function _newMessageIdempotencyKey_(){
+  if(typeof crypto!=='undefined'&&crypto.randomUUID)return 'MSGREQ-'+crypto.randomUUID();
+  return 'MSGREQ-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2);
+}
+
 window.openPeringatanModal = function(targetId, targetName) {
+  const idempotencyKey=_newMessageIdempotencyKey_();
   const wrap = document.createElement('div'); wrap.id = 'warningModal';
   wrap.innerHTML = `<div style="position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:999;padding:16px"><div style="background:#fff;padding:28px;border-radius:24px;width:min(100%,500px);box-shadow:0 20px 40px rgba(0,0,0,.2)"><h3 style="margin-top:0;color:var(--primary)">Kirim Pesan Resmi ke ${esc(targetName)}</h3><form id="warningForm"><div class="field"><label>Subjek</label><input id="warnSubject" required placeholder="Contoh: Segera Unggah Berkas SPJ"></div><div class="field"><label>Isi Pesan</label><textarea id="warnContent" rows="4" required placeholder="Tuliskan instruksi..."></textarea></div><div id="warnMsg"></div><div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px"><button type="button" class="btn btn-light" onclick="$('#warningModal').remove()">Batal</button><button class="btn btn-primary">Kirim</button></div></form></div></div>`;
   document.body.appendChild(wrap);
   $('#warningForm').onsubmit = async e => {
     e.preventDefault();
+    const form=e.currentTarget,button=form.querySelector('button[type="submit"],button.btn-primary');
+    if(button&&button.disabled)return;
+    if(button){button.disabled=true;button.dataset.originalText=button.textContent;button.textContent='Mengirim…';}
     try {
-      await api('kirimPesan', { data: { tujuan: targetId, subjek: $('#warnSubject').value.trim(), isi_pesan: $('#warnContent').value.trim(), kategori: 'TEGURAN' } });
+      await api('kirimPesan', { data: { tujuan: targetId, subjek: $('#warnSubject').value.trim(), isi_pesan: $('#warnContent').value.trim(), kategori: 'TEGURAN', idempotency_key:idempotencyKey } });
       toast('Pesan berhasil dikirim.','ok'); $('#warningModal').remove();
-    } catch(err) { $('#warnMsg').innerHTML = msg(errorText(err)); }
+    } catch(err) {
+      $('#warnMsg').innerHTML = msg(errorText(err));
+      if(button){button.disabled=false;button.textContent=button.dataset.originalText||'Kirim';}
+    }
   };
 };
 
@@ -8607,6 +8663,7 @@ async function loadPesanData(){
 window.loadMorePesan=async function(){_pesanLimit=Math.min(500,_pesanLimit+150);await loadPesanData();};
 
 window.openKirimPesanModal=async function(){
+  const idempotencyKey=_newMessageIdempotencyKey_();
   let options=[];
   try{ const r=await api('getOpsiPenerimaPesan'); options=r.data||[]; }
   catch(e){toast(errorText(e),'error');return;}
@@ -8616,16 +8673,42 @@ window.openKirimPesanModal=async function(){
   const wrap=document.createElement('div');wrap.id='pesanModal';
   wrap.innerHTML=`<div class="msg-modal-backdrop"><div class="msg-modal"><div class="msg-modal-head"><div><small>PESAN BARU</small><h3>Kirim koordinasi resmi</h3></div><button class="msg-close" type="button" onclick="$('#pesanModal').remove()">×</button></div><form id="formKirimPesan"><div class="field"><label>Penerima</label><select id="pesanTujuan" required><option value="">Pilih penerima...</option>${optionHtml}</select></div><div class="field"><label>Subjek</label><input id="pesanSubjek" maxlength="180" required placeholder="Tuliskan subjek yang jelas"></div><div class="field"><label>Isi Pesan</label><textarea id="pesanIsi" maxlength="5000" rows="5" required placeholder="Tuliskan pesan atau instruksi secara ringkas..."></textarea></div><div id="pesanModalMsg"></div><div class="msg-modal-actions"><button type="button" class="btn btn-light" onclick="$('#pesanModal').remove()">Batal</button><button class="btn btn-primary">Kirim Pesan</button></div></form></div></div>`;
   document.body.appendChild(wrap);
-  $('#formKirimPesan').onsubmit=async e=>{e.preventDefault();try{const r=await api('kirimPesan',{data:{tujuan:$('#pesanTujuan').value,subjek:$('#pesanSubjek').value.trim(),isi_pesan:$('#pesanIsi').value.trim(),kategori:isSchool()?'FEEDBACK':'INFORMASI'}});toast(r.message||'Pesan berhasil dikirim.','ok');$('#pesanModal').remove();_pesanBox='SENT';$$('.msg-tab').forEach(x=>x.classList.toggle('active',x.dataset.msgbox==='SENT'));await loadPesanData();}catch(err){$('#pesanModalMsg').innerHTML=msg(errorText(err));}};
+  $('#formKirimPesan').onsubmit=async e=>{
+    e.preventDefault();
+    const form=e.currentTarget,button=form.querySelector('button[type="submit"],button.btn-primary');
+    if(button&&button.disabled)return;
+    if(button){button.disabled=true;button.dataset.originalText=button.textContent;button.textContent='Mengirim…';}
+    try{
+      const r=await api('kirimPesan',{data:{tujuan:$('#pesanTujuan').value,subjek:$('#pesanSubjek').value.trim(),isi_pesan:$('#pesanIsi').value.trim(),kategori:isSchool()?'FEEDBACK':'INFORMASI',idempotency_key:idempotencyKey}});
+      toast(r.message||'Pesan berhasil dikirim.','ok');$('#pesanModal').remove();_pesanBox='SENT';$$('.msg-tab').forEach(x=>x.classList.toggle('active',x.dataset.msgbox==='SENT'));await loadPesanData();
+    }catch(err){
+      $('#pesanModalMsg').innerHTML=msg(errorText(err));
+      if(button){button.disabled=false;button.textContent=button.dataset.originalText||'Kirim Pesan';}
+    }
+  };
 };
 
 window.openBalasPesanModal=async function(idPesan,pengirimAsal,subjekAsal=''){
+  const idempotencyKey=_newMessageIdempotencyKey_();
   try{ if(idPesan) await api('updateStatusPesan',{id_pesan:idPesan,status_baca:'DIBACA'}); }catch(e){ console.warn(e); }
   updateUnreadMessageBadge();
   const wrap=document.createElement('div');wrap.id='balasModal';
   wrap.innerHTML=`<div class="msg-modal-backdrop"><div class="msg-modal"><div class="msg-modal-head"><div><small>BALAS PESAN</small><h3>${esc(subjekAsal||'Koordinasi')}</h3></div><button class="msg-close" type="button" onclick="$('#balasModal').remove()">×</button></div><form id="formBalasPesan"><div class="field"><label>Isi Balasan</label><textarea id="balasIsi" maxlength="5000" rows="5" required placeholder="Tuliskan balasan..."></textarea></div><div id="balasMsg"></div><div class="msg-modal-actions"><button type="button" class="btn btn-light" onclick="$('#balasModal').remove()">Batal</button><button class="btn btn-primary">Kirim & Selesaikan</button></div></form></div></div>`;
   document.body.appendChild(wrap);
-  $('#formBalasPesan').onsubmit=async e=>{e.preventDefault();const isi=$('#balasIsi').value.trim();if(!isi)return;try{await api('kirimPesan',{data:{tujuan:pengirimAsal,subjek:'Re: '+String(subjekAsal||'Koordinasi').replace(/^Re:\s*/i,''),isi_pesan:isi,kategori:'BALASAN'}});if(idPesan)await api('updateStatusPesan',{id_pesan:idPesan,status_baca:'SELESAI'});toast('Balasan terkirim dan pesan diselesaikan.','ok');$('#balasModal').remove();await loadPesanData();}catch(err){$('#balasMsg').innerHTML=msg(errorText(err));}};
+  $('#formBalasPesan').onsubmit=async e=>{
+    e.preventDefault();const isi=$('#balasIsi').value.trim();if(!isi)return;
+    const form=e.currentTarget,button=form.querySelector('button[type="submit"],button.btn-primary');
+    if(button&&button.disabled)return;
+    if(button){button.disabled=true;button.dataset.originalText=button.textContent;button.textContent='Mengirim…';}
+    try{
+      await api('kirimPesan',{data:{tujuan:pengirimAsal,subjek:'Re: '+String(subjekAsal||'Koordinasi').replace(/^Re:\s*/i,''),isi_pesan:isi,kategori:'BALASAN',idempotency_key:idempotencyKey}});
+      if(idPesan)await api('updateStatusPesan',{id_pesan:idPesan,status_baca:'SELESAI'});
+      toast('Balasan terkirim dan pesan diselesaikan.','ok');$('#balasModal').remove();await loadPesanData();
+    }catch(err){
+      $('#balasMsg').innerHTML=msg(errorText(err));
+      if(button){button.disabled=false;button.textContent=button.dataset.originalText||'Kirim & Selesaikan';}
+    }
+  };
 };
 
 window.tutupNotifikasiPesan=async function(idPesan){
@@ -8944,7 +9027,7 @@ async function masterSpjView(){
 
 function openMasterModal(title, body, onSubmit){
   const wrap = document.createElement('div'); wrap.id = 'masterConfigModal';
-  wrap.innerHTML = `<div style="position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:1000;padding:16px"><div style="background:#fff;padding:24px;border-radius:20px;width:min(100%,620px);max-height:90vh;overflow:auto"><h3 style="margin-top:0">${title}</h3><form id="masterConfigForm">${body}<div id="masterConfigMsg"></div><div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px"><button type="button" class="btn btn-light" onclick="$('#masterConfigModal')?.remove()">Batal</button><button class="btn btn-primary">Simpan</button></div></form></div></div>`;
+  wrap.innerHTML = `<div style="position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:1000;padding:16px"><div style="background:#fff;padding:24px;border-radius:20px;width:min(100%,620px);max-height:90vh;overflow:auto"><h3 style="margin-top:0">${esc(title)}</h3><form id="masterConfigForm">${body}<div id="masterConfigMsg"></div><div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px"><button type="button" class="btn btn-light" onclick="$('#masterConfigModal')?.remove()">Batal</button><button class="btn btn-primary">Simpan</button></div></form></div></div>`;
   document.body.appendChild(wrap); 
   $('#masterConfigForm').onsubmit = onSubmit;
 }
@@ -10752,7 +10835,7 @@ window.savePhase1ComponentRc2=async function(status){
   const st=window.__phase1ReviewState||{},wb=st.workbench||{},c=f1CurrentComponentRc2_();if(!c||wb.read_only||isDinas())return;
   const scoreRaw=$('#f1ComponentScore')?.value,score=scoreRaw===''?null:Number(scoreRaw),note=$('#f1ComponentNote')?.value.trim()||'',items=Object.entries(st.decisions||{}).map(([id,d])=>[id,d.status,Number(d.page_no||0),Number(d.confidence||0)]);
   if(score!==null&&(!Number.isFinite(score)||score<0||score>4)){toast('Skor komponen harus 0–4.','warning');return;}
-  try{await api('savePhase1ComponentReview',{data:{npsn:wb.npsn,id_periode:wb.id_periode,no_komponen:c.no,status,skor_komponen:score,catatan:note,items}});toast(status==='SELESAI'?'Komponen Fase 1 selesai.':'Progres review tersimpan.','ok');await loadPenilaianFase1Rc2();if(status!=='SELESAI')setTimeout(()=>openPhase1ComponentRc2(c.no),0);}catch(e){toast(errorText(e),'error',7000);}
+  try{await api('savePhase1ComponentReview',{data:{npsn:wb.npsn,id_periode:wb.id_periode,no_komponen:c.no,status,skor_komponen:score,catatan:note,items,expected_review_snapshot_id:String(c.review_revision||''),expected_input_fingerprint:String(c.current_input_fingerprint||'')}});toast(status==='SELESAI'?'Komponen Fase 1 selesai.':'Progres review tersimpan.','ok');await loadPenilaianFase1Rc2();if(status!=='SELESAI')setTimeout(()=>openPhase1ComponentRc2(c.no),0);}catch(e){toast(errorText(e),'error',7000);}
 };
 
 
@@ -11400,7 +11483,7 @@ window.savePhase2ComponentRc2=async function(status){
   const sspDecision=$('#f2SspReconciliation')?.value||'';
   const sspReason=$('#f2SspReason')?.value||'';
   if(status==='SELESAI'&&[8,9].includes(Number(c.no))&&c.document?.file_id&&Number(c.transaction_count)===0&&(!sspReason||note.length<20||sspDecision!=='BUKTI_DITERIMA')){toast('SSP tanpa BKU: pilih Bukti Diterima dan isi catatan verifikasi sebelum menyelesaikan. Untuk perbaikan, simpan sebagai Progres.','warning',7000);return;}
-  try{await api('savePhase2ComponentReview',{data:{npsn:wb.npsn,id_periode:wb.id_periode,no_komponen:c.no,status,skor_komponen:score,catatan:note,ssp_rekonsiliasi:sspDecision,ssp_alasan:sspReason,items}});toast(status==='SELESAI'?'Komponen Fase 2 selesai.':'Progres review tersimpan.','ok');await loadFase2Rc2();if(status!=='SELESAI')setTimeout(()=>openPhase2ComponentRc2(c.no),0);}catch(e){toast(errorText(e),'error',7000);}
+  try{await api('savePhase2ComponentReview',{data:{npsn:wb.npsn,id_periode:wb.id_periode,no_komponen:c.no,status,skor_komponen:score,catatan:note,ssp_rekonsiliasi:sspDecision,ssp_alasan:sspReason,items,expected_review_snapshot_id:String(c.review_revision||''),expected_input_fingerprint:String(c.current_input_fingerprint||'')}});toast(status==='SELESAI'?'Komponen Fase 2 selesai.':'Progres review tersimpan.','ok');await loadFase2Rc2();if(status!=='SELESAI')setTimeout(()=>openPhase2ComponentRc2(c.no),0);}catch(e){toast(errorText(e),'error',7000);}
 };
 window.finalizePhase2FromComponentsRc2=async function(){
   const st=window.__phase2ReviewState||{},wb=st.workbench||{};if(!wb.npsn||!wb.id_periode)return;if(!confirm('Tetapkan nilai Fase 2 dari 6 komponen yang sudah diselesaikan?'))return;
@@ -11930,7 +12013,6 @@ window.refreshMaintenanceControl=async function(){
 
 
 
-async 
 
 async function runDataIntegrityAudit_(){
   const body=$('#dataIntegrityAuditBody'),button=$('#runDataIntegrityAuditBtn');
