@@ -2204,9 +2204,9 @@ body[data-role] .content .spj-simple-details pre{white-space:pre-wrap;max-height
 <script>
 'use strict';
 
-const V10_VERSION = 'V25.2.4.14-RC4.4.7-LARGE-PDF-UPLOAD-FIX';
+const V10_VERSION = 'V25.2.4.14-RC4.4.8-UPLOAD-IDEMPOTENCY-HARDENING';
 
-const FRONTEND_BUILD_ID = 'V25.2.4.14_RC4.4.7_LARGE_PDF_UPLOAD_FIX';
+const FRONTEND_BUILD_ID = 'V25.2.4.14_RC4.4.8_UPLOAD_IDEMPOTENCY_HARDENING';
   const API_URL = 'https://script.google.com/macros/s/AKfycbyWvJXKr1QZ1zwbeJDoULTUihycj1771SsDlGFy8jnuF4i3DsEbHXlcJU48VDAg17fqDA/exec';
 
 
@@ -4941,7 +4941,7 @@ window._readUploadChunkBase64V248_ = function(blob){
   });
 };
 window._hashUploadFileChunkedV248_ = async function(file,onProgress){
-  if(!window.crypto||!crypto.subtle)throw new Error('WebCrypto tidak tersedia.');
+  if(!window.crypto||!crypto.subtle)throw new Error('Browser tidak mendukung fingerprint file yang aman. Gunakan browser terbaru melalui HTTPS.');
   const HASH_CHUNK_BYTES=1024*1024;
   const partHashes=[];
   const total=Math.ceil(file.size/HASH_CHUNK_BYTES);
@@ -4951,6 +4951,7 @@ window._hashUploadFileChunkedV248_ = async function(file,onProgress){
     partHashes.push(Array.from(new Uint8Array(digest)).map(x=>x.toString(16).padStart(2,'0')).join(''));
     if(typeof onProgress==='function')onProgress(index+1,total);
   }
+  // Keep the V1 envelope for compatibility with RC4.4.7 in-progress sessions.
   const identityText=['SIMPEL-SPJ-CHUNK-HASH-V1',String(file.size),String(total)].concat(partHashes).join('|');
   const finalDigest=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(identityText));
   return 'sha256-chunks-v1-'+Array.from(new Uint8Array(finalDigest)).map(x=>x.toString(16).padStart(2,'0')).join('');
@@ -4963,24 +4964,12 @@ window._smartUploadFileV248_ = async function(file,idSpj,periode,onProgress,uplo
   if(isPdf)window._validateUploadFileRc3_(file);else window._validateSpjPhotoFileV2454_(file);
   if(!isPdf&&String(idSpj)!=='SPJ-10'&&targetType!=='TAX_MANUAL_EVIDENCE')throw new Error('Foto JPG/PNG hanya dapat diunggah pada komponen Foto/Dokumentasi atau lampiran pajak manual.');
   const npsn=String(state.user?.npsn||state.user?.username||'');
-  window.__spjUploadIdemV248=window.__spjUploadIdemV248||{};
-  const fingerprint=[npsn,periode,idSpj,targetType,targetRecordId,file.name,file.size,file.lastModified||0,mime].join('|');
-  let idempotencyKey=window.__spjUploadIdemV248[fingerprint]||'';
-  if(!idempotencyKey){
-    // Bounded-memory fingerprint: hash each 1 MB slice separately, then hash
-    // the compact list of slice digests. Never allocate a full-file ArrayBuffer.
-    try{
-      idempotencyKey=await window._hashUploadFileChunkedV248_(file,(done,total)=>{
-        report('HASHING',0,file.size,`Menyiapkan identitas file: ${done}/${total} bagian...`);
-      });
-    }catch(e){
-      // A random key avoids accidentally associating different file contents.
-      // It sacrifices cross-reload resume only when WebCrypto is unavailable.
-      idempotencyKey='upload-'+(window.crypto&&crypto.randomUUID?crypto.randomUUID():
-        Date.now().toString(36)+'-'+Math.random().toString(36).slice(2)+'-'+Math.random().toString(36).slice(2));
-    }
-    window.__spjUploadIdemV248[fingerprint]=idempotencyKey;
-  }
+  // Recompute a deterministic content+context key on every invocation.
+  // Do not cache by name/size/lastModified alone: different files can share
+  // those metadata and must never inherit the previous file's upload session.
+  const idempotencyKey=await window._hashUploadFileChunkedV248_(file,(done,total)=>{
+    report('HASHING',0,file.size,`Menyiapkan identitas file: ${done}/${total} bagian...`);
+  });
   const report=(stage,uploaded,total,message)=>{
     if(typeof onProgress==='function')onProgress({
       stage:stage,uploaded_bytes:uploaded,total_bytes:total,
