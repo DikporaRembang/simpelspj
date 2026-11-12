@@ -3353,6 +3353,8 @@ function renderShell(){
 }
 
 let _globalSearchTimer = null;
+let _globalSearchRequestSeq = 0;
+let _globalSearchDocHandlers = null;
 window._globalSearchRows = [];
 
 window.openGlobalSearchResult = function(index){
@@ -3376,20 +3378,25 @@ window.openGlobalSearchResult = function(index){
   }
 };
 
-async function runGlobalSearch(q){
+async function runGlobalSearch(q, requestSeq){
   const box = $('#globalSearchResults'), input = $('#globalSearchInput');
   if(!box || !input) return;
   q = String(q || '').trim();
+  const seq = Number(requestSeq) || ++_globalSearchRequestSeq;
   if(q.length < 2){
-    window._globalSearchRows = [];
-    box.classList.add('hidden');
-    box.innerHTML='';
+    if(seq===_globalSearchRequestSeq){
+      window._globalSearchRows = [];
+      box.classList.add('hidden');
+      box.innerHTML='';
+    }
     return;
   }
   box.classList.remove('hidden');
   box.innerHTML = loading('Mencari...');
   try{
     const res = await api('cariGlobalSIMPEL',{q});
+    // Ignore stale responses when a newer query has already been typed or rendered.
+    if(seq!==_globalSearchRequestSeq || String(input.value||'').trim()!==q) return;
     const rows = Array.isArray(res.data) ? res.data : [];
     window._globalSearchRows = rows;
     if(!rows.length){
@@ -3415,6 +3422,7 @@ async function runGlobalSearch(q){
       });
     });
   }catch(e){
+    if(seq!==_globalSearchRequestSeq || String(input.value||'').trim()!==q) return;
     window._globalSearchRows = [];
     box.innerHTML = `<div class="search-empty">${esc(errorText(e) || 'Pencarian belum dapat digunakan. Silakan coba lagi.')}</div>`;
   }
@@ -3425,7 +3433,8 @@ function initGlobalSearch(){
   if(!input) return;
   input.oninput = () => {
     clearTimeout(_globalSearchTimer);
-    _globalSearchTimer=setTimeout(()=>runGlobalSearch(input.value),280);
+    const requestSeq=++_globalSearchRequestSeq;
+    _globalSearchTimer=setTimeout(()=>runGlobalSearch(input.value,requestSeq),280);
   };
   input.onkeydown = e => {
     if(e.key==='Escape'){
@@ -3441,17 +3450,29 @@ function initGlobalSearch(){
       }
     }
   };
-  document.addEventListener('click', e => {
+  // renderShell() may run repeatedly after login/session changes. Remove the
+  // previous document handlers before binding the current search controls.
+  if(_globalSearchDocHandlers){
+    document.removeEventListener('click',_globalSearchDocHandlers.click);
+    document.removeEventListener('keydown',_globalSearchDocHandlers.keydown);
+  }
+  const clickHandler = e => {
     const host=$('#globalSearchBox');
-    if(host && !host.contains(e.target)) box?.classList.add('hidden');
-  });
-  document.addEventListener('keydown', e => {
-    if((e.ctrlKey || e.metaKey) && e.key.toLowerCase()==='k'){
+    const currentBox=$('#globalSearchResults');
+    if(host && !host.contains(e.target)) currentBox?.classList.add('hidden');
+  };
+  const keydownHandler = e => {
+    if((e.ctrlKey || e.metaKey) && String(e.key||'').toLowerCase()==='k'){
+      const currentInput=$('#globalSearchInput');
+      if(!currentInput) return;
       e.preventDefault();
-      input.focus();
-      input.select();
+      currentInput.focus();
+      currentInput.select();
     }
-  });
+  };
+  _globalSearchDocHandlers={click:clickHandler,keydown:keydownHandler};
+  document.addEventListener('click',clickHandler);
+  document.addEventListener('keydown',keydownHandler);
 }
 
 let _viewNavRunning = false;
@@ -9056,6 +9077,15 @@ function assertSensitiveSessionCurrent_(epoch, token){
 }
 
 function clearSensitiveFrontendCaches_(reason){
+  // Invalidate pending global-search work on logout/session reset so a late
+  // response cannot repopulate data from the previous role/session.
+  try{
+    if(typeof _globalSearchTimer!=='undefined'&&_globalSearchTimer){clearTimeout(_globalSearchTimer);_globalSearchTimer=null;}
+    if(typeof _globalSearchRequestSeq!=='undefined') _globalSearchRequestSeq++;
+    window._globalSearchRows=[];
+    const searchBox=document.getElementById('globalSearchResults');
+    if(searchBox){searchBox.innerHTML='';searchBox.classList.add('hidden');}
+  }catch(_){}
   __sensitiveDataEpoch++;
   window.__pageAwareOcrCancel=true;
   try {
