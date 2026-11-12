@@ -2233,6 +2233,7 @@ window.ROLE_MENUS = {
       { id:'temuan', label:'Temuan Pemeriksaan' },
       { id:'pesan', label:'Pesan & Koordinasi' },
       { id:'dbCheck', label:'Validasi Sistem' },
+      { id:'maintenanceControl', label:'Kontrol Maintenance' },
       { id:'tutorialV5', label:'Panduan SIMPEL SPJ' }
     ]}
   ],
@@ -3350,9 +3351,12 @@ function renderShell(){
   $('#logoutBtn').onclick = logout; $$('[data-action="logout"]').forEach(x=>x.onclick=logout); 
   $('#menuBtn').onclick = () => $('#sidebar')?.classList.toggle('open');
   initGlobalSearch();
+  checkMaintenanceForCurrentUser_();
 }
 
 let _globalSearchTimer = null;
+let _globalSearchRequestSeq = 0;
+let _globalSearchDocHandlers = null;
 window._globalSearchRows = [];
 
 window.openGlobalSearchResult = function(index){
@@ -3376,20 +3380,25 @@ window.openGlobalSearchResult = function(index){
   }
 };
 
-async function runGlobalSearch(q){
+async function runGlobalSearch(q, requestSeq){
   const box = $('#globalSearchResults'), input = $('#globalSearchInput');
   if(!box || !input) return;
   q = String(q || '').trim();
+  const seq = Number(requestSeq) || ++_globalSearchRequestSeq;
   if(q.length < 2){
-    window._globalSearchRows = [];
-    box.classList.add('hidden');
-    box.innerHTML='';
+    if(seq===_globalSearchRequestSeq){
+      window._globalSearchRows = [];
+      box.classList.add('hidden');
+      box.innerHTML='';
+    }
     return;
   }
   box.classList.remove('hidden');
   box.innerHTML = loading('Mencari...');
   try{
     const res = await api('cariGlobalSIMPEL',{q});
+    // Ignore stale responses when a newer query has already been typed or rendered.
+    if(seq!==_globalSearchRequestSeq || String(input.value||'').trim()!==q) return;
     const rows = Array.isArray(res.data) ? res.data : [];
     window._globalSearchRows = rows;
     if(!rows.length){
@@ -3415,6 +3424,7 @@ async function runGlobalSearch(q){
       });
     });
   }catch(e){
+    if(seq!==_globalSearchRequestSeq || String(input.value||'').trim()!==q) return;
     window._globalSearchRows = [];
     box.innerHTML = `<div class="search-empty">${esc(errorText(e) || 'Pencarian belum dapat digunakan. Silakan coba lagi.')}</div>`;
   }
@@ -3425,7 +3435,8 @@ function initGlobalSearch(){
   if(!input) return;
   input.oninput = () => {
     clearTimeout(_globalSearchTimer);
-    _globalSearchTimer=setTimeout(()=>runGlobalSearch(input.value),280);
+    const requestSeq=++_globalSearchRequestSeq;
+    _globalSearchTimer=setTimeout(()=>runGlobalSearch(input.value,requestSeq),280);
   };
   input.onkeydown = e => {
     if(e.key==='Escape'){
@@ -3441,17 +3452,29 @@ function initGlobalSearch(){
       }
     }
   };
-  document.addEventListener('click', e => {
+  // renderShell() may run repeatedly after login/session changes. Remove the
+  // previous document handlers before binding the current search controls.
+  if(_globalSearchDocHandlers){
+    document.removeEventListener('click',_globalSearchDocHandlers.click);
+    document.removeEventListener('keydown',_globalSearchDocHandlers.keydown);
+  }
+  const clickHandler = e => {
     const host=$('#globalSearchBox');
-    if(host && !host.contains(e.target)) box?.classList.add('hidden');
-  });
-  document.addEventListener('keydown', e => {
-    if((e.ctrlKey || e.metaKey) && e.key.toLowerCase()==='k'){
+    const currentBox=$('#globalSearchResults');
+    if(host && !host.contains(e.target)) currentBox?.classList.add('hidden');
+  };
+  const keydownHandler = e => {
+    if((e.ctrlKey || e.metaKey) && String(e.key||'').toLowerCase()==='k'){
+      const currentInput=$('#globalSearchInput');
+      if(!currentInput) return;
       e.preventDefault();
-      input.focus();
-      input.select();
+      currentInput.focus();
+      currentInput.select();
     }
-  });
+  };
+  _globalSearchDocHandlers={click:clickHandler,keydown:keydownHandler};
+  document.addEventListener('click',clickHandler);
+  document.addEventListener('keydown',keydownHandler);
 }
 
 let _viewNavRunning = false;
@@ -3551,6 +3574,7 @@ async function renderViewSafely(view){
     kesepakatan: isDinas() ? finalisasiSpjView : hasilPenilaianView,
     keberatan: isSchool() ? perbaikanSpjView : verifikasiUlangView,
     dbCheck: dbCheckView,
+    maintenanceControl: maintenanceControlView,
     pesan: pesanView,
     monitoringGlobal: renderMonitoringGlobalView,
     penilaianFase1: penilaianFase1View,
@@ -4967,16 +4991,15 @@ window._smartUploadFileV248_ = async function(file,idSpj,periode,onProgress,uplo
   // Recompute a deterministic content+context key on every invocation.
   // Do not cache by name/size/lastModified alone: different files can share
   // those metadata and must never inherit the previous file's upload session.
-  // Declare report before first use; otherwise const is in its temporal dead zone.
+  const idempotencyKey=await window._hashUploadFileChunkedV248_(file,(done,total)=>{
+    report('HASHING',0,file.size,`Menyiapkan identitas file: ${done}/${total} bagian...`);
+  });
   const report=(stage,uploaded,total,message)=>{
     if(typeof onProgress==='function')onProgress({
       stage:stage,uploaded_bytes:uploaded,total_bytes:total,
       percent:total?Math.min(100,uploaded/total*100):0,message:message||''
     });
   };
-  const idempotencyKey=await window._hashUploadFileChunkedV248_(file,(done,total)=>{
-    report('HASHING',0,file.size,`Menyiapkan identitas file: ${done}/${total} bagian...`);
-  });
   report('PREPARING',0,file.size,'Menyiapkan unggahan aman...');
   const begin=await api('beginSpjUpload',{data:{
     id_periode:periode,id_spj:idSpj,target_type:targetType,target_record_id:targetRecordId,nama_file:file.name,mimeType:mime,
@@ -5655,6 +5678,7 @@ window.openTransaksiSchool = function(npsn){
 
 window.openTransactionForm = function(){
   const p = $('#periodeSelect').value; if(!p) return;
+  const requestId='TRXREQ-'+(window.crypto&&typeof window.crypto.randomUUID==='function'?window.crypto.randomUUID():(Date.now().toString(36)+'-'+Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2)));
   const wrap = document.createElement('div'); wrap.id = 'trxModal';
   wrap.innerHTML = `
     <div style="position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:999;padding:16px">
@@ -5684,9 +5708,13 @@ window.openTransactionForm = function(){
   
   $('#trxForm').onsubmit = async e => {
     e.preventDefault();
+    const submitButton=$('#trxForm button[type="submit"]')||$('#trxForm button.btn-primary');
+    if(submitButton&&submitButton.disabled)return;
+    if(submitButton){submitButton.disabled=true;submitButton.textContent='Menyimpan…';}
     try{
       await api('simpanTransaksiSPJ', {
         data: {
+          id_transaksi: requestId,
           id_periode: p,
           tanggal_transaksi: $('#trxTanggal').value,
           nilai_transaksi: Number($('#trxNilai').value),
@@ -5704,6 +5732,7 @@ window.openTransactionForm = function(){
       await renderTransaksi();
     } catch(err) {
       $('#trxMsg').innerHTML = msg(errorText(err));
+      if(submitButton){submitButton.disabled=false;submitButton.textContent='Simpan Transaksi';}
     }
   };
 };
@@ -8485,21 +8514,15 @@ function renderDinasCenterTable(listSekolah, listPenugasan){
 }
 
 window.openPeringatanModal = function(targetId, targetName) {
-  const wrap = document.createElement('div'); wrap.id = 'warningModal'; wrap.dataset.requestKey=window._newMessageRequestKeyV1_();
-  wrap.innerHTML = `<div style="position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:999;padding:16px"><div style="background:#fff;padding:28px;border-radius:24px;width:min(100%,500px);box-shadow:0 20px 40px rgba(0,0,0,.2)"><h3 style="margin-top:0;color:var(--primary)">Kirim Pesan Resmi ke ${esc(targetName)}</h3><form id="warningForm"><div class="field"><label>Subjek</label><input id="warnSubject" required maxlength="180" placeholder="Contoh: Segera Unggah Berkas SPJ"></div><div class="field"><label>Isi Pesan</label><textarea id="warnContent" rows="4" maxlength="5000" required placeholder="Tuliskan instruksi..."></textarea></div><div id="warnMsg" aria-live="polite"></div><div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px"><button type="button" class="btn btn-light" onclick="if($('#warningModal')?.dataset.sending==='1'){toast('Pesan sedang dikirim. Tunggu respons.','warning');return;}$('#warningModal').remove()">Batal</button><button id="warnSendBtn" type="submit" class="btn btn-primary">Kirim</button></div></form></div></div>`;
+  const wrap = document.createElement('div'); wrap.id = 'warningModal';
+  wrap.innerHTML = `<div style="position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:999;padding:16px"><div style="background:#fff;padding:28px;border-radius:24px;width:min(100%,500px);box-shadow:0 20px 40px rgba(0,0,0,.2)"><h3 style="margin-top:0;color:var(--primary)">Kirim Pesan Resmi ke ${esc(targetName)}</h3><form id="warningForm"><div class="field"><label>Subjek</label><input id="warnSubject" required placeholder="Contoh: Segera Unggah Berkas SPJ"></div><div class="field"><label>Isi Pesan</label><textarea id="warnContent" rows="4" required placeholder="Tuliskan instruksi..."></textarea></div><div id="warnMsg"></div><div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px"><button type="button" class="btn btn-light" onclick="$('#warningModal').remove()">Batal</button><button class="btn btn-primary">Kirim</button></div></form></div></div>`;
   document.body.appendChild(wrap);
   $('#warningForm').onsubmit = async e => {
-    e.preventDefault(); if(wrap.dataset.sending==='1')return;
-    const subject=$('#warnSubject').value.trim(),content=$('#warnContent').value.trim();
-    if(!subject||!content){e.currentTarget.reportValidity();return;}
-    const btn=$('#warnSendBtn');wrap.dataset.sending='1';btn.disabled=true;btn.textContent='Mengirim...';
+    e.preventDefault();
     try {
-      await api('kirimPesan', { data: { tujuan: targetId, subjek: subject, isi_pesan: content, kategori: 'TEGURAN', idempotency_key: wrap.dataset.requestKey } });
-      toast('Pesan berhasil dikirim.','ok'); wrap.remove();
-    } catch(err) {
-      wrap.dataset.sending='0';btn.disabled=false;btn.textContent='Kirim Ulang';
-      $('#warnMsg').innerHTML = msg(errorText(err))+'<div class="muted">Kirim ulang dari jendela ini untuk menghindari pesan ganda.</div>';
-    }
+      await api('kirimPesan', { data: { tujuan: targetId, subjek: $('#warnSubject').value.trim(), isi_pesan: $('#warnContent').value.trim(), kategori: 'TEGURAN' } });
+      toast('Pesan berhasil dikirim.','ok'); $('#warningModal').remove();
+    } catch(err) { $('#warnMsg').innerHTML = msg(errorText(err)); }
   };
 };
 
@@ -8583,13 +8606,6 @@ async function loadPesanData(){
 }
 window.loadMorePesan=async function(){_pesanLimit=Math.min(500,_pesanLimit+150);await loadPesanData();};
 
-window._newMessageRequestKeyV1_=function(){
-  try{
-    if(window.crypto&&typeof window.crypto.randomUUID==='function')return 'MSGREQ-'+window.crypto.randomUUID();
-  }catch(e){}
-  return 'MSGREQ-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2)+'-'+Math.random().toString(36).slice(2);
-};
-
 window.openKirimPesanModal=async function(){
   let options=[];
   try{ const r=await api('getOpsiPenerimaPesan'); options=r.data||[]; }
@@ -8597,48 +8613,19 @@ window.openKirimPesanModal=async function(){
   if(!options.length){toast('Belum ada penerima aktif yang dapat dihubungi.','warning');return;}
   const groups={}; options.forEach(o=>{const g=o.group||'PENERIMA';(groups[g]||(groups[g]=[])).push(o);});
   const optionHtml=Object.keys(groups).map(g=>`<optgroup label="${esc(g)}">${groups[g].map(o=>`<option value="${esc(o.value)}">${esc(o.label)}</option>`).join('')}</optgroup>`).join('');
-  const wrap=document.createElement('div');wrap.id='pesanModal';wrap.dataset.requestKey=window._newMessageRequestKeyV1_();
-  wrap.innerHTML=`<div class="msg-modal-backdrop"><div class="msg-modal"><div class="msg-modal-head"><div><small>PESAN BARU</small><h3>Kirim koordinasi resmi</h3></div><button class="msg-close" type="button" onclick="if($('#pesanModal')?.dataset.sending==='1'){toast('Pesan sedang dikirim. Tunggu respons agar tidak terjadi duplikasi.','warning');return;}$('#pesanModal').remove()">×</button></div><form id="formKirimPesan"><div class="field"><label>Penerima</label><select id="pesanTujuan" required><option value="">Pilih penerima...</option>${optionHtml}</select></div><div class="field"><label>Subjek</label><input id="pesanSubjek" maxlength="180" required placeholder="Tuliskan subjek yang jelas"></div><div class="field"><label>Isi Pesan</label><textarea id="pesanIsi" maxlength="5000" rows="5" required placeholder="Tuliskan pesan atau instruksi secara ringkas..."></textarea></div><div id="pesanModalMsg" aria-live="polite"></div><div class="msg-modal-actions"><button type="button" class="btn btn-light" onclick="if($('#pesanModal')?.dataset.sending==='1'){toast('Pesan sedang dikirim. Tunggu respons agar tidak terjadi duplikasi.','warning');return;}$('#pesanModal').remove()">Batal</button><button id="pesanSendBtn" class="btn btn-primary" type="submit">Kirim Pesan</button></div></form></div></div>`;
+  const wrap=document.createElement('div');wrap.id='pesanModal';
+  wrap.innerHTML=`<div class="msg-modal-backdrop"><div class="msg-modal"><div class="msg-modal-head"><div><small>PESAN BARU</small><h3>Kirim koordinasi resmi</h3></div><button class="msg-close" type="button" onclick="$('#pesanModal').remove()">×</button></div><form id="formKirimPesan"><div class="field"><label>Penerima</label><select id="pesanTujuan" required><option value="">Pilih penerima...</option>${optionHtml}</select></div><div class="field"><label>Subjek</label><input id="pesanSubjek" maxlength="180" required placeholder="Tuliskan subjek yang jelas"></div><div class="field"><label>Isi Pesan</label><textarea id="pesanIsi" maxlength="5000" rows="5" required placeholder="Tuliskan pesan atau instruksi secara ringkas..."></textarea></div><div id="pesanModalMsg"></div><div class="msg-modal-actions"><button type="button" class="btn btn-light" onclick="$('#pesanModal').remove()">Batal</button><button class="btn btn-primary">Kirim Pesan</button></div></form></div></div>`;
   document.body.appendChild(wrap);
-  $('#formKirimPesan').onsubmit=async e=>{
-    e.preventDefault();
-    if(wrap.dataset.sending==='1')return;
-    const btn=$('#pesanSendBtn'),form=$('#formKirimPesan');
-    const payload={tujuan:$('#pesanTujuan').value,subjek:$('#pesanSubjek').value.trim(),isi_pesan:$('#pesanIsi').value.trim(),kategori:isSchool()?'FEEDBACK':'INFORMASI',idempotency_key:wrap.dataset.requestKey};
-    if(!payload.tujuan||!payload.subjek||!payload.isi_pesan){form.reportValidity();return;}
-    wrap.dataset.sending='1';btn.disabled=true;btn.textContent='Mengirim...';
-    $('#pesanModalMsg').innerHTML='<div class="message info">Mengirim pesan. Jangan tutup jendela ini sampai ada konfirmasi.</div>';
-    try{
-      const r=await api('kirimPesan',{data:payload});
-      toast(r.message||'Pesan berhasil dikirim.','ok');
-      wrap.remove();_pesanBox='SENT';$$('.msg-tab').forEach(x=>x.classList.toggle('active',x.dataset.msgbox==='SENT'));
-      await loadPesanData();
-    }catch(err){
-      wrap.dataset.sending='0';btn.disabled=false;btn.textContent='Kirim Ulang';
-      $('#pesanModalMsg').innerHTML=msg(errorText(err))+'<div class="muted">Jika koneksi terputus setelah pesan tersimpan, gunakan tombol Kirim Ulang. Sistem akan mengenali permintaan yang sama dan tidak membuat pesan ganda.</div>';
-    }
-  };
+  $('#formKirimPesan').onsubmit=async e=>{e.preventDefault();try{const r=await api('kirimPesan',{data:{tujuan:$('#pesanTujuan').value,subjek:$('#pesanSubjek').value.trim(),isi_pesan:$('#pesanIsi').value.trim(),kategori:isSchool()?'FEEDBACK':'INFORMASI'}});toast(r.message||'Pesan berhasil dikirim.','ok');$('#pesanModal').remove();_pesanBox='SENT';$$('.msg-tab').forEach(x=>x.classList.toggle('active',x.dataset.msgbox==='SENT'));await loadPesanData();}catch(err){$('#pesanModalMsg').innerHTML=msg(errorText(err));}};
 };
 
 window.openBalasPesanModal=async function(idPesan,pengirimAsal,subjekAsal=''){
   try{ if(idPesan) await api('updateStatusPesan',{id_pesan:idPesan,status_baca:'DIBACA'}); }catch(e){ console.warn(e); }
   updateUnreadMessageBadge();
-  const wrap=document.createElement('div');wrap.id='balasModal';wrap.dataset.requestKey=window._newMessageRequestKeyV1_();
-  wrap.innerHTML=`<div class="msg-modal-backdrop"><div class="msg-modal"><div class="msg-modal-head"><div><small>BALAS PESAN</small><h3>${esc(subjekAsal||'Koordinasi')}</h3></div><button class="msg-close" type="button" onclick="if($('#balasModal')?.dataset.sending==='1'){toast('Balasan sedang dikirim. Tunggu respons agar tidak terjadi duplikasi.','warning');return;}$('#balasModal').remove()">×</button></div><form id="formBalasPesan"><div class="field"><label>Isi Balasan</label><textarea id="balasIsi" maxlength="5000" rows="5" required placeholder="Tuliskan balasan..."></textarea></div><div id="balasMsg" aria-live="polite"></div><div class="msg-modal-actions"><button type="button" class="btn btn-light" onclick="if($('#balasModal')?.dataset.sending==='1'){toast('Balasan sedang dikirim. Tunggu respons agar tidak terjadi duplikasi.','warning');return;}$('#balasModal').remove()">Batal</button><button id="balasSendBtn" class="btn btn-primary" type="submit">Kirim & Selesaikan</button></div></form></div></div>`;
+  const wrap=document.createElement('div');wrap.id='balasModal';
+  wrap.innerHTML=`<div class="msg-modal-backdrop"><div class="msg-modal"><div class="msg-modal-head"><div><small>BALAS PESAN</small><h3>${esc(subjekAsal||'Koordinasi')}</h3></div><button class="msg-close" type="button" onclick="$('#balasModal').remove()">×</button></div><form id="formBalasPesan"><div class="field"><label>Isi Balasan</label><textarea id="balasIsi" maxlength="5000" rows="5" required placeholder="Tuliskan balasan..."></textarea></div><div id="balasMsg"></div><div class="msg-modal-actions"><button type="button" class="btn btn-light" onclick="$('#balasModal').remove()">Batal</button><button class="btn btn-primary">Kirim & Selesaikan</button></div></form></div></div>`;
   document.body.appendChild(wrap);
-  $('#formBalasPesan').onsubmit=async e=>{
-    e.preventDefault();if(wrap.dataset.sending==='1')return;
-    const isi=$('#balasIsi').value.trim();if(!isi){$('#balasIsi').reportValidity();return;}
-    const btn=$('#balasSendBtn');wrap.dataset.sending='1';btn.disabled=true;btn.textContent='Mengirim...';
-    try{
-      await api('kirimPesan',{data:{tujuan:pengirimAsal,subjek:'Re: '+String(subjekAsal||'Koordinasi').replace(/^Re:\s*/i,''),isi_pesan:isi,kategori:'BALASAN',idempotency_key:wrap.dataset.requestKey}});
-      if(idPesan)await api('updateStatusPesan',{id_pesan:idPesan,status_baca:'SELESAI'});
-      toast('Balasan terkirim dan pesan diselesaikan.','ok');wrap.remove();await loadPesanData();
-    }catch(err){
-      wrap.dataset.sending='0';btn.disabled=false;btn.textContent='Kirim Ulang';
-      $('#balasMsg').innerHTML=msg(errorText(err))+'<div class="muted">Kirim ulang dari jendela ini untuk melanjutkan permintaan yang sama tanpa membuat balasan ganda.</div>';
-    }
-  };
+  $('#formBalasPesan').onsubmit=async e=>{e.preventDefault();const isi=$('#balasIsi').value.trim();if(!isi)return;try{await api('kirimPesan',{data:{tujuan:pengirimAsal,subjek:'Re: '+String(subjekAsal||'Koordinasi').replace(/^Re:\s*/i,''),isi_pesan:isi,kategori:'BALASAN'}});if(idPesan)await api('updateStatusPesan',{id_pesan:idPesan,status_baca:'SELESAI'});toast('Balasan terkirim dan pesan diselesaikan.','ok');$('#balasModal').remove();await loadPesanData();}catch(err){$('#balasMsg').innerHTML=msg(errorText(err));}};
 };
 
 window.tutupNotifikasiPesan=async function(idPesan){
@@ -9099,6 +9086,15 @@ function assertSensitiveSessionCurrent_(epoch, token){
 }
 
 function clearSensitiveFrontendCaches_(reason){
+  // Invalidate pending global-search work on logout/session reset so a late
+  // response cannot repopulate data from the previous role/session.
+  try{
+    if(typeof _globalSearchTimer!=='undefined'&&_globalSearchTimer){clearTimeout(_globalSearchTimer);_globalSearchTimer=null;}
+    if(typeof _globalSearchRequestSeq!=='undefined') _globalSearchRequestSeq++;
+    window._globalSearchRows=[];
+    const searchBox=document.getElementById('globalSearchResults');
+    if(searchBox){searchBox.innerHTML='';searchBox.classList.add('hidden');}
+  }catch(_){}
   __sensitiveDataEpoch++;
   window.__pageAwareOcrCancel=true;
   try {
@@ -11826,6 +11822,339 @@ window.autoFillSekolahByNpsn = async function(npsn) {
     alert(errorText(e) || 'NPSN tidak ditemukan di database sekolah.');
   }
 };
+
+
+async function maintenanceControlView(){
+  if(!isDinas()){
+    $('#mainContent').innerHTML=head('Akses ditolak','Kontrol maintenance hanya tersedia untuk DINAS.')+
+      `<div class="panel">${msg('Anda tidak memiliki kewenangan mengelola status aplikasi.','warning')}</div>`;
+    return;
+  }
+  const c=$('#mainContent');
+  c.innerHTML=head('Kontrol Maintenance','Hentikan sementara akses operasional ketika dilakukan troubleshooting atau perbaikan sistem.')+
+    `<div class="panel" id="maintenanceControlPanel">${loading('Memeriksa status aplikasi...')}</div>`;
+  await refreshMaintenanceControl();
+}
+window.refreshMaintenanceControl=async function(){
+  const panel=$('#maintenanceControlPanel'); if(!panel)return;
+  panel.innerHTML=loading('Memeriksa status maintenance...');
+  try{
+    const r=await api('getMaintenanceStatus'),active=!!r.enabled;
+    panel.innerHTML=`
+      <div class="cards" style="margin-bottom:16px">
+        <div class="stat"><small>Status aplikasi</small><strong style="color:${active?'var(--danger,#b42318)':'var(--success,#16794c)'}">${active?'MAINTENANCE AKTIF':'OPERASIONAL'}</strong></div>
+        <div class="stat"><small>Perubahan terakhir</small><strong style="font-size:1rem">${esc(r.updated_at||'Belum ada perubahan')}</strong></div>
+        <div class="stat"><small>Pesan untuk pengguna</small><strong style="font-size:1rem">${esc(r.message||'-')}</strong></div>
+      </div>
+      <div class="message ${active?'warning':'ok'}">${active?'<b>Akses sekolah dan pengawas sedang dihentikan.</b> Dinas tetap dapat masuk untuk troubleshooting.':'<b>Aplikasi beroperasi normal.</b> Aktifkan maintenance hanya ketika diperlukan.'}</div>
+      <div class="field" style="margin-top:16px"><label for="maintenanceReason">Pesan / alasan pemeliharaan (maksimal 300 karakter)</label>
+      <textarea id="maintenanceReason" maxlength="300" rows="3" class="form-control" placeholder="Contoh: Pemeliharaan sistem dan perbaikan modul rekonsiliasi.">${esc(active?r.message||'':'')}</textarea>
+      <small class="muted">Alasan wajib diisi saat mengaktifkan maintenance. Jangan masukkan informasi teknis atau data sensitif.</small></div>
+      <div class="toolbar" style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">
+        ${active?'<button type="button" class="btn btn-primary" id="maintenanceOffBtn">✓ Nonaktifkan Maintenance</button>':'<button type="button" class="btn btn-danger" id="maintenanceOnBtn">⏸ Aktifkan Maintenance</button>'}
+        <button type="button" class="btn btn-light" id="maintenanceRefreshBtn">↻ Perbarui Status</button>
+      </div><div id="maintenanceActionResult" aria-live="polite" style="margin-top:12px"></div>
+      <section class="panel" style="margin-top:20px" id="activeTransactionMonitorPanel">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+          <div><h3 style="margin:0">Transaksi Aktif</h3><small class="muted">Monitoring proses kritis yang sedang berjalan</small></div>
+          <button type="button" class="btn btn-light" id="activeTransactionRefreshBtn">↻ Perbarui</button>
+        </div>
+        <div id="activeTransactionMonitorBody" style="margin-top:12px">${loading('Memuat transaksi aktif...')}</div>
+      </section>
+      <section class="panel" style="margin-top:20px" id="transactionRecoveryPanel">
+        <div><h3 style="margin:0">Audit & Pemulihan Transaksi</h3><small class="muted">Pemeriksaan read-only untuk upload, dokumen Drive, dan draft OCR yang perlu ditinjau.</small></div>
+        <div class="toolbar" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+          <input id="recoveryNpsnFilter" class="form-control" inputmode="numeric" maxlength="8" placeholder="Filter NPSN (opsional)" style="max-width:220px">
+          <input id="recoveryPeriodFilter" class="form-control" placeholder="ID Periode (opsional)" style="max-width:220px">
+          <button type="button" class="btn btn-primary" id="runRecoveryReportBtn">Jalankan Audit</button>
+        </div>
+        <div id="transactionRecoveryBody" style="margin-top:14px"><div class="message">Audit belum dijalankan. Pemeriksaan hanya membaca data dan tidak mengubah transaksi.</div></div>
+        <div class="divider" style="margin:18px 0"></div>
+        <div><h3 style="margin:0">Rencana Pemulihan Satu Upload</h3><small class="muted">Periksa satu upload_id secara spesifik. Fitur ini hanya memberikan keputusan dan langkah aman; tidak menjalankan pemulihan otomatis.</small></div>
+        <div class="toolbar" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+          <input id="controlledRecoveryUploadId" class="form-control" placeholder="Masukkan Upload ID" style="max-width:320px">
+          <button type="button" class="btn btn-light" id="runControlledRecoveryBtn">Periksa Rencana</button>
+        </div>
+        <div id="controlledRecoveryBody" style="margin-top:12px"></div>
+      </section>
+      <section class="panel" style="margin-top:20px" id="assessmentScoringAuditPanel">
+        <div><h3 style="margin:0">Audit Integritas Penilaian</h3><small class="muted">Hitung ulang skor dan cocokkan snapshot review, bobot, nilai akhir, serta pesan workflow. Pemeriksaan read-only.</small></div>
+        <div class="toolbar" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+          <input id="scoringAuditNpsn" class="form-control" inputmode="numeric" maxlength="8" placeholder="NPSN sekolah" style="max-width:220px">
+          <input id="scoringAuditPeriod" class="form-control" placeholder="ID Periode" style="max-width:220px">
+          <button type="button" class="btn btn-primary" id="runScoringAuditBtn">Audit Penilaian</button>
+        </div>
+        <div id="assessmentScoringAuditBody" style="margin-top:14px"><div class="message">Masukkan NPSN dan ID periode untuk memulai audit.</div></div>
+        <div class="toolbar" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:18px">
+          <button type="button" class="btn btn-outline-primary" id="previewWorkflowRecoveryBtn">Periksa Pemulihan Workflow</button>
+          <button type="button" class="btn btn-warning" id="executeWorkflowRecoveryBtn" disabled>Pulihkan Metadata Workflow</button>
+        </div>
+        <div id="assessmentWorkflowRecoveryBody" style="margin-top:12px"><div class="message">Pemulihan hanya tersedia jika status asesmen dan snapshot terbukti konsisten. Skor dan status asesmen tidak akan diubah.</div></div>
+      </section>
+      <section class="panel" style="margin-top:20px" id="dataIntegrityAuditPanel">
+        <div><h3 style="margin:0">Audit Integritas Data BKU & OCR</h3><small class="muted">Mendeteksi kandidat transaksi ganda, impor aktif ganda, referensi impor yatim, duplikasi dokumen, serta anomali draft OCR. Read-only.</small></div>
+        <div class="toolbar" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+          <input id="dataIntegrityNpsn" class="form-control" inputmode="numeric" maxlength="8" placeholder="NPSN sekolah" style="max-width:220px">
+          <input id="dataIntegrityPeriod" class="form-control" placeholder="ID Periode" style="max-width:220px">
+          <button type="button" class="btn btn-primary" id="runDataIntegrityAuditBtn">Audit Integritas Data</button>
+        </div>
+        <div id="dataIntegrityAuditBody" style="margin-top:14px"><div class="message">Masukkan NPSN dan ID periode untuk memulai audit.</div></div>
+      </section>`;
+    const reason=$('#maintenanceReason'),on=$('#maintenanceOnBtn'),off=$('#maintenanceOffBtn'),refresh=$('#maintenanceRefreshBtn');
+    if(on)on.onclick=()=>submitMaintenanceChange_(true,reason?.value||'');
+    if(off)off.onclick=()=>submitMaintenanceChange_(false,'');
+    if(refresh)refresh.onclick=refreshMaintenanceControl;
+    const txRefresh=$('#activeTransactionRefreshBtn');
+    if(txRefresh)txRefresh.onclick=refreshActiveTransactionMonitor_;
+    const recoveryBtn=$('#runRecoveryReportBtn');
+    if(recoveryBtn)recoveryBtn.onclick=runTransactionRecoveryReport_;
+    const controlledBtn=$('#runControlledRecoveryBtn');
+    if(controlledBtn)controlledBtn.onclick=runControlledRecoveryPlan_;
+    const scoringAuditBtn=$('#runScoringAuditBtn');
+    if(scoringAuditBtn)scoringAuditBtn.onclick=runAssessmentScoringAudit_;
+    const recoveryPreviewBtn=$('#previewWorkflowRecoveryBtn');
+    if(recoveryPreviewBtn)recoveryPreviewBtn.onclick=previewAssessmentWorkflowRecovery_;
+    const recoveryExecuteBtn=$('#executeWorkflowRecoveryBtn');
+    if(recoveryExecuteBtn)recoveryExecuteBtn.onclick=executeAssessmentWorkflowRecovery_;
+    const dataAuditBtn=$('#runDataIntegrityAuditBtn');
+    if(dataAuditBtn)dataAuditBtn.onclick=runDataIntegrityAudit_;
+    await refreshActiveTransactionMonitor_();
+    if(!window.__simpelActiveTransactionPoll){
+      window.__simpelActiveTransactionPoll=setInterval(()=>{
+        if($('#activeTransactionMonitorPanel'))refreshActiveTransactionMonitor_();
+      },15000);
+    }
+  }catch(e){panel.innerHTML=msg(errorText(e)||'Status maintenance tidak dapat dibaca.','error');}
+};
+
+
+
+
+async 
+
+async function runDataIntegrityAudit_(){
+  const body=$('#dataIntegrityAuditBody'),button=$('#runDataIntegrityAuditBtn');
+  const npsn=String($('#dataIntegrityNpsn')?.value||'').trim(),period=String($('#dataIntegrityPeriod')?.value||'').trim();
+  if(!body)return;
+  if(!npsn||!/^\d{8}$/.test(npsn)||!period){toast('Isi NPSN 8 digit dan ID periode terlebih dahulu.','warning');return;}
+  if(button)button.disabled=true;
+  body.innerHTML=loading('Memeriksa konsistensi transaksi BKU, impor, dokumen, dan OCR...');
+  try{
+    const r=await api('getDataIntegrityAudit',{filters:{npsn:npsn,id_periode:period}});
+    const c=r.counts||{},s=r.summary||{},f=r.findings||[];
+    const tone=Number(s.HIGH)>0?'error':(Number(s.REVIEW)>0?'warning':'ok');
+    body.innerHTML=`
+      <div class="message ${tone}"><b>${Number(s.HIGH)||0} temuan prioritas tinggi · ${Number(s.REVIEW)||0} perlu ditinjau</b><br>${esc(r.warning||'Audit read-only selesai.')}</div>
+      <div class="cards" style="margin-bottom:12px">
+        <div class="stat"><small>Transaksi kanonik</small><strong>${Number(c.canonical_transactions)||0}</strong></div>
+        <div class="stat"><small>Impor aktif valid</small><strong>${Number(c.active_valid_imports)||0}</strong></div>
+        <div class="stat"><small>Detail impor</small><strong>${Number(c.import_details)||0}</strong></div>
+        <div class="stat"><small>Draft OCR</small><strong>${Number(c.ocr_drafts)||0}</strong></div>
+      </div>
+      ${f.length?`<div class="table-responsive"><table class="table"><thead><tr><th>Prioritas</th><th>Kode</th><th>Temuan</th><th>Rekomendasi</th></tr></thead><tbody>${f.map(x=>`<tr><td>${esc(x.severity||'-')}</td><td>${esc(x.code||'-')}</td><td>${esc(x.detail||'-')}</td><td>${esc(x.recommended_action||'-')}</td></tr>`).join('')}</tbody></table></div>`:'<div class="message ok">Tidak ditemukan anomali pada kontrol yang diperiksa.</div>'}
+      <small class="muted">Diperiksa: ${esc(r.generated_at||'-')}. Tidak ada data yang diubah.</small>`;
+  }catch(e){body.innerHTML=msg(errorText(e)||'Audit integritas data gagal.','error');}
+  finally{if(button)button.disabled=false;}
+}
+
+async function previewAssessmentWorkflowRecovery_(){
+  const body=$('#assessmentWorkflowRecoveryBody'),button=$('#previewWorkflowRecoveryBtn'),execute=$('#executeWorkflowRecoveryBtn');
+  const npsn=String($('#scoringAuditNpsn')?.value||'').trim(),period=String($('#scoringAuditPeriod')?.value||'').trim();
+  if(execute)execute.disabled=true;
+  if(!body)return;
+  if(!npsn||!/^\d{8}$/.test(npsn)||!period){toast('Isi NPSN 8 digit dan ID periode terlebih dahulu.','warning');return;}
+  if(button)button.disabled=true;
+  body.innerHTML=loading('Memeriksa kelayakan pemulihan workflow...');
+  try{
+    const r=await api('getAssessmentWorkflowRecoveryPlan',{filters:{npsn:npsn,id_periode:period}});
+    const safe=['RESTORE_SUBMISSION_MESSAGE','RESTORE_APPROVAL_MESSAGE'].includes(String(r.action||''));
+    body.dataset.recoveryAction=safe?r.action:'';
+    body.dataset.recoveryNpsn=npsn;body.dataset.recoveryPeriod=period;
+    if(execute)execute.disabled=!safe;
+    const tone=safe?'warning':(r.action==='NO_ACTION'?'ok':'error');
+    body.innerHTML=`<div class="message ${tone}"><b>Keputusan: ${esc(r.action||'MANUAL_REVIEW')}</b><br>${esc(r.reason||'-')}</div>
+      <div class="table-responsive"><table class="table"><tbody>
+      <tr><th>ID asesmen</th><td>${esc(r.assessment?.id_asesmen||'-')}</td></tr>
+      <tr><th>Status asesmen</th><td>${esc(r.assessment?.status||'-')}</td></tr>
+      <tr><th>Integritas Fase 1</th><td>${r.phase1_integrity?.valid?'VALID':'TIDAK VALID'} — ${esc(r.phase1_integrity?.reason||'-')}</td></tr>
+      <tr><th>Pesan pengajuan</th><td>${Number(r.messages?.PENGAJUAN_FASE_1_PENGAWAS)||0}</td></tr>
+      <tr><th>Pesan persetujuan</th><td>${Number(r.messages?.PERSETUJUAN_FASE_1_DINAS)||0}</td></tr>
+      <tr><th>Pesan pengembalian</th><td>${Number(r.messages?.REVISI_FASE_1_DINAS)||0}</td></tr>
+      <tr><th>Dampak</th><td>Status asesmen: tidak diubah; skor: tidak diubah.</td></tr>
+      </tbody></table></div>`;
+  }catch(e){body.dataset.recoveryAction='';if(execute)execute.disabled=true;body.innerHTML=msg(errorText(e)||'Gagal memeriksa pemulihan workflow.','error');}
+  finally{if(button)button.disabled=false;}
+}
+async function executeAssessmentWorkflowRecovery_(){
+  const body=$('#assessmentWorkflowRecoveryBody'),button=$('#executeWorkflowRecoveryBtn');
+  if(!body||!button)return;
+  const action=String(body.dataset.recoveryAction||''),npsn=String(body.dataset.recoveryNpsn||''),period=String(body.dataset.recoveryPeriod||'');
+  if(!['RESTORE_SUBMISSION_MESSAGE','RESTORE_APPROVAL_MESSAGE'].includes(action)){toast('Tidak ada pemulihan otomatis yang diizinkan.','warning');return;}
+  const label=action==='RESTORE_SUBMISSION_MESSAGE'?'memulihkan pesan pengajuan Fase 1':'memulihkan pesan persetujuan Fase 1';
+  if(!confirm('Konfirmasi: '+label+'? Status asesmen dan seluruh skor tidak akan diubah. Tindakan ini akan menambahkan satu metadata workflow ke pesan koordinasi.'))return;
+  button.disabled=true;body.innerHTML=loading('Memproses pemulihan metadata workflow...');
+  try{
+    const r=await api('executeAssessmentWorkflowRecovery',{filters:{npsn:npsn,id_periode:period}});
+    body.dataset.recoveryAction='';
+    body.innerHTML=`<div class="message ok"><b>${esc(r.message||'Pemulihan selesai.')}</b><br>Aksi: ${esc(r.action||'-')}<br>Status asesmen diubah: Tidak<br>Skor diubah: Tidak</div>`;
+    toast('Pemulihan metadata workflow selesai.','success');
+    await runAssessmentScoringAudit_();
+    await previewAssessmentWorkflowRecovery_();
+  }catch(e){body.innerHTML=msg(errorText(e)||'Pemulihan workflow gagal.','error');}
+  finally{button.disabled=true;}
+}
+
+async function runAssessmentScoringAudit_(){
+  const body=$('#assessmentScoringAuditBody'),button=$('#runScoringAuditBtn');
+  const npsn=String($('#scoringAuditNpsn')?.value||'').trim();
+  const period=String($('#scoringAuditPeriod')?.value||'').trim();
+  if(!body)return;
+  if(!npsn||!period){toast('NPSN dan ID periode wajib diisi.','warning');return;}
+  if(!/^\d{8}$/.test(npsn)){toast('NPSN harus terdiri dari 8 angka.','warning');return;}
+  if(button)button.disabled=true;
+  body.innerHTML=loading('Menghitung ulang integritas penilaian...');
+  try{
+    const r=await api('getAssessmentScoringAudit',{filters:{npsn:npsn,id_periode:period}});
+    const s=r.summary||{},f=r.findings||[],p=r.policy||{},a=r.assessment||{};
+    const tone=Number(s.HIGH)>0?'error':(Number(s.REVIEW)>0?'warning':'ok');
+    const score=v=>v===null||v===undefined||v===''?'-':Number(v).toFixed(2);
+    body.innerHTML=`
+      <div class="message ${tone}"><b>Hasil audit: ${Number(s.HIGH)||0} temuan prioritas tinggi · ${Number(s.REVIEW)||0} perlu ditinjau · ${Number(s.INFO)||0} informasi</b><br>${esc(r.warning||'Audit read-only selesai.')}</div>
+      <div class="cards" style="margin-bottom:12px">
+        <div class="stat"><small>Status asesmen</small><strong>${esc(a.status||'-')}</strong></div>
+        <div class="stat"><small>Nilai Fase 1</small><strong>${score(r.phase1?.summary?.nilai_fase1)}</strong></div>
+        <div class="stat"><small>Nilai Fase 2</small><strong>${score(r.phase2?.summary?.nilai_fase2)}</strong></div>
+        <div class="stat"><small>Nilai akhir tersimpan</small><strong>${score(a.nilai_akhir)}</strong></div>
+      </div>
+      <div class="table-responsive"><table class="table"><thead><tr><th>Kontrol</th><th>Hasil</th></tr></thead><tbody>
+        <tr><td>Bobot Fase 1 / Fase 2</td><td>${score(p.phase1_weight)} / ${score(p.phase2_weight)}</td></tr>
+        <tr><td>Formula nilai akhir</td><td>${esc(p.overall_formula||'-')}</td></tr>
+        <tr><td>Integritas Fase 1</td><td>${r.phase1?.valid?'VALID':'PERLU PEMERIKSAAN'} — ${esc(r.phase1?.reason||'-')}</td></tr>
+        <tr><td>Integritas Fase 2</td><td>${r.phase2?.valid?'VALID':'PERLU PEMERIKSAAN'} — ${esc(r.phase2?.reason||'-')}</td></tr>
+        <tr><td>Pesan workflow</td><td>${Number(r.workflow_messages?.total)||0} pesan; rekonsiliasi: ${r.workflow_messages?.reconciliation_exists?'ada':'tidak ada'}; finalisasi: ${r.workflow_messages?.finalization_exists?'ada':'tidak ada'}</td></tr>
+      </tbody></table></div>
+      ${f.length?`<div class="table-responsive"><table class="table"><thead><tr><th>Prioritas</th><th>Kode</th><th>Temuan</th><th>Rekomendasi</th></tr></thead><tbody>${f.map(x=>`<tr><td>${esc(x.severity||'-')}</td><td>${esc(x.code||'-')}</td><td>${esc(x.detail||'-')}</td><td>${esc(x.recommended_action||'-')}</td></tr>`).join('')}</tbody></table></div>`:'<div class="message ok">Tidak ditemukan ketidaksesuaian pada kontrol yang diperiksa.</div>'}
+      <small class="muted">Diperiksa: ${esc(r.generated_at||'-')}. Tidak ada data yang diubah.</small>`;
+  }catch(e){body.innerHTML=msg(errorText(e)||'Audit integritas penilaian gagal.','error');}
+  finally{if(button)button.disabled=false;}
+}
+
+async function runControlledRecoveryPlan_(){
+  const body=$('#controlledRecoveryBody'),button=$('#runControlledRecoveryBtn');
+  const uploadId=String($('#controlledRecoveryUploadId')?.value||'').trim();
+  if(!body)return;
+  if(!uploadId){toast('Upload ID wajib diisi.','warning');return;}
+  if(button)button.disabled=true;
+  body.innerHTML=loading('Memeriksa kondisi sesi upload dan keterkaitan dokumen...');
+  try{
+    const r=await api('getControlledRecoveryPlan',{upload_id:uploadId});
+    const decision=String(r.decision||'MANUAL_REVIEW');
+    const tone=decision==='NO_ACTION_ALREADY_COMPLETE'?'ok':
+      (decision==='ELIGIBLE_FOR_SUPERVISED_RESUME'||decision==='RESUME_CHUNKS_BY_SCHOOL'?'warning':'error');
+    body.innerHTML=`
+      <div class="message ${tone}">
+        <b>Keputusan: ${esc(decision)}</b><br>${esc(r.safe_next_step||'Tahan tindakan sampai pemeriksaan manual selesai.')}
+      </div>
+      <div class="table-responsive"><table class="table"><tbody>
+        <tr><th>Upload ID</th><td>${esc(r.upload_id||'-')}</td></tr>
+        <tr><th>NPSN / Periode</th><td>${esc(r.npsn||'-')} / ${esc(r.id_periode||'-')}</td></tr>
+        <tr><th>Status sesi</th><td>${esc(r.status||'-')}</td></tr>
+        <tr><th>Status file Drive</th><td>${esc(r.drive_file_state||'-')}</td></tr>
+        <tr><th>Dokumen tertaut</th><td>${Number(r.linked_document_count)||0}</td></tr>
+        <tr><th>PDF header / EOF</th><td>${r.checks?.pdf_header_valid?'Valid':'Belum terkonfirmasi'} / ${r.checks?.pdf_eof_valid?'Valid':'Belum terkonfirmasi'}</td></tr>
+      </tbody></table></div>
+      ${(r.blockers||[]).length?`<div class="message warning"><b>Penghambat:</b><ul>${r.blockers.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>`:'<div class="message ok">Tidak ada penghambat pada pemeriksaan dasar ini.</div>'}
+      <small class="muted">Pemeriksaan read-only. Tombol ini tidak mengubah status upload, metadata dokumen, atau file Drive.</small>`;
+  }catch(e){body.innerHTML=msg(errorText(e)||'Rencana pemulihan tidak dapat dibuat.','error');}
+  finally{if(button)button.disabled=false;}
+}
+
+async function runTransactionRecoveryReport_(){
+  const body=$('#transactionRecoveryBody'),button=$('#runRecoveryReportBtn');
+  if(!body)return;
+  if(button)button.disabled=true;
+  body.innerHTML=loading('Memeriksa sesi upload, dokumen Drive, dan draft OCR...');
+  try{
+    const filters={
+      npsn:String($('#recoveryNpsnFilter')?.value||'').trim(),
+      id_periode:String($('#recoveryPeriodFilter')?.value||'').trim()
+    };
+    const r=await api('getTransactionRecoveryReport',{filters});
+    const s=r.summary||{},rows=Array.isArray(r.findings)?r.findings:[];
+    const colors={HIGH:'danger',REVIEW:'warning',WARNING:'warning',INFO:'info'};
+    body.innerHTML=`
+      <div class="cards" style="margin-bottom:12px">
+        <div class="stat"><small>Prioritas tinggi</small><strong>${Number(s.HIGH)||0}</strong></div>
+        <div class="stat"><small>Perlu ditinjau</small><strong>${Number(s.REVIEW)||0}</strong></div>
+        <div class="stat"><small>Informasi</small><strong>${Number(s.INFO)||0}</strong></div>
+      </div>
+      <div class="message warning"><b>Mode read-only.</b> ${esc(r.warning||'Tidak ada perubahan data yang dilakukan.')}</div>
+      <p class="muted">Diperiksa: ${esc(r.generated_at||'-')} · Upload: ${Number(r.scanned?.upload_sessions?.sampled)||0}/${Number(r.scanned?.upload_sessions?.total)||0} · Dokumen: ${Number(r.scanned?.documents?.sampled)||0}/${Number(r.scanned?.documents?.total)||0} · Event OCR: ${Number(r.scanned?.ocr_events?.sampled)||0}/${Number(r.scanned?.ocr_events?.total)||0} · Draft sampel: ${Number(r.scanned?.drafts)||0}</p>
+      ${r.sampling_limited?'<div class="message warning">Audit menggunakan sampel data terbaru untuk menjaga batas waktu eksekusi dan kuota Drive. Gunakan filter NPSN/periode atau jalankan audit bertahap untuk cakupan lengkap.</div>':''}
+      ${rows.length?`<div class="table-responsive"><table class="table"><thead><tr><th>Prioritas</th><th>Temuan</th><th>Referensi</th><th>NPSN / Periode</th><th>Detail & tindakan</th></tr></thead><tbody>${rows.map(x=>`<tr><td><span class="badge">${esc(x.severity||'-')}</span></td><td><b>${esc(x.kind||'-')}</b><br><small>${esc(x.status||'-')}</small></td><td>${esc(x.reference||'-')}</td><td>${esc(x.npsn||'-')}<br>${esc(x.id_periode||'-')}</td><td>${esc(x.detail||'-')}<br><small class="muted">Tindakan: ${esc(x.recommended_action||'-')}</small></td></tr>`).join('')}</tbody></table></div>`:'<div class="message ok">Tidak ditemukan anomali berdasarkan pemeriksaan yang tersedia.</div>'}
+      ${r.truncated?'<div class="message warning">Hasil dibatasi 300 temuan. Gunakan filter NPSN atau periode untuk pemeriksaan lebih spesifik.</div>':''}`;
+  }catch(e){
+    body.innerHTML=msg(errorText(e)||'Audit pemulihan gagal dijalankan.','error');
+  }finally{if(button)button.disabled=false;}
+}
+
+async function refreshActiveTransactionMonitor_(){
+  const body=$('#activeTransactionMonitorBody');if(!body)return;
+  body.innerHTML=loading('Memeriksa proses aktif...');
+  try{
+    const r=await api('getActiveTransactionMonitor');
+    const count=Number(r.active_count)||0;
+    const items=Array.isArray(r.items)?r.items:[];
+    body.innerHTML=`
+      <div class="cards" style="margin-bottom:12px">
+        <div class="stat"><small>Permintaan aktif terpantau</small><strong style="font-size:1.5rem">${count}</strong></div>
+        <div class="stat"><small>Lease kedaluwarsa dibersihkan</small><strong>${Number(r.stale_cleaned)||0}</strong></div>
+        <div class="stat"><small>Pemeriksaan</small><strong style="font-size:.95rem">${esc(r.checked_at||'-')}</strong></div>
+      </div>
+      ${count===0
+        ?'<div class="message ok"><b>Tidak ada permintaan kritis yang terpantau saat pemeriksaan ini.</b><br><small>Ini bukan jaminan bahwa tidak ada proses Drive/Sheets yang masih menyelesaikan commit.</small></div>'
+        :`<div class="table-responsive"><table class="table"><thead><tr><th>Proses</th><th>Role</th><th>Mulai</th><th>Durasi</th></tr></thead><tbody>${items.map(x=>`<tr><td>${esc(x.action||'-')}</td><td>${esc(x.role||'-')}</td><td>${esc(x.started_at||'-')}</td><td>${Number(x.elapsed_seconds)||0} dtk</td></tr>`).join('')}</tbody></table></div>`}
+      ${r.truncated?'<div class="message warning">Daftar dipotong; lebih dari 100 permintaan aktif.</div>':''}
+      <small class="muted">${esc(r.note||'Monitor diagnostik; bukan bukti commit transaksi.')}</small>`;
+  }catch(e){body.innerHTML=msg(errorText(e)||'Monitor transaksi tidak dapat dibaca.','error');}
+}
+async function submitMaintenanceChange_(enabled,message){
+  const panel=$('#maintenanceControlPanel'),result=$('#maintenanceActionResult'),reason=String(message||'').trim();
+  if(enabled&&!reason){toast('Alasan maintenance wajib diisi.','warning');return;}
+  if(enabled&&!confirm('Aktifkan maintenance? Sekolah dan Pengawas akan dihentikan sementara dari seluruh proses aplikasi.'))return;
+  if(!enabled&&!confirm('Nonaktifkan maintenance dan buka kembali akses operasional sekolah serta pengawas?'))return;
+  const buttons=panel?.querySelectorAll('button');buttons?.forEach(b=>b.disabled=true);
+  if(result)result.innerHTML=loading(enabled?'Mengaktifkan maintenance...':'Membuka kembali akses aplikasi...');
+  try{
+    const r=await api('setMaintenanceMode',{enabled,message:reason});
+    toast(r.message||'Status maintenance berhasil diperbarui.','ok',5000);
+    await refreshMaintenanceControl();
+  }catch(e){
+    if(result)result.innerHTML=msg(errorText(e)||'Perubahan status gagal.','error');
+    buttons?.forEach(b=>b.disabled=false);
+  }
+}
+async function checkMaintenanceForCurrentUser_(){
+  if(!window.__simpelMaintenancePoll){
+    window.__simpelMaintenancePoll=setInterval(()=>{
+      if(state.token)checkMaintenanceForCurrentUser_();
+    },60000);
+  }
+  if(!state.token)return;
+  try{
+    const status=await api('getMaintenanceStatus');
+    if(!status.enabled||isDinas())return;
+    const app=$('#app');if(!app)return;
+    app.innerHTML=`<main style="min-height:100vh;display:grid;place-items:center;padding:24px;background:var(--bg,#f5f7f8)">
+      <section class="panel" style="width:min(100%,620px);padding:clamp(24px,5vw,42px);text-align:center">
+      <div style="font-size:42px;margin-bottom:12px" aria-hidden="true">🛠️</div><div class="muted" style="font-weight:750;letter-spacing:.08em">SIMPEL SPJ</div>
+      <h1 style="margin:8px 0 12px">Aplikasi Sedang Dalam Pemeliharaan</h1>
+      <p style="font-size:1.05rem">${esc(status.message||'Kami sedang melakukan pemeliharaan sistem. Silakan coba kembali nanti.')}</p>
+      <p class="muted">Data yang sudah tersimpan tetap mengikuti status penyimpanan terakhir. Hindari mengirim ulang dokumen atau transaksi yang sebelumnya sudah berhasil disimpan.</p>
+      <div class="toolbar" style="justify-content:center;margin-top:20px"><button class="btn btn-primary" type="button" onclick="window.location.reload()">Periksa Kembali</button><button class="btn btn-light" type="button" onclick="logout()">Keluar</button></div>
+      </section></main>`;
+  }catch(e){console.warn('Status maintenance belum dapat diperiksa:',errorText(e));}
+}
 
 async function dbCheckView(){
   $('#mainContent').innerHTML=head('Validasi Database','Memeriksa kontrak tabel dan integritas teknis SIMPEL SPJ')+`<div class="panel"><div class="toolbar"><button class="btn btn-primary" onclick="runDbCheck()">Jalankan Validasi</button><button class="btn btn-light" onclick="runTechnicalRepairV231()">Perbaiki Integritas Teknis</button></div><div id="dbResult" style="margin-top:16px">${msg('Klik validasi untuk memeriksa struktur database. Perbaikan teknis tidak mengubah skema password.','ok')}</div></div>`;
@@ -15894,6 +16223,7 @@ window.runBkuOcrReconciliationV252_=async function(){
         ${months.map(m=>`<tr><td>${esc(m.month_key)}</td><td>${Number(m.transaction_count||0)}</td><td>${Number(m.penerimaan||0).toLocaleString('id-ID')}</td><td>${Number(m.pengeluaran||0).toLocaleString('id-ID')}</td><td>${Number(m.closing?.book||0).toLocaleString('id-ID')}</td><td>${m.valid?'✓ Lulus':'Perlu koreksi'}</td></tr>`).join('')}
         </tbody></table></div>
         ${result.errors?.length?`<details open style="margin-top:10px"><summary style="font-weight:750;cursor:pointer">Temuan yang harus diperbaiki (${result.errors.length})</summary><ul style="margin:8px 0 0;padding-left:20px">${result.errors.slice(0,30).map(x=>`<li>${esc(x)}</li>`).join('')}</ul></details>`:'<p class="message success" style="margin-top:10px">Seluruh pemeriksaan server lulus. BKU scan dapat ditetapkan.</p>'}
+        ${result.warnings?.length?`<details style="margin-top:10px"><summary style="font-weight:750;cursor:pointer">Peringatan sumber historis (${result.warnings.length})</summary><ul style="margin:8px 0 0;padding-left:20px">${result.warnings.slice(0,20).map(x=>`<li>${esc(x)}</li>`).join('')}</ul></details>`:''}
         <small class="muted">Pemeriksaan dilakukan ulang di backend ketika tombol Tetapkan BKU scan ditekan. Hasil dari browser tidak dijadikan dasar tunggal.</small>`;
     }
     _bkuOcrSetStatusV2502_(result.ready?msg('Rekonsiliasi server lulus. BKU scan siap ditetapkan.','ok'):msg('Rekonsiliasi belum lulus. Periksa temuan bulanan sebelum menetapkan BKU.','warning'));
