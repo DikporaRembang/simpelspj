@@ -2214,26 +2214,27 @@ const FRONTEND_BUILD_ID = 'V25.2.4.14_RC4.4.8_UPLOAD_IDEMPOTENCY_HARDENING';
 window.ROLE_MENUS = {
   DINAS: [
     { id:'home', label:'Dashboard' },
-    { group:'PENGENDALIAN DINAS', items:[
-      { id:'masterSpj', label:'1. Master Periodisasi & Standar' },
-      { id:'jadwalTahapan', label:'2. Workflow Stage Control' },
-      { id:'manajemenUser', label:'3. Kesiapan User' },
-      { id:'sekolah', label:'4. Data Sekolah' },
-      { id:'penugasan', label:'5. Penugasan Pengawas' }
+    { id:'monitoringGlobal', label:'Monitoring Sekolah' },
+    { id:'monitoringPengawas', label:'Monitoring Pengawas' },
+    { group:'PEMERIKSAAN & PENILAIAN', items:[
+      { id:'penilaianFase1', label:'Persetujuan Fase 1 Pengawas' },
+      { id:'rekonsiliasi', label:'Rekonsiliasi' },
+      { id:'penilaianFase2', label:'Penilaian Fase 2' },
+      { id:'finalisasiSpj', label:'Finalisasi DINAS' },
+      { id:'arsipPenilaianV5', label:'Laporan Penilaian' }
     ]},
-    { group:'PROSES & PENILAIAN', items:[
-      { id:'monitoringGlobal', label:'6. Monitoring SPJ' },
-      { id:'penilaianFase1', label:'7. Persetujuan Fase 1 Pengawas' },
-      { id:'rekonsiliasi', label:'8. Rekonsiliasi' },
-      { id:'penilaianFase2', label:'9. Penilaian Fase 2' },
-      { id:'finalisasiSpj', label:'10. Finalisasi DINAS' },
-      { id:'arsipPenilaianV5', label:'11. Pusat Laporan Penilaian' }
+    { group:'PENGATURAN', items:[
+      { id:'masterSpj', label:'Periodisasi & Standar' },
+      { id:'jadwalTahapan', label:'Tahapan & Jadwal' },
+      { id:'manajemenUser', label:'Kesiapan Pengguna' },
+      { id:'sekolah', label:'Data Sekolah' },
+      { id:'penugasan', label:'Penugasan Pengawas' },
+      { id:'dbCheck', label:'Validasi Sistem' },
+      { id:'maintenanceControl', label:'Kontrol Maintenance' }
     ]},
-    { group:'PENDUKUNG', items:[
+    { group:'BANTUAN', items:[
       { id:'temuan', label:'Temuan Pemeriksaan' },
       { id:'pesan', label:'Pesan & Koordinasi' },
-      { id:'dbCheck', label:'Validasi Sistem' },
-      { id:'maintenanceControl', label:'Kontrol Maintenance' },
       { id:'tutorialV5', label:'Panduan SIMPEL SPJ' }
     ]}
   ],
@@ -2285,7 +2286,8 @@ const SUBMENU_TUTORIALS = {
   temuan:{title:'Temuan & Rekomendasi',text:'Pengawas mencatat temuan berbasis bukti dan rekomendasi. Setelah tindak lanjut diverifikasi, hasil pemeriksaan menjadi dasar Penilaian Fase 1 Pengawas.',flow:['Bukti','Temuan','Rekomendasi','Perbaikan','Fase 1 Pengawas'],current:1},
   verifikasiUlang:{title:'Verifikasi Ulang / Review',text:'Pengawas memeriksa tindak lanjut Sekolah pada tahap PERBAIKAN. Setelah verifikasi selesai, sekolah dapat masuk Penilaian Fase 1 Pengawas saat stage dibuka DINAS.',flow:['Perbaikan Sekolah','Verifikasi','Fase 1 Pengawas','Kirim DINAS'],current:1},
   perbaikanSpj:{title:'Perbaikan / Tindak Lanjut',text:'Sekolah memperbaiki BKU atau dokumen hanya ketika stage PERBAIKAN dibuka DINAS.',flow:['Temuan','Perbaikan','Verifikasi Ulang','Fase 1'],current:1},
-  monitoringGlobal:{title:'Monitoring SPJ',text:'DINAS memantau kesiapan BKU scan resmi terverifikasi, dokumen, pemeriksaan, dan tindak lanjut sebelum masuk rangkaian penilaian.',flow:['Input SPJ','Pemeriksaan','Perbaikan','Penilaian'],current:0},
+  monitoringGlobal:{title:'Monitoring Sekolah',text:'DINAS memantau kesiapan BKU scan resmi terverifikasi, dokumen, pemeriksaan, dan tindak lanjut sebelum masuk rangkaian penilaian.',flow:['Input SPJ','Pemeriksaan','Perbaikan','Penilaian'],current:0},
+  monitoringPengawas:{title:'Monitoring Pengawas',text:'DINAS memantau jumlah sekolah binaan, progres pemeriksaan, sekolah yang menunggu tindak lanjut, dan hasil pekerjaan setiap Pengawas.',flow:['Penugasan','Progres Sekolah Binaan','Tindak Lanjut','Penyelesaian'],current:1},
   penilaianFase1:{title:'Penilaian Fase 1',text:'PENGAWAS menilai 4 komponen SPJ 01–04 dengan BKU ↔ PDF lalu mengirim Fase 1 ke DINAS. DINAS mereview dan menyetujui sebelum Rekonsiliasi.',flow:['Pemeriksaan','Perbaikan','Fase 1 Pengawas','Persetujuan DINAS','Rekonsiliasi'],current:2},
   rekonsiliasi:{title:'Rekonsiliasi',text:'DINAS mencocokkan hasil Fase 1 dengan BKU Data, dokumen, temuan, dan tindak lanjut sebelum Fase 2.',flow:['Fase 1','Rekonsiliasi','Fase 2','Finalisasi'],current:1},
   penilaianFase2:{title:'Penilaian Fase 2',text:'DINAS menetapkan nilai akhir setelah Rekonsiliasi dinyatakan selesai.',flow:['Fase 1','Rekonsiliasi','Fase 2','Finalisasi'],current:2},
@@ -3611,6 +3613,7 @@ async function renderViewSafely(view){
     maintenanceControl: maintenanceControlView,
     pesan: pesanView,
     monitoringGlobal: renderMonitoringGlobalView,
+    monitoringPengawas: () => renderMonitoringGlobalView('pengawas'),
     penilaianFase1: penilaianFase1View,
     rekonsiliasi: rekonsiliasiView,
     penilaianFase2: penilaianFase2View,
@@ -12398,19 +12401,22 @@ window.exportRkasExcel = async function(){
 window._cachedGlobalMonGlobal = null;
 
 // Fungsi utama untuk menampilkan halaman Monitoring Global
-async function renderMonitoringGlobalView() {
+async function renderMonitoringGlobalView(mode) {
   const c = $('#mainContent');
   if(!c) return;
 
   const monState = window.ensureGlobalMonState_();
   monState.currentPage = 1;
   const pengawasView = isPengawas();
-  const pageTitle = pengawasView ? 'Monitoring Sekolah Binaan' : (isDinas() ? 'Monitoring Sekolah' : 'Monitoring SPJ Sekolah');
-  const pageDescription = pengawasView
-    ? 'Pantau kelengkapan dan tahapan pemeriksaan seluruh sekolah binaan Anda.'
-    : (isDinas()
-      ? 'Pantau posisi sekolah berdasarkan kelompok Pengawas dan progres pada periode terpilih.'
-      : 'Pantau kelengkapan administrasi SPJ sekolah pada periode terpilih.');
+  const pengawasMonitoringView = mode === 'pengawas' && isDinas();
+  const pageTitle = pengawasMonitoringView ? 'Monitoring Pengawas' : (pengawasView ? 'Monitoring Sekolah Binaan' : (isDinas() ? 'Monitoring Sekolah' : 'Monitoring SPJ Sekolah'));
+  const pageDescription = pengawasMonitoringView
+    ? 'Pantau beban sekolah binaan, progres pemeriksaan, dan tindak lanjut setiap Pengawas.'
+    : (pengawasView
+      ? 'Pantau kelengkapan dan tahapan pemeriksaan seluruh sekolah binaan Anda.'
+      : (isDinas()
+        ? 'Pantau posisi sekolah berdasarkan kelompok Pengawas dan progres pada periode terpilih.'
+        : 'Pantau kelengkapan administrasi SPJ sekolah pada periode terpilih.'));
 
   c.innerHTML = head(pageTitle, pageDescription) +
     `<div class="toolbar" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
@@ -14565,7 +14571,8 @@ window.showAssessmentBucketFast=function(bucketId){
       {view:'masterSpj',title:'Master Periodisasi & Standar',desc:'Tetapkan periodisasi yang wajib diikuti seluruh sekolah dan Pengawas.'},
       {view:'jadwalTahapan',title:'Workflow Stage Control',desc:'Buka dan tutup stage kerja: Persiapan sampai Finalisasi.'},
       {view:'penugasan',title:'Penugasan Pengawas',desc:'Tetapkan Pengawas untuk sekolah dan kunci penugasan saat siap.'},
-      {view:'monitoringGlobal',title:'Monitoring SPJ',desc:'Pantau kesiapan BKU, dokumen, pemeriksaan, dan perbaikan.'},
+      {view:'monitoringGlobal',title:'Monitoring Sekolah',desc:'Pantau kesiapan BKU, dokumen, pemeriksaan, dan perbaikan.'},
+      {view:'monitoringPengawas',title:'Monitoring Pengawas',desc:'Pantau progres pemeriksaan dan tindak lanjut sekolah binaan setiap Pengawas.'},
       {view:'penilaianFase1',title:'Persetujuan Fase 1 Pengawas',desc:'Review hasil Fase 1 yang dikirim Pengawas, lalu setujui atau kembalikan untuk revisi.'},
       {view:'rekonsiliasi',title:'Rekonsiliasi',desc:'Cocokkan hasil Fase 1 dengan BKU Data, dokumen, temuan, dan tindak lanjut.'},
       {view:'penilaianFase2',title:'Penilaian Fase 2',desc:'DINAS menetapkan hasil akhir setelah rekonsiliasi selesai.'},
@@ -14577,7 +14584,7 @@ window.showAssessmentBucketFast=function(bucketId){
   const SUPPORT={
     SEKOLAH:[['pesan','Pesan'],['tutorialV5','Panduan'],['ubahPassword','Akun']],
     PENGAWAS:[['pesan','Pesan'],['tutorialV5','Panduan'],['ubahPassword','Akun']],
-    DINAS:[['sekolah','Data Sekolah'],['temuan','Temuan'],['pesan','Pesan'],['dbCheck','Validasi Sistem'],['tutorialV5','Panduan']]
+    DINAS:[['temuan','Temuan'],['pesan','Pesan'],['tutorialV5','Panduan']]
   };
 
   function roleV225(){return String(state?.user?.role||'SEKOLAH').trim().toUpperCase()}
