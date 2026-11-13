@@ -4620,11 +4620,19 @@ async function renderDokumenTable(){
     // Dokumen dan ringkasan empat buku utama diambil paralel.
     // Ringkasan hanya berasal dari snapshot BKU scan resmi yang sudah ditetapkan.
     const summaryNpsn = isSchool() ? (state.user?.npsn || state.user?.username || '') : (state.selectedNpsn || '');
-    const [dRes, bookSummaryRes, taxManualRes] = await Promise.all([
+    const [dRes, bookSummaryRes, taxManualRes, workflowRes] = await Promise.all([
       api('getDokumenSPJ', { idPeriode: periode, npsn: summaryNpsn }),
       safeApi('getBkuBookSummaries', { idPeriode: periode, npsn: summaryNpsn }, {ready:false}),
-      safeApi('getBkuTaxManualList', { idPeriode: periode, npsn: summaryNpsn }, {data:[],declarations:[],summary:{}})
+      safeApi('getBkuTaxManualList', { idPeriode: periode, npsn: summaryNpsn }, {data:[],declarations:[],summary:{}}),
+      isSchool() ? safeApi('getWorkflowOverview', {}, {active_stage:''}) : Promise.resolve(null)
     ]);
+    const workflowForUpload = workflowRes || null;
+    const activeUploadStage = String(workflowForUpload?.active_stage || '').toUpperCase();
+    // Fail closed: when the workflow state cannot be read, school upload controls stay closed.
+    const schoolUploadAllowed = !isSchool() || ['INPUT_SPJ','PERBAIKAN'].includes(activeUploadStage);
+    const uploadLockMessage = activeUploadStage
+      ? `Unggah dokumen ditutup pada tahap ${activeUploadStage.replaceAll('_',' ')}.`
+      : 'Status tahapan belum dapat diverifikasi. Muat ulang sebelum mengunggah.';
     const bookSummaries = bookSummaryRes || {ready:false};
     const taxManual = taxManualRes || {data:[],declarations:[],summary:{}};
 
@@ -4694,7 +4702,7 @@ async function renderDokumenTable(){
         const oldPdfButton=legacyPdfs.length?`<button class="btn btn-light instrument-view-pdf-btn" type="button" data-file-id="${esc(legacyPdfs[0].file_id||'')}" data-pdf-name="${esc(legacyPdfs[0].nama_file||'Dokumentasi PDF')}" data-target="${esc(viewerId)}" onclick="showInstrumentPdf(this)">Lihat PDF lama</button>`:'';
         return `<div class="doc-row instrument-doc-row" data-instrument-index="${i}">
           <div class="doc-meta"><div class="iconbox">${String(i+1).padStart(2,'0')}</div><div><strong>${esc(m.nama_spj||m.nama_dokumen||m.kode||m.id_spj)}</strong><div class="muted">${esc(m.kelompok||m.keterangan||'Dokumentasi pendukung kegiatan/transaksi')}</div><details class="spj-advanced-detail"><summary>Detail data dan pencocokan</summary><div class="spj-advanced-body">${_v222BookSummaryHtml_(m,bookSummaries,taxManual)}</div></details><div class="muted" style="margin-top:5px">${photoLine}</div>${photoNames?`<div class="muted" style="margin-top:4px">${photoNames}${photos.length>3?' • dan lainnya':''}</div>`:''}${oldPdfLine}</div></div>
-          <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;justify-content:flex-end">${badge(statusLabel,statusClass)}${photoViewerButtons}${oldPdfButton}<button class="btn btn-light" type="button" onclick="openEvidenceCoveragePanel('PHOTO','${esc(periode)}','${esc(summaryNpsn)}')">Periksa bukti</button><button class="btn btn-primary" type="button" onclick="openPhotoUploadV2454_('SPJ-10','${esc(m.nama_spj||'Foto / Dokumentasi')}',${photoBytes})">Tambah Foto</button></div>
+          <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;justify-content:flex-end">${badge(statusLabel,statusClass)}${photoViewerButtons}${oldPdfButton}<button class="btn btn-light" type="button" onclick="openEvidenceCoveragePanel('PHOTO','${esc(periode)}','${esc(summaryNpsn)}')">Periksa bukti</button>${schoolUploadAllowed ? `<button class="btn btn-primary" type="button" onclick="openPhotoUploadV2454_('SPJ-10','${esc(m.nama_spj||'Foto / Dokumentasi')}',${photoBytes})">Tambah Foto</button>` : `<button class="btn btn-light" type="button" disabled title="${esc(uploadLockMessage)}">Unggah ditutup</button>`}</div>
         </div>${pdfReady&&legacyPdfs.length?`<div id="${esc(viewerId)}" class="instrument-pdf-inline" hidden><div class="instrument-pdf-inline-head"><div><strong>📄 ${esc(legacyPdfs[0].nama_file||'Dokumentasi PDF')}</strong><div class="muted">Pratinjau PDF dokumentasi lama</div></div><button type="button" class="btn btn-light btn-sm" onclick="closeInstrumentPdf('${esc(viewerId)}')">✕ Tutup</button></div><div class="instrument-pdf-inline-frame" data-file-id="${esc(legacyPdfs[0].file_id||'')}" data-pdf-name="${esc(legacyPdfs[0].nama_file||'Dokumentasi PDF')}"><div class="muted" style="padding:24px;text-align:center">Klik <b>Lihat PDF lama</b> untuk memuat PDF.</div></div></div>`:''}`;
       }
       return `<div class="doc-row instrument-doc-row" data-instrument-index="${i}">
@@ -4717,7 +4725,7 @@ async function renderDokumenTable(){
           ${pdfReady && isBkuOfficial && isSchool() ? `<button class="btn btn-primary" type="button" onclick="openBkuOcrWorkbenchV2502('${encodeURIComponent(d.file_id||'')}','${encodeURIComponent(d.nama_file||'BKU scan')}','${encodeURIComponent(periode)}')">Periksa BKU</button>` : ''}
           ${['SPJ-06','SPJ-07'].includes(String(m.id_spj)) ? `<button class="btn btn-light" type="button" onclick="openEvidenceCoveragePanel('${m.id_spj==='SPJ-06'?'INVOICE':'SUPPORT'}','${esc(periode)}','${esc(summaryNpsn)}')">Periksa bukti</button>` : ''}
           ${['SPJ-04','SPJ-08','SPJ-09'].includes(String(m.id_spj)) ? `<button class="btn btn-light" type="button" onclick="openTaxReconciliationPanelV2523('${esc(m.id_spj)}','${esc(periode)}','${esc(summaryNpsn)}')">Lihat status pajak</button>` : ''}
-          <button class="btn ${d ? 'btn-light' : 'btn-primary'}" type="button" onclick="openUpload('${esc(m.id_spj)}','${esc(m.nama_spj || m.nama_dokumen || m.kode || m.id_spj)}',${d ? 'true' : 'false'})">${isLegacyArchive ? 'Unggah ulang untuk penilaian' : (d ? 'Ganti dokumen' : 'Unggah dokumen')}</button>
+          ${schoolUploadAllowed ? `<button class="btn ${d ? 'btn-light' : 'btn-primary'}" type="button" onclick="openUpload('${esc(m.id_spj)}','${esc(m.nama_spj || m.nama_dokumen || m.kode || m.id_spj)}',${d ? 'true' : 'false'})">${isLegacyArchive ? 'Unggah ulang untuk penilaian' : (d ? 'Ganti dokumen' : 'Unggah dokumen')}</button>` : `<button class="btn btn-light" type="button" disabled title="${esc(uploadLockMessage)}">Unggah ditutup</button>`}
           ${allowNA ? `<button class="btn btn-light" type="button" onclick="openNaModal('${esc(m.id_spj)}','${esc(m.nama_spj || m.nama_dokumen || m.kode || m.id_spj)}')">N/A</button>` : ''}
         </div>
       </div>
@@ -4770,6 +4778,7 @@ async function renderDokumenTable(){
 
 
     area.innerHTML = `
+      ${isSchool() && !schoolUploadAllowed ? `<div class="message warning" role="status" style="margin:0 0 12px"><b>Mode lihat dokumen.</b> ${esc(uploadLockMessage)} Dokumen yang sudah diunggah tetap dapat dibuka dan diperiksa. Pengunggahan baru atau penggantian dokumen akan tersedia kembali ketika DINAS membuka tahap INPUT SPJ atau PERBAIKAN.</div>` : ''}
       <div class="school-next-action ${nextActionDanger?'danger':''}" style="margin-top:0;margin-bottom:12px">
         <div><span class="school-eyebrow">LANGKAH BERIKUTNYA</span><strong>${esc(nextActionText)}</strong></div>${nextActionButton}
       </div>
@@ -5082,8 +5091,15 @@ window._smartUploadFileV248_ = async function(file,idSpj,periode,onProgress,uplo
 };
 
 
-window.openPhotoUploadV2454_ = function(idSpj,namaSpj,usedBytes){
+window.openPhotoUploadV2454_ = async function(idSpj,namaSpj,usedBytes){
   const periode=$('#periodeSelect')?.value||state.selectedPeriode;
+  if(isSchool()){
+    try{
+      const wf=await api('getWorkflowOverview',{});
+      const stage=String(wf?.active_stage||'').toUpperCase();
+      if(!['INPUT_SPJ','PERBAIKAN'].includes(stage)){toast(stage?`Unggah foto ditutup pada tahap ${stage.replaceAll('_',' ')}.`:'Status tahapan belum dapat diverifikasi.','warning',7000);return;}
+    }catch(err){toast('Status tahapan gagal diverifikasi. Unggah foto ditutup sementara.','warning',7000);return;}
+  }
   if(!periode){toast('Pilih periode SPJ terlebih dahulu.','warning');return;}
   if(String(idSpj)!=='SPJ-10'){toast('Unggah foto hanya tersedia untuk SPJ-10.','warning');return;}
   const limit=window.SIMPEL_UPLOAD_RC3.PERIOD_TOTAL_MAX;
@@ -5182,8 +5198,15 @@ window.showSpjPhotoV2454_ = async function(fileId,namaFile,periode){
   catch(err){$('#photoPreviewContentV2454').innerHTML=msg(errorText(err));}
 };
 
-window.openImportPaketSPJ = function(){
+window.openImportPaketSPJ = async function(){
   const periode = $('#periodeSelect')?.value || state.selectedPeriode;
+  if(isSchool()){
+    try{
+      const wf=await api('getWorkflowOverview',{});
+      const stage=String(wf?.active_stage||'').toUpperCase();
+      if(!['INPUT_SPJ','PERBAIKAN'].includes(stage)){toast(stage?`Impor dokumen ditutup pada tahap ${stage.replaceAll('_',' ')}.`:'Status tahapan belum dapat diverifikasi.','warning',7000);return;}
+    }catch(err){toast('Status tahapan gagal diverifikasi. Impor dokumen ditutup sementara.','warning',7000);return;}
+  }
   if(!periode){
     toast('Pilih periode SPJ terlebih dahulu.','warning');
     return;
@@ -5285,8 +5308,21 @@ window.openNaModal = function(idSpj, namaSpj) {
   };
 };
 
-window.openUpload = function(idSpj, namaSpj, hasExistingDocument) {
+window.openUpload = async function(idSpj, namaSpj, hasExistingDocument) {
   const periode = $('#periodeSelect')?.value || state.selectedPeriode;
+  if (isSchool()) {
+    try {
+      const wf = await api('getWorkflowOverview', {});
+      const stage = String(wf?.active_stage || '').toUpperCase();
+      if (!['INPUT_SPJ','PERBAIKAN'].includes(stage)) {
+        toast(stage ? `Unggah dokumen ditutup pada tahap ${stage.replaceAll('_',' ')}. Dokumen lama tetap dapat dilihat.` : 'Status tahapan belum dapat diverifikasi. Muat ulang halaman.', 'warning', 7000);
+        return;
+      }
+    } catch (err) {
+      toast('Status tahapan gagal diverifikasi. Unggah ditutup sementara; muat ulang halaman.', 'warning', 7000);
+      return;
+    }
+  }
   if (!periode) { toast('Pilih periode SPJ terlebih dahulu.','warning'); return; }
   const hasExisting = hasExistingDocument === true;
   const wrap = document.createElement('div');
