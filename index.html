@@ -4625,11 +4625,20 @@ async function renderDokumenTable(){
     ]);
     const workflowForUpload = workflowRes || null;
     const activeUploadStage = String(workflowForUpload?.active_stage || '').toUpperCase();
-    // Fail closed: when the workflow state cannot be read, school upload controls stay closed.
-    const schoolUploadAllowed = !isSchool() || ['INPUT_SPJ','PERBAIKAN'].includes(activeUploadStage);
-    const uploadLockMessage = activeUploadStage
-      ? `Unggah dokumen ditutup pada tahap ${activeUploadStage.replaceAll('_',' ')}.`
-      : 'Status tahapan belum dapat diverifikasi. Muat ulang sebelum mengunggah.';
+    const resolvedUploadStages = workflowForUpload?.resolved || {};
+    // Match the backend's effective stage gate and target-specific schedule.
+    // In INDEPENDENT activation mode, active_stage is only a display cursor and
+    // may differ from the stage that DINAS has actually activated for uploads.
+    // Therefore the school UI follows the server's resolved permission for
+    // INPUT_SPJ/PERBAIKAN. Backend upload actions remain the final authority.
+    const inputStageAllowed = resolvedUploadStages?.INPUT_SPJ?.allowed === true;
+    const repairStageAllowed = resolvedUploadStages?.PERBAIKAN?.allowed === true;
+    const schoolUploadAllowed = !isSchool() || !!workflowForUpload && (inputStageAllowed || repairStageAllowed);
+    const uploadLockMessage = !workflowForUpload
+      ? 'Status tahapan belum dapat diverifikasi. Muat ulang sebelum mengunggah.'
+      : (inputStageAllowed || repairStageAllowed)
+        ? ''
+        : `Unggah dokumen belum dibuka untuk sekolah. Tahap aktif: ${activeUploadStage ? activeUploadStage.replaceAll('_',' ') : 'belum ditetapkan'}. Periksa jadwal dan penugasan DINAS.`;
     const bookSummaries = bookSummaryRes || {ready:false};
     const taxManual = taxManualRes || {data:[],declarations:[],summary:{}};
 
@@ -4719,7 +4728,7 @@ async function renderDokumenTable(){
               data-pdf-name="${esc(d.nama_file || m.nama_spj || 'Dokumen SPJ')}"
               data-target="${esc(viewerId)}"
               onclick="showInstrumentPdf(this)">👁️ Lihat file</button>` : ''}
-          ${pdfReady && isBkuOfficial && isSchool() ? `<button class="btn btn-primary" type="button" onclick="openBkuOcrWorkbenchV2502('${encodeURIComponent(d.file_id||'')}','${encodeURIComponent(d.nama_file||'BKU scan')}','${encodeURIComponent(periode)}')">Periksa BKU</button>` : ''}
+          <!-- OCR BKU is system-managed; school users only view or replace the source PDF. -->
           ${['SPJ-06','SPJ-07'].includes(String(m.id_spj)) ? `<button class="btn btn-light" type="button" onclick="openEvidenceCoveragePanel('${m.id_spj==='SPJ-06'?'INVOICE':'SUPPORT'}','${esc(periode)}','${esc(summaryNpsn)}')">Periksa bukti</button>` : ''}
           ${['SPJ-04','SPJ-08','SPJ-09'].includes(String(m.id_spj)) ? `<button class="btn btn-light" type="button" onclick="openTaxReconciliationPanelV2523('${esc(m.id_spj)}','${esc(periode)}','${esc(summaryNpsn)}')">Lihat status pajak</button>` : ''}
           ${schoolUploadAllowed ? `<button class="btn ${d ? 'btn-light' : 'btn-primary'}" type="button" onclick="openUpload('${esc(m.id_spj)}','${esc(m.nama_spj || m.nama_dokumen || m.kode || m.id_spj)}',${d ? 'true' : 'false'})">${isLegacyArchive ? 'Unggah ulang untuk penilaian' : (d ? 'Ganti dokumen' : 'Unggah dokumen')}</button>` : `<button class="btn btn-light" type="button" disabled title="${esc(uploadLockMessage)}">Unggah ditutup</button>`}
@@ -5384,6 +5393,16 @@ window.openUpload = async function(idSpj, namaSpj, hasExistingDocument) {
       $('#modalUploadOverlay').remove();
       await renderDokumenTable();
       if(res.post_save_status==='WARNING')toast(res.post_save_warning||'Dokumen tersimpan; penyegaran asesmen perlu diperiksa administrator. Jangan unggah ulang.','warning',9000);
+      if(String(idSpj)==='SPJ-BKU'){
+        if(res.ocr_job&&res.ocr_job.status){
+          const msg=res.ocr_job.status==='QUEUED'
+            ? 'BKU berhasil diunggah. Sistem memasukkannya ke antrean OCR otomatis.'
+            : 'BKU berhasil diunggah. Status OCR: '+String(res.ocr_job.status)+'.';
+          toast(msg,'info',7000);
+        }else if(res.post_save_status!=='WARNING'){
+          toast('BKU berhasil diunggah. Sistem akan memproses dokumen; status OCR dapat diperiksa kembali.','info',7000);
+        }
+      }
       if(['SPJ-04','SPJ-08','SPJ-09'].includes(String(idSpj))){
         toast('Dokumen pajak tersimpan. Sistem mulai membaca dokumen secara otomatis.','info',6000);
         window.openTaxReconciliationPanelV2523(String(idSpj),String(periode),String(state.selectedNpsn||state.user?.npsn||state.user?.username||''));
