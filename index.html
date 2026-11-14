@@ -2204,9 +2204,9 @@ body[data-role] .content .spj-simple-details pre{white-space:pre-wrap;max-height
 <script>
 'use strict';
 
-const V10_VERSION = 'V25.2.4.14-RC4.4.8-UPLOAD-IDEMPOTENCY-HARDENING';
+const V10_VERSION = 'SIMPEL-SPJ-RELEASE-1.0-CANDIDATE';
 
-const FRONTEND_BUILD_ID = 'V25.2.4.14_RC4.4.8_UPLOAD_IDEMPOTENCY_HARDENING';
+const FRONTEND_BUILD_ID = 'SIMPEL_SPJ_RELEASE_1.0_CANDIDATE_QA31';
   const API_URL = 'https://script.google.com/macros/s/AKfycbyWvJXKr1QZ1zwbeJDoULTUihycj1771SsDlGFy8jnuF4i3DsEbHXlcJU48VDAg17fqDA/exec';
 
 
@@ -2217,22 +2217,20 @@ window.ROLE_MENUS = {
     { id:'monitoringGlobal', label:'Monitoring Sekolah' },
     { id:'monitoringPengawas', label:'Monitoring Pengawas' },
     { group:'PEMERIKSAAN & PENILAIAN', items:[
-      { id:'penilaianFase1', label:'Persetujuan Fase 1 Pengawas' },
+      { id:'penilaianFase1', label:'Persetujuan Fase 1' },
       { id:'rekonsiliasi', label:'Rekonsiliasi' },
       { id:'penilaianFase2', label:'Penilaian Fase 2' },
-      { id:'finalisasiSpj', label:'Finalisasi DINAS' },
-      { id:'arsipPenilaianV5', label:'Laporan Penilaian' }
+      { id:'finalisasiSpj', label:'Finalisasi' }
     ]},
-    { group:'PENGATURAN', items:[
+    { group:'PENGATURAN LANJUTAN', items:[
       { id:'masterSpj', label:'Periodisasi & Standar' },
       { id:'jadwalTahapan', label:'Tahapan & Jadwal' },
-      { id:'manajemenUser', label:'Kesiapan Pengguna' },
+      { id:'manajemenUser', label:'Pengguna' },
       { id:'sekolah', label:'Data Sekolah' },
       { id:'penugasan', label:'Penugasan Pengawas' },
       { id:'dbCheck', label:'Validasi Sistem' },
-      { id:'maintenanceControl', label:'Kontrol Maintenance' }
-    ]},
-    { group:'BANTUAN', items:[
+      { id:'maintenanceControl', label:'Kontrol Maintenance' },
+      { id:'arsipPenilaianV5', label:'Laporan Penilaian' },
       { id:'temuan', label:'Temuan Pemeriksaan' },
       { id:'pesan', label:'Pesan & Koordinasi' },
       { id:'tutorialV5', label:'Panduan SIMPEL SPJ' }
@@ -2240,35 +2238,31 @@ window.ROLE_MENUS = {
   ],
   PENGAWAS: [
     { id:'home', label:'Dashboard' },
-    { id:'jadwalTahapan', label:'Tahap Aktif DINAS' },
-    { group:'ALUR PEMERIKSAAN', items:[
-      { id:'penugasan', label:'1. Sekolah Tugas' },
-      { id:'monitoringGlobal', label:'2. Monitoring Sekolah Binaan' },
-      { id:'pdfInteraktif', label:'3. Pemeriksaan BKU & Dokumen' },
-      { id:'temuan', label:'4. Temuan & Rekomendasi' },
-      { id:'verifikasiUlang', label:'5. Verifikasi Ulang / Review' },
-      { id:'penilaianFase1', label:'6. Penilaian Fase 1 & Kirim ke DINAS' },
-      { id:'arsipPenilaianV5', label:'7. Laporan Fase 1' }
-    ]},
-    { group:'PENDUKUNG', items:[
+    { id:'penugasan', label:'Sekolah Binaan' },
+    { id:'monitoringGlobal', label:'Monitoring Sekolah' },
+    { id:'pdfInteraktif', label:'Pemeriksaan Dokumen' },
+    { id:'temuan', label:'Temuan & Tindak Lanjut' },
+    { id:'verifikasiUlang', label:'Verifikasi Perbaikan' },
+    { id:'penilaianFase1', label:'Penilaian Fase 1' },
+    { group:'BANTUAN & AKUN', items:[
+      { id:'arsipPenilaianV5', label:'Laporan Fase 1' },
       { id:'pesan', label:'Pesan & Koordinasi' },
       { id:'tutorialV5', label:'Panduan' },
-      { id:'ubahPassword', label:'Ubah Password' }
+      { id:'ubahPassword', label:'Ubah Password' },
+      { id:'jadwalTahapan', label:'Tahap Aktif DINAS' }
     ]}
   ],
   SEKOLAH: [
     { id:'home', label:'Dashboard' },
-    { id:'jadwalTahapan', label:'Tahap Aktif DINAS' },
-    { group:'ALUR SPJ', items:[
-      { id:'dokumenBulanan', label:'1. BKU Resmi & Dokumen SPJ' },
-      { id:'perbaikanSpj', label:'2. Perbaikan / Tindak Lanjut' },
-      { id:'hasilPenilaian', label:'3. Hasil Penilaian' },
-      { id:'arsipPenilaianV5', label:'4. Laporan Fase 1 & Fase 2' }
-    ]},
-    { group:'PENDUKUNG', items:[
+    { id:'dokumenBulanan', label:'Dokumen SPJ' },
+    { id:'perbaikanSpj', label:'Perbaikan / Tindak Lanjut' },
+    { id:'hasilPenilaian', label:'Hasil Penilaian' },
+    { group:'BANTUAN & AKUN', items:[
+      { id:'arsipPenilaianV5', label:'Laporan' },
       { id:'pesan', label:'Pesan & Koordinasi' },
       { id:'tutorialV5', label:'Panduan' },
-      { id:'ubahPassword', label:'Ubah Password' }
+      { id:'ubahPassword', label:'Ubah Password' },
+      { id:'jadwalTahapan', label:'Tahap Aktif DINAS' }
     ]}
   ]
 };
@@ -4358,7 +4352,7 @@ window.refreshEvidenceCoveragePanel=async function(){
     ]);
     if(build.build_id!=='V25.2.4.12_UNIFIED_PERIOD_TAX_EVIDENCE')throw new Error('Versi backend tidak sesuai. Diharapkan V25.2.4.12_UNIFIED_PERIOD_TAX_EVIDENCE, terdeteksi '+build.build_id+'. Periksa deployment /exec.');
     st.data=res;renderEvidenceCoveragePanel();
-  }catch(e){body.innerHTML=msg(errorText(e),'error')+`<div class="muted" style="margin-top:8px">Jika muncul "Action tidak dikenal", backend /exec yang aktif belum memuat router V25.2.4.12. Perbarui kode.gs dan index.html dari paket yang sama, simpan, deploy New version pada deployment staging yang sama, dan pastikan API_URL frontend menunjuk ke URL /exec tersebut.</div>`;}
+  }catch(e){body.innerHTML=msg(errorText(e),'error')+`<div class="muted" style="margin-top:8px">Jika muncul "Action tidak dikenal", backend /exec yang aktif belum memuat router V25.2.4.12. Periksa kesesuaian backend dan frontend Release 1.0, lalu pastikan API_URL menunjuk ke deployment yang benar.</div>`;}
 };
 window.renderEvidenceCoveragePanel=function(){
   const st=window._evidenceCoverageState,body=document.getElementById('evidenceCoverageBody');
