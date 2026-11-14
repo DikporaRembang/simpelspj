@@ -2206,7 +2206,7 @@ body[data-role] .content .spj-simple-details pre{white-space:pre-wrap;max-height
 
 const V10_VERSION = 'SIMPEL-SPJ-RELEASE-1.0-CANDIDATE';
 
-const FRONTEND_BUILD_ID = 'SIMPEL_SPJ_QA38_2_CONCURRENT_ROLE_ASSESSMENT_CANDIDATE';
+const FRONTEND_BUILD_ID = 'SIMPEL_SPJ_QA38_3_BACKEND_FRONTEND_INTEGRITY_CANDIDATE';
   const API_URL = 'https://script.google.com/macros/s/AKfycbyWvJXKr1QZ1zwbeJDoULTUihycj1771SsDlGFy8jnuF4i3DsEbHXlcJU48VDAg17fqDA/exec';
 
 
@@ -8344,7 +8344,7 @@ window.renderPengawasReadinessCards=function(){
         <div><small>BKU Data</small><b class="${x.bku_ready?'ok':'no'}">${x.bku_ready?'VALID ✓':'BELUM'}</b><span>${x.bku_ready?fmtNum(x.bku_total_transaksi||x.total_transaksi||0)+' transaksi':'Belum ada snapshot valid'}</span></div>
         <div><small>10 Dokumen Scan</small><b class="${x.documents_complete?'ok':'warn'}">${docs}</b><span>${x.documents_complete?'Lengkap':'Masih kurang / perbaikan'}</span></div>
         <div><small>Fase 1 Pengawas</small><b>${readinessStatusChipV2(String(f1).replaceAll('_',' '),f1Kind)}</b><span>${esc(x.next_label||'')}</span></div>
-        <div><small>Stage DINAS</small><b>${esc(x.active_stage||'-')}</b><span>${x.phase1_actionable?'Fase 1 dapat diproses':'Mengikuti stage aktif'}</span></div>
+        <div><small>Akses Fase 1 sekolah</small><b>${esc(x.phase1_stage_access?.phase|| (x.phase1_stage_access?.allowed?'ACTIVE':'LOCKED'))}</b><span>${x.phase1_actionable?'Fase 1 dapat diproses':'Akses Fase 1 belum terbuka untuk sekolah ini'}</span></div>
       </div>
       ${reasons.length?`<div class="v234-reasons"><b>Catatan posisi:</b>${reasons.map(r=>`<span>• ${esc(r)}</span>`).join('')}</div>`:''}
       <div class="v234-school-actions">
@@ -14764,7 +14764,7 @@ window.showAssessmentBucketFast=function(bucketId){
       // pekerjaan berikutnya adalah Workbench BKU & bukti.
       nextIndex=state.selectedNpsn?2:1;
     }else if(r==='DINAS'){
-      // DINAS harus melihat pekerjaan berikutnya berdasarkan stage yang benar-benar ACTIVE.
+      // Global active_stage hanya pointer navigasi historis; dashboard readiness menampilkan antrean per sekolah dan per tahap.
       homeWorkflow=await safeApi('getWorkflowOverview',{},null);
       const active=String(homeWorkflow?.active_stage||'PERSIAPAN').toUpperCase();
       const stageToIndex={
@@ -14802,9 +14802,10 @@ window.showAssessmentBucketFast=function(bucketId){
 
         <section class="v225-home-next">
           <div>
-            <small>LANGKAH BERIKUTNYA${r==='DINAS'&&homeWorkflow?.active_stage?` • STAGE ACTIVE: ${esc(homeWorkflow.active_stage)}`:''}</small>
+            <small>LANGKAH BERIKUTNYA${r==='DINAS'&&homeWorkflow?.active_stage?` • POINTER NAVIGASI: ${esc(homeWorkflow.active_stage)} (bukan pengunci tahap lain)`:''}</small>
             <strong>${nextIndex+1}. ${esc(next.title)}</strong>
             <div class="muted" style="margin-top:4px">${esc(next.desc)}</div>
+            ${r==='DINAS'?`<div class="muted" style="margin-top:6px;font-size:12px">Tahapan dapat berjalan bersamaan untuk sekolah yang berbeda. Gunakan panel progres sekolah untuk melihat seluruh antrean aktif.</div>`:''}
           </div>
           <button class="btn btn-primary" onclick="v225Go('${next.view}')">Buka langkah ${nextIndex+1} →</button>
         </section>
