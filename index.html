@@ -2206,7 +2206,7 @@ body[data-role] .content .spj-simple-details pre{white-space:pre-wrap;max-height
 
 const V10_VERSION = 'SIMPEL-SPJ-RELEASE-1.0-CANDIDATE';
 
-const FRONTEND_BUILD_ID = 'SIMPEL_SPJ_RELEASE_1.0_CANDIDATE_QA31';
+const FRONTEND_BUILD_ID = 'SIMPEL_SPJ_QA37_UPLOAD_GATE_ALIGNMENT_CANDIDATE';
   const API_URL = 'https://script.google.com/macros/s/AKfycbyWvJXKr1QZ1zwbeJDoULTUihycj1771SsDlGFy8jnuF4i3DsEbHXlcJU48VDAg17fqDA/exec';
 
 
@@ -2216,6 +2216,7 @@ window.ROLE_MENUS = {
     { id:'home', label:'Dashboard' },
     { id:'monitoringGlobal', label:'Monitoring Sekolah' },
     { id:'monitoringPengawas', label:'Monitoring Pengawas' },
+    { id:'bkuOcrReview', label:'Review OCR BKU' },
     { group:'PEMERIKSAAN & PENILAIAN', items:[
       { id:'penilaianFase1', label:'Persetujuan Fase 1' },
       { id:'rekonsiliasi', label:'Rekonsiliasi' },
@@ -2241,6 +2242,7 @@ window.ROLE_MENUS = {
     { id:'penugasan', label:'Sekolah Binaan' },
     { id:'monitoringGlobal', label:'Monitoring Sekolah' },
     { id:'pdfInteraktif', label:'Pemeriksaan Dokumen' },
+    { id:'bkuOcrReview', label:'Review OCR BKU' },
     { id:'temuan', label:'Temuan & Tindak Lanjut' },
     { id:'verifikasiUlang', label:'Verifikasi Perbaikan' },
     { id:'penilaianFase1', label:'Penilaian Fase 1' },
@@ -3618,6 +3620,7 @@ async function renderViewSafely(view){
     tutorialV5: (typeof tutorialV5View === 'function') ? tutorialV5View : null,
     arsipPenilaianV5: (typeof arsipPenilaianV5View === 'function') ? arsipPenilaianV5View : null,
     pdfInteraktif: (typeof pdfInteraktifView === 'function') ? pdfInteraktifView : null,
+    bkuOcrReview: (typeof bkuOcrReviewView === 'function') ? bkuOcrReviewView : null,
     ubahPassword: (typeof ubahPasswordView === 'function') ? ubahPasswordView : null,
 
     // SIMPEL SPJ workflow alignment
@@ -3661,7 +3664,103 @@ async function renderViewSafely(view){
 
 function setActive(view){ 
   $$('[data-view]').forEach(b => b.classList.toggle('active', b.dataset.view === view)); 
-}async function schoolHomeView(){
+
+}
+async function bkuOcrReviewView(){
+  if(!isDinas()&&!isPengawas()){
+    $('#mainContent').innerHTML=msg('Modul ini hanya tersedia untuk Pengawas dan Dinas.','error');return;
+  }
+  const c=$('#mainContent');
+  c.innerHTML=head('Review OCR BKU','Pemeriksaan hasil pembacaan dokumen oleh petugas berwenang. Keputusan review tidak langsung menetapkan BKU kanonik.')+
+    `<div class="panel"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+      <div><h3 style="margin:0">Antrean hasil OCR</h3><p class="muted">Sekolah hanya mengunggah dokumen. OCR dan validasi awal dikerjakan sistem.</p></div>
+      <button class="btn btn-primary" type="button" onclick="loadBkuOcrReviewQueue()">Muat ulang</button></div>
+      <div id="bkuOcrReviewQueueBody">${loading('Memuat antrean OCR...')}</div></div>
+    <div id="bkuOcrReviewCaseBody"></div>`;
+  await loadBkuOcrReviewQueue();
+}
+window.loadBkuOcrReviewQueue=async function(){
+  const body=$('#bkuOcrReviewQueueBody');if(!body)return;
+  body.innerHTML=loading('Memuat antrean OCR...');
+  try{
+    const r=await api('getBkuOcrReviewQueue',{limit:100});
+    const jobs=r.jobs||[];
+    if(!jobs.length){body.innerHTML='<div class="message info">Belum ada hasil OCR yang menunggu pemeriksaan.</div>';return;}
+    body.innerHTML=`<div class="table-wrap"><table><thead><tr><th>Job OCR</th><th>NPSN</th><th>Periode</th><th>Status</th><th>Karakter</th><th>Keputusan</th><th>Aksi</th></tr></thead><tbody>${
+      jobs.map(j=>`<tr><td><code>${esc(j.job_id)}</code></td><td>${esc(j.npsn)}</td><td>${esc(j.id_periode)}</td><td>${badge(j.job_status,j.job_status==='OCR_COMPLETED'?'success':'warning')}</td><td>${fmtNum(j.result_chars||0)}</td><td>${esc(j.review_decision||'PENDING_REVIEW')}</td><td><button class="btn btn-primary btn-sm" type="button" onclick="openBkuOcrReviewCase('${esc(j.job_id)}')">Periksa</button></td></tr>`).join('')
+    }</tbody></table></div>`;
+  }catch(e){body.innerHTML=msg(errorText(e),'error');}
+};
+window.openBkuOcrReviewCase=async function(jobId){
+  const box=$('#bkuOcrReviewCaseBody');if(!box)return;
+  box.innerHTML=loading('Membuka hasil OCR dan bukti sumber...');
+  try{
+    const r=await api('getQa35BkuStructuredCase',{jobId:jobId});
+    const pages=r.pages||[],validation=r.validation||{};
+    const pageHtml=pages.map(p=>{
+      const rows=p.rows||[];
+      const pageAction=p.page_no>0?`<div class="form-grid" style="margin-top:10px">
+        <div class="field"><label>Keputusan halaman</label><select id="qa35Decision_${p.page_no}">
+          <option value="PAGE_ACCEPTED_FOR_NEXT_CHECK">Dapat diteruskan ke pemeriksaan berikutnya</option>
+          <option value="PAGE_NEEDS_CORRECTION">Perlu koreksi petugas</option>
+          <option value="PAGE_UNREADABLE">Tidak terbaca</option>
+          <option value="PAGE_WRONG_DOCUMENT">Bukan halaman BKU yang sesuai</option>
+        </select></div>
+        <div class="field"><label>Catatan pemeriksa</label><input id="qa35Note_${p.page_no}" placeholder="Catatan wajib diisi"></div>
+      </div><button class="btn btn-primary btn-sm" type="button" onclick="saveBkuOcrPageReview('${esc(jobId)}','${esc(p.page_job_id)}',${p.page_no})">Simpan pemeriksaan halaman</button>`:'<div class="message warn">Batas halaman belum dapat diverifikasi. Jangan menafsirkan teks gabungan sebagai bukti per halaman.</div>';
+      return `<section class="panel" style="margin-top:12px"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><h3>Halaman ${p.page_no||'Belum terpetakan'}</h3>${badge(p.page_status,p.page_status==='OCR_COMPLETED'?'success':'warning')}</div>
+        <p class="muted">Status review: ${esc(p.review_status||'PENDING_REVIEW')} · ${rows.length} kandidat baris</p>
+        <p><a href="${esc(p.source_page_url)}" target="_blank" rel="noopener">Buka halaman sumber PDF</a></p>
+        <details><summary>Lihat teks OCR halaman</summary><pre style="white-space:pre-wrap;max-height:320px;overflow:auto">${esc(p.text||'')}</pre></details>
+        ${rows.length?`<div class="table-wrap"><table><thead><tr><th>Baris</th><th>Tanggal</th><th>Uraian kandidat</th><th>Penerimaan</th><th>Pengeluaran</th><th>Saldo</th><th>Status</th></tr></thead><tbody>${rows.map(x=>`<tr><td>${esc(x.row_key)}</td><td>${esc(x.tanggal_transaksi||'-')}</td><td>${esc(x.description_candidate||x.raw_text||'-')}</td><td>${x.penerimaan==null?'Belum terbaca':fmtRupiah(x.penerimaan)}</td><td>${x.pengeluaran==null?'Belum terbaca':fmtRupiah(x.pengeluaran)}</td><td>${x.saldo==null?'Belum terbaca':fmtRupiah(x.saldo)}</td><td>${esc(x.extraction_status)}<details><summary>Koreksi petugas</summary>
+          <select id="qa35Field_${esc(x.row_key)}"><option value="penerimaan">Penerimaan</option><option value="pengeluaran">Pengeluaran</option><option value="saldo">Saldo</option><option value="tanggal_transaksi">Tanggal</option><option value="description_candidate">Uraian</option></select>
+          <input id="qa35Value_${esc(x.row_key)}" placeholder="Nilai koreksi">
+          <input id="qa35Reason_${esc(x.row_key)}" placeholder="Alasan koreksi wajib">
+          <button class="btn btn-light btn-sm" type="button" onclick="saveBkuOcrRowCorrection('${esc(jobId)}','${esc(p.page_job_id)}','${esc(x.row_key)}')">Simpan koreksi</button></details></td></tr>`).join('')}</tbody></table></div>`:''}
+        ${pageAction}</section>`;
+    }).join('');
+    const monthHtml=(validation.monthly||[]).map(m=>`<tr><td>${esc(m.month_key)}</td><td>${m.transaction_candidates}</td><td>${fmtRupiah(m.transaction_penerimaan||0)}</td><td>${fmtRupiah(m.transaction_pengeluaran||0)}</td><td>${m.valid?'Lolos':'Perlu pemeriksaan'}</td><td>${esc((m.errors||[]).join(' | '))}</td></tr>`).join('');
+    box.innerHTML=`<div class="panel" style="margin-top:16px"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><div><h3>Kasus OCR ${esc(jobId)}</h3><p class="muted">${esc(r.source?.file_name||'PDF BKU')} · NPSN ${esc(r.source?.npsn||'')} · ${esc(r.source?.id_periode||'')}</p></div><a class="btn btn-light btn-sm" target="_blank" rel="noopener" href="${esc(r.source?.view_url||'#')}">Buka PDF asli</a></div>
+      <div class="message ${validation.valid?'ok':'warn'}">Validasi kandidat: ${validation.valid?'Lolos pemeriksaan matematis awal':'Belum lolos / perlu review'} · ${validation.total_transaction_candidates||0} kandidat transaksi. Validasi ini belum merupakan penetapan BKU.</div>
+      <div class="table-wrap"><table><thead><tr><th>Bulan</th><th>Kandidat</th><th>Penerimaan</th><th>Pengeluaran</th><th>Status</th><th>Catatan</th></tr></thead><tbody>${monthHtml||'<tr><td colspan="6">Belum ada hasil rekonsiliasi.</td></tr>'}</tbody></table></div>
+      ${pageHtml}
+      <div style="display:flex;justify-content:flex-end;margin-top:12px"><button class="btn btn-primary" type="button" onclick="revalidateBkuOcrJob('${esc(jobId)}')">Jalankan validasi ulang</button></div>
+      <div class="message info" style="margin-top:12px">Data di atas masih staging. Pemeriksaan halaman tidak mengubah transaksi SPJ atau BKU kanonik.</div></div>`;
+  }catch(e){box.innerHTML=msg(errorText(e),'error');}
+};
+window.revalidateBkuOcrJob=async function(jobId){
+  if(!confirm('Jalankan ulang validasi seluruh halaman dan saldo? Hasil tetap tidak akan mengubah BKU kanonik.'))return;
+  try{
+    const r=await api('revalidateQa35BkuOcrJob',{jobId:jobId});
+    toast(r.message||'Validasi ulang selesai.','ok');
+    await openBkuOcrReviewCase(jobId);
+    await loadBkuOcrReviewQueue();
+  }catch(e){toast(errorText(e),'error');}
+};
+window.saveBkuOcrRowCorrection=async function(jobId,pageJobId,rowKey){
+  const field=$(`#qa35Field_${rowKey}`)?.value||'';
+  const value=$(`#qa35Value_${rowKey}`)?.value||'';
+  const reason=$(`#qa35Reason_${rowKey}`)?.value||'';
+  if(!value.trim()||!reason.trim()){toast('Nilai dan alasan koreksi wajib diisi.','warning');return;}
+  try{
+    await api('saveQa35BkuRowCorrection',{data:{job_id:jobId,page_job_id:pageJobId,row_key:rowKey,field:field,corrected_value:value,reason:reason}});
+    toast('Koreksi staging tersimpan dan tercatat dalam audit trail. BKU kanonik tidak berubah.','ok');
+    await openBkuOcrReviewCase(jobId);
+  }catch(e){toast(errorText(e),'error');}
+};
+window.saveBkuOcrPageReview=async function(jobId,pageJobId,pageNo){
+  const decision=$(`#qa35Decision_${pageNo}`)?.value||'';
+  const note=$(`#qa35Note_${pageNo}`)?.value||'';
+  if(!note.trim()){toast('Catatan pemeriksaan wajib diisi.','warning');return;}
+  try{
+    await api('saveQa35BkuPageReview',{data:{job_id:jobId,page_job_id:pageJobId,page_no:pageNo,decision:decision,note:note}});
+    toast('Pemeriksaan halaman tersimpan dalam audit trail. BKU kanonik tidak berubah.','ok');
+    await openBkuOcrReviewCase(jobId);
+    await loadBkuOcrReviewQueue();
+  }catch(e){toast(errorText(e),'error');}
+};
+
+async function schoolHomeView(){
   const currentRole = role();
   const userFullLabel = state.user?.nama_pengguna || state.user?.nama || state.user?.username || '-';
 
@@ -5319,13 +5418,21 @@ window.openUpload = async function(idSpj, namaSpj, hasExistingDocument) {
   if (isSchool()) {
     try {
       const wf = await api('getWorkflowOverview', {});
-      const stage = String(wf?.active_stage || '').toUpperCase();
-      if (!['INPUT_SPJ','PERBAIKAN'].includes(stage)) {
-        toast(stage ? `Unggah dokumen ditutup pada tahap ${stage.replaceAll('_',' ')}. Dokumen lama tetap dapat dilihat.` : 'Status tahapan belum dapat diverifikasi. Muat ulang halaman.', 'warning', 7000);
+      const resolved = wf?.resolved || {};
+      // active_stage is a display cursor and can remain PENILAIAN_2 after
+      // that stage is deactivated. Upload access must follow the effective
+      // INPUT_SPJ/PERBAIKAN activation and target-specific schedule.
+      const inputAllowed = resolved?.INPUT_SPJ?.allowed === true;
+      const repairAllowed = resolved?.PERBAIKAN?.allowed === true;
+      if (!inputAllowed && !repairAllowed) {
+        const stage = String(wf?.active_stage || '').toUpperCase();
+        const inputState = String(resolved?.INPUT_SPJ?.phase || resolved?.INPUT_SPJ?.state || 'LOCKED');
+        const repairState = String(resolved?.PERBAIKAN?.phase || resolved?.PERBAIKAN?.state || 'LOCKED');
+        toast(`Unggah belum dibuka. INPUT SPJ: ${inputState}; PERBAIKAN: ${repairState}. Dokumen lama tetap dapat dilihat. Periksa aktivasi dan jadwal DINAS.`, 'warning', 8000);
         return;
       }
     } catch (err) {
-      toast('Status tahapan gagal diverifikasi. Unggah ditutup sementara; muat ulang halaman.', 'warning', 7000);
+      toast('Status aktivasi dan jadwal unggah gagal diverifikasi. Unggah ditutup sementara; muat ulang halaman.', 'warning', 7000);
       return;
     }
   }
@@ -9616,7 +9723,7 @@ function renderV20BkuWorkbenchHtml_(wb, docs){
   const pdfBtn=(type,obj)=>{
     if(type==='PAJAK' && Number(obj.count||0)===0) return '<span class="badge badge-info">Tidak ada pajak</span>';
     if(!obj.document?.file_id) return '<span class="badge badge-warning">PDF belum upload</span>';
-    if(isSchool()) return `<button class="btn btn-primary btn-sm" onclick="runDerivedPdfCrossCheck('${type}','${esc(obj.document.file_id)}')">Periksa & Koreksi OCR</button>`;
+    if(isSchool()) return '<span class="badge badge-success">PDF tersedia · pemeriksaan otomatis</span>';
     if(!isPengawas()) return '<span class="badge badge-success">PDF tersedia</span>';
     return `<button class="btn btn-light btn-sm" onclick="runDerivedPdfCrossCheck('${type}','${esc(obj.document.file_id)}')">Cross-check PDF</button>`;
   };
@@ -9634,7 +9741,7 @@ function renderV20BkuWorkbenchHtml_(wb, docs){
       <div class="stat"><small>COCOK RKAS</small><strong>${pct}%</strong><div class="muted">${fmtNum(s.rkas_cocok||0)} dari ${fmtNum(budgetCount)} transaksi belanja</div></div>
       <div class="stat"><small>PERLU REVIEW</small><strong>${fmtNum(s.jumlah_exception||0)}</strong><div class="muted">Exception prioritas</div></div>
     </div>
-    <div class="message ok" style="margin-bottom:14px"><b>Distribusi BKU yang digunakan:</b> Terima Dana BOSP, Pergeseran Uang di Bank, Bunga Bank dan Pajak Bunga → <b>Buku Bank</b>; Tarik Tunai dan transaksi BPU/pembelanjaan → <b>Buku Kas Tunai</b>; PPN/PPh/SSPD → <b>Buku Pajak</b> sekaligus mengikuti kanal transaksi asal. Pada transfer internal, Pergeseran Uang di Bank dibaca sebagai <b>keluar Bank</b> dan Tarik Tunai sebagai <b>masuk Kas Tunai</b>.<br><b>Pemeriksaan PDF dilakukan saat Pengawas memilih <b>Cross-check PDF</b>. ${isSchool()?'<br><b>Sekolah:</b> gunakan tombol Periksa & Koreksi OCR untuk membetulkan angka yang salah terbaca. Koreksi tidak mengubah BKU Data atau PDF asli dan akan tercatat untuk pemeriksaan Pengawas.':''}</div>
+    <div class="message ok" style="margin-bottom:14px"><b>Distribusi BKU yang digunakan:</b> Terima Dana BOSP, Pergeseran Uang di Bank, Bunga Bank dan Pajak Bunga → <b>Buku Bank</b>; Tarik Tunai dan transaksi BPU/pembelanjaan → <b>Buku Kas Tunai</b>; PPN/PPh/SSPD → <b>Buku Pajak</b> sekaligus mengikuti kanal transaksi asal. Pada transfer internal, Pergeseran Uang di Bank dibaca sebagai <b>keluar Bank</b> dan Tarik Tunai sebagai <b>masuk Kas Tunai</b>.<br><b>Pemeriksaan PDF dilakukan saat Pengawas memilih <b>Cross-check PDF</b>. </div>
     <div class="v20-ledger-grid">
       <article class="v20-ledger-card"><div class="v20-ledger-icon">🏦</div><div><small>HASIL DISTRIBUSI BKU SCAN RESMI</small><h3>Buku Bank</h3><strong>${fmtNum(b.count||0)} baris</strong><span>Masuk ${fmtRupiah(b.masuk||0)} • Keluar ${fmtRupiah(b.keluar||0)} • Saldo ${fmtRupiah(b.saldo_akhir||0)}</span><div style="margin-top:8px">${docBadge(b.document)} ${pdfBtn('BANK',b)}</div><div id="v217PdfCmpBANK" style="margin-top:8px"></div></div></article>
       <article class="v20-ledger-card"><div class="v20-ledger-icon">💵</div><div><small>HASIL DISTRIBUSI BKU SCAN RESMI</small><h3>Buku Kas Tunai</h3><strong>${fmtNum(c.count||0)} baris</strong><span>Masuk ${fmtRupiah(c.masuk||0)} • Keluar ${fmtRupiah(c.keluar||0)} • Saldo ${fmtRupiah(c.saldo_akhir||0)}</span><div style="margin-top:8px">${docBadge(c.document)} ${pdfBtn('CASH',c)}</div><div id="v217PdfCmpCASH" style="margin-top:8px"></div></div></article>
@@ -16395,7 +16502,7 @@ window.sealBkuScanReviewDraftV252_=async function(){
 };
 
 window.openBkuOcrWorkbenchV2502=async function(fileId,fileName,period){
-  if(!isSchool()){toast('Workbench OCR tahap ini hanya tersedia untuk akun sekolah.','warning');return;}
+  toast('Workbench OCR lama dinonaktifkan. Gunakan menu Review OCR BKU untuk pemeriksaan petugas. Sekolah cukup mengunggah, melihat status, atau mengganti dokumen.','info');return;
   try{fileId=decodeURIComponent(fileId);fileName=decodeURIComponent(fileName);period=decodeURIComponent(period);}catch(_){}
   if(!fileId||!period){toast('File BKU dan periode wajib tersedia.','error');return;}
   _bkuOcrCloseWorkbenchV2502_();const w=__bkuOcrWorkbenchV2502;
