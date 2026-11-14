@@ -2206,7 +2206,7 @@ body[data-role] .content .spj-simple-details pre{white-space:pre-wrap;max-height
 
 const V10_VERSION = 'SIMPEL-SPJ-RELEASE-1.0-CANDIDATE';
 
-const FRONTEND_BUILD_ID = 'SIMPEL_SPJ_QA38_4_IEAO_DASHBOARD_OVERALL_APPEAL';
+const FRONTEND_BUILD_ID = 'SIMPEL_SPJ_QA38_4_3_DASHBOARD_INTEGRATION';
   const API_URL = 'https://script.google.com/macros/s/AKfycbyWvJXKr1QZ1zwbeJDoULTUihycj1771SsDlGFy8jnuF4i3DsEbHXlcJU48VDAg17fqDA/exec';
 
 
@@ -2275,7 +2275,7 @@ const SUBMENU_TUTORIALS = {
   sekolah:{title:'Data Sekolah',text:'Identitas sekolah menjadi kunci relasi BKU, dokumen, penugasan, pemeriksaan, dan hasil penilaian.',flow:['Identitas','Penugasan','SPJ','Hasil'],current:0},
   penugasan:{title:'Penugasan Pengawas',text:'DINAS menetapkan sekolah binaan. Pengawas memakai penugasan ini untuk pemeriksaan, temuan, rekomendasi, dan verifikasi ulang—bukan untuk memfinalisasi nilai.',flow:['Sekolah','Pengawas','Pemeriksaan','Verifikasi'],current:1},
   transaksi:{title:'Arsip BKU Digital Lama',text:'Menu operasional BKU Digital telah dihentikan. Data dan snapshot lama dipertahankan sebagai arsip historis dan tidak menjadi jalur unggah BKU baru.',flow:['Arsip historis','BKU scan resmi','Verifikasi','Tahap berikutnya'],current:0},
-  dokumenBulanan:{title:'BKU Resmi & Dokumen SPJ',text:'Unggah satu PDF scan BKU yang sudah ditandatangani sebagai dokumen utama, lalu lengkapi bukti SPJ sesuai komponen. Data dan snapshot BKU Digital lama tetap disimpan sebagai arsip historis.',flow:['Unggah BKU scan','Periksa dokumen','Lengkapi bukti','Pemeriksaan'],current:0},
+  dokumenBulanan:{title:'BKU Resmi & Dokumen SPJ',text:'Unggah dokumen mengikuti urutan baku SPJ-01 sampai SPJ-10. SPJ-01 wajib berupa PDF scan BKU bertanda tangan sebagai sumber BKU kanonik; lengkapi SPJ-02 Buku Pembantu Bank, SPJ-03 Buku Pembantu Kas Tunai, SPJ-04 Buku Pembantu Pajak, SPJ-05 Rekening Koran, SPJ-06 Invoice/Nota/Kuitansi, SPJ-07 Bukti Pendukung Lainnya, SPJ-08 SSP Pajak Pusat, SPJ-09 SSP Pajak Daerah, dan SPJ-10 Foto/Dokumentasi. Data BKU Digital lama tetap arsip historis.',flow:['SPJ-01 BKU Resmi','SPJ-02 s.d. SPJ-04 Buku Pembantu','SPJ-05 s.d. SPJ-07 Bukti Transaksi','SPJ-08 s.d. SPJ-09 Pajak','SPJ-10 Dokumentasi','Pemeriksaan otomatis'],current:0},
   pdfInteraktif:{title:'Pemeriksaan & Penilaian Terintegrasi Fase 1',text:'Pemeriksaan BKU, OCR, transaksi, bukti SPJ, temuan, rekomendasi skor, dan keputusan Pengawas berada dalam satu workbench sekolah. Detail OCR dan temuan menjadi bagian halaman kerja, bukan menu pekerjaan terpisah.',flow:['Pilih Sekolah','Hasil Sistem','Verifikasi Temuan','Keputusan Fase 1'],current:2},
   temuan:{title:'Temuan & Rekomendasi',text:'Pengawas mencatat temuan berbasis bukti dan rekomendasi. Setelah tindak lanjut diverifikasi, hasil pemeriksaan menjadi dasar Penilaian Fase 1 Pengawas.',flow:['Bukti','Temuan','Rekomendasi','Perbaikan','Fase 1 Pengawas'],current:1},
   verifikasiUlang:{title:'Verifikasi Ulang / Review',text:'Pengawas memeriksa tindak lanjut Sekolah pada tahap PERBAIKAN. Setelah verifikasi selesai, sekolah dapat masuk Penilaian Fase 1 Pengawas saat stage dibuka DINAS.',flow:['Perbaikan Sekolah','Verifikasi','Fase 1 Pengawas','Kirim DINAS'],current:1},
@@ -11865,8 +11865,8 @@ async function renderKeberatanList(){
       return `<div class="panel" style="margin-bottom:12px">
         <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center"><div><b>${esc(x.nama_sekolah||x.npsn||'Sekolah')}</b><div class="muted">NPSN ${esc(x.npsn||'-')} • Periode ${esc(x.id_periode||'-')}</div></div><span class="badge badge-${badge}">${esc(st.replaceAll('_',' '))}</span></div>
         <div style="margin-top:10px">Nilai hasil sementara: <b>${esc(x.nilai_akhir??x.nilai_sebelum??'-')}</b></div>
-        ${x.alasan?`<div style="margin-top:10px;padding:12px;background:#f7f9fb;border-radius:10px"><b>Keberatan keseluruhan sekolah</b><p style="white-space:pre-wrap;margin:6px 0 0">${esc(x.alasan)}</p></div>`:''}
-        ${canSchool?`<div class="toolbar" style="margin-top:12px"><button class="btn btn-primary" onclick="ajukanKeberatan('${esc(x.id_asesmen)}')">Ajukan Keberatan Overall</button></div>`:''}
+        ${x.alasan?`<div style="margin-top:10px;padding:12px;background:#f7f9fb;border-radius:10px"><b>Keberatan keseluruhan sekolah</b><p style="white-space:pre-wrap;margin:6px 0 0">${esc(x.alasan)}</p>${x.lampiran_bukti?.file_name?`<div class="muted" style="margin-top:8px">Lampiran: ${esc(x.lampiran_bukti.file_name)} (${esc(x.lampiran_bukti.mime_type||'file')})</div>`:''}</div>`:''}
+        ${canSchool?`<div class="panel" style="margin-top:12px;padding:12px"><b>Ajukan keberatan keseluruhan</b><p class="muted">Jelaskan alasan keberatan. Lampiran bukti bersifat opsional; format PDF, JPG, atau PNG maksimal 1,4 MB.</p><textarea id="appealReason_${esc(x.id_asesmen)}" class="form-control" rows="4" maxlength="5000" placeholder="Tuliskan alasan keberatan sekolah (minimal 10 karakter)..."></textarea><input id="appealFile_${esc(x.id_asesmen)}" type="file" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" style="margin-top:8px"><div class="toolbar" style="margin-top:10px"><button class="btn btn-primary" onclick="ajukanKeberatan('${esc(x.id_asesmen)}')">Kirim Keberatan Overall</button></div></div>`:''}
         ${isDinas()&&st==='DIAJUKAN'?`<div class="toolbar" style="margin-top:12px"><button class="btn btn-primary" onclick="mulaiKajiUlang('${esc(x.id_pesan)}')">Mulai Kaji Ulang</button></div>`:''}
         ${isDinas()&&st==='DIKAJI_ULANG'?`<div class="toolbar" style="margin-top:12px"><button class="btn btn-primary" onclick="selesaikanKajiUlang('${esc(x.id_pesan)}')">Catat Keputusan DINAS</button></div>`:''}
         ${x.tanggapan_dinas?`<div class="message info" style="margin-top:10px"><b>Tanggapan DINAS:</b><br>${esc(x.tanggapan_dinas)}<br><b>Keputusan:</b> ${esc(decisionLabel||decision||'-')}<br><b>Nilai sebelum:</b> ${esc(x.nilai_sebelum??'-')}<br><b>Nilai sesudah:</b> ${esc(x.nilai_sesudah??'Menunggu penilaian ulang')}</div>`:''}
@@ -11881,10 +11881,23 @@ window.mulaiKajiUlang=async function(idPesan){
   catch(e){toast(errorText(e),'error',5000);}
 };
 window.ajukanKeberatan=async function(idAsesmen){
-  const alasan=prompt('Jelaskan keberatan sekolah secara keseluruhan. Sertakan fakta dan bukti pendukung (minimal 10 karakter):');
-  if(alasan===null)return;
-  if(alasan.trim().length<10){toast('Alasan keberatan minimal 10 karakter.','warning');return;}
-  try{await api('ajukanKeberatanPenilaian',{data:{id_asesmen:idAsesmen,alasan:alasan.trim()}});toast('Keberatan overall berhasil dikirim kepada DINAS.','ok',4500);await renderKeberatanList();}
+  const reasonEl=document.getElementById('appealReason_'+idAsesmen);
+  const fileEl=document.getElementById('appealFile_'+idAsesmen);
+  const alasan=String(reasonEl?.value||'').trim();
+  if(alasan.length<10){toast('Alasan keberatan minimal 10 karakter.','warning');return;}
+  const file=fileEl?.files?.[0]||null;
+  let attachment=null;
+  if(file){
+    const allowed=['application/pdf','image/jpeg','image/png'];
+    if(!allowed.includes(file.type)){toast('Lampiran hanya boleh PDF, JPG, atau PNG.','warning');return;}
+    if(file.size>1400000){toast('Ukuran lampiran maksimal 1,4 MB.','warning');return;}
+    try{
+      const base64=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result||'').split(',').pop());reader.onerror=()=>reject(new Error('File tidak dapat dibaca.'));reader.readAsDataURL(file);});
+      attachment={name:file.name,mimeType:file.type,base64:base64};
+    }catch(e){toast(errorText(e),'error',5000);return;}
+  }
+  if(!confirm('Kirim satu keberatan untuk keseluruhan hasil penilaian sekolah?'))return;
+  try{await api('ajukanKeberatanPenilaian',{data:{id_asesmen:idAsesmen,alasan:alasan,attachment:attachment}});toast('Keberatan overall berhasil dikirim kepada DINAS.','ok',4500);await renderKeberatanList();}
   catch(e){toast(errorText(e),'error',5000);}
 };
 window.selesaikanKajiUlang=async function(idPesan){
@@ -14681,9 +14694,7 @@ window.showAssessmentBucketFast=function(bucketId){
       {view:'jadwalTahapan',title:'Tahap Aktif DINAS',desc:'Pemeriksaan hanya berjalan ketika stage yang relevan dibuka DINAS.'},
       {view:'penugasan',title:'Sekolah Tugas',desc:'Pilih sekolah binaan sesuai penugasan aktif.'},
       {view:'monitoringGlobal',title:'Monitoring Sekolah Binaan',desc:'Pantau status SPJ sekolah yang menjadi penugasan aktif Anda.'},
-      {view:'pdfInteraktif',title:'Pemeriksaan BKU & Dokumen',desc:'Periksa transaksi kanonik, BKU resmi, dan bukti SPJ tanpa mengambil alih penilaian DINAS.'},
-      {view:'temuan',title:'Temuan & Rekomendasi',desc:'Catat temuan berbasis bukti dan rekomendasi tindak lanjut.'},
-      {view:'penilaianFase1',title:'Pemeriksaan & Penilaian Fase 1',desc:'Satu workbench untuk memeriksa bukti, menindaklanjuti temuan, dan menilai SPJ 01–04.'},
+      {view:'penilaianFase1',title:'Pemeriksaan & Penilaian Fase 1',desc:'Satu workbench untuk hasil OCR, pemeriksaan BKU dan dokumen, temuan, tindak lanjut, rekomendasi skor, serta keputusan Pengawas untuk SPJ 01–04.'},
       {view:'keberatan',title:'Klarifikasi Keberatan',desc:'Melihat keberatan overall sekolah binaan dan memberi klarifikasi jika diminta.'},
       {view:'arsipPenilaianV5',title:'Laporan Fase 1',desc:'Buat rekap sekolah binaan atau laporan per sekolah setelah Fase 1 disetujui DINAS.'}
     ],
@@ -14693,9 +14704,9 @@ window.showAssessmentBucketFast=function(bucketId){
       {view:'penugasan',title:'Penugasan Pengawas',desc:'Tetapkan Pengawas untuk sekolah dan kunci penugasan saat siap.'},
       {view:'monitoringGlobal',title:'Monitoring Sekolah',desc:'Pantau kesiapan BKU, dokumen, pemeriksaan, dan perbaikan.'},
       {view:'monitoringPengawas',title:'Monitoring Pengawas',desc:'Pantau progres pemeriksaan dan tindak lanjut sekolah binaan setiap Pengawas.'},
-      {view:'penilaianFase1',title:'Persetujuan Fase 1 Pengawas',desc:'Review hasil Fase 1 yang dikirim Pengawas, lalu setujui atau kembalikan untuk revisi.'},
+      {view:'penilaianFase1',title:'Persetujuan & Review Fase 1',desc:'Satu workbench untuk meninjau hasil pemeriksaan dan penilaian Pengawas, melihat bukti/temuan, lalu menyetujui atau mengembalikan.'},
       {view:'rekonsiliasi',title:'Rekonsiliasi',desc:'Cocokkan hasil Fase 1 dengan BKU Data, dokumen, temuan, dan tindak lanjut.'},
-      {view:'penilaianFase2',title:'Pemeriksaan & Penilaian Fase 2',desc:'Satu workbench untuk pemeriksaan bukti dan penilaian SPJ 05–10.'},
+      {view:'penilaianFase2',title:'Pemeriksaan & Penilaian Fase 2',desc:'Satu workbench untuk hasil pemeriksaan sistem, bukti, temuan, rekomendasi skor, verifikasi DINAS, dan keputusan SPJ 05–10.'},
       {view:'keberatan',title:'Keberatan Penilaian',desc:'Kaji keberatan overall sekolah setelah Fase 1 dan Fase 2 selesai.'},
       {view:'finalisasiSpj',title:'Finalisasi',desc:'DINAS mengesahkan hasil akhir dan menutup proses SPJ.'},
       {view:'arsipPenilaianV5',title:'Pusat Laporan Penilaian',desc:'Buat rekap semua sekolah, per kecamatan, atau laporan per sekolah beserta 10 lampiran scan.'}
@@ -14705,7 +14716,7 @@ window.showAssessmentBucketFast=function(bucketId){
   const SUPPORT={
     SEKOLAH:[['pesan','Pesan'],['tutorialV5','Panduan'],['ubahPassword','Akun']],
     PENGAWAS:[['pesan','Pesan'],['tutorialV5','Panduan'],['ubahPassword','Akun']],
-    DINAS:[['temuan','Temuan'],['pesan','Pesan'],['tutorialV5','Panduan']]
+    DINAS:[['pesan','Pesan'],['tutorialV5','Panduan']]
   };
 
   function roleV225(){return String(state?.user?.role||'SEKOLAH').trim().toUpperCase()}
