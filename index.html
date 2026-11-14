@@ -2216,7 +2216,6 @@ window.ROLE_MENUS = {
     { id:'home', label:'Dashboard' },
     { id:'monitoringGlobal', label:'Monitoring Sekolah' },
     { id:'monitoringPengawas', label:'Monitoring Pengawas' },
-    { id:'bkuOcrReview', label:'Review OCR BKU' },
     { group:'PEMERIKSAAN & PENILAIAN', items:[
       { id:'penilaianFase1', label:'Persetujuan Fase 1' },
       { id:'rekonsiliasi', label:'Rekonsiliasi' },
@@ -2277,7 +2276,7 @@ const SUBMENU_TUTORIALS = {
   penugasan:{title:'Penugasan Pengawas',text:'DINAS menetapkan sekolah binaan. Pengawas memakai penugasan ini untuk pemeriksaan, temuan, rekomendasi, dan verifikasi ulang—bukan untuk memfinalisasi nilai.',flow:['Sekolah','Pengawas','Pemeriksaan','Verifikasi'],current:1},
   transaksi:{title:'Arsip BKU Digital Lama',text:'Menu operasional BKU Digital telah dihentikan. Data dan snapshot lama dipertahankan sebagai arsip historis dan tidak menjadi jalur unggah BKU baru.',flow:['Arsip historis','BKU scan resmi','Verifikasi','Tahap berikutnya'],current:0},
   dokumenBulanan:{title:'BKU Resmi & Dokumen SPJ',text:'Unggah satu PDF scan BKU yang sudah ditandatangani sebagai dokumen utama, lalu lengkapi bukti SPJ sesuai komponen. Data dan snapshot BKU Digital lama tetap disimpan sebagai arsip historis.',flow:['Unggah BKU scan','Periksa dokumen','Lengkapi bukti','Pemeriksaan'],current:0},
-  pdfInteraktif:{title:'Pemeriksaan BKU & Dokumen',text:'Pengawas memeriksa transaksi kanonik, BKU Resmi, dan bukti SPJ. Workbench ini tidak membuat atau memfinalisasi Penilaian Fase 1/Fase 2.',flow:['Sekolah Tugas','BKU & Bukti','Pemeriksaan','Temuan'],current:2},
+  pdfInteraktif:{title:'Pemeriksaan & Penilaian Terintegrasi Fase 1',text:'Pemeriksaan BKU, OCR, transaksi, bukti SPJ, temuan, rekomendasi skor, dan keputusan Pengawas berada dalam satu workbench sekolah. Detail OCR dan temuan menjadi bagian halaman kerja, bukan menu pekerjaan terpisah.',flow:['Pilih Sekolah','Hasil Sistem','Verifikasi Temuan','Keputusan Fase 1'],current:2},
   temuan:{title:'Temuan & Rekomendasi',text:'Pengawas mencatat temuan berbasis bukti dan rekomendasi. Setelah tindak lanjut diverifikasi, hasil pemeriksaan menjadi dasar Penilaian Fase 1 Pengawas.',flow:['Bukti','Temuan','Rekomendasi','Perbaikan','Fase 1 Pengawas'],current:1},
   verifikasiUlang:{title:'Verifikasi Ulang / Review',text:'Pengawas memeriksa tindak lanjut Sekolah pada tahap PERBAIKAN. Setelah verifikasi selesai, sekolah dapat masuk Penilaian Fase 1 Pengawas saat stage dibuka DINAS.',flow:['Perbaikan Sekolah','Verifikasi','Fase 1 Pengawas','Kirim DINAS'],current:1},
   perbaikanSpj:{title:'Perbaikan / Tindak Lanjut',text:'Sekolah memperbaiki BKU atau dokumen hanya ketika stage PERBAIKAN dibuka DINAS.',flow:['Temuan','Perbaikan','Verifikasi Ulang','Fase 1'],current:1},
@@ -2287,7 +2286,7 @@ const SUBMENU_TUTORIALS = {
   rekonsiliasi:{title:'Rekonsiliasi',text:'DINAS mencocokkan hasil Fase 1 dengan BKU Data, dokumen, temuan, dan tindak lanjut sebelum Fase 2.',flow:['Fase 1','Rekonsiliasi','Fase 2','Finalisasi'],current:1},
   penilaianFase2:{title:'Penilaian Fase 2',text:'DINAS menetapkan nilai akhir setelah Rekonsiliasi dinyatakan selesai.',flow:['Fase 1','Rekonsiliasi','Fase 2','Finalisasi'],current:2},
   finalisasiSpj:{title:'Finalisasi DINAS',text:'DINAS mengesahkan hasil setelah Fase 2 selesai dan menutup rangkaian penilaian SPJ.',flow:['Fase 1','Rekonsiliasi','Fase 2','Finalisasi'],current:3},
-  keberatan:{title:'Keberatan Penilaian Overall',text:'Sekolah dapat mengajukan satu keberatan keseluruhan setelah Fase 1 dan Fase 2 selesai, sebelum finalisasi. DINAS mengkaji dan memutuskan. Jika diterima, seluruh enam komponen Fase 2 ditinjau ulang; nilai lama tetap menjadi riwayat.',flow:['Hasil Sementara','Pengajuan Sekolah','Kaji Ulang DINAS','Penilaian Ulang bila diterima','Finalisasi'],current:1},
+  keberatan:{title:'Keberatan Penilaian Overall',text:'Sekolah dapat mengajukan satu keberatan keseluruhan setelah Fase 1 dan Fase 2 selesai, sebelum finalisasi. DINAS mengkaji dan memutuskan. Jika diterima, seluruh empat komponen Fase 1 ditinjau ulang oleh Pengawas dan enam komponen Fase 2 oleh DINAS; persetujuan Fase 1 serta rekonsiliasi diulang. Nilai lama tetap menjadi riwayat.',flow:['Hasil Sementara','Pengajuan Sekolah','Kaji Ulang DINAS','Penilaian Ulang bila diterima','Finalisasi'],current:1},
   hasilPenilaian:{title:'Hasil Penilaian',text:'Sekolah melihat progres Fase 1, Rekonsiliasi, Fase 2, dan status Finalisasi yang ditetapkan DINAS.',flow:['Fase 1','Rekonsiliasi','Fase 2','Final'],current:0},
   arsipPenilaianV5:{title:'Pusat Laporan Penilaian',text:'Laporan mengikuti hak akses: DINAS rekap semua/per kecamatan/per sekolah; PENGAWAS Fase 1 sekolah binaan; SEKOLAH hanya laporan sekolahnya sendiri.',flow:['Pilih Fase','Pilih Cakupan','Muat Laporan','Cetak / PDF'],current:1},
   pesan:{title:'Pesan & Koordinasi',text:'Gunakan komunikasi resmi untuk klarifikasi bukti, tindak lanjut temuan, dan koordinasi antar-role.',flow:['Pemeriksaan','Klarifikasi','Perbaikan','Verifikasi'],current:1},
@@ -10914,7 +10913,8 @@ function renderPhase1CockpitRc2_(p,wb){
     else footer='<div class="message warning">Pengawas belum mengirim Fase 1 kepada DINAS.</div>';
   }
 
-  return `${rc2PipelineCards_(p)}<section class="f2-cockpit"><div class="message info"><b>Fase 1 = SPJ 01–04.</b> Sistem menyandingkan transaksi BKU dengan halaman PDF; Pengawas memverifikasi. SPJ 05–10 tidak dinilai di sini dan tetap menjadi Fase 2 DINAS.</div><div class="f2-summary"><div class="stat"><small>Komponen selesai</small><strong>${fmtNum(s.components_complete||0)}/4</strong></div><div class="stat"><small>Nilai Fase 1</small><strong>${s.nilai_fase1==null?(wb.phase1_score==null?'—':Number(wb.phase1_score).toFixed(2)):Number(s.nilai_fase1).toFixed(2)}</strong></div><div class="stat"><small>Temuan pending</small><strong>${fmtNum(wb.pending_findings||0)}</strong></div><div class="stat"><small>Status Fase 1</small><strong style="font-size:.78rem">${esc(status.replaceAll('_',' ')||'BELUM')}</strong></div><div class="stat"><small>Metode</small><strong style="font-size:.82rem">BKU ↔ PDF</strong></div></div><div class="f2-component-grid">${cards}</div><div id="rc2F1WorkbenchDetail"></div>${footer}</section>`;
+  const appealBanner=wb.appeal_reassessment_required?`<div class="message warning"><b>Penilaian ulang karena keberatan overall.</b> Pengawas wajib meninjau ulang seluruh 4 komponen SPJ 01–04. Komponen yang sudah ditinjau ulang: <b>${fmtNum(wb.appeal_reviewed_count||0)}/4</b>. Setelah Fase 1 dikirim dan disetujui DINAS, rekonsiliasi serta Fase 2 akan diulang.</div>`:'';
+  return `${rc2PipelineCards_(p)}<section class="f2-cockpit"><div class="message info"><b>Fase 1 = SPJ 01–04.</b> Sistem menyandingkan transaksi BKU dengan halaman PDF; Pengawas memverifikasi. SPJ 05–10 tidak dinilai di sini dan tetap menjadi Fase 2 DINAS.</div>${appealBanner}<div class="f2-summary"><div class="stat"><small>Komponen selesai</small><strong>${fmtNum(s.components_complete||0)}/4</strong></div><div class="stat"><small>Nilai Fase 1</small><strong>${s.nilai_fase1==null?(wb.phase1_score==null?'—':Number(wb.phase1_score).toFixed(2)):Number(s.nilai_fase1).toFixed(2)}</strong></div><div class="stat"><small>Temuan pending</small><strong>${fmtNum(wb.pending_findings||0)}</strong></div><div class="stat"><small>Status Fase 1</small><strong style="font-size:.78rem">${esc(status.replaceAll('_',' ')||'BELUM')}</strong></div><div class="stat"><small>Metode</small><strong style="font-size:.82rem">BKU ↔ PDF</strong></div></div><div class="f2-component-grid">${cards}</div><div id="rc2F1WorkbenchDetail"></div>${footer}</section>`;
 }
 function f1CurrentComponentRc2_(){const st=window.__phase1ReviewState||{},wb=st.workbench||{};return (wb.components||[]).find(x=>Number(x.no)===Number(st.componentNo));}
 function f1CurrentTransactionsRc2_(){const st=window.__phase1ReviewState||{},c=f1CurrentComponentRc2_(),map=f1TransactionMapRc2_(st.workbench);return (c?.transaction_ids||[]).map(id=>map[id]).filter(Boolean);}
@@ -11859,7 +11859,9 @@ async function renderKeberatanList(){
     area.innerHTML=rows.map(function(x){
       const st=String(x.status_keberatan||'BELUM_DIAJUKAN').toUpperCase();
       const canSchool=isSchool()&&x.can_appeal&&st==='BELUM_DIAJUKAN';
-      const badge=st==='SELESAI'?'success':st==='PERLU_PENILAIAN_ULANG'?'danger':st==='DIKAJI_ULANG'?'info':st==='DIAJUKAN'?'warning':'secondary';
+      const decision=String(x.keputusan||'').toUpperCase();
+      const badge=st==='SELESAI'?(decision==='DITOLAK'?'danger':'success'):st==='PERLU_PENILAIAN_ULANG'?'warning':st==='DIKAJI_ULANG'?'info':st==='DIAJUKAN'?'warning':'secondary';
+      const decisionLabel=decision==='DITERIMA'?'Keberatan diterima':decision==='DITERIMA_SEBAGIAN'?'Keberatan diterima sebagian':decision==='DITOLAK'?'Keberatan ditolak':'';
       return `<div class="panel" style="margin-bottom:12px">
         <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center"><div><b>${esc(x.nama_sekolah||x.npsn||'Sekolah')}</b><div class="muted">NPSN ${esc(x.npsn||'-')} • Periode ${esc(x.id_periode||'-')}</div></div><span class="badge badge-${badge}">${esc(st.replaceAll('_',' '))}</span></div>
         <div style="margin-top:10px">Nilai hasil sementara: <b>${esc(x.nilai_akhir??x.nilai_sebelum??'-')}</b></div>
@@ -11867,7 +11869,7 @@ async function renderKeberatanList(){
         ${canSchool?`<div class="toolbar" style="margin-top:12px"><button class="btn btn-primary" onclick="ajukanKeberatan('${esc(x.id_asesmen)}')">Ajukan Keberatan Overall</button></div>`:''}
         ${isDinas()&&st==='DIAJUKAN'?`<div class="toolbar" style="margin-top:12px"><button class="btn btn-primary" onclick="mulaiKajiUlang('${esc(x.id_pesan)}')">Mulai Kaji Ulang</button></div>`:''}
         ${isDinas()&&st==='DIKAJI_ULANG'?`<div class="toolbar" style="margin-top:12px"><button class="btn btn-primary" onclick="selesaikanKajiUlang('${esc(x.id_pesan)}')">Catat Keputusan DINAS</button></div>`:''}
-        ${x.tanggapan_dinas?`<div class="message info" style="margin-top:10px"><b>Tanggapan DINAS:</b><br>${esc(x.tanggapan_dinas)}<br><b>Keputusan:</b> ${esc(x.keputusan||'-')}</div>`:''}
+        ${x.tanggapan_dinas?`<div class="message info" style="margin-top:10px"><b>Tanggapan DINAS:</b><br>${esc(x.tanggapan_dinas)}<br><b>Keputusan:</b> ${esc(decisionLabel||decision||'-')}<br><b>Nilai sebelum:</b> ${esc(x.nilai_sebelum??'-')}<br><b>Nilai sesudah:</b> ${esc(x.nilai_sesudah??'Menunggu penilaian ulang')}</div>`:''}
         ${st==='PERLU_PENILAIAN_ULANG'?`<div class="message warning" style="margin-top:10px">Keberatan diterima. Finalisasi ditahan sampai penilaian ulang selesai. Nilai lama tetap tersimpan.</div>`:''}
       </div>`;
     }).join('');
