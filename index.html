@@ -2206,7 +2206,7 @@ body[data-role] .content .spj-simple-details pre{white-space:pre-wrap;max-height
 
 const V10_VERSION = 'SIMPEL-SPJ-RELEASE-1.0-CANDIDATE';
 
-const FRONTEND_BUILD_ID = 'SIMPEL_SPJ_QA38_1_DOCUMENT_RECOVERY_DEDUP_CANDIDATE';
+const FRONTEND_BUILD_ID = 'SIMPEL_SPJ_QA38_2_CONCURRENT_ROLE_ASSESSMENT_CANDIDATE';
   const API_URL = 'https://script.google.com/macros/s/AKfycbyWvJXKr1QZ1zwbeJDoULTUihycj1771SsDlGFy8jnuF4i3DsEbHXlcJU48VDAg17fqDA/exec';
 
 
@@ -8319,7 +8319,7 @@ window.renderPengawasReadinessCards=function(){
     const f1=String(x.phase1_state||'BELUM_SIAP').toUpperCase();
     let actionLabel='Lihat Pemeriksaan →',target='pdfInteraktif';
 
-    if(['SIAP_DINILAI','SEDANG_DINILAI','PERLU_REVISI'].includes(f1) && String(x.active_stage||'').toUpperCase()==='PENILAIAN_1'){
+    if(['SIAP_DINILAI','SEDANG_DINILAI','PERLU_REVISI'].includes(f1) && x.phase1_actionable===true){
       actionLabel=f1==='PERLU_REVISI'?'Revisi Fase 1 →':f1==='SEDANG_DINILAI'?'Lanjut Fase 1 →':'Nilai Fase 1 →';
       target='penilaianFase1';
     }else if(f1==='DIAJUKAN_KE_DINAS'){
@@ -11538,7 +11538,7 @@ function renderPhase2CockpitRc2_(p,wb){
   }).join('');
   const finalBtn=s.all_complete&&!p.phase2_done&&wb.can_save?`<button class="btn btn-primary" onclick="finalizePhase2FromComponentsRc2()">✓ Tetapkan Nilai Fase 2 ${s.nilai_fase2==null?'':Number(s.nilai_fase2).toFixed(2)}</button>`:'';
   const modeNote=readonly&&!p.phase2_done
-    ? `<div class="message warning"><b>Mode baca-saja.</b> Review Fase 2 hanya dapat disimpan ketika tahap aktif DINAS adalah PENILAIAN_2, Fase 1 sudah disetujui, dan Rekonsiliasi selesai.</div>`
+    ? `<div class="message warning"><b>Mode baca-saja.</b> Review Fase 2 dapat disimpan untuk sekolah yang sudah disetujui pada Fase 1 dan menyelesaikan Rekonsiliasi, selama akses PENILAIAN_2 untuk sekolah tersebut terbuka.</div>`
     : '';
   return `${rc2PipelineCards_(p)}${rc2ReadinessBanner_(p)}<section class="f2-cockpit"><div class="message info"><b>Prinsip:</b> sistem mencari dan menyandingkan bukti; keputusan resmi tetap DINAS. Skor tiap komponen 0–4 dan nilai Fase 2 dihitung otomatis menjadi 0–100.</div>${modeNote}<div class="f2-summary"><div class="stat"><small>Komponen selesai</small><strong>${fmtNum(s.components_complete||0)}/6</strong></div><div class="stat"><small>Nilai Fase 2</small><strong>${s.nilai_fase2==null?'—':Number(s.nilai_fase2).toFixed(2)}</strong></div><div class="stat"><small>Status Rekonsiliasi</small><strong>${p.reconciliation_done?'SELESAI':'BELUM'}</strong></div><div class="stat"><small>Status Fase 2</small><strong>${p.phase2_done?'SELESAI':'PROSES'}</strong></div><div class="stat"><small>Metode</small><strong style="font-size:.82rem">BKU ↔ PDF</strong></div></div><div class="f2-component-grid">${cards}</div><div class="toolbar" style="margin-top:14px">${finalBtn}${p.phase2_done?`<span class="badge badge-success">NILAI FASE 2 ${p.phase2_score==null?'—':Number(p.phase2_score).toFixed(2)} / 100</span><span class="badge badge-info">NILAI AKHIR ${p.final_score==null?'—':Number(p.final_score).toFixed(2)} / 100</span>`:''}</div><div id="rc2F2WorkbenchDetail"></div></section>`;
 }
