@@ -4731,12 +4731,16 @@ async function renderDokumenTable(){
     // INPUT_SPJ/PERBAIKAN. Backend upload actions remain the final authority.
     const inputStageAllowed = resolvedUploadStages?.INPUT_SPJ?.allowed === true;
     const repairStageAllowed = resolvedUploadStages?.PERBAIKAN?.allowed === true;
-    const schoolUploadAllowed = !isSchool() || !!workflowForUpload && (inputStageAllowed || repairStageAllowed);
+    const documentUploadPolicy = dRes?.upload_policy || null;
+    const assessmentReplacementAllowed = !isSchool() || !!documentUploadPolicy && documentUploadPolicy.can_replace === true;
+    const schoolUploadAllowed = !isSchool() || (!!workflowForUpload && (inputStageAllowed || repairStageAllowed) && assessmentReplacementAllowed);
     const uploadLockMessage = !workflowForUpload
       ? 'Status tahapan belum dapat diverifikasi. Muat ulang sebelum mengunggah.'
-      : (inputStageAllowed || repairStageAllowed)
-        ? ''
-        : `Unggah dokumen belum dibuka untuk sekolah. Tahap aktif: ${activeUploadStage ? activeUploadStage.replaceAll('_',' ') : 'belum ditetapkan'}. Periksa jadwal dan penugasan DINAS.`;
+      : !assessmentReplacementAllowed
+        ? (documentUploadPolicy?.message || 'Pemeriksaan/penilaian sudah dimulai. Penggantian dokumen hanya dapat diajukan melalui Keberatan Overall.')
+        : (inputStageAllowed || repairStageAllowed)
+          ? ''
+          : `Unggah dokumen belum dibuka untuk sekolah. Tahap aktif: ${activeUploadStage ? activeUploadStage.replaceAll('_',' ') : 'belum ditetapkan'}. Periksa jadwal dan penugasan DINAS.`;
     const bookSummaries = bookSummaryRes || {ready:false};
     const taxManual = taxManualRes || {data:[],declarations:[],summary:{}};
 
@@ -4769,7 +4773,7 @@ async function renderDokumenTable(){
     let nextActionButton = `<button class="btn btn-primary btn-sm" type="button" onclick="loadView('statusSpj')">Lihat Status →</button>`;
     let nextActionDanger = false;
     if(archivedGroups.length){
-      nextActionText = `${archivedGroups.length} dokumen lama ditemukan kembali. File tetap dapat dibuka sebagai arsip, tetapi belum dihitung untuk penilaian periode ini. Unggah ulang hanya komponen yang diminta pada jadwal aktif.`;
+      nextActionText = `${archivedGroups.length} dokumen tersimpan dari periode/registrasi sebelumnya. Sekolah tidak perlu konfirmasi ulang hanya untuk pembacaan OCR. Kelayakan periode tetap ditentukan sistem.`;
       nextActionButton = '';
       nextActionDanger = false;
     }else if(repairGroups.length){
@@ -4786,12 +4790,12 @@ async function renderDokumenTable(){
     // Rendering menggunakan .map().join('') agar browser hanya melakukan DOM reflow 1 kali
     const rowHtml = groups.map((x,i) => {
       const m=x.m, d=x.d;
-      const isLegacyArchive=!!(d && d.assessment_eligible===false && d.file_id);
+      const isLegacyArchive=false; // QA38.5.18: period eligibility is not a school confirmation/re-upload status.
       const status = isLegacyArchive ? 'ARSIP_HISTORIS' : (d ? String(d.status || d.status_verifikasi || 'SUDAH_UPLOAD').toUpperCase() : 'BELUM_UPLOAD');
       const statusClass = status === 'SUDAH_UPLOAD' || status === 'SELESAI_DINILAI' ? 'success' :
                           status === 'N/A' || status === 'ARSIP_HISTORIS' ? 'warning' :
                           status === 'PERLU_PERBAIKAN' ? 'danger' : 'info';
-      const statusLabel = ({'SUDAH_UPLOAD':'Sudah diunggah','SELESAI_DINILAI':'Selesai diperiksa','PERLU_PERBAIKAN':'Perlu diperbaiki','BELUM_UPLOAD':'Belum diunggah','N/A':'Tidak diperlukan','ARSIP_HISTORIS':'Arsip historis · perlu konfirmasi ulang'})[status] || status.replace(/_/g,' ').toLowerCase();
+      const statusLabel = ({'SUDAH_UPLOAD':'Sudah diunggah','SELESAI_DINILAI':'Selesai diperiksa','PERLU_PERBAIKAN':'Perlu diperbaiki','BELUM_UPLOAD':'Belum diunggah','N/A':'Tidak diperlukan','ARSIP_HISTORIS':'Dokumen tersimpan'})[status] || status.replace(/_/g,' ').toLowerCase();
       const allowNA = _v222AllowNa_(m,bookSummaries);
       const viewerId = `instrumentPdfViewer_${String(m.id_spj||i).replace(/[^a-zA-Z0-9_-]/g,'_')}_${i}`;
       const pdfReady = !!(d?.file_id && (String(d.mimeType||'').toLowerCase()==='application/pdf'||/\.pdf$/i.test(String(d.nama_file||''))) && String(d.status||'').toUpperCase() !== 'N/A');
@@ -4829,7 +4833,7 @@ async function renderDokumenTable(){
           <!-- OCR BKU is system-managed; school users only view or replace the source PDF. -->
           ${['SPJ-06','SPJ-07'].includes(String(m.id_spj)) ? `<button class="btn btn-light" type="button" onclick="openEvidenceCoveragePanel('${m.id_spj==='SPJ-06'?'INVOICE':'SUPPORT'}','${esc(periode)}','${esc(summaryNpsn)}')">Periksa bukti</button>` : ''}
           ${['SPJ-04','SPJ-08','SPJ-09'].includes(String(m.id_spj)) ? `<button class="btn btn-light" type="button" onclick="openTaxReconciliationPanelV2523('${esc(m.id_spj)}','${esc(periode)}','${esc(summaryNpsn)}')">Lihat status pajak</button>` : ''}
-          ${schoolUploadAllowed ? `<button class="btn ${d ? 'btn-light' : 'btn-primary'}" type="button" onclick="openUpload('${esc(m.id_spj)}','${esc(m.nama_spj || m.nama_dokumen || m.kode || m.id_spj)}',${d ? 'true' : 'false'})">${isLegacyArchive ? 'Unggah ulang untuk penilaian' : (d ? 'Ganti dokumen' : 'Unggah dokumen')}</button>` : `<button class="btn btn-light" type="button" disabled title="${esc(uploadLockMessage)}">Unggah ditutup</button>`}
+          ${schoolUploadAllowed ? `<button class="btn ${d ? 'btn-light' : 'btn-primary'}" type="button" onclick="openUpload('${esc(m.id_spj)}','${esc(m.nama_spj || m.nama_dokumen || m.kode || m.id_spj)}',${d ? 'true' : 'false'})">${d ? 'Ganti dokumen' : 'Unggah dokumen'}</button>` : `<button class="btn btn-light" type="button" disabled title="${esc(uploadLockMessage)}">Unggah ditutup</button>`}
           ${allowNA ? `<button class="btn btn-light" type="button" onclick="openNaModal('${esc(m.id_spj)}','${esc(m.nama_spj || m.nama_dokumen || m.kode || m.id_spj)}')">N/A</button>` : ''}
         </div>
       </div>
@@ -11953,7 +11957,7 @@ async function renderKeberatanList(){
         <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center"><div><b>${esc(x.nama_sekolah||x.npsn||'Sekolah')}</b><div class="muted">NPSN ${esc(x.npsn||'-')} • Periode ${esc(x.id_periode||'-')}</div></div><span class="badge badge-${badge}">${esc(st.replaceAll('_',' '))}</span></div>
         <div style="margin-top:10px">Nilai hasil sementara: <b>${esc(x.nilai_akhir??x.nilai_sebelum??'-')}</b></div>
         ${x.alasan?`<div style="margin-top:10px;padding:12px;background:#f7f9fb;border-radius:10px"><b>Keberatan keseluruhan sekolah</b><p style="white-space:pre-wrap;margin:6px 0 0">${esc(x.alasan)}</p>${x.lampiran_bukti?.file_name?`<div class="muted" style="margin-top:8px">Lampiran: ${esc(x.lampiran_bukti.file_name)} (${esc(x.lampiran_bukti.mime_type||'file')})</div>`:''}</div>`:''}
-        ${canSchool?`<div class="panel" style="margin-top:12px;padding:12px"><b>Ajukan keberatan keseluruhan</b><p class="muted">Jelaskan alasan keberatan. Lampiran bukti bersifat opsional; format PDF, JPG, atau PNG maksimal 1,4 MB.</p><textarea id="appealReason_${esc(x.id_asesmen)}" class="form-control" rows="4" maxlength="5000" placeholder="Tuliskan alasan keberatan sekolah (minimal 10 karakter)..."></textarea><input id="appealFile_${esc(x.id_asesmen)}" type="file" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" style="margin-top:8px"><div class="toolbar" style="margin-top:10px"><button class="btn btn-primary" onclick="ajukanKeberatan('${esc(x.id_asesmen)}')">Kirim Keberatan Overall</button></div></div>`:''}
+        ${canSchool?`<div class="panel" style="margin-top:12px;padding:12px"><b>Ajukan keberatan keseluruhan</b><p class="muted">Jelaskan alasan keberatan. Jika sekolah perlu menyampaikan dokumen pengganti atau bukti tambahan setelah penilaian, lampirkan di sini. Lampiran bersifat opsional; format PDF, JPG, atau PNG maksimal 1,4 MB. Dokumen sumber SPJ tetap terkunci dan lampiran menjadi bukti keberatan, bukan penggantian otomatis BKU kanonik.</p><textarea id="appealReason_${esc(x.id_asesmen)}" class="form-control" rows="4" maxlength="5000" placeholder="Tuliskan alasan keberatan sekolah (minimal 10 karakter)..."></textarea><input id="appealFile_${esc(x.id_asesmen)}" type="file" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" style="margin-top:8px"><div class="toolbar" style="margin-top:10px"><button class="btn btn-primary" onclick="ajukanKeberatan('${esc(x.id_asesmen)}')">Kirim Keberatan Overall</button></div></div>`:''}
         ${isDinas()&&st==='DIAJUKAN'?`<div class="toolbar" style="margin-top:12px"><button class="btn btn-primary" onclick="mulaiKajiUlang('${esc(x.id_pesan)}')">Mulai Kaji Ulang</button></div>`:''}
         ${isDinas()&&st==='DIKAJI_ULANG'?`<div class="toolbar" style="margin-top:12px"><button class="btn btn-primary" onclick="selesaikanKajiUlang('${esc(x.id_pesan)}')">Catat Keputusan DINAS</button></div>`:''}
         ${x.tanggapan_dinas?`<div class="message info" style="margin-top:10px"><b>Tanggapan DINAS:</b><br>${esc(x.tanggapan_dinas)}<br><b>Keputusan:</b> ${esc(decisionLabel||decision||'-')}<br><b>Nilai sebelum:</b> ${esc(x.nilai_sebelum??'-')}<br><b>Nilai sesudah:</b> ${esc(x.nilai_sesudah??'Menunggu penilaian ulang')}</div>`:''}
