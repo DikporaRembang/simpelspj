@@ -8685,23 +8685,6 @@ function renderDinasCenterTable(listSekolah, listPenugasan){
   }).join('') : emptyRow(5);
 
   area.innerHTML = `
-    <div class="panel" style="margin-bottom:16px">
-      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
-        <div><h3 class="section-title" style="margin:0">Pemeriksaan OCR Dokumen</h3>
-        <div class="muted" style="font-size:.88rem;margin-top:4px">Proses dokumen seluruh sekolah. BKU memakai worker khusus; dokumen lain masuk staging OCR.</div></div>
-        <span id="massOcrSummary" class="muted">Memuat status…</span>
-      </div>
-      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:12px">
-        <select id="massOcrPeriod" style="min-width:220px;max-width:100%">
-          <option value="">Memuat periode aktif…</option>
-        </select>
-        <button id="massOcrStartBtn" class="btn btn-primary" type="button" onclick="startOrResumeDinasMassOcr()">Mulai / Lanjutkan OCR</button>
-        <button id="massOcrPauseBtn" class="btn btn-light" type="button" onclick="pauseDinasMassOcr()">Jeda OCR</button>
-        <button class="btn btn-light" type="button" onclick="refreshDinasMassOcrStatus()">Perbarui status</button>
-      </div>
-      <div id="massOcrDetail" class="muted" style="font-size:.86rem;margin-top:9px">Pemrosesan berjalan bertahap di latar belakang. Hasil yang sudah selesai tidak diulang.</div>
-      <div id="massOcrSchoolProgress" style="margin-top:12px"></div>
-    </div>
     <div class="cards" style="margin-bottom:20px">
       <div class="stat"><small>Total Sekolah</small><strong>${fmtNum(listSekolah.length)}</strong></div>
       <div class="stat"><small>Penugasan Aktif</small><strong>${fmtNum(listPenugasan.length)}</strong></div>
@@ -8729,11 +8712,11 @@ function renderDinasCenterTable(listSekolah, listPenugasan){
         </table>
       </div>
     </div>`;
-  initDinasMassOcrPanel();
 }
 
 window.initDinasMassOcrPanel = async function(){
-  const sel=$('#massOcrPeriod'); if(!sel)return;
+  if(!isDinas() || !$('#dinasMassOcrPanel'))return;
+  const sel=$('#monitoringPeriodSelect'); if(!sel)return;
   try{
     const res=await safeApi('getPeriodeSPJ',{}, {data:[]});
     const list=Array.isArray(res?.data)?res.data:[];
@@ -8747,13 +8730,15 @@ window.initDinasMassOcrPanel = async function(){
   }catch(e){$('#massOcrDetail').textContent=errorText(e);}
 };
 window.refreshDinasMassOcrStatus = async function(){
-  const sel=$('#massOcrPeriod'),summary=$('#massOcrSummary'),detail=$('#massOcrDetail');
+  const sel=$('#monitoringPeriodSelect'),summary=$('#massOcrSummary'),detail=$('#massOcrDetail');
   if(!sel||!summary||!detail)return;
   const period=sel.value;if(!period){summary.textContent='Pilih periode';return;}
   try{
     const r=await api('getDinasMassOcrBackfillStatus',{idPeriode:period});
-    const c=r.counts||{},queued=Number(c.QUEUED||0),processing=Number(c.PROCESSING||0);
-    const done=Number(c.REVIEW_REQUIRED||0)+Number(c.OCR_TEXT_READY||0)+Number((r.bku_counts||{}).REVIEW_REQUIRED||0);
+    const c=r.counts||{},bc=r.bku_counts||{};
+    const queued=Number(c.QUEUED||0)+Number(bc.QUEUED||0);
+    const processing=Number(c.PROCESSING||0)+Number(bc.PROCESSING||0);
+    const done=Number(c.REVIEW_REQUIRED||0)+Number(c.OCR_TEXT_READY||0)+Number(bc.REVIEW_REQUIRED||0)+Number(bc.OCR_TEXT_READY||0);
     const failed=Number(c.FAILED||0)+Number(c.SOURCE_UNAVAILABLE||0)+Number(c.UNSUPPORTED_FORMAT||0)+Number(c.SUPERSEDED||0)+Number(bc.FAILED||0);
     summary.textContent=`${done} selesai · ${queued+processing} antrean · ${failed} perlu perhatian`;
     detail.textContent=r.paused?'OCR dijeda. Aplikasi tetap berjalan; hasil yang sudah selesai tersimpan.':
@@ -8770,7 +8755,7 @@ window.refreshDinasMassOcrStatus = async function(){
   }catch(e){summary.textContent='Status belum tersedia';detail.textContent=errorText(e);}
 };
 window.pauseDinasMassOcr = async function(){
-  const sel=$('#massOcrPeriod'),btn=$('#massOcrPauseBtn');
+  const sel=$('#monitoringPeriodSelect'),btn=$('#massOcrPauseBtn');
   if(!sel||!sel.value){toast('Pilih periode aktif terlebih dahulu.','warning');return;}
   if(!confirm('Jeda OCR untuk periode ini? Aplikasi tetap berjalan dan hasil yang sudah selesai tetap tersimpan.'))return;
   if(btn)btn.disabled=true;
@@ -8782,7 +8767,7 @@ window.pauseDinasMassOcr = async function(){
   finally{if(btn)btn.disabled=false;}
 };
 window.startOrResumeDinasMassOcr = async function(){
-  const sel=$('#massOcrPeriod'),btn=$('#massOcrStartBtn'),detail=$('#massOcrDetail');
+  const sel=$('#monitoringPeriodSelect'),btn=$('#massOcrStartBtn'),detail=$('#massOcrDetail');
   if(!sel||!sel.value){toast('Pilih periode aktif terlebih dahulu.','warning');return;}
   if(!confirm('Mulai atau lanjutkan OCR seluruh dokumen yang sudah diunggah pada periode aktif? Hasil yang sudah tersimpan tidak akan diulang.'))return;
   btn.disabled=true;btn.textContent='Menyiapkan antrean…';
@@ -12642,6 +12627,21 @@ async function renderMonitoringGlobalView(mode) {
        </div>
        <button class="btn btn-light btn-sm" type="button" onclick="refreshMonitoringProgressPeriod($('#monitoringPeriodSelect')?.value,true)">↻ Muat ulang</button>
      </div>
+     ${isDinas() && !pengawasMonitoringView ? `
+     <div class="panel" id="dinasMassOcrPanel" style="margin:0 0 14px">
+       <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+         <div><h3 class="section-title" style="margin:0">Pemeriksaan OCR Dokumen</h3>
+         <div class="muted" style="font-size:.86rem;margin-top:4px">Satu perintah untuk seluruh sekolah pada periode terpilih. Hasil tersimpan dan dapat dilanjutkan.</div></div>
+         <span id="massOcrSummary" class="muted">Memuat status…</span>
+       </div>
+       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:12px">
+         <button id="massOcrStartBtn" class="btn btn-primary" type="button" onclick="startOrResumeDinasMassOcr()">Mulai / Lanjutkan OCR</button>
+         <button id="massOcrPauseBtn" class="btn btn-light" type="button" onclick="pauseDinasMassOcr()">Jeda OCR</button>
+         <button class="btn btn-light" type="button" onclick="refreshDinasMassOcrStatus()">Perbarui status</button>
+       </div>
+       <div id="massOcrDetail" class="muted" style="font-size:.86rem;margin-top:9px">Pemrosesan bertahap di latar belakang. Aplikasi tetap dapat digunakan.</div>
+       <div id="massOcrSchoolProgress" style="margin-top:12px"></div>
+     </div>` : ''}
      <div class="panel" id="globalMonContent">${loading('Memuat data monitoring...')}</div>`;
 
   try {
@@ -12669,6 +12669,7 @@ async function renderMonitoringGlobalView(mode) {
       window._monitoringReadinessPeriod = '';
       renderGlobalMonTable(window._cachedGlobalMon);
     }
+    if(isDinas() && !pengawasMonitoringView) await initDinasMassOcrPanel();
   } catch(e) {
     const contentBox = $('#globalMonContent');
     if(contentBox) contentBox.innerHTML = msg(errorText(e));
@@ -12685,6 +12686,7 @@ window.refreshMonitoringProgressPeriod = async function(period,forceRefresh){
     return;
   }
   state.selectedPeriode=p;
+  if($('#dinasMassOcrPanel')) refreshDinasMassOcrStatus();
   const area=$('#globalMonContent');
   if(area)area.innerHTML=loading('Menghitung progres administrasi dan pemeriksaan periode...');
   try{
