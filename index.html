@@ -8741,16 +8741,22 @@ window.refreshDinasMassOcrStatus = async function(){
     const done=Number(c.REVIEW_REQUIRED||0)+Number(c.OCR_TEXT_READY||0)+Number(bc.REVIEW_REQUIRED||0)+Number(bc.OCR_TEXT_READY||0);
     const failed=Number(c.FAILED||0)+Number(c.SOURCE_UNAVAILABLE||0)+Number(c.UNSUPPORTED_FORMAT||0)+Number(c.SUPERSEDED||0)+Number(bc.FAILED||0);
     summary.textContent=`${done} selesai · ${queued+processing} antrean · ${failed} perlu perhatian`;
-    detail.textContent=r.paused?'OCR dijeda. Aplikasi tetap berjalan; hasil yang sudah selesai tersimpan.':
-      (processing?'OCR sedang berjalan di latar belakang.':(queued?'Masih ada dokumen dalam antrean.':'Tidak ada antrean aktif.'));
+    const inv=r.inventory||{},wk=r.worker||{},hb=wk.generic_heartbeat||{};
+    const bh=wk.bku_heartbeat||{};
+    const heartbeatText=(hb.at?`Worker generik: ${hb.status} · ${new Date(hb.at).toLocaleString('id-ID')}`:'Worker generik belum mengirim heartbeat.')+' '+(bh.at?`Worker BKU: ${bh.status} · ${new Date(bh.at).toLocaleString('id-ID')}`:'Worker BKU belum mengirim heartbeat.');
+    const triggerText=`Trigger generik ${wk.generic_trigger_installed?'terpasang':'tidak ditemukan'}; trigger BKU ${wk.bku_trigger_installed?'terpasang':'tidak ditemukan'}.`;
+    detail.textContent=heartbeatText+' '+triggerText+' '+(r.paused?'Proses dijeda. Checkpoint inventaris dan hasil OCR yang sudah tersimpan dipertahankan.':
+      (inv.status==='RUNNING'?`Menyiapkan antrean: ${Number(inv.cursor||0)} dari ${Number(inv.discovered||0)} dokumen diperiksa.`:
+      inv.status==='COMPLETED'?(processing?'Inventaris selesai. OCR sedang berjalan di latar belakang.':(queued?'Inventaris selesai. Masih ada dokumen dalam antrean.':'Inventaris selesai. Tidak ada antrean aktif.')):
+      (processing?'OCR sedang berjalan di latar belakang.':(queued?'Masih ada dokumen dalam antrean.':'Belum ada antrean aktif.'))));
     const pauseBtn=$('#massOcrPauseBtn');if(pauseBtn)pauseBtn.disabled=!!r.paused||(!queued&&!processing);
     const box=$('#massOcrSchoolProgress');
     if(box){
       const schools=Array.isArray(r.schools)?r.schools:[];
       box.innerHTML=schools.length?'<div style="font-weight:600;margin-bottom:7px">Progres per sekolah</div><div style="max-height:220px;overflow:auto">'+schools.map(s=>{
         const pct=s.total?Math.round(100*s.done/s.total):0;
-        return `<div style="padding:6px 0;border-bottom:1px solid var(--border,#e5e7eb)"><div style="display:flex;justify-content:space-between;gap:8px;font-size:.82rem"><b>${esc(s.npsn)}</b><span>${s.done}/${s.total} selesai · ${s.queued+s.processing} antrean</span></div><div style="height:5px;background:#e5e7eb;border-radius:5px;overflow:hidden;margin-top:4px"><div style="height:5px;width:${pct}%;background:#16a34a"></div></div></div>`;
-      }).join('')+'</div>':'';
+        return `<div style="padding:8px 0;border-bottom:1px solid var(--border,#e5e7eb)"><div style="display:flex;justify-content:space-between;gap:8px;font-size:.84rem"><div><b>${esc(s.nama_sekolah||'Nama sekolah belum ditemukan')}</b><div class="muted" style="font-size:.75rem">NPSN ${esc(s.npsn)}${s.kecamatan?' · '+esc(s.kecamatan):''}</div></div><span>${s.done}/${s.total} selesai · ${s.queued+s.processing} antrean${s.failed?' · '+s.failed+' perhatian':''}</span></div><div style="height:5px;background:#e5e7eb;border-radius:5px;overflow:hidden;margin-top:5px"><div style="height:5px;width:${pct}%;background:#16a34a"></div></div></div>`;
+      }).join('')+'</div><div class="muted" style="font-size:.75rem;margin-top:7px">Selesai = OCR tersimpan; antrean = menunggu/sedang diproses; perhatian = gagal atau format belum didukung. Status ini tidak sama dengan validasi administrasi.</div>':'';
     }
   }catch(e){summary.textContent='Status belum tersedia';detail.textContent=errorText(e);}
 };
@@ -8773,8 +8779,9 @@ window.startOrResumeDinasMassOcr = async function(){
   btn.disabled=true;btn.textContent='Menyiapkan antrean…';
   try{
     const r=await api('startDinasMassOcrBackfill',{idPeriode:sel.value});
-    toast(`Antrean siap. ${Number(r.queued||0)} dokumen ditambahkan; ${Number(r.already_processed_or_queued||0)} sudah tercatat.`,'ok');
-    detail.textContent='Antrean disimpan. Worker akan memproses otomatis secara bertahap. Anda dapat meninggalkan halaman ini.';
+    toast('Inventarisasi dimulai. Checkpoint disimpan bertahap; tidak perlu menekan tombol lagi.','ok');
+    const inv=r.inventory||{};
+    detail.textContent=`Menyiapkan antrean: ${Number(inv.cursor||0)} dari ${Number(inv.discovered||0)} dokumen diperiksa.`;
     await refreshDinasMassOcrStatus();
   }catch(e){toast(errorText(e),'error');}
   finally{btn.disabled=false;btn.textContent='Mulai / Lanjutkan OCR';}
@@ -12613,7 +12620,7 @@ async function renderMonitoringGlobalView(mode) {
     : (pengawasView
       ? 'Pantau kelengkapan dan tahapan pemeriksaan seluruh sekolah binaan Anda.'
       : (isDinas()
-        ? 'Pantau posisi sekolah berdasarkan kelompok Pengawas dan progres pada periode terpilih.'
+        ? 'Pantau pembacaan OCR, progres dokumen, dan status setiap sekolah pada periode terpilih.'
         : 'Pantau kelengkapan administrasi SPJ sekolah pada periode terpilih.'));
 
   c.innerHTML = head(pageTitle, pageDescription) +
@@ -12816,17 +12823,7 @@ window.renderGlobalMonTable = function(dataList) {
       </div>
       <small class="muted">Kelengkapan dihitung dari 10 komponen dokumen dan kesiapan BKU. Tahap pemeriksaan ditampilkan terpisah.</small>
     </div>
-    ${isDinas() ? `<div class="panel" style="margin-bottom:16px">
-      <div style="font-weight:800;margin-bottom:10px">Ringkasan Sekolah Berdasarkan Pengawas</div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px">
-        ${pengawasGroups.map(g=>`<div class="panel" style="margin:0;padding:12px;border:1px solid var(--border,#ddd)">
-          <div style="font-weight:750">${esc(g.nama_pengawas)}</div>
-          <div style="font-size:1.35rem;font-weight:800;margin:5px 0">${fmtNum(g.jumlah_sekolah)} <small class="muted" style="font-size:12px">sekolah</small></div>
-          <div style="height:7px;background:var(--border,#e5e7eb);border-radius:99px;overflow:hidden;margin:7px 0"><div style="height:100%;width:${Number(g.rata_progres||0)}%;background:var(--success,#16a34a)"></div></div>
-          <div class="muted" style="font-size:12px">Rata-rata progres ${Number(g.rata_progres||0)}% · ${fmtNum(g.siap_dinilai||0)} siap dinilai · ${fmtNum(g.perlu_revisi||0)} perlu revisi</div>
-        </div>`).join('')}
-      </div>
-    </div>` : ''}
+    
 
     <!-- PANEL KONTROL FILTER, SORTING, & LIMIT -->
     <div class="panel" style="background:var(--card-bg,#f8f9fa); padding:14px; margin-bottom:16px; border-radius:8px;">
