@@ -8688,7 +8688,7 @@ function renderDinasCenterTable(listSekolah, listPenugasan){
     <div class="panel" style="margin-bottom:16px">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
         <div><h3 class="section-title" style="margin:0">Pemeriksaan OCR Dokumen</h3>
-        <div class="muted" style="font-size:.88rem;margin-top:4px">Proses dokumen yang sudah diunggah. Hasil tersimpan dan dapat dilanjutkan.</div></div>
+        <div class="muted" style="font-size:.88rem;margin-top:4px">Proses dokumen seluruh sekolah. BKU memakai worker khusus; dokumen lain masuk staging OCR.</div></div>
         <span id="massOcrSummary" class="muted">Memuat status…</span>
       </div>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:12px">
@@ -8696,9 +8696,11 @@ function renderDinasCenterTable(listSekolah, listPenugasan){
           <option value="">Memuat periode aktif…</option>
         </select>
         <button id="massOcrStartBtn" class="btn btn-primary" type="button" onclick="startOrResumeDinasMassOcr()">Mulai / Lanjutkan OCR</button>
+        <button id="massOcrPauseBtn" class="btn btn-light" type="button" onclick="pauseDinasMassOcr()">Jeda OCR</button>
         <button class="btn btn-light" type="button" onclick="refreshDinasMassOcrStatus()">Perbarui status</button>
       </div>
       <div id="massOcrDetail" class="muted" style="font-size:.86rem;margin-top:9px">Pemrosesan berjalan bertahap di latar belakang. Hasil yang sudah selesai tidak diulang.</div>
+      <div id="massOcrSchoolProgress" style="margin-top:12px"></div>
     </div>
     <div class="cards" style="margin-bottom:20px">
       <div class="stat"><small>Total Sekolah</small><strong>${fmtNum(listSekolah.length)}</strong></div>
@@ -8750,15 +8752,34 @@ window.refreshDinasMassOcrStatus = async function(){
   const period=sel.value;if(!period){summary.textContent='Pilih periode';return;}
   try{
     const r=await api('getDinasMassOcrBackfillStatus',{idPeriode:period});
-    const c=r.counts||{};
-    const queued=Number(c.QUEUED||0),processing=Number(c.PROCESSING||0);
-    const done=Number(c.REVIEW_REQUIRED||0)+Number(c.OCR_TEXT_READY||0);
-    const failed=Number(c.FAILED||0)+Number(c.SOURCE_UNAVAILABLE||0)+Number(c.UNSUPPORTED_FORMAT||0);
+    const c=r.counts||{},queued=Number(c.QUEUED||0),processing=Number(c.PROCESSING||0);
+    const done=Number(c.REVIEW_REQUIRED||0)+Number(c.OCR_TEXT_READY||0)+Number((r.bku_counts||{}).REVIEW_REQUIRED||0);
+    const failed=Number(c.FAILED||0)+Number(c.SOURCE_UNAVAILABLE||0)+Number(c.UNSUPPORTED_FORMAT||0)+Number(c.SUPERSEDED||0)+Number(bc.FAILED||0);
     summary.textContent=`${done} selesai · ${queued+processing} antrean · ${failed} perlu perhatian`;
-    detail.textContent=processing?'OCR sedang berjalan. Hasil tiap dokumen disimpan; jika proses terhenti, klik Lanjutkan OCR.':
-      (queued?'Masih ada dokumen dalam antrean. Klik Lanjutkan OCR untuk memastikan proses berlanjut.':
-      'Status tersimpan. Dokumen yang sudah selesai tidak diproses ulang.');
+    detail.textContent=r.paused?'OCR dijeda. Aplikasi tetap berjalan; hasil yang sudah selesai tersimpan.':
+      (processing?'OCR sedang berjalan di latar belakang.':(queued?'Masih ada dokumen dalam antrean.':'Tidak ada antrean aktif.'));
+    const pauseBtn=$('#massOcrPauseBtn');if(pauseBtn)pauseBtn.disabled=!!r.paused||(!queued&&!processing);
+    const box=$('#massOcrSchoolProgress');
+    if(box){
+      const schools=Array.isArray(r.schools)?r.schools:[];
+      box.innerHTML=schools.length?'<div style="font-weight:600;margin-bottom:7px">Progres per sekolah</div><div style="max-height:220px;overflow:auto">'+schools.map(s=>{
+        const pct=s.total?Math.round(100*s.done/s.total):0;
+        return `<div style="padding:6px 0;border-bottom:1px solid var(--border,#e5e7eb)"><div style="display:flex;justify-content:space-between;gap:8px;font-size:.82rem"><b>${esc(s.npsn)}</b><span>${s.done}/${s.total} selesai · ${s.queued+s.processing} antrean</span></div><div style="height:5px;background:#e5e7eb;border-radius:5px;overflow:hidden;margin-top:4px"><div style="height:5px;width:${pct}%;background:#16a34a"></div></div></div>`;
+      }).join('')+'</div>':'';
+    }
   }catch(e){summary.textContent='Status belum tersedia';detail.textContent=errorText(e);}
+};
+window.pauseDinasMassOcr = async function(){
+  const sel=$('#massOcrPeriod'),btn=$('#massOcrPauseBtn');
+  if(!sel||!sel.value){toast('Pilih periode aktif terlebih dahulu.','warning');return;}
+  if(!confirm('Jeda OCR untuk periode ini? Aplikasi tetap berjalan dan hasil yang sudah selesai tetap tersimpan.'))return;
+  if(btn)btn.disabled=true;
+  try{
+    await api('pauseDinasMassOcrBackfill',{idPeriode:sel.value});
+    toast('OCR dijeda. Hasil yang sudah tersimpan tetap aman.','ok');
+    await refreshDinasMassOcrStatus();
+  }catch(e){toast(errorText(e),'error');}
+  finally{if(btn)btn.disabled=false;}
 };
 window.startOrResumeDinasMassOcr = async function(){
   const sel=$('#massOcrPeriod'),btn=$('#massOcrStartBtn'),detail=$('#massOcrDetail');
