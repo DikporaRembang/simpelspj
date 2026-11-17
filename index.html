@@ -8738,7 +8738,23 @@ window.refreshDinasMassOcrStatus = async function(){
   if(!sel||!summary||!detail)return;
   const period=sel.value;if(!period){summary.textContent='Pilih periode';return;}
   try{
-    const r=await api('getDinasMassOcrBackfillStatus',{idPeriode:period});
+    // Share concurrent requests and briefly reuse the latest status for this period.
+    // Manual refresh bypasses the short cache via the explicit force flag.
+    const now=Date.now();
+    window._dinasOcrStatusCache=window._dinasOcrStatusCache||{};
+    window._dinasOcrStatusInflight=window._dinasOcrStatusInflight||{};
+    const cached=window._dinasOcrStatusCache[period];
+    let r;
+    if(!window._dinasOcrStatusForce && cached && now-cached.at<5000){
+      r=cached.value;
+    }else if(window._dinasOcrStatusInflight[period]){
+      r=await window._dinasOcrStatusInflight[period];
+    }else{
+      const pending=api('getDinasMassOcrBackfillStatus',{idPeriode:period});
+      window._dinasOcrStatusInflight[period]=pending;
+      try{r=await pending;window._dinasOcrStatusCache[period]={at:Date.now(),value:r};}
+      finally{delete window._dinasOcrStatusInflight[period];window._dinasOcrStatusForce=false;}
+    }
     const c=r.counts||{},bc=r.bku_counts||{};
     const queued=Number(c.QUEUED||0)+Number(bc.QUEUED||0);
     const processing=Number(c.PROCESSING||0)+Number(bc.PROCESSING||0);
@@ -12663,7 +12679,7 @@ async function renderMonitoringGlobalView(mode) {
          <button id="massOcrSetupBtn" class="btn btn-light" type="button" onclick="setupDinasOcrWorkersFromPanel()">Siapkan Worker OCR</button>
          <button id="massOcrStartBtn" class="btn btn-primary" type="button" onclick="startOrResumeDinasMassOcr()">Mulai / Lanjutkan OCR</button>
          <button id="massOcrPauseBtn" class="btn btn-light" type="button" onclick="pauseDinasMassOcr()">Jeda OCR</button>
-         <button class="btn btn-light" type="button" onclick="refreshDinasMassOcrStatus()">Perbarui status</button>
+         <button class="btn btn-light" type="button" onclick="window._dinasOcrStatusForce=true;refreshDinasMassOcrStatus()">Perbarui status</button>
        </div>
        <div id="massOcrDetail" class="muted" style="font-size:.86rem;margin-top:9px">Pemrosesan bertahap di latar belakang. Aplikasi tetap dapat digunakan.</div>
        <div id="massOcrSchoolProgress" style="margin-top:12px"></div>
@@ -12724,7 +12740,8 @@ window.refreshMonitoringProgressPeriod = async function(period,forceRefresh){
     return;
   }
   state.selectedPeriode=p;
-  if($('#dinasMassOcrPanel')) refreshDinasMassOcrStatus();
+  // OCR status is loaded independently by initDinasMassOcrPanel; do not poll it
+  // again during every monitoring refresh (avoids duplicate full queue scans).
   const area=$('#globalMonContent');
   if(area)area.innerHTML=loading('Menghitung progres administrasi dan pemeriksaan periode...');
   try{
