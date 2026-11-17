@@ -8792,6 +8792,18 @@ window.pauseDinasMassOcr = async function(){
   }catch(e){toast(errorText(e),'error');}
   finally{if(btn)btn.disabled=false;}
 };
+window.stopDinasMassOcr = async function(){
+  const sel=$('#monitoringPeriodSelect'),btn=$('#massOcrStopBtn');
+  if(!sel||!sel.value){toast('Pilih periode aktif terlebih dahulu.','warning');return;}
+  if(!confirm('Hentikan proses OCR otomatis? Pekerjaan yang sedang menyimpan hasil akan dituntaskan. Semua hasil dan checkpoint yang sudah tersimpan tetap aman dan dapat dilanjutkan nanti.'))return;
+  if(btn)btn.disabled=true;
+  try{
+    await api('stopDinasMassOcrBackfill',{idPeriode:sel.value});
+    toast('Perintah berhenti diterima. Hasil OCR dan checkpoint tetap tersimpan.','ok');
+    await refreshDinasMassOcrStatus();
+  }catch(e){toast(errorText(e),'error');}
+  finally{if(btn)btn.disabled=false;}
+};
 window.startOrResumeDinasMassOcr = async function(){
   const sel=$('#monitoringPeriodSelect'),btn=$('#massOcrStartBtn'),detail=$('#massOcrDetail');
   if(!sel||!sel.value){toast('Pilih periode aktif terlebih dahulu.','warning');return;}
@@ -12664,6 +12676,7 @@ async function renderMonitoringGlobalView(mode) {
        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:12px">
          <button id="massOcrStartBtn" class="btn btn-primary" type="button" onclick="startOrResumeDinasMassOcr()">Mulai / Lanjutkan OCR</button>
          <button id="massOcrPauseBtn" class="btn btn-light" type="button" onclick="pauseDinasMassOcr()">Jeda OCR</button>
+         <button id="massOcrStopBtn" class="btn btn-light" type="button" onclick="stopDinasMassOcr()">Hentikan OCR</button>
          <button class="btn btn-light" type="button" onclick="window._dinasOcrStatusForce=true;refreshDinasMassOcrStatus()">Perbarui status</button>
        </div>
        <div id="massOcrDetail" class="muted" style="font-size:.86rem;margin-top:9px">Pemrosesan bertahap di latar belakang. Aplikasi tetap dapat digunakan.</div>
