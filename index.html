@@ -8318,7 +8318,7 @@ window.renderPengawasReadinessCards=function(){
 
   area.innerHTML=rows.map(x=>{
     const m=readinessMeta_(x.readiness);
-    const reasons=(x.blockers||x.alasan_belum_siap||[]).slice(0,4);
+    const reasons=(x.blockers||x.alasan_belum_siap||[]).slice(0,6);
     const f1=String(x.phase1_state||'BELUM_SIAP').toUpperCase();
     let actionLabel='Lihat Pemeriksaan →',target='pdfInteraktif';
 
@@ -12840,7 +12840,7 @@ window.renderGlobalMonTable = function(dataList) {
         <div><div class="muted" style="font-size:12px">Menunggu Dinas</div><div style="font-size:1.5rem;font-weight:800">${submittedCount}</div></div>
         <div><div class="muted" style="font-size:12px">Selesai final</div><div style="font-size:1.5rem;font-weight:800">${finalCount}</div></div>
       </div>
-      <small class="muted">Kelengkapan dihitung dari 10 komponen dokumen dan kesiapan BKU. Tahap pemeriksaan ditampilkan terpisah.</small>
+      <small class="muted">Kelengkapan dihitung dari 10 komponen dokumen dan kesiapan BKU. Tahap pemeriksaan ditampilkan terpisah.</small><br><small class="muted">Status OCR merupakan informasi diagnostik; tidak menggantikan validasi dokumen, BKU, atau penilaian.</small>
     </div>
     
 
@@ -12913,7 +12913,7 @@ window.renderGlobalMonTable = function(dataList) {
             <th>Nama Sekolah & Alamat</th>
             <th>Total Pagu (RKAS)</th>
             <th>Total Realisasi</th>
-            <th style="text-align:center;">Dokumen SPJ</th>
+            <th style="text-align:center;">Dokumen SPJ</th>\n            <th style="text-align:center;">Status OCR</th>
             <th style="text-align:center;">Progres Periode</th>
             <th style="text-align:center;">Tahap Proses</th>
             <th style="text-align:center;">Status Penilaian</th>
@@ -13048,7 +13048,8 @@ function generateGlobalMonRows(list, offset = 0) {
       </td>
       <td><b>${fmtRupiah(x.total_pagu)}</b></td>
       <td style="color:var(--success);font-weight:600">${fmtRupiah(x.total_realisasi)}</td>
-      <td style="text-align:center">${badge(x.jumlah_dokumen_spj > 0 ? `${x.jumlah_dokumen_spj} File` : 'Belum', x.jumlah_dokumen_spj > 0 ? 'success' : 'warning')}</td>
+      <td style="text-align:center">${badge(x.jumlah_dokumen_spj > 0 ? `${x.jumlah_dokumen_spj} File` : 'Belum', x.jumlah_dokumen_spj > 0 ? 'success' : 'warning')}</td> 
+      <td style="text-align:center;min-width:130px">${(()=>{const r=window._monitoringReadinessByNpsn?.[String(x.npsn||'').replace(/\\D/g,'')];const o=r?.ocr_summary;if(!o)return '<span class="muted">Belum tersedia</span>';return `<b>${Number(o.saved||0)}/${Number(o.total||0)}</b><div class="muted" style="font-size:11px">Antrean ${Number(o.queued||0)} · Perhatian ${Number(o.attention||0)} · Belum antre ${Number(o.not_queued||0)}</div>`;})()}</td>
       <td style="min-width:125px;text-align:center"><b>${x.progress_readiness?Number(x.progress_pct||0)+'%':'-'}</b>${x.progress_readiness?`<div style="height:6px;background:var(--border,#e5e7eb);border-radius:99px;overflow:hidden;margin-top:5px"><div style="height:100%;width:${Number(x.progress_pct||0)}%;background:var(--success,#16a34a)"></div></div>`:''}</td>
       <td style="text-align:center">${x.progress_readiness?badge(esc(x.progress_label),x.progress_final_done?'success':(x.progress_label==='Perlu revisi'?'warning':'info')):badge('Pilih periode','secondary')}</td>
       <td style="text-align:center">${badge(x.status_penilaian, x.status_penilaian === 'SELESAI_DINILAI' ? 'success' : 'info')}</td>
