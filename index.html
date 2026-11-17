@@ -8841,10 +8841,12 @@ window.refreshDinasMassOcrStatus = async function(){
     const box=$('#massOcrSchoolProgress');
     if(box){
       const schools=schoolRows;
-      box.innerHTML=schools.length?'<div style="font-weight:600;margin-bottom:7px">Progres per sekolah</div><div style="max-height:220px;overflow:auto">'+schools.map(s=>{
+      const limit=Math.max(25,Number(window._dinasOcrSchoolLimit||25));
+      const visibleSchools=schools.slice(0,limit);
+      box.innerHTML=schools.length?'<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:7px"><b>Progres per sekolah</b><span class="muted" style="font-size:.75rem">'+Math.min(limit,schools.length)+' dari '+schools.length+'</span></div><div style="max-height:220px;overflow:auto">'+visibleSchools.map(s=>{
         const pct=s.total?Math.round(100*s.done/s.total):0;
         return `<div style="padding:8px 0;border-bottom:1px solid var(--border,#e5e7eb)"><div style="display:flex;justify-content:space-between;gap:8px;font-size:.84rem"><div><b>${esc(s.nama_sekolah||'Nama sekolah belum ditemukan')}</b><div class="muted" style="font-size:.75rem">NPSN ${esc(s.npsn)}${s.kecamatan?' · '+esc(s.kecamatan):''}</div></div><span>${s.done}/${s.total} selesai · ${s.queued+s.processing} antrean${s.failed?' · '+s.failed+' perhatian':''}</span></div><div style="height:5px;background:#e5e7eb;border-radius:5px;overflow:hidden;margin-top:5px"><div style="height:5px;width:${pct}%;background:#16a34a"></div></div></div>`;
-      }).join('')+'</div><div class="muted" style="font-size:.75rem;margin-top:7px">Selesai = OCR tersimpan; antrean = menunggu/sedang diproses; perhatian = gagal atau format belum didukung. Status ini tidak sama dengan validasi administrasi.</div>':'';
+      }).join('')+'</div>'+(schools.length>limit?'<button type="button" class="btn btn-sm btn-secondary" style="margin-top:8px" onclick="window.showMoreDinasOcrSchools()">Tampilkan 25 sekolah berikutnya</button>':'')+'<div class="muted" style="font-size:.75rem;margin-top:7px">Selesai = OCR tersimpan; antrean = menunggu/sedang diproses; perhatian = gagal atau format belum didukung. Status ini tidak sama dengan validasi administrasi.</div>':'<div class="muted">Belum ada data progres sekolah.</div>';
     }
   }catch(e){summary.textContent='Status belum tersedia';detail.textContent=errorText(e);}
 };
@@ -8871,6 +8873,11 @@ window.stopDinasMassOcr = async function(){
     await refreshDinasMassOcrStatus();
   }catch(e){toast(errorText(e),'error');}
   finally{if(btn)btn.disabled=false;}
+};
+window._dinasOcrSchoolLimit=25;
+window.showMoreDinasOcrSchools=function(){
+  window._dinasOcrSchoolLimit=Math.max(25,Number(window._dinasOcrSchoolLimit||25))+25;
+  window.refreshDinasMassOcrStatus();
 };
 if(window._dinasMassOcrPollTimer)clearInterval(window._dinasMassOcrPollTimer);
 window._dinasMassOcrPollTimer=setInterval(function(){
