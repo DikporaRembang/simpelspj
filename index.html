@@ -8762,6 +8762,54 @@ window.refreshDinasMassOcrStatus = async function(){
     const failed=Number(c.FAILED||0)+Number(c.SOURCE_UNAVAILABLE||0)+Number(c.UNSUPPORTED_FORMAT||0)+Number(c.SUPERSEDED||0)+Number(bc.FAILED||0);
     summary.textContent=`${done} selesai · ${queued+processing} antrean · ${failed} perlu perhatian`;
     const inv=r.inventory||{},wk=r.worker||{},hb=wk.generic_heartbeat||{};
+    const schoolRows=Array.isArray(r.schools)?r.schools:[];
+    const schoolTotal=schoolRows.reduce((n,s)=>n+Number(s.total||0),0);
+    const schoolDone=schoolRows.reduce((n,s)=>n+Number(s.done||0),0);
+    const schoolQueued=schoolRows.reduce((n,s)=>n+Number(s.queued||0),0);
+    const schoolProcessing=schoolRows.reduce((n,s)=>n+Number(s.processing||0),0);
+    const schoolFailed=schoolRows.reduce((n,s)=>n+Number(s.failed||0),0);
+    const pct=schoolTotal?Math.min(100,Math.round(schoolDone/schoolTotal*100)):0;
+    const liveState=$('#massOcrLiveState'),livePct=$('#massOcrLivePercent'),liveBar=$('#massOcrLiveBar');
+    const liveCounts=$('#massOcrLiveCounts'),liveHint=$('#massOcrLiveHint');
+    const invProgress=$('#massOcrInventoryProgress');
+    if(invProgress){
+      const discovered=Number(inv.discovered||0),cursor=Number(inv.cursor||0);
+      const invPct=discovered?Math.min(100,Math.round(cursor/discovered*100)):(inv.status==='COMPLETED'?100:0);
+      invProgress.textContent=inv.status==='RUNNING'
+        ?`Inventaris dokumen: ${cursor.toLocaleString('id-ID')} dari ${discovered.toLocaleString('id-ID')} diperiksa (${invPct}%).`
+        :inv.status==='COMPLETED'?'Inventaris dokumen selesai.':(r.stopped?'Inventaris dihentikan sementara.':'Inventaris menunggu dimulai.');
+    }
+    const target=r.target||{};
+    const targetTotalEl=$('#massOcrTargetTotal'),targetNoteEl=$('#massOcrTargetNote');
+    const etaEl=$('#massOcrEtaValue'),etaConfidenceEl=$('#massOcrEtaConfidence');
+    if(targetTotalEl)targetTotalEl.textContent=Number(target.total||0).toLocaleString('id-ID')+' dokumen';
+    if(targetNoteEl)targetNoteEl.textContent=target.note||'Target dihitung dari antrean OCR terindeks.';
+    if(etaEl){
+      if(Number(target.remaining||0)===0&&target.inventory_complete)etaEl.textContent='Sudah selesai';
+      else if(Number.isFinite(Number(target.eta_minutes))&&target.eta_minutes!==null){
+        const mins=Math.max(0,Number(target.eta_minutes));
+        const hours=Math.floor(mins/60),rem=mins%60;
+        etaEl.textContent=(hours?hours+' jam ':'')+rem+' menit';
+      }else etaEl.textContent='Belum cukup data';
+    }
+    if(etaConfidenceEl){
+      const conf=target.eta_confidence||'BELUM_CUKUP_DATA';
+      const label=conf==='TINGGI'?'Tinggi':conf==='SEDANG'?'Sedang':conf==='RENDAH'?'Rendah':'Belum cukup data';
+      const rate=Number(target.rate_per_minute||0);
+      etaConfidenceEl.textContent=`Kecepatan ${rate?rate.toFixed(2).replace('.',',')+' dokumen/menit':'belum terukur'} · ${Number(target.rate_sample_count||0)} dokumen selesai dalam 60 menit · keyakinan ${label}.`;
+    }
+    const stopped=!!r.stopped,paused=!!r.paused;
+    const inventoryRunning=inv.status==='RUNNING';
+    const isRunning=!stopped&&!paused&&(inventoryRunning||processing>0||queued>0);
+    if(liveState)liveState.textContent=stopped?'Dihentikan oleh DINAS':paused?'Dijeda oleh DINAS':isRunning?'OCR sedang bekerja':(inv.status==='COMPLETED'&&!queued&&!processing?'Seluruh antrean OCR selesai':'Menunggu pekerjaan OCR');
+    if(livePct)livePct.textContent=pct+'%';
+    if(liveBar){liveBar.style.width=pct+'%';liveBar.setAttribute('aria-valuenow',String(pct));liveBar.style.background=stopped?'#64748b':paused?'#d97706':'#16a34a';}
+    if(liveCounts)liveCounts.innerHTML=`<span><b>${schoolDone.toLocaleString('id-ID')}</b> selesai</span><span><b>${schoolProcessing.toLocaleString('id-ID')}</b> sedang dibaca</span><span><b>${schoolQueued.toLocaleString('id-ID')}</b> menunggu</span><span><b>${schoolFailed.toLocaleString('id-ID')}</b> perhatian</span><span><b>${schoolTotal.toLocaleString('id-ID')}</b> total file terindeks</span>`;
+    if(liveHint)liveHint.textContent=stopped?'Proses dihentikan. Hasil dan checkpoint tersimpan; tekan Mulai / Lanjutkan untuk meneruskan.':paused?'Proses dijeda. Tidak ada pekerjaan baru yang diambil untuk periode ini.':isRunning?'Pembacaan berjalan bertahap. Status diperbarui otomatis setiap 30 detik; angka selesai dihitung dari dokumen yang sudah masuk indeks OCR.':(inv.status==='COMPLETED'?'Inventaris selesai. Periksa antrean dan status tiap sekolah untuk memastikan seluruh OCR terminal.':'Pilih Mulai / Lanjutkan OCR untuk memulai proses.');
+    const startBtn=$('#massOcrStartBtn'),pauseBtn=$('#massOcrPauseBtn'),stopBtn=$('#massOcrStopBtn');
+    if(startBtn)startBtn.disabled=isRunning;
+    if(pauseBtn)pauseBtn.disabled=paused||stopped||(!queued&&!processing&&!inventoryRunning);
+    if(stopBtn)stopBtn.disabled=stopped||(!isRunning&&!queued&&!processing&&!inventoryRunning);
     const bh=wk.bku_heartbeat||{};
     const heartbeatText=(hb.at?`Worker generik: ${hb.status} · ${new Date(hb.at).toLocaleString('id-ID')}`:'Worker generik belum mengirim heartbeat.')+' '+(bh.at?`Worker BKU: ${bh.status} · ${new Date(bh.at).toLocaleString('id-ID')}`:'Worker BKU belum mengirim heartbeat.');
     const triggerText=`Trigger generik ${wk.generic_trigger_installed?'terpasang':'tidak ditemukan'}; trigger BKU ${wk.bku_trigger_installed?'terpasang':'tidak ditemukan'}.`;
@@ -8769,10 +8817,9 @@ window.refreshDinasMassOcrStatus = async function(){
       (inv.status==='RUNNING'?`Menyiapkan antrean: ${Number(inv.cursor||0)} dari ${Number(inv.discovered||0)} dokumen diperiksa.`:
       inv.status==='COMPLETED'?(processing?'Inventaris selesai. OCR sedang berjalan di latar belakang.':(queued?'Inventaris selesai. Masih ada dokumen dalam antrean.':'Inventaris selesai. Tidak ada antrean aktif.')):
       (processing?'OCR sedang berjalan di latar belakang.':(queued?'Masih ada dokumen dalam antrean.':'Belum ada antrean aktif.'))));
-    const pauseBtn=$('#massOcrPauseBtn');if(pauseBtn)pauseBtn.disabled=!!r.paused||(!queued&&!processing);
     const box=$('#massOcrSchoolProgress');
     if(box){
-      const schools=Array.isArray(r.schools)?r.schools:[];
+      const schools=schoolRows;
       box.innerHTML=schools.length?'<div style="font-weight:600;margin-bottom:7px">Progres per sekolah</div><div style="max-height:220px;overflow:auto">'+schools.map(s=>{
         const pct=s.total?Math.round(100*s.done/s.total):0;
         return `<div style="padding:8px 0;border-bottom:1px solid var(--border,#e5e7eb)"><div style="display:flex;justify-content:space-between;gap:8px;font-size:.84rem"><div><b>${esc(s.nama_sekolah||'Nama sekolah belum ditemukan')}</b><div class="muted" style="font-size:.75rem">NPSN ${esc(s.npsn)}${s.kecamatan?' · '+esc(s.kecamatan):''}</div></div><span>${s.done}/${s.total} selesai · ${s.queued+s.processing} antrean${s.failed?' · '+s.failed+' perhatian':''}</span></div><div style="height:5px;background:#e5e7eb;border-radius:5px;overflow:hidden;margin-top:5px"><div style="height:5px;width:${pct}%;background:#16a34a"></div></div></div>`;
@@ -8804,6 +8851,14 @@ window.stopDinasMassOcr = async function(){
   }catch(e){toast(errorText(e),'error');}
   finally{if(btn)btn.disabled=false;}
 };
+if(window._dinasMassOcrPollTimer)clearInterval(window._dinasMassOcrPollTimer);
+window._dinasMassOcrPollTimer=setInterval(function(){
+  const panel=$('#dinasMassOcrPanel'),period=$('#monitoringPeriodSelect')?.value;
+  if(panel&&period&&!document.hidden&&!window._dinasOcrStatusInflight?.[period]){
+    // Respect the backend's short cache; do not force a full queue rescan on every poll.
+    refreshDinasMassOcrStatus();
+  }
+},30000);
 window.startOrResumeDinasMassOcr = async function(){
   const sel=$('#monitoringPeriodSelect'),btn=$('#massOcrStartBtn'),detail=$('#massOcrDetail');
   if(!sel||!sel.value){toast('Pilih periode aktif terlebih dahulu.','warning');return;}
@@ -12678,6 +12733,26 @@ async function renderMonitoringGlobalView(mode) {
          <button id="massOcrPauseBtn" class="btn btn-light" type="button" onclick="pauseDinasMassOcr()">Jeda OCR</button>
          <button id="massOcrStopBtn" class="btn btn-light" type="button" onclick="stopDinasMassOcr()">Hentikan OCR</button>
          <button class="btn btn-light" type="button" onclick="window._dinasOcrStatusForce=true;refreshDinasMassOcrStatus()">Perbarui status</button>
+       </div>
+       <div id="massOcrLivePanel" style="margin-top:14px;padding:12px;border:1px solid var(--border,#e5e7eb);border-radius:12px;background:var(--card,#fff)">
+         <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+           <b id="massOcrLiveState">Status OCR menunggu data</b>
+           <span id="massOcrLivePercent" style="font-weight:700;font-variant-numeric:tabular-nums">0%</span>
+         </div>
+         <div style="height:10px;background:var(--border,#e5e7eb);border-radius:99px;overflow:hidden;margin-top:9px">
+           <div id="massOcrLiveBar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" style="height:100%;width:0%;background:#16a34a;border-radius:99px;transition:width .35s ease"></div>
+         </div>
+         <div id="massOcrLiveCounts" style="display:flex;gap:12px;flex-wrap:wrap;margin-top:9px;font-size:.82rem">
+           <span>0 selesai</span><span>0 sedang dibaca</span><span>0 menunggu</span><span>0 perhatian</span>
+         </div>
+         <div id="massOcrInventoryProgress" class="muted" style="font-size:.8rem;margin-top:8px">Inventaris dokumen menunggu dimulai.</div>
+         <div id="massOcrTargetEta" style="margin-top:12px;padding:10px;border-radius:9px;background:var(--surface-secondary,rgba(127,127,127,.08))">
+           <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><b>Target dokumen OCR</b><b id="massOcrTargetTotal">Belum dihitung</b></div>
+           <div id="massOcrTargetNote" class="muted" style="font-size:.78rem;margin-top:4px">Target final ditetapkan setelah inventaris selesai.</div>
+           <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:8px"><b>Estimasi selesai</b><b id="massOcrEtaValue">Belum tersedia</b></div>
+           <div id="massOcrEtaConfidence" class="muted" style="font-size:.78rem;margin-top:4px">Menunggu data kecepatan OCR aktual.</div>
+         </div>
+         <div id="massOcrLiveHint" class="muted" style="font-size:.78rem;margin-top:7px">Status diperbarui otomatis selama panel OCR terbuka.</div>
        </div>
        <div id="massOcrDetail" class="muted" style="font-size:.86rem;margin-top:9px">Pemrosesan bertahap di latar belakang. Aplikasi tetap dapat digunakan.</div>
        <div id="massOcrSchoolProgress" style="margin-top:12px"></div>
