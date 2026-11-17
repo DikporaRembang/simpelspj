@@ -8780,20 +8780,6 @@ window.refreshDinasMassOcrStatus = async function(){
     }
   }catch(e){summary.textContent='Status belum tersedia';detail.textContent=errorText(e);}
 };
-window.setupDinasOcrWorkersFromPanel = async function(){
-  const btn=$('#massOcrSetupBtn');
-  if(!confirm('Pasang atau periksa tiga trigger OCR (inventarisasi, dokumen umum, dan BKU)? Proses ini tidak menghapus antrean atau checkpoint.'))return;
-  if(btn){btn.disabled=true;btn.textContent='Menyiapkan worker…';}
-  try{
-    const r=await api('setupDinasOcrWorkers',{});
-    const w=r.workers||{};
-    toast(`Worker disiapkan: inventarisasi, generik, BKU.`, 'ok');
-    const detail=$('#massOcrDetail');
-    if(detail)detail.textContent='Setup trigger berhasil dicatat. Selanjutnya tekan Mulai / Lanjutkan OCR untuk periode terpilih.';
-    await refreshDinasMassOcrStatus();
-  }catch(e){toast(errorText(e),'error');}
-  finally{if(btn){btn.disabled=false;btn.textContent='Siapkan Worker OCR';}}
-};
 window.pauseDinasMassOcr = async function(){
   const sel=$('#monitoringPeriodSelect'),btn=$('#massOcrPauseBtn');
   if(!sel||!sel.value){toast('Pilih periode aktif terlebih dahulu.','warning');return;}
@@ -8810,10 +8796,10 @@ window.startOrResumeDinasMassOcr = async function(){
   const sel=$('#monitoringPeriodSelect'),btn=$('#massOcrStartBtn'),detail=$('#massOcrDetail');
   if(!sel||!sel.value){toast('Pilih periode aktif terlebih dahulu.','warning');return;}
   if(!confirm('Mulai atau lanjutkan OCR seluruh dokumen yang sudah diunggah pada periode aktif? Hasil yang sudah tersimpan tidak akan diulang.'))return;
-  btn.disabled=true;btn.textContent='Menyiapkan antrean…';
+  btn.disabled=true;btn.textContent='Memulai OCR…';
   try{
     const r=await api('startDinasMassOcrBackfill',{idPeriode:sel.value});
-    toast('Inventarisasi dimulai. Checkpoint disimpan bertahap; tidak perlu menekan tombol lagi.','ok');
+    toast('OCR seluruh dokumen mulai diproses. Hasil tersimpan dan dapat dilanjutkan kapan saja.','ok');
     const inv=r.inventory||{};
     detail.textContent=`Menyiapkan antrean: ${Number(inv.cursor||0)} dari ${Number(inv.discovered||0)} dokumen diperiksa.`;
     await refreshDinasMassOcrStatus();
@@ -12676,7 +12662,6 @@ async function renderMonitoringGlobalView(mode) {
          <span id="massOcrSummary" class="muted">Memuat status…</span>
        </div>
        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:12px">
-         <button id="massOcrSetupBtn" class="btn btn-light" type="button" onclick="setupDinasOcrWorkersFromPanel()">Siapkan Worker OCR</button>
          <button id="massOcrStartBtn" class="btn btn-primary" type="button" onclick="startOrResumeDinasMassOcr()">Mulai / Lanjutkan OCR</button>
          <button id="massOcrPauseBtn" class="btn btn-light" type="button" onclick="pauseDinasMassOcr()">Jeda OCR</button>
          <button class="btn btn-light" type="button" onclick="window._dinasOcrStatusForce=true;refreshDinasMassOcrStatus()">Perbarui status</button>
