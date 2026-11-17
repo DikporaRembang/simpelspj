@@ -8768,7 +8768,10 @@ window.refreshDinasMassOcrStatus = async function(){
     const schoolQueued=schoolRows.reduce((n,s)=>n+Number(s.queued||0),0);
     const schoolProcessing=schoolRows.reduce((n,s)=>n+Number(s.processing||0),0);
     const schoolFailed=schoolRows.reduce((n,s)=>n+Number(s.failed||0),0);
-    const pct=schoolTotal?Math.min(100,Math.round(schoolDone/schoolTotal*100)):0;
+    const target=r.target||{};
+    const targetTotal=Math.max(0,Number(target.total||0));
+    const targetDone=Math.max(0,Number(target.done||0));
+    const pct=targetTotal?Math.min(100,Math.round(targetDone/targetTotal*100)):0;
     const liveState=$('#massOcrLiveState'),livePct=$('#massOcrLivePercent'),liveBar=$('#massOcrLiveBar');
     const liveCounts=$('#massOcrLiveCounts'),liveHint=$('#massOcrLiveHint');
     const invProgress=$('#massOcrInventoryProgress');
@@ -8779,7 +8782,6 @@ window.refreshDinasMassOcrStatus = async function(){
         ?`Inventaris dokumen: ${cursor.toLocaleString('id-ID')} dari ${discovered.toLocaleString('id-ID')} diperiksa (${invPct}%).`
         :inv.status==='COMPLETED'?'Inventaris dokumen selesai.':(r.stopped?'Inventaris dihentikan sementara.':'Inventaris menunggu dimulai.');
     }
-    const target=r.target||{};
     const targetTotalEl=$('#massOcrTargetTotal'),targetNoteEl=$('#massOcrTargetNote');
     const etaEl=$('#massOcrEtaValue'),etaConfidenceEl=$('#massOcrEtaConfidence');
     if(targetTotalEl)targetTotalEl.textContent=Number(target.total||0).toLocaleString('id-ID')+' dokumen';
@@ -8798,14 +8800,25 @@ window.refreshDinasMassOcrStatus = async function(){
       const rate=Number(target.rate_per_minute||0);
       etaConfidenceEl.textContent=`Kecepatan ${rate?rate.toFixed(2).replace('.',',')+' dokumen/menit':'belum terukur'} · ${Number(target.rate_sample_count||0)} dokumen selesai dalam 60 menit · keyakinan ${label}.`;
     }
+    const targetProgressEl=$('#massOcrTargetProgress');
+    if(targetProgressEl)targetProgressEl.textContent=`Progres target OCR: ${targetDone.toLocaleString('id-ID')} dari ${targetTotal.toLocaleString('id-ID')} dokumen (${pct}%).`;
     const stopped=!!r.stopped,paused=!!r.paused;
     const inventoryRunning=inv.status==='RUNNING';
+    const workerHealthEl=$('#massOcrWorkerHealth');
+    if(workerHealthEl){
+      const stalled=!!wk.stalled;
+      workerHealthEl.textContent=stalled
+        ?`PERHATIAN: ${Number(wk.pending_jobs||0).toLocaleString('id-ID')} dokumen menunggu tanpa heartbeat worker dalam 3 menit terakhir. Periksa trigger/eksekusi worker sebelum menyatakan OCR berjalan.`
+        :(wk.diagnosis==='PROCESSING'?'Worker melaporkan ada dokumen sedang diproses.':
+          (wk.diagnosis==='QUEUED'?'Dokumen masih menunggu giliran worker.':'Status worker: '+(wk.diagnosis||'WAITING')+'.'));
+      workerHealthEl.style.color=stalled?'#b45309':'var(--text-secondary,inherit)';
+    }
     const isRunning=!stopped&&!paused&&(inventoryRunning||processing>0||queued>0);
-    if(liveState)liveState.textContent=stopped?'Dihentikan oleh DINAS':paused?'Dijeda oleh DINAS':isRunning?'OCR sedang bekerja':(inv.status==='COMPLETED'&&!queued&&!processing?'Seluruh antrean OCR selesai':'Menunggu pekerjaan OCR');
+    if(liveState)liveState.textContent=stopped?'Dihentikan oleh DINAS':paused?'Dijeda oleh DINAS':(processing>0?'OCR sedang membaca dokumen':(wk.stalled?'Worker perlu diperiksa':(inventoryRunning?'Inventarisasi sedang berjalan':(queued>0?'Menunggu worker mengambil antrean':(inv.status==='COMPLETED'?'Antrean OCR selesai':'Menunggu pekerjaan OCR')))));
     if(livePct)livePct.textContent=pct+'%';
     if(liveBar){liveBar.style.width=pct+'%';liveBar.setAttribute('aria-valuenow',String(pct));liveBar.style.background=stopped?'#64748b':paused?'#d97706':'#16a34a';}
     if(liveCounts)liveCounts.innerHTML=`<span><b>${schoolDone.toLocaleString('id-ID')}</b> selesai</span><span><b>${schoolProcessing.toLocaleString('id-ID')}</b> sedang dibaca</span><span><b>${schoolQueued.toLocaleString('id-ID')}</b> menunggu</span><span><b>${schoolFailed.toLocaleString('id-ID')}</b> perhatian</span><span><b>${schoolTotal.toLocaleString('id-ID')}</b> total file terindeks</span>`;
-    if(liveHint)liveHint.textContent=stopped?'Proses dihentikan. Hasil dan checkpoint tersimpan; tekan Mulai / Lanjutkan untuk meneruskan.':paused?'Proses dijeda. Tidak ada pekerjaan baru yang diambil untuk periode ini.':isRunning?'Pembacaan berjalan bertahap. Status diperbarui otomatis setiap 30 detik; angka selesai dihitung dari dokumen yang sudah masuk indeks OCR.':(inv.status==='COMPLETED'?'Inventaris selesai. Periksa antrean dan status tiap sekolah untuk memastikan seluruh OCR terminal.':'Pilih Mulai / Lanjutkan OCR untuk memulai proses.');
+    if(liveHint)liveHint.textContent=stopped?'Proses dihentikan. Hasil dan checkpoint tersimpan; tekan Mulai / Lanjutkan untuk meneruskan.':paused?'Proses dijeda. Tidak ada pekerjaan baru yang diambil untuk periode ini.':(wk.stalled?'Antrean belum bergerak dan heartbeat worker tidak baru. Periksa trigger serta log eksekusi.':(processing>0?'Ada dokumen yang sedang diproses. Status diperbarui otomatis setiap 30 detik.':(queued>0?'Antrean tersedia; worker belum tentu sedang membaca pada detik ini.':(inv.status==='COMPLETED'?'Inventaris selesai. Periksa status terminal dan perhatian per sekolah.':'Pilih Mulai / Lanjutkan OCR untuk memulai proses.'))));
     const startBtn=$('#massOcrStartBtn'),pauseBtn=$('#massOcrPauseBtn'),stopBtn=$('#massOcrStopBtn');
     if(startBtn)startBtn.disabled=isRunning;
     if(pauseBtn)pauseBtn.disabled=paused||stopped||(!queued&&!processing&&!inventoryRunning);
@@ -12746,6 +12759,8 @@ async function renderMonitoringGlobalView(mode) {
            <span>0 selesai</span><span>0 sedang dibaca</span><span>0 menunggu</span><span>0 perhatian</span>
          </div>
          <div id="massOcrInventoryProgress" class="muted" style="font-size:.8rem;margin-top:8px">Inventaris dokumen menunggu dimulai.</div>
+         <div id="massOcrTargetProgress" class="muted" style="font-size:.8rem;margin-top:4px">Progres target OCR menunggu data.</div>
+         <div id="massOcrWorkerHealth" style="font-size:.8rem;margin-top:6px"></div>
          <div id="massOcrTargetEta" style="margin-top:12px;padding:10px;border-radius:9px;background:var(--surface-secondary,rgba(127,127,127,.08))">
            <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><b>Target dokumen OCR</b><b id="massOcrTargetTotal">Belum dihitung</b></div>
            <div id="massOcrTargetNote" class="muted" style="font-size:.78rem;margin-top:4px">Target final ditetapkan setelah inventaris selesai.</div>
