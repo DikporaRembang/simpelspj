@@ -2777,19 +2777,33 @@ initSecureCaptcha();
 
 async function doLogin(e){
   e.preventDefault();
+  const form=e.currentTarget||$('#loginForm');
+  const submit=form?.querySelector('button[type="submit"]');
+  // Guard di browser: satu formulir login hanya boleh memiliki satu request aktif.
+  if(window._simpelLoginInFlight)return;
   if($('#captchaInput').value !== 'verified' || !state.loginChallengeQA25){
     $('#authMsg').innerHTML=msg('Lakukan verifikasi keamanan terlebih dahulu.');
     $('#captchaInput').value='';
     document.getElementById('secureCaptchaLogo')?.focus();
     return;
   }
+  window._simpelLoginInFlight=true;
+  const originalText=submit?.textContent||'Masuk SIMPEL SPJ';
+  if(submit){
+    submit.disabled=true;
+    submit.setAttribute('aria-busy','true');
+    submit.textContent='Sedang masuk…';
+  }
+  form?.classList.add('login-submitting');
+  const username=$('#username')?.value.trim()||'';
+  const password=$('#password')?.value||'';
   try{
     const proof=state.loginChallengeQA25;
     state.loginChallengeQA25=null;
     $('#captchaInput').value='';
     const r=await api('login',{
-      username:$('#username').value.trim(),
-      password:$('#password').value,
+      username,
+      password,
       challenge_id:proof.challenge_id,
       proof_counter:proof.proof_counter
     });
@@ -2807,7 +2821,34 @@ async function doLogin(e){
     await startApp();
     startSessionHeartbeat();
     await welcomePromise;
-  }catch(err){$('#authMsg').innerHTML=msg(errorText(err));}
+  }catch(err){
+    const authMsg=$('#authMsg');
+    if(authMsg)authMsg.innerHTML=msg(errorText(err));
+    // Challenge bersifat sekali pakai; pengguna perlu melakukan verifikasi lagi
+    // setelah login gagal, tetapi tombol kembali aktif.
+    state.loginChallengeQA25=null;
+    const captcha=$('#captchaInput');
+    if(captcha)captcha.value='';
+    const captchaButton=$('#secureCaptchaLogo');
+    if(captchaButton){
+      captchaButton.classList.remove('checked');
+      captchaButton.setAttribute('aria-pressed','false');
+      const status=$('#secureCaptchaStatus');
+      if(status)status.textContent='Silakan verifikasi keamanan kembali';
+      const action=captchaButton.querySelector('.secure-check-action');
+      if(action)action.textContent='Verifikasi';
+    }
+  }finally{
+    window._simpelLoginInFlight=false;
+    // startApp mengganti tampilan saat berhasil; pulihkan tombol hanya bila
+    // formulir login masih terpasang (misalnya ketika autentikasi gagal).
+    if(submit&&document.contains(submit)){
+      submit.disabled=false;
+      submit.removeAttribute('aria-busy');
+      submit.textContent=originalText;
+    }
+    if(form&&document.contains(form))form.classList.remove('login-submitting');
+  }
 }
 
 window.showRegisterView = function(e) {
@@ -8851,7 +8892,23 @@ window.refreshDinasMassOcrStatus = async function(){
     if(liveCounts)liveCounts.innerHTML=`<span><b>${schoolDone.toLocaleString('id-ID')}</b> selesai</span><span><b>${schoolProcessing.toLocaleString('id-ID')}</b> sedang dibaca</span><span><b>${schoolQueued.toLocaleString('id-ID')}</b> menunggu</span><span><b>${Math.max(0,schoolTotal-schoolDone-schoolProcessing-schoolQueued).toLocaleString('id-ID')}</b> di luar target / gagal</span><span><b>${schoolTotal.toLocaleString('id-ID')}</b> total file terindeks</span>`;
     if(liveHint)liveHint.textContent=stopped?'Proses dihentikan. Hasil dan checkpoint tersimpan; tekan Mulai / Lanjutkan untuk meneruskan.':paused?'Proses dijeda. Tidak ada pekerjaan baru yang diambil untuk periode ini.':(wk.stalled?'Antrean belum bergerak dan heartbeat worker tidak baru. Periksa trigger serta log eksekusi.':(processing>0?'Ada dokumen yang sedang diproses. Status diperbarui otomatis setiap 30 detik.':(queued>0?'Antrean tersedia; worker belum tentu sedang membaca pada detik ini.':(inv.status==='COMPLETED'?'Inventaris selesai. Periksa status terminal dan perhatian per sekolah.':'Pilih Mulai / Lanjutkan OCR untuk memulai proses.'))));
     const startBtn=$('#massOcrStartBtn'),pauseBtn=$('#massOcrPauseBtn'),stopBtn=$('#massOcrStopBtn');
-    if(startBtn)startBtn.disabled=isRunning;
+    const startRequestPending=!!window._dinasOcrStartInflight;
+    const workerNeedsAttention=!!wk.stalled;
+    // Antrean yang hanya menunggu worker tidak otomatis mengunci tombol.
+    // Bila heartbeat macet, tombol dapat dipakai untuk meminta lanjut kembali.
+    const backendActivelyWorking=inventoryRunning||processing>0;
+    if(startBtn){
+      startBtn.disabled=startRequestPending||(backendActivelyWorking&&!workerNeedsAttention&&!paused&&!stopped);
+      startBtn.textContent=startRequestPending?'Mengirim perintah OCR…':
+        (workerNeedsAttention?'Coba lanjutkan OCR':
+        (backendActivelyWorking?'OCR sedang berjalan…':
+        (paused||stopped||queued>0?'Mulai / Lanjutkan OCR':'Mulai Pembacaan OCR')));
+      startBtn.title=startRequestPending?'Permintaan OCR sedang dikirim. Jangan klik lagi.':
+        (workerNeedsAttention?'Worker tidak mengirim heartbeat terbaru. Periksa status sebelum melanjutkan.':
+        (backendActivelyWorking?'OCR berjalan di latar belakang. Tidak perlu menekan tombol lagi.':'Mulai atau lanjutkan antrean OCR untuk periode terpilih.'));
+      startBtn.setAttribute('aria-label',startBtn.textContent);
+      if(startRequestPending)startBtn.setAttribute('aria-busy','true');else startBtn.removeAttribute('aria-busy');
+    }
     if(pauseBtn)pauseBtn.disabled=paused||stopped||(!queued&&!processing&&!inventoryRunning);
     if(stopBtn)stopBtn.disabled=stopped||(!isRunning&&!queued&&!processing&&!inventoryRunning);
     const bh=wk.bku_heartbeat||{};
@@ -8913,16 +8970,30 @@ window._dinasMassOcrPollTimer=setInterval(function(){
 window.startOrResumeDinasMassOcr = async function(){
   const sel=$('#monitoringPeriodSelect'),btn=$('#massOcrStartBtn'),detail=$('#massOcrDetail');
   if(!sel||!sel.value){toast('Pilih periode aktif terlebih dahulu.','warning');return;}
+  // Guard lokal untuk menahan klik berulang selama permintaan start belum dijawab.
+  if(window._dinasOcrStartInflight)return;
   if(!confirm('Mulai atau lanjutkan OCR seluruh dokumen yang sudah diunggah pada periode aktif? Hasil yang sudah tersimpan tidak akan diulang.'))return;
-  btn.disabled=true;btn.textContent='Memulai OCR…';
+  const period=String(sel.value);
+  window._dinasOcrStartInflight=true;
+  if(btn){btn.disabled=true;btn.setAttribute('aria-busy','true');btn.textContent='Mengirim perintah OCR…';}
   try{
-    const r=await api('startDinasMassOcrBackfill',{idPeriode:sel.value});
-    toast('OCR seluruh dokumen mulai diproses. Hasil tersimpan dan dapat dilanjutkan kapan saja.','ok');
+    const r=await api('startDinasMassOcrBackfill',{idPeriode:period});
+    toast('Perintah OCR diterima. Pembacaan berjalan di latar belakang; Anda tidak perlu menekan tombol lagi.','ok');
     const inv=r.inventory||{};
-    detail.textContent=`Menyiapkan antrean: ${Number(inv.cursor||0)} dari ${Number(inv.discovered||0)} dokumen diperiksa.`;
+    if(detail)detail.textContent=`Menyiapkan antrean: ${Number(inv.cursor||0)} dari ${Number(inv.discovered||0)} dokumen diperiksa.`;
     await refreshDinasMassOcrStatus();
-  }catch(e){toast(errorText(e),'error');}
-  finally{btn.disabled=false;btn.textContent='Mulai / Lanjutkan OCR';}
+  }catch(e){
+    toast(errorText(e),'error');
+    if(detail)detail.textContent='Perintah OCR belum dapat dikonfirmasi. Perbarui status sebelum mencoba lagi agar tidak membuat permintaan berulang.';
+  }finally{
+    window._dinasOcrStartInflight=false;
+    if(btn&&document.contains(btn)){
+      btn.removeAttribute('aria-busy');
+      // Status berikutnya ditentukan oleh hasil pemantauan backend, bukan
+      // selalu dipaksa kembali ke label awal.
+      await refreshDinasMassOcrStatus();
+    }
+  }
 };
 
 
@@ -16919,6 +16990,27 @@ body.v219-auth-body{
 .v219-auth-form .secure-check-card.checked .secure-check-copy strong,
 .v219-auth-form .secure-check-card.checked .secure-check-status,
 .v219-auth-form .secure-check-card.checked .secure-check-action{color:#176c49!important}
+
+/* Login request feedback: make the first click immediately visible. */
+.v219-auth-submit[aria-busy="true"],
+.v219-auth-submit:disabled{
+  opacity:.72;
+  cursor:wait;
+  transform:none!important;
+  box-shadow:none!important;
+}
+.login-submitting .v219-auth-submit::before{
+  content:"";
+  display:inline-block;
+  width:13px;height:13px;
+  margin-right:9px;
+  vertical-align:-2px;
+  border:2px solid currentColor;
+  border-right-color:transparent;
+  border-radius:50%;
+  animation:simpelLoginSpin .7s linear infinite;
+}
+@keyframes simpelLoginSpin{to{transform:rotate(360deg)}}
 
 .v219-auth-submit{
   min-height:52px!important;margin-top:10px!important;border-radius:13px!important;
