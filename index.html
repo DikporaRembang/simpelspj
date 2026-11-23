@@ -2716,6 +2716,7 @@ function authView(notice=''){
 
 
 async function startServerLoginChallengeQA25_(button){
+  if(__simpelLoginInFlight || __simpelLoginAuthenticated)return;
   const input=document.getElementById('captchaInput');
   const status=document.getElementById('secureCaptchaStatus');
   const action=button?.querySelector('.secure-check-action');
@@ -2776,94 +2777,121 @@ document.addEventListener('click',function(e){
 initSecureCaptcha();
 
 let __simpelLoginInFlight = false;
+let __simpelLoginAuthenticated = false;
+
+function __setLoginBusyQA26_(busy, label){
+  const form=document.getElementById('loginForm');
+  if(!form)return;
+  const submit=form.querySelector('button[type="submit"]');
+  const captcha=document.getElementById('secureCaptchaLogo');
+  const username=document.getElementById('username');
+  const password=document.getElementById('password');
+  if(submit){
+    submit.disabled=!!busy;
+    submit.classList.toggle('is-loading',!!busy && !__simpelLoginAuthenticated);
+    if(busy){
+      submit.setAttribute('aria-busy','true');
+      submit.dataset.idleLabel=submit.dataset.idleLabel||submit.textContent.trim();
+      submit.textContent=label||'Memeriksa akun...';
+    }else{
+      submit.removeAttribute('aria-busy');
+      submit.textContent=submit.dataset.idleLabel||'Masuk SIMPEL SPJ';
+    }
+  }
+  // Hindari perubahan identitas/kredensial atau challenge di tengah autentikasi.
+  [captcha,username,password].forEach(el=>{if(el)el.disabled=!!busy;});
+}
 
 async function doLogin(e){
-  e.preventDefault();
+  if(e)e.preventDefault();
+  if(__simpelLoginInFlight || __simpelLoginAuthenticated)return;
 
-  // Guard sinkron: klik cepat, Enter berulang, dan event submit bersamaan
-  // hanya boleh menghasilkan satu permintaan login pada tab ini.
-  if(__simpelLoginInFlight) return;
+  const form=document.getElementById('loginForm');
+  const messageBox=document.getElementById('authMsg');
+  const captchaButton=document.getElementById('secureCaptchaLogo');
+  const captchaStatus=document.getElementById('secureCaptchaStatus');
+  const captchaInput=document.getElementById('captchaInput');
+  if(!form)return;
 
-  const form = document.getElementById('loginForm');
-  const submitButton = form?.querySelector('button[type="submit"]');
-  const messageBox = document.getElementById('authMsg');
-  const captchaButton = document.getElementById('secureCaptchaLogo');
-  const captchaStatus = document.getElementById('secureCaptchaStatus');
-
-  if($('#captchaInput').value !== 'verified' || !state.loginChallengeQA25){
-    if(messageBox) messageBox.innerHTML=msg('Lakukan verifikasi keamanan terlebih dahulu.');
-    $('#captchaInput').value='';
+  if(!captchaInput || captchaInput.value!=='verified' || !state.loginChallengeQA25){
+    if(messageBox)messageBox.innerHTML=msg('Lakukan verifikasi keamanan terlebih dahulu.');
+    if(captchaInput)captchaInput.value='';
     captchaButton?.focus();
     return;
   }
-
-  __simpelLoginInFlight = true;
-  if(submitButton){
-    submitButton.disabled = true;
-    submitButton.classList.add('is-loading');
-    submitButton.setAttribute('aria-busy','true');
-    submitButton.dataset.idleLabel = submitButton.dataset.idleLabel || submitButton.textContent.trim();
-    submitButton.textContent = 'Memeriksa akun...';
+  const username=document.getElementById('username')?.value.trim()||'';
+  const password=document.getElementById('password')?.value||'';
+  if(!username||!password){
+    if(messageBox)messageBox.innerHTML=msg('Username dan kata sandi wajib diisi.');
+    return;
   }
-  if(messageBox) messageBox.innerHTML='<p class="muted" role="status">Permintaan diterima. Sedang memeriksa akun Anda, mohon tunggu dan jangan menekan tombol lagi.</p>';
 
-  // Challenge bersifat sekali pakai. Ambil dan kosongkan sebelum request.
+  // Kunci dipasang secara sinkron sebelum operasi async pertama.
+  __simpelLoginInFlight=true;
+  __setLoginBusyQA26_(true,'Memeriksa akun...');
+  if(messageBox)messageBox.innerHTML='<p class="muted" role="status">Permintaan diterima. Sistem sedang memeriksa akun Anda. Mohon tunggu dan jangan menekan tombol lagi.</p>';
   const proof=state.loginChallengeQA25;
   state.loginChallengeQA25=null;
-  $('#captchaInput').value='';
+  captchaInput.value='';
 
+  let authenticated=false;
   try{
     const r=await api('login',{
-      username:$('#username').value.trim(),
-      password:$('#password').value,
+      username:username,
+      password:password,
       challenge_id:proof.challenge_id,
       proof_counter:proof.proof_counter
     });
+    if(!r || !r.token)throw new Error('Server tidak mengembalikan sesi login yang sah.');
 
     clearSensitiveFrontendCaches_('login-transition');
     state.token=r.token;
-    state.user=r.user || {};
+    state.user=r.user||{};
     if(isSchool() && !state.user.npsn && /^\d{8}$/.test(String(state.user.username||''))){
-      state.user.npsn = String(state.user.username);
+      state.user.npsn=String(state.user.username);
     }
     sessionStorage.setItem('simpel_token',state.token);
+    authenticated=true;
+    __simpelLoginAuthenticated=true;
+    __setLoginBusyQA26_(true,'Login berhasil. Menyiapkan halaman...');
+    if(messageBox)messageBox.innerHTML=msg('Login berhasil. Menyiapkan halaman utama...','ok');
 
-    if(submitButton){
-      submitButton.classList.remove('is-loading');
-      submitButton.removeAttribute('aria-busy');
-      submitButton.textContent='Berhasil masuk. Menyiapkan halaman...';
+    // Setelah autentikasi berhasil, jangan membuka ulang form login hanya karena
+    // dashboard gagal dimuat. Itu dapat membuat sesi kedua tanpa kebutuhan.
+    const welcomePromise=showWelcomeAnimation();
+    try{
+      await startApp();
+      startSessionHeartbeat();
+      await welcomePromise;
+    }catch(viewErr){
+      if(messageBox)messageBox.innerHTML=msg('Login berhasil, tetapi halaman utama belum dapat dimuat. Muat ulang halaman untuk melanjutkan tanpa mengirim login ulang. '+errorText(viewErr),'warning');
+      const submit=form.querySelector('button[type="submit"]');
+      if(submit){submit.disabled=true;submit.classList.remove('is-loading');submit.textContent='Login berhasil';}
+      return;
     }
-    if(messageBox) messageBox.innerHTML=msg('Login berhasil. Menyiapkan halaman utama...','ok');
-
-    const welcomePromise = showWelcomeAnimation();
-    await startApp();
-    startSessionHeartbeat();
-    await welcomePromise;
-    // Kunci tetap aktif selama transisi login agar submit tidak terulang.
   }catch(err){
-    __simpelLoginInFlight = false;
-
-    // Challenge sudah dikonsumsi atau tidak lagi dapat dipastikan valid.
-    // Pengguna harus melakukan verifikasi keamanan kembali sebelum mencoba.
+    // Kegagalan jaringan bersifat ambigu: server mungkin sudah memproses login.
+    // Jangan auto-retry. Minta verifikasi baru dan satu percobaan manual.
+    __simpelLoginInFlight=false;
+    __simpelLoginAuthenticated=false;
     state.loginChallengeQA25=null;
-    $('#captchaInput').value='';
-    if(captchaButton){
-      captchaButton.classList.remove('checked');
-      captchaButton.setAttribute('aria-pressed','false');
-    }
-    if(captchaStatus) captchaStatus.textContent='Silakan verifikasi ulang sebelum mencoba masuk';
-    const isNetworkFailure = err && (err.code==='NETWORK_FETCH_FAILED' || /Failed to fetch|tidak dapat dijangkau/i.test(String(err.message||'')));
+    if(captchaInput)captchaInput.value='';
+    if(captchaButton){captchaButton.classList.remove('checked');captchaButton.setAttribute('aria-pressed','false');}
+    if(captchaStatus)captchaStatus.textContent='Silakan verifikasi ulang sebelum mencoba masuk';
+    const networkAmbiguous=err&&(err.code==='NETWORK_FETCH_FAILED'||err.code==='STALE_SESSION_RESPONSE'||/Failed to fetch|tidak dapat dijangkau|respons bukan JSON/i.test(String(err.message||'')));
     if(messageBox){
-      messageBox.innerHTML=msg(isNetworkFailure
-        ? 'Koneksi terputus sebelum jawaban login diterima. Periksa koneksi, lakukan verifikasi keamanan kembali, lalu coba masuk sekali lagi.'
+      messageBox.innerHTML=msg(networkAmbiguous
+        ? 'Koneksi terputus sehingga hasil login belum dapat dipastikan. Jangan menekan berulang kali. Periksa koneksi, verifikasi keamanan kembali, lalu coba sekali lagi.'
         : errorText(err));
     }
-    if(submitButton){
-      submitButton.disabled=false;
-      submitButton.classList.remove('is-loading');
-      submitButton.removeAttribute('aria-busy');
-      submitButton.textContent=submitButton.dataset.idleLabel || 'Masuk SIMPEL SPJ';
-    }
+    __setLoginBusyQA26_(false);
+    return;
+  }
+
+  // Sukses: kunci tetap aktif selama aplikasi berada pada sesi terautentikasi.
+  if(authenticated){
+    const submit=form.querySelector('button[type="submit"]');
+    if(submit){submit.disabled=true;submit.classList.remove('is-loading');submit.removeAttribute('aria-busy');submit.textContent='Sudah masuk';}
   }
 }
 
@@ -14292,6 +14320,8 @@ body.v219-auth-body::before{display:none!important}
   vertical-align:-2px;animation:simpelLoginSpin .75s linear infinite
 }
 @keyframes simpelLoginSpin{to{transform:rotate(360deg)}}
+.v219-auth-submit:focus-visible{outline:3px solid #75B8E8;outline-offset:3px}
+@media(prefers-reduced-motion:reduce){.v219-auth-submit{transition:none}.v219-auth-submit.is-loading::before{animation:none;border-top-color:rgba(255,255,255,.8)}}
 .v219-role-row{
   display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px
 }
