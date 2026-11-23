@@ -2695,7 +2695,7 @@ function authView(notice=''){
 
             </div>
 
-            <div id="authMsg" role="status" aria-live="polite" aria-atomic="true"></div>
+            <div id="authMsg"></div>
 
             <button class="v219-auth-submit" type="submit">Masuk SIMPEL SPJ</button>
           </form>
@@ -2716,7 +2716,6 @@ function authView(notice=''){
 
 
 async function startServerLoginChallengeQA25_(button){
-  if(__simpelLoginInFlight || __simpelLoginAuthenticated)return;
   const input=document.getElementById('captchaInput');
   const status=document.getElementById('secureCaptchaStatus');
   const action=button?.querySelector('.secure-check-action');
@@ -2776,123 +2775,39 @@ document.addEventListener('click',function(e){
 });
 initSecureCaptcha();
 
-let __simpelLoginInFlight = false;
-let __simpelLoginAuthenticated = false;
-
-function __setLoginBusyQA26_(busy, label){
-  const form=document.getElementById('loginForm');
-  if(!form)return;
-  const submit=form.querySelector('button[type="submit"]');
-  const captcha=document.getElementById('secureCaptchaLogo');
-  const username=document.getElementById('username');
-  const password=document.getElementById('password');
-  if(submit){
-    submit.disabled=!!busy;
-    submit.classList.toggle('is-loading',!!busy && !__simpelLoginAuthenticated);
-    if(busy){
-      submit.setAttribute('aria-busy','true');
-      submit.dataset.idleLabel=submit.dataset.idleLabel||submit.textContent.trim();
-      submit.textContent=label||'Memeriksa akun...';
-    }else{
-      submit.removeAttribute('aria-busy');
-      submit.textContent=submit.dataset.idleLabel||'Masuk SIMPEL SPJ';
-    }
-  }
-  // Hindari perubahan identitas/kredensial atau challenge di tengah autentikasi.
-  [captcha,username,password].forEach(el=>{if(el)el.disabled=!!busy;});
-}
-
 async function doLogin(e){
-  if(e)e.preventDefault();
-  if(__simpelLoginInFlight || __simpelLoginAuthenticated)return;
-
-  const form=document.getElementById('loginForm');
-  const messageBox=document.getElementById('authMsg');
-  const captchaButton=document.getElementById('secureCaptchaLogo');
-  const captchaStatus=document.getElementById('secureCaptchaStatus');
-  const captchaInput=document.getElementById('captchaInput');
-  if(!form)return;
-
-  if(!captchaInput || captchaInput.value!=='verified' || !state.loginChallengeQA25){
-    if(messageBox)messageBox.innerHTML=msg('Lakukan verifikasi keamanan terlebih dahulu.');
-    if(captchaInput)captchaInput.value='';
-    captchaButton?.focus();
+  e.preventDefault();
+  if($('#captchaInput').value !== 'verified' || !state.loginChallengeQA25){
+    $('#authMsg').innerHTML=msg('Lakukan verifikasi keamanan terlebih dahulu.');
+    $('#captchaInput').value='';
+    document.getElementById('secureCaptchaLogo')?.focus();
     return;
   }
-  const username=document.getElementById('username')?.value.trim()||'';
-  const password=document.getElementById('password')?.value||'';
-  if(!username||!password){
-    if(messageBox)messageBox.innerHTML=msg('Username dan kata sandi wajib diisi.');
-    return;
-  }
-
-  // Kunci dipasang secara sinkron sebelum operasi async pertama.
-  __simpelLoginInFlight=true;
-  __setLoginBusyQA26_(true,'Memeriksa akun...');
-  if(messageBox)messageBox.innerHTML='<p class="muted" role="status">Permintaan diterima. Sistem sedang memeriksa akun Anda. Mohon tunggu dan jangan menekan tombol lagi.</p>';
-  const proof=state.loginChallengeQA25;
-  state.loginChallengeQA25=null;
-  captchaInput.value='';
-
-  let authenticated=false;
   try{
+    const proof=state.loginChallengeQA25;
+    state.loginChallengeQA25=null;
+    $('#captchaInput').value='';
     const r=await api('login',{
-      username:username,
-      password:password,
+      username:$('#username').value.trim(),
+      password:$('#password').value,
       challenge_id:proof.challenge_id,
       proof_counter:proof.proof_counter
     });
-    if(!r || !r.token)throw new Error('Server tidak mengembalikan sesi login yang sah.');
-
     clearSensitiveFrontendCaches_('login-transition');
-    state.token=r.token;
-    state.user=r.user||{};
-    if(isSchool() && !state.user.npsn && /^\d{8}$/.test(String(state.user.username||''))){
-      state.user.npsn=String(state.user.username);
+    state.token=r.token; state.user=r.user || {};
+    if(isSchool() && !state.user.npsn && /^\\d{8}$/.test(String(state.user.username||''))){
+      state.user.npsn = String(state.user.username);
     }
     sessionStorage.setItem('simpel_token',state.token);
-    authenticated=true;
-    __simpelLoginAuthenticated=true;
-    __setLoginBusyQA26_(true,'Login berhasil. Menyiapkan halaman...');
-    if(messageBox)messageBox.innerHTML=msg('Login berhasil. Menyiapkan halaman utama...','ok');
 
-    // Setelah autentikasi berhasil, jangan membuka ulang form login hanya karena
-    // dashboard gagal dimuat. Itu dapat membuat sesi kedua tanpa kebutuhan.
-    const welcomePromise=showWelcomeAnimation();
-    try{
-      await startApp();
-      startSessionHeartbeat();
-      await welcomePromise;
-    }catch(viewErr){
-      if(messageBox)messageBox.innerHTML=msg('Login berhasil, tetapi halaman utama belum dapat dimuat. Muat ulang halaman untuk melanjutkan tanpa mengirim login ulang. '+errorText(viewErr),'warning');
-      const submit=form.querySelector('button[type="submit"]');
-      if(submit){submit.disabled=true;submit.classList.remove('is-loading');submit.textContent='Login berhasil';}
-      return;
-    }
-  }catch(err){
-    // Kegagalan jaringan bersifat ambigu: server mungkin sudah memproses login.
-    // Jangan auto-retry. Minta verifikasi baru dan satu percobaan manual.
-    __simpelLoginInFlight=false;
-    __simpelLoginAuthenticated=false;
-    state.loginChallengeQA25=null;
-    if(captchaInput)captchaInput.value='';
-    if(captchaButton){captchaButton.classList.remove('checked');captchaButton.setAttribute('aria-pressed','false');}
-    if(captchaStatus)captchaStatus.textContent='Silakan verifikasi ulang sebelum mencoba masuk';
-    const networkAmbiguous=err&&(err.code==='NETWORK_FETCH_FAILED'||err.code==='STALE_SESSION_RESPONSE'||/Failed to fetch|tidak dapat dijangkau|respons bukan JSON/i.test(String(err.message||'')));
-    if(messageBox){
-      messageBox.innerHTML=msg(networkAmbiguous
-        ? 'Koneksi terputus sehingga hasil login belum dapat dipastikan. Jangan menekan berulang kali. Periksa koneksi, verifikasi keamanan kembali, lalu coba sekali lagi.'
-        : errorText(err));
-    }
-    __setLoginBusyQA26_(false);
-    return;
-  }
-
-  // Sukses: kunci tetap aktif selama aplikasi berada pada sesi terautentikasi.
-  if(authenticated){
-    const submit=form.querySelector('button[type="submit"]');
-    if(submit){submit.disabled=true;submit.classList.remove('is-loading');submit.removeAttribute('aria-busy');submit.textContent='Sudah masuk';}
-  }
+    // Tampilkan layar Selamat Datang TERLEBIH DAHULU sebagai lapisan penuh.
+    // Halaman login tetap tertutup di bawahnya sehingga tidak pernah terlihat
+    // kembali. Dashboard dibangun di belakang layar selama animasi berlangsung.
+    const welcomePromise = showWelcomeAnimation();
+    await startApp();
+    startSessionHeartbeat();
+    await welcomePromise;
+  }catch(err){$('#authMsg').innerHTML=msg(errorText(err));}
 }
 
 window.showRegisterView = function(e) {
@@ -8808,20 +8723,35 @@ function renderDinasCenterTable(listSekolah, listPenugasan){
     </div>`;
 }
 
+// Periode Monitoring hanya dikelola oleh renderMonitoringGlobalView.
+// Panel OCR tidak boleh mengambil daftar periode sendiri atau menulis ulang
+// dropdown, karena proses inisialisasi/polling dapat menimpa pilihan pengguna.
+window.onMonitoringPeriodChange = function(value){
+  const period=String(value||'');
+  state.selectedPeriode=period;
+  refreshMonitoringProgressPeriod(period);
+  if(isDinas() && $('#dinasMassOcrPanel')){
+    window._dinasOcrStatusForce=true;
+    refreshDinasMassOcrStatus();
+  }
+};
+
 window.initDinasMassOcrPanel = async function(){
   if(!isDinas() || !$('#dinasMassOcrPanel'))return;
   const sel=$('#monitoringPeriodSelect'); if(!sel)return;
-  try{
-    const res=await safeApi('getPeriodeSPJ',{}, {data:[]});
-    const list=Array.isArray(res?.data)?res.data:[];
-    const activeId=String(res?.periode_aktif||'');
-    const active=list.filter(p=>String(p.status||'').toUpperCase()==='AKTIF' || (activeId&&String(p.id_periode)===activeId));
-    const choices=active.length?active:(activeId?list.filter(p=>String(p.id_periode)===activeId):[]);
-    sel.innerHTML='<option value="">-- Pilih periode aktif --</option>'+choices.map(p=>`<option value="${esc(p.id_periode)}">${esc(p.nama_periode||p.id_periode)}</option>`).join('');
-    if(choices.length===1)sel.value=String(choices[0].id_periode);
-    if(!choices.length)$('#massOcrDetail').textContent='Belum ada periode aktif yang dapat diproses.';
-    if(sel.value)refreshDinasMassOcrStatus();
-  }catch(e){$('#massOcrDetail').textContent=errorText(e);}
+  // Baca pilihan yang sudah ditetapkan oleh halaman Monitoring. Jangan
+  // mengganti innerHTML/value dropdown dari proses inisialisasi OCR.
+  const period=String(sel.value||state.selectedPeriode||'');
+  if(period && Array.from(sel.options||[]).some(o=>String(o.value)===period)){
+    sel.value=period;
+    state.selectedPeriode=period;
+  }
+  if(!period){
+    const detail=$('#massOcrDetail');
+    if(detail)detail.textContent='Pilih periode pada filter Monitoring untuk melihat status OCR.';
+    return;
+  }
+  await refreshDinasMassOcrStatus();
 };
 window.refreshDinasMassOcrStatus = async function(){
   const sel=$('#monitoringPeriodSelect'),summary=$('#massOcrSummary'),detail=$('#massOcrDetail');
@@ -8845,6 +8775,9 @@ window.refreshDinasMassOcrStatus = async function(){
       try{r=await pending;window._dinasOcrStatusCache[period]={at:Date.now(),value:r};}
       finally{delete window._dinasOcrStatusInflight[period];window._dinasOcrStatusForce=false;}
     }
+    // Respons status yang datang terlambat untuk periode sebelumnya tidak
+    // boleh memperbarui panel setelah pengguna berpindah periode.
+    if(String($('#monitoringPeriodSelect')?.value||'')!==period || !$('#dinasMassOcrPanel'))return;
     const c=r.counts||{},bc=r.bku_counts||{};
     const queued=Number(c.QUEUED||0)+Number(bc.QUEUED||0);
     const processing=Number(c.PROCESSING||0)+Number(bc.PROCESSING||0);
@@ -12833,7 +12766,7 @@ async function renderMonitoringGlobalView(mode) {
        <input id="searchGlobalMon" placeholder="🔍 Cari nama sekolah, NPSN, kecamatan..." style="max-width:350px" oninput="filterGlobalMon(this.value)">
        <div style="display:flex;gap:8px;align-items:center">
          <label for="monitoringPeriodSelect" style="font-weight:650">Periode:</label>
-         <select id="monitoringPeriodSelect" class="form-control" style="min-width:190px" onchange="refreshMonitoringProgressPeriod(this.value)">
+         <select id="monitoringPeriodSelect" class="form-control" style="min-width:190px" onchange="window.onMonitoringPeriodChange(this.value)">
            <option value="">Memuat periode...</option>
          </select>
        </div>
@@ -14307,21 +14240,8 @@ body.v219-auth-body::before{display:none!important}
 .v219-auth-captcha{color:#1D4E6F;font-weight:900;margin:4px 0 7px}
 .v219-auth-submit,.v219-register-submit{
   width:100%;min-height:48px;margin-top:8px;border:0;border-radius:12px;
-  background:linear-gradient(135deg,#102A43,#1D4E6F);color:#fff;font-weight:850;cursor:pointer;
-  transition:opacity .15s ease,filter .15s ease,transform .15s ease
+  background:linear-gradient(135deg,#102A43,#1D4E6F);color:#fff;font-weight:850;cursor:pointer
 }
-.v219-auth-submit:disabled{
-  cursor:wait;opacity:.78;filter:saturate(.72);transform:none;
-  box-shadow:none;pointer-events:none
-}
-.v219-auth-submit.is-loading::before{
-  content:'';display:inline-block;width:13px;height:13px;margin-right:9px;
-  border:2px solid rgba(255,255,255,.45);border-top-color:#fff;border-radius:50%;
-  vertical-align:-2px;animation:simpelLoginSpin .75s linear infinite
-}
-@keyframes simpelLoginSpin{to{transform:rotate(360deg)}}
-.v219-auth-submit:focus-visible{outline:3px solid #75B8E8;outline-offset:3px}
-@media(prefers-reduced-motion:reduce){.v219-auth-submit{transition:none}.v219-auth-submit.is-loading::before{animation:none;border-top-color:rgba(255,255,255,.8)}}
 .v219-role-row{
   display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px
 }
