@@ -4732,13 +4732,16 @@ async function renderDokumenTable(){
     const inputStageAllowed = resolvedUploadStages?.INPUT_SPJ?.allowed === true;
     const repairStageAllowed = resolvedUploadStages?.PERBAIKAN?.allowed === true;
     const documentUploadPolicy = dRes?.upload_policy || null;
-    const assessmentReplacementAllowed = !isSchool() || !!documentUploadPolicy && documentUploadPolicy.can_replace === true;
+    const assessmentPeriodActive = dRes?.assessment_period_active === true;
+    const assessmentReplacementAllowed = !isSchool() || (assessmentPeriodActive && !!documentUploadPolicy && documentUploadPolicy.can_replace === true);
     const schoolUploadAllowed = !isSchool() || (!!workflowForUpload && (inputStageAllowed || repairStageAllowed) && assessmentReplacementAllowed);
     const uploadLockMessage = !workflowForUpload
       ? 'Status tahapan belum dapat diverifikasi. Muat ulang sebelum mengunggah.'
-      : !assessmentReplacementAllowed
-        ? (documentUploadPolicy?.message || 'Pemeriksaan/penilaian sudah dimulai. Penggantian dokumen hanya dapat diajukan melalui Keberatan Overall.')
-        : (inputStageAllowed || repairStageAllowed)
+      : !assessmentPeriodActive
+        ? 'Periode yang dipilih merupakan arsip. Pengunggahan hanya dapat dilakukan pada periode penilaian aktif yang ditetapkan DINAS.'
+        : !assessmentReplacementAllowed
+          ? (documentUploadPolicy?.message || 'Pemeriksaan/penilaian sudah dimulai. Penggantian dokumen hanya dapat diajukan melalui Keberatan Overall.')
+          : (inputStageAllowed || repairStageAllowed)
           ? ''
           : `Unggah dokumen belum dibuka untuk sekolah. Tahap aktif: ${activeUploadStage ? activeUploadStage.replaceAll('_',' ') : 'belum ditetapkan'}. Periksa jadwal dan penugasan DINAS.`;
     const bookSummaries = bookSummaryRes || {ready:false};
@@ -4773,7 +4776,7 @@ async function renderDokumenTable(){
     let nextActionButton = `<button class="btn btn-primary btn-sm" type="button" onclick="loadView('statusSpj')">Lihat Status →</button>`;
     let nextActionDanger = false;
     if(archivedGroups.length){
-      nextActionText = `${archivedGroups.length} dokumen tersimpan dari periode/registrasi sebelumnya. Sekolah tidak perlu konfirmasi ulang hanya untuk pembacaan OCR. Kelayakan periode tetap ditentukan sistem.`;
+      nextActionText = `${archivedGroups.length} dokumen arsip ditemukan. File tetap dapat dibuka, tetapi tidak dihitung untuk kelengkapan periode aktif. Periksa periode yang dipilih; unggah dokumen baru hanya jika DINAS telah membuka tahap INPUT SPJ/PERBAIKAN dan komponen memang wajib dipenuhi pada periode ini.`;
       nextActionButton = '';
       nextActionDanger = false;
     }else if(repairGroups.length){
@@ -4790,12 +4793,13 @@ async function renderDokumenTable(){
     // Rendering menggunakan .map().join('') agar browser hanya melakukan DOM reflow 1 kali
     const rowHtml = groups.map((x,i) => {
       const m=x.m, d=x.d;
-      const isLegacyArchive=false; // QA38.5.18: period eligibility is not a school confirmation/re-upload status.
+      // Arsip tetap dapat dibuka, tetapi tidak boleh tampil seolah-olah memenuhi periode aktif.
+      const isLegacyArchive=!!(d && d.assessment_eligible===false);
       const status = isLegacyArchive ? 'ARSIP_HISTORIS' : (d ? String(d.status || d.status_verifikasi || 'SUDAH_UPLOAD').toUpperCase() : 'BELUM_UPLOAD');
       const statusClass = status === 'SUDAH_UPLOAD' || status === 'SELESAI_DINILAI' ? 'success' :
                           status === 'N/A' || status === 'ARSIP_HISTORIS' ? 'warning' :
                           status === 'PERLU_PERBAIKAN' ? 'danger' : 'info';
-      const statusLabel = ({'SUDAH_UPLOAD':'Sudah diunggah','SELESAI_DINILAI':'Selesai diperiksa','PERLU_PERBAIKAN':'Perlu diperbaiki','BELUM_UPLOAD':'Belum diunggah','N/A':'Tidak diperlukan','ARSIP_HISTORIS':'Dokumen tersimpan'})[status] || status.replace(/_/g,' ').toLowerCase();
+      const statusLabel = ({'SUDAH_UPLOAD':'Sudah diunggah','SELESAI_DINILAI':'Selesai diperiksa','PERLU_PERBAIKAN':'Perlu diperbaiki','BELUM_UPLOAD':'Belum diunggah','N/A':'Tidak diperlukan','ARSIP_HISTORIS':'Arsip — tidak dihitung periode aktif'})[status] || status.replace(/_/g,' ').toLowerCase();
       const allowNA = _v222AllowNa_(m,bookSummaries);
       const viewerId = `instrumentPdfViewer_${String(m.id_spj||i).replace(/[^a-zA-Z0-9_-]/g,'_')}_${i}`;
       const pdfReady = !!(d?.file_id && (String(d.mimeType||'').toLowerCase()==='application/pdf'||/\.pdf$/i.test(String(d.nama_file||''))) && String(d.status||'').toUpperCase() !== 'N/A');
@@ -4833,7 +4837,7 @@ async function renderDokumenTable(){
           <!-- OCR BKU is system-managed; school users only view or replace the source PDF. -->
           ${['SPJ-06','SPJ-07'].includes(String(m.id_spj)) ? `<button class="btn btn-light" type="button" onclick="openEvidenceCoveragePanel('${m.id_spj==='SPJ-06'?'INVOICE':'SUPPORT'}','${esc(periode)}','${esc(summaryNpsn)}')">Periksa bukti</button>` : ''}
           ${['SPJ-04','SPJ-08','SPJ-09'].includes(String(m.id_spj)) ? `<button class="btn btn-light" type="button" onclick="openTaxReconciliationPanelV2523('${esc(m.id_spj)}','${esc(periode)}','${esc(summaryNpsn)}')">Lihat status pajak</button>` : ''}
-          ${schoolUploadAllowed ? `<button class="btn ${d ? 'btn-light' : 'btn-primary'}" type="button" onclick="openUpload('${esc(m.id_spj)}','${esc(m.nama_spj || m.nama_dokumen || m.kode || m.id_spj)}',${d ? 'true' : 'false'})">${d ? 'Ganti dokumen' : 'Unggah dokumen'}</button>` : `<button class="btn btn-light" type="button" disabled title="${esc(uploadLockMessage)}">Unggah ditutup</button>`}
+          ${schoolUploadAllowed ? `<button class="btn ${d && !isLegacyArchive ? 'btn-light' : 'btn-primary'}" type="button" onclick="openUpload('${esc(m.id_spj)}','${esc(m.nama_spj || m.nama_dokumen || m.kode || m.id_spj)}',${d && !isLegacyArchive ? 'true' : 'false'})">${isLegacyArchive ? 'Unggah untuk periode aktif' : d ? 'Ganti dokumen' : 'Unggah dokumen'}</button>` : `<button class="btn btn-light" type="button" disabled title="${esc(uploadLockMessage)}">Unggah ditutup</button>`}
           ${allowNA ? `<button class="btn btn-light" type="button" onclick="openNaModal('${esc(m.id_spj)}','${esc(m.nama_spj || m.nama_dokumen || m.kode || m.id_spj)}')">N/A</button>` : ''}
         </div>
       </div>
@@ -4902,7 +4906,7 @@ async function renderDokumenTable(){
         <div class="progress" style="margin-top:12px"><i style="width:${pct}%"></i></div>
         <div class="muted" style="margin-top:8px">${pct}% tersedia · ${uploaded} diunggah${na ? ` · ${na} tidak diperlukan` : ''}</div>
       </div>
-      ${archivedGroups.length?`<div class="message warn"><b>${archivedGroups.length} dokumen lama ditemukan dan tetap dapat dibuka.</b><br>Dokumen tersebut disimpan sebagai arsip dan tidak otomatis dihitung dalam penilaian periode aktif. Unggah ulang hanya komponen yang perlu dinilai pada jadwal berjalan.</div>`:''}
+      ${archivedGroups.length?`<div class="message warn"><b>${archivedGroups.length} dokumen arsip ditemukan.</b><br>File lama tetap dapat dibuka, tetapi tidak dihitung sebagai dokumen aktif untuk periode ini. Pastikan periode yang dipilih memang periode penilaian aktif DINAS. Jangan unggah ulang sebelum tahap INPUT SPJ/PERBAIKAN dibuka dan kebutuhan komponen dipastikan.</div>`:''}
       <div class="panel">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px">
           <h3 style="margin:0">Dokumen yang perlu disiapkan</h3>
@@ -8349,6 +8353,7 @@ window.renderPengawasReadinessCards=function(){
         <div><small>Fase 1 Pengawas</small><b>${readinessStatusChipV2(String(f1).replaceAll('_',' '),f1Kind)}</b><span>${esc(x.next_label||'')}</span></div>
         <div><small>Akses Fase 1 sekolah</small><b>${esc(x.phase1_stage_access?.phase|| (x.phase1_stage_access?.allowed?'ACTIVE':'LOCKED'))}</b><span>${x.phase1_actionable?'Fase 1 dapat diproses':'Akses Fase 1 belum terbuka untuk sekolah ini'}</span></div>
       </div>
+      ${x.documents_period_eligible===false?`<div class="message warning"><b>Periode arsip.</b> Dokumen tidak dihitung untuk kesiapan periode penilaian aktif DINAS.</div>`:''}
       ${reasons.length?`<div class="v234-reasons"><b>Catatan posisi:</b>${reasons.map(r=>`<span>• ${esc(r)}</span>`).join('')}</div>`:''}
       <div class="v234-school-actions">
         <button class="btn btn-primary" onclick="openPengawasReadinessSchool('${esc(x.npsn)}','${target}')">${actionLabel}</button>
@@ -14667,6 +14672,7 @@ window.renderRoleReadinessPanel=async function(forceRefresh=false){
         <div class="bucket-card-fast"><small>Langkah Berikut</small><strong style="font-size:.9rem">${esc(x.next_label||'-')}</strong></div>
       </div>
       ${x.pre_schedule_requires_reupload?`<div class="message warning"><b>${purePreSchedule?'DATA PRA-JADWAL TIDAK BERLAKU':'Sebagian histori pra-jadwal diabaikan.'}</b><br>Ditemukan ${fmtNum(x.pre_schedule_invalid_bku||0)} snapshot BKU dan ${fmtNum(x.pre_schedule_invalid_documents||0)} komponen dokumen yang diunggah sebelum jadwal DINAS sah. Riwayat tidak dihapus, tetapi tidak dihitung. ${purePreSchedule?'Sekolah harus mengunggah ulang saat jadwal INPUT SPJ/PERBAIKAN aktif.':'Lanjutkan hanya dengan data yang diunggah pada jadwal aktif.'}</div>`:''}
+      ${x.documents_period_eligible===false?`<div class="message warning" style="margin-top:12px"><b>Periode yang dipilih merupakan arsip, bukan periode penilaian aktif DINAS.</b><br>Dokumen lama tetap dapat dibuka, tetapi tidak dihitung sebagai kelengkapan 10 dokumen periode aktif. Hubungi DINAS jika periode ini seharusnya sedang aktif.</div>`:''}
       <div class="toolbar"><button class="btn btn-light" onclick="loadView('dokumenBulanan')">Lihat Kelengkapan Dokumen</button><button class="btn btn-primary" onclick="loadView('hasilPenilaian')">Lihat Detail Posisi</button></div>`;
       return;
     }
