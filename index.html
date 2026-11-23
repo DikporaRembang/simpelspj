@@ -2695,7 +2695,7 @@ function authView(notice=''){
 
             </div>
 
-            <div id="authMsg"></div>
+            <div id="authMsg" role="status" aria-live="polite" aria-atomic="true"></div>
 
             <button class="v219-auth-submit" type="submit">Masuk SIMPEL SPJ</button>
           </form>
@@ -2775,39 +2775,96 @@ document.addEventListener('click',function(e){
 });
 initSecureCaptcha();
 
+let __simpelLoginInFlight = false;
+
 async function doLogin(e){
   e.preventDefault();
+
+  // Guard sinkron: klik cepat, Enter berulang, dan event submit bersamaan
+  // hanya boleh menghasilkan satu permintaan login pada tab ini.
+  if(__simpelLoginInFlight) return;
+
+  const form = document.getElementById('loginForm');
+  const submitButton = form?.querySelector('button[type="submit"]');
+  const messageBox = document.getElementById('authMsg');
+  const captchaButton = document.getElementById('secureCaptchaLogo');
+  const captchaStatus = document.getElementById('secureCaptchaStatus');
+
   if($('#captchaInput').value !== 'verified' || !state.loginChallengeQA25){
-    $('#authMsg').innerHTML=msg('Lakukan verifikasi keamanan terlebih dahulu.');
+    if(messageBox) messageBox.innerHTML=msg('Lakukan verifikasi keamanan terlebih dahulu.');
     $('#captchaInput').value='';
-    document.getElementById('secureCaptchaLogo')?.focus();
+    captchaButton?.focus();
     return;
   }
+
+  __simpelLoginInFlight = true;
+  if(submitButton){
+    submitButton.disabled = true;
+    submitButton.classList.add('is-loading');
+    submitButton.setAttribute('aria-busy','true');
+    submitButton.dataset.idleLabel = submitButton.dataset.idleLabel || submitButton.textContent.trim();
+    submitButton.textContent = 'Memeriksa akun...';
+  }
+  if(messageBox) messageBox.innerHTML='<p class="muted" role="status">Permintaan diterima. Sedang memeriksa akun Anda, mohon tunggu dan jangan menekan tombol lagi.</p>';
+
+  // Challenge bersifat sekali pakai. Ambil dan kosongkan sebelum request.
+  const proof=state.loginChallengeQA25;
+  state.loginChallengeQA25=null;
+  $('#captchaInput').value='';
+
   try{
-    const proof=state.loginChallengeQA25;
-    state.loginChallengeQA25=null;
-    $('#captchaInput').value='';
     const r=await api('login',{
       username:$('#username').value.trim(),
       password:$('#password').value,
       challenge_id:proof.challenge_id,
       proof_counter:proof.proof_counter
     });
+
     clearSensitiveFrontendCaches_('login-transition');
-    state.token=r.token; state.user=r.user || {};
-    if(isSchool() && !state.user.npsn && /^\\d{8}$/.test(String(state.user.username||''))){
+    state.token=r.token;
+    state.user=r.user || {};
+    if(isSchool() && !state.user.npsn && /^\d{8}$/.test(String(state.user.username||''))){
       state.user.npsn = String(state.user.username);
     }
     sessionStorage.setItem('simpel_token',state.token);
 
-    // Tampilkan layar Selamat Datang TERLEBIH DAHULU sebagai lapisan penuh.
-    // Halaman login tetap tertutup di bawahnya sehingga tidak pernah terlihat
-    // kembali. Dashboard dibangun di belakang layar selama animasi berlangsung.
+    if(submitButton){
+      submitButton.classList.remove('is-loading');
+      submitButton.removeAttribute('aria-busy');
+      submitButton.textContent='Berhasil masuk. Menyiapkan halaman...';
+    }
+    if(messageBox) messageBox.innerHTML=msg('Login berhasil. Menyiapkan halaman utama...','ok');
+
     const welcomePromise = showWelcomeAnimation();
     await startApp();
     startSessionHeartbeat();
     await welcomePromise;
-  }catch(err){$('#authMsg').innerHTML=msg(errorText(err));}
+    // Kunci tetap aktif selama transisi login agar submit tidak terulang.
+  }catch(err){
+    __simpelLoginInFlight = false;
+
+    // Challenge sudah dikonsumsi atau tidak lagi dapat dipastikan valid.
+    // Pengguna harus melakukan verifikasi keamanan kembali sebelum mencoba.
+    state.loginChallengeQA25=null;
+    $('#captchaInput').value='';
+    if(captchaButton){
+      captchaButton.classList.remove('checked');
+      captchaButton.setAttribute('aria-pressed','false');
+    }
+    if(captchaStatus) captchaStatus.textContent='Silakan verifikasi ulang sebelum mencoba masuk';
+    const isNetworkFailure = err && (err.code==='NETWORK_FETCH_FAILED' || /Failed to fetch|tidak dapat dijangkau/i.test(String(err.message||'')));
+    if(messageBox){
+      messageBox.innerHTML=msg(isNetworkFailure
+        ? 'Koneksi terputus sebelum jawaban login diterima. Periksa koneksi, lakukan verifikasi keamanan kembali, lalu coba masuk sekali lagi.'
+        : errorText(err));
+    }
+    if(submitButton){
+      submitButton.disabled=false;
+      submitButton.classList.remove('is-loading');
+      submitButton.removeAttribute('aria-busy');
+      submitButton.textContent=submitButton.dataset.idleLabel || 'Masuk SIMPEL SPJ';
+    }
+  }
 }
 
 window.showRegisterView = function(e) {
@@ -14222,8 +14279,19 @@ body.v219-auth-body::before{display:none!important}
 .v219-auth-captcha{color:#1D4E6F;font-weight:900;margin:4px 0 7px}
 .v219-auth-submit,.v219-register-submit{
   width:100%;min-height:48px;margin-top:8px;border:0;border-radius:12px;
-  background:linear-gradient(135deg,#102A43,#1D4E6F);color:#fff;font-weight:850;cursor:pointer
+  background:linear-gradient(135deg,#102A43,#1D4E6F);color:#fff;font-weight:850;cursor:pointer;
+  transition:opacity .15s ease,filter .15s ease,transform .15s ease
 }
+.v219-auth-submit:disabled{
+  cursor:wait;opacity:.78;filter:saturate(.72);transform:none;
+  box-shadow:none;pointer-events:none
+}
+.v219-auth-submit.is-loading::before{
+  content:'';display:inline-block;width:13px;height:13px;margin-right:9px;
+  border:2px solid rgba(255,255,255,.45);border-top-color:#fff;border-radius:50%;
+  vertical-align:-2px;animation:simpelLoginSpin .75s linear infinite
+}
+@keyframes simpelLoginSpin{to{transform:rotate(360deg)}}
 .v219-role-row{
   display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px
 }
